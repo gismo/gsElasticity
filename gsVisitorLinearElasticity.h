@@ -174,7 +174,6 @@ public:
 			// Local block A
             localMat..noalias()  += weight * (m_virtualStrain.transpose() * m_C * m_virtualStrain);
 
-			/*
 			// Compute needed quantities...
             computeMaterialMatrix(geoEval, k);
             computeStrainDers(geoEval, bGrads, k);
@@ -379,6 +378,13 @@ protected:
     T m_lambda, m_mu, m_rho;
 
 protected:
+
+    /// Derivatives of the membrane strain
+    gsMatrix<T,3> E_m_der;
+
+    /// Derivatives of the bending (or flexural) strain
+    gsMatrix<T,3> E_f_der;
+
 
     // Surface forces
     const gsFunction<T> * m_bodyForce_ptr;

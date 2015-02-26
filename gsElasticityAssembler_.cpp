@@ -2,7 +2,7 @@
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gSElasticityAssembler.hpp>
+#include <gsElasticity/gsElasticityAssembler.hpp>
 
 namespace gismo
 {
