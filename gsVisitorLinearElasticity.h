@@ -185,7 +185,7 @@ public:
             */
 			
 			// Local rhs vector contribution
-            for (index_t j = 0; j < m_dim; ++j)
+            for (size_t j = 0; j < m_dim; ++j)
                 localRhs.middleRows(j*numActive,numActive).noalias() += 
                     weight * m_rho * forceVals(j,k) * bVals.col(k) ;
         }
@@ -202,10 +202,10 @@ public:
 		// Local DoFs to global DoFs
 		std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
 
-		for (index_t ci = 0; ci != m_dim; ++ci)
+        for (size_t ci = 0; ci != m_dim; ++ci)
 			mappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
 
-		for (index_t ci = 0; ci!= m_dim; ++ci)
+        for (size_t ci = 0; ci!= m_dim; ++ci)
 		{          
 			for (index_t ai=0; ai < numActive; ++ai)
             {
@@ -216,7 +216,7 @@ public:
                 {
                     rhsMatrix.row(ii) += localRhs.row(gi);
                     
-                    for (index_t cj = 0; cj!= m_dim; ++cj)
+                    for (size_t cj = 0; cj!= m_dim; ++cj)
                         for (index_t aj=0; aj < numActive; ++aj)
                         {
                             const index_t gj = cj * numActive +  aj; // column index
@@ -230,7 +230,7 @@ public:
                             {
                                 const index_t bjj = mappers[cj].global_to_bindex(jj);
 								rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * 
-                                    eliminatedDofs.row( mappers[cj].global_to_bindex(jj) );
+                                    eliminatedDofs.row( bjj );
                             }
                         }
                 }
