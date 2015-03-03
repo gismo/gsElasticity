@@ -81,6 +81,7 @@ protected:
     using gsAssemblerBase<T>::m_dofMappers;
     using gsAssemblerBase<T>::m_ddof;
     using gsAssemblerBase<T>::m_matrix;
+    using gsAssemblerBase<T>::m_rhs;
     using gsAssemblerBase<T>::m_dofs;
 };
 

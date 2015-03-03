@@ -98,7 +98,7 @@ public:
 
 			// Deformation gradient, F = I + H
 			defGrad = displGrad.transpose();
-			for (index_t di = 0; di < m_dim; di++)
+			for (size_t di = 0; di < m_dim; di++)
 				defGrad(di,di) += 1.;
 
 			// Determinant of deformation gradient, J = det(F)
@@ -116,7 +116,7 @@ public:
 				locResVec = locResMat * physGrad.col(i);
 
 				// Spatial dimensions of 1st basis function
-				for (index_t di = 0; di < m_dim; di++)
+				for (size_t di = 0; di < m_dim; di++)
 				{				
 					// Write to Rhs
 					localRhs(di*numActive+i) -= weight * locResVec(di);
@@ -133,7 +133,7 @@ public:
 					{
 						
 						// Spatial dimensions of 2nd basis function
-						for (index_t dj = 0; dj < m_dim; dj++)
+						for (size_t dj = 0; dj < m_dim; dj++)
 						{				
 							// Write gradient as matrix
 							gradV.setZero();
