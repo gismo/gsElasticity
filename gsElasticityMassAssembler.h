@@ -1,6 +1,6 @@
-/** @file gsElasticityAssembler.h
+/** @file gsElasticityMassAssembler.h
 
-    @brief Provides nonlinear elasticity system matrices for 2D plain strain and 3D continua.
+    @brief Provides elasticity system mass matrices for 2D plain strain and 3D continua.
 
     This file is part of the G+Smo library.
 
@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-/** @brief Assembles linear and non linear elasticity matrices for 2D plain strain and 3D continua.
+/** @brief Assembles elasticity mass matrices for 2D plain strain and 3D continua.
 
 
     \tparam T coefficient type
@@ -26,7 +26,7 @@ namespace gismo
     \ingroup Elasticity   
 */
 template <class T>
-class gsElasticityAssembler : public gsAssemblerBase<T>
+class gsElasticityMassAssembler : public gsAssemblerBase<T>
 {
 public:
     typedef gsAssemblerBase<T> Base;
@@ -39,54 +39,26 @@ public:
     
     \ingroup Assembler
 */
-    gsElasticityAssembler(  gsMultiPatch<T> const & patches,
+    gsElasticityMassAssembler(  gsMultiPatch<T> const & patches,
 		                    gsMultiBasis<T> const & bases,
 							// material properties
-							T E_modulus,
-							T poissons_ratio,
 							T density_rho,
 							// Boundary conditions
-							gsBoundaryConditions<T> const & bconditions,
-							// Body force per unit surface/volume (in 2D/3D)
-							const gsFunction<T> & body_force
-							// Points on physical domain
-							// const gsMatrix<T> pointCoords,
-							// Point forces
-							// const gsMatrix<T> pointForces
-							);
+							gsBoundaryConditions<T> const & bconditions
+						);
 
 public:
 
     /// Main assembly routine.
     void assemble();
-
-    /// Main assembly routine for the non-linear case
-    void assemble(const gsMultiPatch<T> & deformed);
-
-    /// Reconstruct solution from computed solution vector
-    void constructSolution(const gsMatrix<T>& solVector, 
-                           gsMultiPatch<T>& result) const;
-
-    // Set solution from solVector
-    void setSolution(const gsMatrix<T>& solVector, 
-                     gsMultiPatch<T>& result) const;
-
-	 // Newton update of the solution from solVector
-    void updateSolution(const gsMatrix<T>& solVector, 
-                        gsMultiPatch<T>& result) const;
     
 protected:
-
-    /// Neumann contributions
-    void assembleNeumann();
 
     /// Computes the Dirichlet DoF values by interpolation
     void computeDirichletDofsIntpl();
 
 protected:
 
-    T m_lambda;
-    T m_mu;
 	T m_rho;
 
 	/// Dimension (parameter space = physical space = deformation vector)
@@ -94,9 +66,7 @@ protected:
 
     /// Boundary conditions
     gsBoundaryConditions<T> m_bConditions;
-
-    const gsFunction<T> *m_bodyForce;
-   
+ 
     // Determines how the (fixed) Dirichlet values should be computed
     //dirichlet::values  m_dirValues;
 
@@ -111,7 +81,6 @@ protected:
     using gsAssemblerBase<T>::m_dofMappers;
     using gsAssemblerBase<T>::m_ddof;
     using gsAssemblerBase<T>::m_matrix;
-    using gsAssemblerBase<T>::m_rhs;
     using gsAssemblerBase<T>::m_dofs;
 };
 
@@ -124,5 +93,5 @@ protected:
 
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsElasticityAssembler.hpp)
+#include GISMO_HPP_HEADER(gsElasticityMassAssembler.hpp)
 #endif

@@ -87,9 +87,6 @@ public:
         // Initialize local matrix/rhs
         localMat.setZero(m_dim*numActive, m_dim*numActive);
         localRhs.setZero(m_dim*numActive, 1);
-
-        // Initialize auxiliary matrices
-		m_virtualStrain.resize(m_dimStrain,m_dim*numActive);
     }
     
     inline void assemble(gsDomainIterator<T>    & element, 
@@ -236,121 +233,12 @@ public:
                 }
             }
 
-			/*
-			for (index_t ai=0; ai < numActive; ++ai)
-            {
-                const index_t gi = ci * numActive +  ai; // row index
-                const index_t ii = mappers[ci].index( actives(ai) );
-
-                if ( mappers[ci].is_free_index(ii) )
-                {
-                    rhsMatrix.row(ii) += localRhs.row(gi);
-                    
-                    for (index_t cj = 0; cj!= m_dim; ++cj)
-                        for (index_t aj=0; aj < numActive; ++aj)
-                        {
-                            const index_t gj = cj * numActive +  aj; // column index
-                            const index_t jj = mappers[cj].index( actives(aj) ); 
-                            
-                            if ( mappers[cj].is_free_index(jj) )
-                            {
-                                sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
-                            }
-                            else // Fixed DoF ?
-                            {
-                                rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * 
-                                    eliminatedDofs.row( mappers[cj].global_to_bindex(jj) );
-                            }
-                        }
-                }
-            }
-			*/
 		}
     }
     
 
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-protected:
-
-    void computeMaterialMatrix(const gsGeometryEvaluator<T> & geoEval,
-                               const index_t k)
-    {
-        // ---------------  Material matrix
-        gsMatrix<T,3,3> F0;
-        geoEval.normal(k,normal);
-        normal.normalize();
-        F0.leftCols(2) = geoEval.jacobian(k);
-        F0.col(2)      = normal;
-        
-        //F0 = F0.inverse(); F0 = F0 * F0.transpose();
-        F0 = F0.inverse() * F0.inverse().transpose();
-
-        const T C_constant = 4*m_lambda*m_mu/(m_lambda+2*m_mu);
-
-        m_C(0,0) = C_constant*F0(0,0)*F0(0,0) + 2*m_mu*(2*F0(0,0)*F0(0,0));
-        m_C(1,1) = C_constant*F0(1,1)*F0(1,1) + 2*m_mu*(2*F0(1,1)*F0(1,1));
-        m_C(2,2) = C_constant*F0(0,1)*F0(0,1) + 2*m_mu*(F0(0,0)*F0(1,1) + F0(0,1)*F0(0,1));
-        m_C(1,0) = 
-        m_C(0,1) = C_constant*F0(0,0)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(0,1));
-        m_C(2,0) = 
-        m_C(0,2) = C_constant*F0(0,0)*F0(0,1) + 2*m_mu*(2*F0(0,0)*F0(0,1));
-        m_C(2,1) = m_C(1,2) = C_constant*F0(0,1)*F0(1,1) + 2*m_mu*(2*F0(0,1)*F0(1,1)); 
-        //gsDebug<< "C: \n"<< m_C << "\n";
-    }
-
-    void computeStrainDers(const gsGeometryEvaluator<T> & geoEval,
-                           const typename gsMatrix<T>::Block & bGrads,
-                           const index_t k)
-    {
-        const typename gsMatrix<T>::Block bGrads2 =
-            basisData.bottomRows( numActive * 3 );
-
-        gsAsConstMatrix<T,3,3> GsecDer( geoEval.deriv2(k).data(),3,3 );
-
-        gsVector<T,3> m_v, n_der;
-
-        geoEval.normal(k,normal); //geoEval or defShell
-        normal.normalize();
-
-        const typename gsMatrix<T>::constColumns & Jac = geoEval.jacobian(k);
-        for (index_t j = 0; j!= 3; ++j)
-        {
-            const index_t s = j*numActive;
-            for (index_t i = 0; i!= numActive; ++i)
-            {
-                // ---------------  Membrane strain derivative
-                E_m_der(0,i+s) = bGrads(2*i  ,k) * Jac(j,0) ;
-                E_m_der(1,i+s) = bGrads(2*i+1,k) * Jac(j,1) ;
-                E_m_der(2,i+s) = bGrads(2*i  ,k) * Jac(j,1) + 
-                                 bGrads(2*i+1,k) * Jac(j,0) ;
-
-                m_v.noalias() = vecFun(j,bGrads(2*i,k)).cross( 
-                                geoEval.jacobian(k).template block<3,1>(0,1) )
-                                - vecFun(j,bGrads(2*i+1,k)).cross( 
-                                  geoEval.jacobian(k).template block<3,1>(0,0) );               
-
-                // ---------------  First variation of the normal
-                n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal) / geoEval.measure(k);
-
-                // ---------------  Bending strain derivative
-                E_f_der.col(i+s) = bGrads2.template block<3,1>(3*i,k) * normal[j] 
-                                   + GsecDer * n_der  ;
-                E_f_der(2, i+s) *= 2.0 ;
-            }
-        }
-        //gsDebug<< "E_m_der: \n"<< E_m_der << "\n";
-        //gsDebug<< "E_f_der: \n"<< E_f_der << "\n";
-    }
-
-
-    static inline gsVector<T,3> vecFun(index_t pos, T val) 
-    { 
-        gsVector<T,3> result = gsVector<T,3>::Zero();
-        result[pos] = val;
-        return result;
-    }
 
 protected:
 
@@ -361,9 +249,6 @@ protected:
     index_t            numActive;
 
     gsVector<T> normal;
-
-    // Virtual strains 
-    gsMatrix<T> m_virtualStrain;
 
     // Material matrix
     gsMatrix<T,6,6> m_C;
@@ -378,13 +263,6 @@ protected:
     T m_lambda, m_mu, m_rho;
 
 protected:
-
-    /// Derivatives of the membrane strain
-    gsMatrix<T,3> E_m_der;
-
-    /// Derivatives of the bending (or flexural) strain
-    gsMatrix<T,3> E_f_der;
-
 
     // Surface forces
     const gsFunction<T> * m_bodyForce_ptr;

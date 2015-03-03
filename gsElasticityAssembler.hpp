@@ -23,7 +23,7 @@
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
-//#include <gsElasticity/gsVisitorNonLinElasticity.h>
+#include <gsElasticity/gsVisitorNonLinElasticity.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
 
 // ---
@@ -92,7 +92,9 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 template<class T>
 void gsElasticityAssembler<T>::assembleNeumann()
 {
-    for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.neumannBegin();
+    std::cout << "Linear Elasticity: assemble Neumann BC." << std::endl;
+	
+	for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.neumannBegin();
           it != m_bConditions.neumannEnd(); 
 		  ++it )
     {
@@ -106,7 +108,9 @@ void gsElasticityAssembler<T>::assembleNeumann()
 template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
-    //computeDirichletDofs();
+    std::cout << "Linear Elasticity: assemble stiffness matrix." << std::endl;
+	
+	//computeDirichletDofs();
     index_t numDirichlet = 0;
     for (index_t i = 0; i < m_dim; ++i)
         numDirichlet += m_dofMappers[i].boundarySize();
@@ -149,7 +153,9 @@ void gsElasticityAssembler<T>::assemble()
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 {
-    if ( m_ddof.size() == 0 )
+    std::cout << "Nonlinear elasticity: assemble residual and tangential stiffness matrix." << std::endl;
+	
+	if ( m_ddof.size() == 0 )
     {
         assemble();
         return;
@@ -161,13 +167,13 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
     // Resize the load vector
     m_rhs.setZero(m_dofs, 1);
 
-    gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce);
+    gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0));
 	//gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0));
 
     // Assemble volume stiffness and load vector integrals
     for (unsigned np=0; np < m_patches.nPatches(); ++np )
     {
-        //visitor.setDeformed( deformed.patch(np) );
+        visitor.setDeformed( deformed.patch(np) );
 
         //Assemble stiffness matrix and rhs for the local patch
         // with index np and add to m_matrix and m_rhs
@@ -257,6 +263,37 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
 
 
 template<class T>
+void  gsElasticityAssembler<T>::setSolution(const gsMatrix<T>& solVector, 
+                                            gsMultiPatch<T>& result) const
+{
+    GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
+
+    std::vector<gsFunction<T> * > sols ;
+
+    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    {
+        // Update solution coefficients on patch p
+        const int sz  = m_bases[0][p].size();
+
+        gsMatrix<T> & coeffs = result.patch(p).coefs();
+		coeffs.setZero(); //OWEE
+
+        for (index_t j = 0; j < m_dim; ++j)
+        {
+            const gsDofMapper & mapper = m_dofMappers[j];
+            for (index_t i = 0; i < sz; ++i)
+            {
+                if ( mapper.is_free(i, p) ) // DoF value is in the solVector
+                {
+                    coeffs(i,j) += solVector( mapper.index(i, p), 0);
+                }
+            }
+        }
+    }
+}
+
+
+template<class T>
 void  gsElasticityAssembler<T>::updateSolution(const gsMatrix<T>& solVector, 
                                                gsMultiPatch<T>& result) const
 {
@@ -284,6 +321,7 @@ void  gsElasticityAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
         }
     }
 }
+
 
 template<class T>
 void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, 
