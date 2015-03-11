@@ -32,7 +32,24 @@ public:
                               const gsGeometry<T> & deformed) : 
     Base(lambda,mu,rho,body_force),
     m_deformation(deformed.evaluator(NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM))
-    { }
+    { 
+		m_dim = body_force.targetDim();
+
+		defDer_k.resize(m_dim,m_dim);
+		defDer_kv.resize(m_dim*m_dim);
+
+		displGrad.resize(m_dim,m_dim);
+		defGrad.resize(m_dim,m_dim);
+		defGrad_inv.resize(m_dim,m_dim);
+
+		gradU.resize(m_dim,m_dim);
+		gradV.resize(m_dim,m_dim);
+		defGrad_inv_gradU.resize(m_dim,m_dim);
+		defGrad_inv_gradV.resize(m_dim,m_dim);
+		
+		locResMat.resize(m_dim,m_dim);
+		locResVec.resize(m_dim);
+	}
 
 	/// Sets the gsGeometryEvaluator \em m_deformation using \em deformed
     void setDeformed(const gsGeometry<T> & deformed)
@@ -59,6 +76,7 @@ public:
         const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
 		const gsMatrix<T> defGrads = m_deformation->jacobians();
 
+		/*
 		T weight;
 		gsMatrix<T> defDer_k(m_dim,m_dim);
 		gsVector<T> defDer_kv(m_dim*m_dim);
@@ -77,6 +95,7 @@ public:
 		gsMatrix<T> locResMat(m_dim,m_dim);
 		gsVector<T> locResVec(m_dim);
 		T locKtgVal;
+		*/
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {           
@@ -217,9 +236,26 @@ protected:
 
 	/// Contains the geometry evaluations for the deformed configuration
     typename gsGeometry<T>::Evaluator m_deformation;
+	
+	// Kinematics
+	T weight;
+	gsMatrix<T> defDer_k;
+	gsVector<T> defDer_kv;
 
-    /// Deformed normal 
-    gsVector<T> m_defNormal;
+	gsMatrix<T> displGrad;
+	gsMatrix<T> defGrad;
+	gsMatrix<T> defGrad_inv;
+	T detF, mulamlogJ;
+
+	gsMatrix<T> gradU;
+	gsMatrix<T> gradV;
+	gsMatrix<T> defGrad_inv_gradU;
+	gsMatrix<T> defGrad_inv_gradV;
+	T defGrad_inv_gradU_trace;
+
+	gsMatrix<T> locResMat;
+	gsVector<T> locResVec;
+	T locKtgVal;
 
 protected:
 
@@ -253,6 +289,7 @@ protected:
     // Local matrices
     using Base::localMat;
     using Base::localRhs;
+
 };
 
 

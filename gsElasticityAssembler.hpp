@@ -67,7 +67,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     // Mark boundary dofs
     m_dofMappers.resize(m_dim);
 	for (index_t i = 0; i < m_dim; i++)
-		m_bases.front().getMapper(true, m_bConditions, m_dofMappers[i] ); 
+		m_bases.front().getMapper(true, m_bConditions, i, m_dofMappers[i], true); // m_bases.front().getMapper(true, m_bConditions, m_dofMappers[i]); 
 
     // Determine system size
     m_dofs = 0;
@@ -283,9 +283,13 @@ void  gsElasticityAssembler<T>::setSolution(const gsMatrix<T>& solVector,
             const gsDofMapper & mapper = m_dofMappers[j];
             for (index_t i = 0; i < sz; ++i)
             {
-                if ( mapper.is_free(i, p) ) // DoF value is in the solVector
+				if ( mapper.is_free(i, p) ) // DoF value is in the solVector ?
                 {
                     coeffs(i,j) += solVector( mapper.index(i, p), 0);
+                }
+                else // eliminated DoF: fill with Dirichlet data
+                {
+                    coeffs(i,j) = m_ddof(mapper.bindex(i, p), 0);
                 }
             }
         }

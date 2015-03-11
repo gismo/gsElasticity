@@ -186,7 +186,8 @@ void gsElasticityNewton<T>::nextIteration()
         m_assembler.assemble( m_curSolution );
 	
         // Compute the newton update
-        m_solver.compute( m_assembler.matrix() );
+        //m_solver.compute( m_assembler.matrix() );
+		m_solver.factorize( m_assembler.matrix() );
         m_updateVector = m_solver.solve( m_assembler.rhs() );
         
         // Update the deformed solution
