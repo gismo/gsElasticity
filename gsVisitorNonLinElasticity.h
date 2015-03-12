@@ -31,7 +31,7 @@ public:
 		                      const gsFunction<T> & body_force, 
                               const gsGeometry<T> & deformed) : 
     Base(lambda,mu,rho,body_force),
-    m_deformation(deformed.evaluator(NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM))
+    m_deformation(deformed.evaluator(NEED_JACOBIAN)) // NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM))
     { 
 		m_dim = body_force.targetDim();
 
@@ -54,7 +54,7 @@ public:
 	/// Sets the gsGeometryEvaluator \em m_deformation using \em deformed
     void setDeformed(const gsGeometry<T> & deformed)
     {
-        m_deformation = safe(deformed.evaluator(NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
+        m_deformation = safe(deformed.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
     }
 
    /// Evaluate on element.

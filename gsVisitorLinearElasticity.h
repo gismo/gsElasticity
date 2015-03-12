@@ -49,7 +49,7 @@ public:
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
-		m_C.setZero(m_dimStrain,m_dimStrain);
+		m_C.resize(m_dimStrain,m_dimStrain);
 		if (m_dim == 2)
         {
 			m_C(0,0) = m_C(1,1) = 2*m_mu + m_lambda;
@@ -251,7 +251,7 @@ protected:
     gsVector<T> normal;
 
     // Material matrix
-    gsMatrix<T,6,6> m_C;
+    gsMatrix<T> m_C;
     
 
 protected:
