@@ -74,7 +74,7 @@ public:
     {
         const typename gsMatrix<T>::Block bVals  = basisData.topRows(numActive);
         const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
-		const gsMatrix<T> defGrads = m_deformation->jacobians();
+		//const gsMatrix<T> & defGrads = m_deformation->jacobians();
 
 		/*
 		T weight;
