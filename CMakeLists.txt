@@ -41,6 +41,7 @@ set_target_properties(${GM_NAME}_dev PROPERTIES
   COMPILE_DEFINITIONS gismo_dev_EXPORTS 
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
+  FOLDER "G+Smo modules"
   )
 
 set(gismo_dev_MODULES ${gismo_dev_MODULES} $<TARGET_OBJECTS:${GM_NAME}_dev>
