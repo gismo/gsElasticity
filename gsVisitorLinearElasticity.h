@@ -25,12 +25,14 @@ class gsVisitorLinearElasticity
 public:
 
     /// Constructor
-    gsVisitorLinearElasticity(T lambda, T mu, T rho, const gsFunction<T> & body_force) : 
+    gsVisitorLinearElasticity(T lambda, T mu, T rho, const gsFunction<T> & body_force, T tfac = 1.0) : 
     m_lambda(lambda),
     m_mu(mu),
 	m_rho(rho),
     m_bodyForce_ptr(&body_force)
-    { }
+    {
+	   m_tfac = tfac;
+	}
 
     void initialize(const gsBasis<T> & basis, 
                     gsQuadRule<T>    & rule, 
@@ -184,7 +186,7 @@ public:
 			// Local rhs vector contribution
             for (size_t j = 0; j < m_dim; ++j)
                 localRhs.middleRows(j*numActive,numActive).noalias() += 
-                    weight * m_rho * forceVals(j,k) * bVals.col(k) ;
+                    weight * m_rho * forceVals(j,k) * m_tfac * bVals.col(k) ;
         }
         //gsDebug<< "local Mat: \n"<< localMat << "\n";
     }
@@ -261,6 +263,9 @@ protected:
 
     // Lambda, mu, rho
     T m_lambda, m_mu, m_rho;
+
+	// Factor for time-dependent body force
+	T m_tfac;
 
 protected:
 

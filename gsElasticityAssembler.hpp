@@ -74,6 +74,10 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 	for (index_t i = 0; i < m_dim; i++)
         m_dofs += m_dofMappers[i].freeSize();
 
+	// Initialize factors for time-dependent external forces
+	m_tfac_neumann = 1.0;
+	m_tfac_force = 1.0;
+
 
     // Add shifts to global matrix indices to get the global dof
     // number for each unknown coordinate
@@ -90,6 +94,14 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 }
 
 template<class T>
+void gsElasticityAssembler<T>::set_tfac(const T tfac_neumann,
+		                                const T tfac_force)
+{
+	m_tfac_neumann = tfac_neumann;
+	m_tfac_force = tfac_force;
+}
+
+template<class T>
 void gsElasticityAssembler<T>::assembleNeumann()
 {
     std::cout << "Linear Elasticity: assemble Neumann BC." << std::endl;
@@ -98,7 +110,7 @@ void gsElasticityAssembler<T>::assembleNeumann()
           it != m_bConditions.neumannEnd(); 
 		  ++it )
     {
-        gsVisitorElasticityNeumann<T> neumann(*it->function(), it->side());
+        gsVisitorElasticityNeumann<T> neumann(*it->function(), it->side(), m_tfac_neumann);
 
         // Note: it->unknown()
         this->apply(neumann, it->patch(), it->side() );
@@ -135,7 +147,7 @@ void gsElasticityAssembler<T>::assemble()
     m_rhs.setZero(m_dofs, 1 );
 
     // Assemble volume stiffness and load vector integrals
-    gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce);
+    gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force);
     for (unsigned np=0; np < m_patches.nPatches(); ++np )
     {
         //Assemble stiffness matrix and rhs for the local patch
@@ -167,7 +179,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
     // Resize the load vector
     m_rhs.setZero(m_dofs, 1);
 
-    gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0));
+    gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0), m_tfac_force);
 	//gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0));
 
     // Assemble volume stiffness and load vector integrals

@@ -22,9 +22,11 @@ class gsVisitorElasticityNeumann
 {
 public:
 
-    gsVisitorElasticityNeumann(const gsFunction<T> & neudata, boxSide s) : 
+    gsVisitorElasticityNeumann(const gsFunction<T> & neudata, boxSide s, T tfac = 1.0) : 
     neudata_ptr(&neudata), side(s)
-    { }
+    { 
+        m_tfac = tfac;
+	}
 
     void initialize(const gsBasis<T> & basis, 
                     gsQuadRule<T>    & rule, 
@@ -87,8 +89,8 @@ public:
 			// Compute the outer normal vector on the side
             geoEval.outerNormal(k, side, unormal);
             
-            // Multiply quadrature weight by the measure of normal
-            const T weight = quWeights[k] * unormal.norm();
+            // Multiply quadrature weight by the measure of normal and time-dependent factor
+            const T weight = quWeights[k] * unormal.norm() * m_tfac;
 
             for (index_t j = 0; j < m_dim; ++j)
                 localRhs.middleRows(j*numActive,numActive).noalias() += 
@@ -126,6 +128,7 @@ protected:
     // Neumann function
     const gsFunction<T> * neudata_ptr;
     boxSide side;
+	T m_tfac;
 
     // Basis values
     gsMatrix<T>      basisData;

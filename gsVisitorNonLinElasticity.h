@@ -29,8 +29,9 @@ public:
     /// Constructor
     gsVisitorNonLinElasticity(T lambda, T mu, T rho, 
 		                      const gsFunction<T> & body_force, 
-                              const gsGeometry<T> & deformed) : 
-    Base(lambda,mu,rho,body_force),
+                              const gsGeometry<T> & deformed,
+							  T tfac = 1.0) : 
+    Base(lambda,mu,rho,body_force,tfac),
     m_deformation(deformed.evaluator(NEED_JACOBIAN)) // NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM))
     { 
 		m_dim = body_force.targetDim();
@@ -57,7 +58,7 @@ public:
         m_deformation = safe(deformed.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
     }
 
-   /// Evaluate on element.
+    /// Evaluate on element.
     inline void evaluate(gsBasis<T> const       & basis,
                          gsGeometryEvaluator<T> & geoEval,
                          gsMatrix<T> const      & quNodes)
@@ -122,7 +123,8 @@ public:
 
 			// Determinant of deformation gradient, J = det(F)
 			detF = defGrad.determinant();
-			mulamlogJ = m_mu - m_lambda * std::log(detF);
+			logdetF = std::log(detF);
+			mulamlogJ = m_mu - m_lambda * logdetF;
 
 			// Inverse of Fi = F^-1
 			defGrad_inv = defGrad.inverse();
@@ -131,7 +133,7 @@ public:
 			for (index_t i = 0; i < numActive; i++)
 			{
 				// Local internal force vector contribution, mu*(F-Fi') + lambda*log(J)*Fi' 
-				locResMat = m_mu * (defGrad - defGrad_inv.transpose()) + m_lambda * std::log(detF) * defGrad_inv.transpose();
+				locResMat = m_mu * (defGrad - defGrad_inv.transpose()) + m_lambda * logdetF * defGrad_inv.transpose();
 				locResVec = locResMat * physGrad.col(i);
 
 				// Spatial dimensions of 1st basis function
@@ -175,7 +177,7 @@ public:
 			// Local external force vector contribution
             for (size_t j = 0; j < m_dim; ++j)
                 localRhs.middleRows(j*numActive,numActive).noalias() += 
-                    weight * m_rho * forceVals(j,k) * bVals.col(k) ;
+                    weight * m_rho * forceVals(j,k) * m_tfac * bVals.col(k) ;
         }
         //gsDebug<< "local Mat: \n"<< localMat << "\n";
     }
@@ -245,7 +247,7 @@ protected:
 	gsMatrix<T> displGrad;
 	gsMatrix<T> defGrad;
 	gsMatrix<T> defGrad_inv;
-	T detF, mulamlogJ;
+	T detF, logdetF, mulamlogJ;
 
 	gsMatrix<T> gradU;
 	gsMatrix<T> gradV;
@@ -279,8 +281,9 @@ protected:
 
 protected:
 
-    // Surface forces
+    // Body forces
     using Base::m_bodyForce_ptr;
+	using Base::m_tfac;
 
     // Local values of the surface forces
     using Base::forceVals;

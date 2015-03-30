@@ -74,6 +74,10 @@ public:
 	 // Newton update of the solution from solVector
     void updateSolution(const gsMatrix<T>& solVector, 
                         gsMultiPatch<T>& result) const;
+
+	/// Set factor for time-dependent external forces (at current time-step)
+    void set_tfac(const T tfac_neumann,
+		          const T tfac_force);
     
 protected:
 
@@ -85,6 +89,7 @@ protected:
 
 protected:
 
+	/// Material parameters
     T m_lambda;
     T m_mu;
 	T m_rho;
@@ -96,6 +101,10 @@ protected:
     gsBoundaryConditions<T> m_bConditions;
 
     const gsFunction<T> *m_bodyForce;
+
+	/// Factor for time-dependent external forces
+	T m_tfac_neumann;
+	T m_tfac_force;
    
     // Determines how the (fixed) Dirichlet values should be computed
     //dirichlet::values  m_dirValues;
