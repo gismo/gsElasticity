@@ -1,6 +1,6 @@
-/** @file gsVisitorLinearElasticity.h
+/** @file gsVisitorLinearElasticityMixedTH.h
 
-    @brief Element visitor for linear elasticity for 2D plain strain and 3D continua.
+    @brief Taylor-Hood element visitor for a 2-field mixed method for (near) incompressible linear elasticity for 2D plain strain and 3D continua.
 
     This file is part of the G+Smo library.
 
@@ -13,19 +13,18 @@
 
 #pragma once
 
-//#include <gsElasticity/gsElasticityAssembler.hpp>
 
 namespace gismo
 {
 
 
 template <class T>
-class gsVisitorLinearElasticity
+class gsVisitorLinearElasticityMixedTH
 {
 public:
 
     /// Constructor
-    gsVisitorLinearElasticity(T lambda, T mu, T rho, const gsFunction<T> & body_force, T tfac = 1.0) : 
+    gsVisitorLinearElasticityMixedTH(T lambda, T mu, T rho, const gsFunction<T> & body_force, T tfac = 1.0) : 
     m_lambda(lambda),
     m_mu(mu),
 	m_rho(rho),
@@ -33,16 +32,16 @@ public:
 	m_tfac(tfac)
     { }
 
-    void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T>    & rule, 
-                    unsigned         & evFlags )
+    void initialize(gsBasisRefs<T> const   & basisRefs,
+                    gsQuadRule<T>          & rule, 
+                    unsigned               & evFlags )
     {
-        m_dim = basis.dim();
+        m_dim = basisRefs.front().dim();
 		m_dimStrain = (m_dim*(m_dim+1))/2;
 
 		gsVector<index_t> numQuadNodes(m_dim);
         for (size_t i = 0; i < m_dim; ++i) // to do: improve
-            numQuadNodes[i] = basis.degree(i) + 1;
+            numQuadNodes[i] = basisRefs.front().degree(i) + 1;
         
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
@@ -53,31 +52,31 @@ public:
 		m_C.resize(m_dimStrain,m_dimStrain);
 		if (m_dim == 2)
         {
-			m_C(0,0) = m_C(1,1) = 2*m_mu + m_lambda;
-			m_C(0,1) = m_C(1,0) = m_lambda;
+			m_C(0,0) = m_C(1,1) = 2*m_mu;
 			m_C(2,2) = m_mu;
 		}
 		else if (m_dim == 3)
 		{
-			m_C(0,0) = m_C(1,1) = m_C(2,2) = 2*m_mu + m_lambda;
-			m_C(0,1) = m_C(0,2) = m_C(1,2) = m_lambda;
-			m_C(1,0) = m_C(2,0) = m_C(2,1) = m_lambda;
+			m_C(0,0) = m_C(1,1) = m_C(2,2) = 2*m_mu;
 			m_C(3,3) = m_C(4,4) = m_C(5,5) = m_mu;
 		}
     }
 
     // Evaluate on element.
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
+    inline void evaluate(gsBasisRefs<T> const   & basisRefs,
                          gsGeometryEvaluator<T> & geoEval,
                          gsMatrix<T> const      & quNodes)
     {
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(quNodes.col(0), actives);
-        numActive = actives.rows();
+        basisRefs.front().active_into(quNodes.col(0), actives);
+        numActive   = actives.rows();
+		basisRefs.back(). active_into(quNodes.col(0), actives_p);
+        numActive_p = actives_p.rows();
         
         // Evaluate basis functions on element
-        basis.evalAllDers_into( quNodes, 1, basisData);
+        basisRefs.front().evalAllDers_into( quNodes, 1, basisData);
+		basisRefs.back(). eval_into( quNodes, basisVals_p);
         
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geoEval.evaluateAt(quNodes);
@@ -86,8 +85,11 @@ public:
         m_bodyForce_ptr->eval_into( geoEval.values(), forceVals );
         
         // Initialize local matrix/rhs
-        localMat.setZero(m_dim*numActive, m_dim*numActive);
-        localRhs.setZero(m_dim*numActive, 1);
+        localMatK.setZero(m_dim*numActive, m_dim*numActive);
+		localMatB.setZero(numActive_p, m_dim*numActive);
+		localMatC.setZero(numActive_p, numActive_p);
+        localRhs_u.setZero(m_dim*numActive, 1);		
+        localRhs_p.setZero(numActive_p, 1);
     }
     
     inline void assemble(gsDomainIterator<T>    & element, 
@@ -97,7 +99,9 @@ public:
         const typename gsMatrix<T>::Block bVals  = basisData.topRows(numActive);
         const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
 
-		const T v_2mulam = 2.*m_mu + m_lambda;
+		const typename gsMatrix<T>::Block bVals_p  = basisVals_p.topRows(numActive_p);
+
+		const T v_2mulam = 2.*m_mu;
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {           
@@ -113,14 +117,20 @@ public:
 				{
 					for (index_t j = 0; j < numActive; j++)
 					{
-						localMat(0*numActive+i, 0*numActive+j) += weight * 
+						localMatK(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
-						localMat(0*numActive+i, 1*numActive+j) += weight * 
+						localMatK(0*numActive+i, 1*numActive+j) += weight * 
 							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
-						localMat(1*numActive+i, 0*numActive+j) += weight * 
+						localMatK(1*numActive+i, 0*numActive+j) += weight * 
 							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
-						localMat(1*numActive+i, 1*numActive+j) += weight * 
+						localMatK(1*numActive+i, 1*numActive+j) += weight * 
 							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*physGrad(0,i)*physGrad(0,j) );
+					}
+
+					for (index_t j = 0; j < numActive_p; j++)
+					{
+						localMatB(j, 0*numActive+i) += weight * m_mu * physGrad(0,i) * basisVals_p(j,k);
+						localMatB(j, 1*numActive+i) += weight * m_mu * physGrad(1,i) * basisVals_p(j,k);
 					}
 				}
 			}
@@ -130,61 +140,50 @@ public:
 				{
 					for (index_t j = 0; j < numActive; j++)
 					{
-						localMat(0*numActive+i, 0*numActive+j) += weight * 
+						localMatK(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
-						localMat(0*numActive+i, 1*numActive+j) += weight * 
+						localMatK(0*numActive+i, 1*numActive+j) += weight * 
 							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
-						localMat(0*numActive+i, 2*numActive+j) += weight * 
+						localMatK(0*numActive+i, 2*numActive+j) += weight * 
 							( m_lambda*physGrad(0,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(0,j) );
-						localMat(1*numActive+i, 0*numActive+j) += weight * 
+						localMatK(1*numActive+i, 0*numActive+j) += weight * 
 							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
-						localMat(1*numActive+i, 1*numActive+j) += weight * 
+						localMatK(1*numActive+i, 1*numActive+j) += weight * 
 							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*(physGrad(0,i)*physGrad(0,j)+physGrad(2,i)*physGrad(2,j)) );
-						localMat(1*numActive+i, 2*numActive+j) += weight * 
+						localMatK(1*numActive+i, 2*numActive+j) += weight * 
 							( m_lambda*physGrad(1,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(1,j) );
-						localMat(2*numActive+i, 0*numActive+j) += weight * 
+						localMatK(2*numActive+i, 0*numActive+j) += weight * 
 							( m_lambda*physGrad(2,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(2,j) );
-						localMat(2*numActive+i, 1*numActive+j) += weight * 
+						localMatK(2*numActive+i, 1*numActive+j) += weight * 
 							( m_lambda*physGrad(2,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(2,j) );
-						localMat(2*numActive+i, 2*numActive+j) += weight * 
+						localMatK(2*numActive+i, 2*numActive+j) += weight * 
 							( v_2mulam*physGrad(2,i)*physGrad(2,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );				
+					}
+
+					for (index_t j = 0; j < numActive_p; j++)
+					{
+						localMatB(j, 0*numActive+i) += weight * m_mu * physGrad(0,i) * basisVals_p(j,k);
+						localMatB(j, 1*numActive+i) += weight * m_mu * physGrad(1,i) * basisVals_p(j,k);
+						localMatB(j, 2*numActive+i) += weight * m_mu * physGrad(2,i) * basisVals_p(j,k);
 					}
 				}
 			}
 
-			/*
-			if (m_dim == 2)
+			// near incompressible
+			if (m_lambda < std::numeric_limits<T>::infinity())
 			{
-				m_virtualStrain.row(0) = physGrad.row(0);
-				m_virtualStrain.row(1) = physGrad.row(1);
-				m_virtualStrain.row(2) = physGrad.row(0) + physGrad.row(1);
+				for (index_t i = 0; i < numActive_p; i++)
+				{
+					for (index_t j = 0; j < numActive_p; j++)
+					{
+						localMatC(i, j) -= weight * m_mu*m_mu/m_lambda * basisVals_p(i,k) * basisVals_p(j,k);
+					}
+				}
 			}
-			else if (m_dim == 3)
-			{
-				m_virtualStrain.row(0) = physGrad.row(0);
-				m_virtualStrain.row(1) = physGrad.row(1);
-				m_virtualStrain.row(2) = physGrad.row(2);
-				m_virtualStrain.row(3) = physGrad.row(0) + physGrad.row(1);
-				m_virtualStrain.row(4) = physGrad.row(1) + physGrad.row(2);
-				m_virtualStrain.row(5) = physGrad.row(0) + physGrad.row(2);
-			}
-
-			// Local block A
-            localMat..noalias()  += weight * (m_virtualStrain.transpose() * m_C * m_virtualStrain);
-
-			// Compute needed quantities...
-            computeMaterialMatrix(geoEval, k);
-            computeStrainDers(geoEval, bGrads, k);
-
-			// Local stiffness matrix contribution
-            localMat.noalias() += weight *  ( E_m_der.transpose() * m_C * E_m_der + 
-                                              E_f_der.transpose() * m_C * E_f_der * 
-                                              (m_thickness*m_thickness/3.0) );
-            */
 			
 			// Local rhs vector contribution
             for (size_t j = 0; j < m_dim; ++j)
-                localRhs.middleRows(j*numActive,numActive).noalias() += 
+                localRhs_u.middleRows(j*numActive,numActive).noalias() += 
                     weight * m_rho * forceVals(j,k) * m_tfac * bVals.col(k) ;
         }
         //gsDebug<< "local Mat: \n"<< localMat << "\n";
@@ -198,10 +197,12 @@ public:
     {
        	
 		// Local DoFs to global DoFs
-		std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
+		std::vector< gsMatrix<unsigned> > ci_actives(m_dim+1,actives);
 
         for (size_t ci = 0; ci != m_dim; ++ci)
 			mappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
+		
+		mappers[m_dim].localToGlobal(actives_p, patchIndex, ci_actives[m_dim]);
 
         for (size_t ci = 0; ci!= m_dim; ++ci)
 		{          
@@ -212,9 +213,11 @@ public:
 
                 if ( mappers[ci].is_free_index(ii) )
                 {
-                    rhsMatrix.row(ii) += localRhs.row(gi);
+                    rhsMatrix.row(ii) += localRhs_u.row(gi);
                     
+					// matrix A
                     for (size_t cj = 0; cj!= m_dim; ++cj)
+					{
                         for (index_t aj=0; aj < numActive; ++aj)
                         {
                             const index_t gj = cj * numActive +  aj; // column index
@@ -222,19 +225,67 @@ public:
                             
                             if ( mappers[cj].is_free_index(jj) )
                             {
-                                sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
+                                sysMatrix.coeffRef(ii, jj) += localMatK(gi, gj);
                             }
                             else // Fixed DoF ?
                             {
                                 const index_t bjj = mappers[cj].global_to_bindex(jj);
-								rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * 
+								rhsMatrix.row(ii).noalias() -= localMatK(gi, gj) * 
                                     eliminatedDofs.row( bjj );
                             }
                         }
+					}
+
+					// matrix B and B'
+					size_t cj = m_dim;
+                    for (index_t aj=0; aj < numActive_p; ++aj)
+                    {
+                        const index_t gj = aj;					// column index
+                        const index_t jj = ci_actives[cj](aj);
+                            
+                        if ( mappers[cj].is_free_index(jj) )
+                        {
+                            sysMatrix.coeffRef(ii, jj) += localMatB(gj, gi);
+							sysMatrix.coeffRef(jj, ii) += localMatB(gj, gi);
+                        }
+                        else // Fixed DoF ?
+                        {
+                            const index_t bjj = mappers[cj].global_to_bindex(jj);
+							rhsMatrix.row(ii).noalias() -= localMatB(gj, gi) * 
+                                eliminatedDofs.row( bjj );
+                        }
+                    }
+					
                 }
             }
 
 		}
+
+		// matrix C
+		size_t ci = m_dim;
+		for (index_t ai=0; ai < numActive_p; ++ai)
+        {
+            const index_t gi = ai;					// row index
+            const index_t ii = ci_actives[ci](ai);
+
+			if ( mappers[ci].is_free_index(ii) )
+            {
+                rhsMatrix.row(ii) += localRhs_p.row(gi);
+
+				size_t cj = m_dim;
+                for (index_t aj=0; aj < numActive_p; ++aj)
+                {
+                    const index_t gj = aj;					// column index
+                    const index_t jj = ci_actives[cj](aj);
+                            
+                    if ( mappers[cj].is_free_index(jj) )
+                    {
+                        sysMatrix.coeffRef(ii, jj) += localMatC(gi, gj);
+                    }                    
+                }
+			}
+		}
+
     }
     
 
@@ -248,6 +299,11 @@ protected:
     gsMatrix<unsigned> actives;
 	gsMatrix<T>		   physGrad, physGrad_symm;
     index_t            numActive;
+
+	// Pressure basis values
+    gsMatrix<T>        basisVals_p;
+    gsMatrix<unsigned> actives_p;
+	index_t            numActive_p;
 
     gsVector<T> normal;
 
@@ -276,8 +332,8 @@ protected:
     
 protected:
     // Local matrices
-    gsMatrix<T> localMat;
-    gsMatrix<T> localRhs;
+    gsMatrix<T> localMatK, localMatB, localMatC;
+    gsMatrix<T> localRhs_u, localRhs_p;
 };
 
 

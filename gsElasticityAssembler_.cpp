@@ -9,8 +9,12 @@
 
 #include <gsElasticity/gsElasticityNewton.h>
 
+#include <gsElasticity/gsElasticityMixedTHAssembler.h>
+#include <gsElasticity/gsElasticityMixedTHAssembler.hpp>
+
 namespace gismo
 {
     CLASS_TEMPLATE_INST gsElasticityAssembler<real_t>;
 	CLASS_TEMPLATE_INST gsElasticityMassAssembler<real_t>;
+	CLASS_TEMPLATE_INST gsElasticityMixedTHAssembler<real_t>;
 }
