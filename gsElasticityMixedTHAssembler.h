@@ -67,7 +67,7 @@ public:
 
     /// Reconstruct solution from computed solution vector
     void constructSolution(const gsMatrix<T>& solVector, 
-                           gsMultiPatch<T>& result) const;
+                           gsMultiPatch<T>& result, int unk = 0) const;
 
     // Set solution from solVector
     void setSolution(const gsMatrix<T>& solVector, 

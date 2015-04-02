@@ -373,7 +373,7 @@ void  gsElasticityMixedTHAssembler<T>::updateSolution(const gsMatrix<T>& solVect
         {
 			if ( mapper.is_free(i, p) ) // DoF value is in the solVector
             {
-                coeffs(i,0) += solVector( mapper.index(i, p), 0);
+                coeffs_p(i,0) += solVector( mapper.index(i, p), 0);
             }
         }
     }
@@ -382,24 +382,31 @@ void  gsElasticityMixedTHAssembler<T>::updateSolution(const gsMatrix<T>& solVect
 
 template<class T>
 void  gsElasticityMixedTHAssembler<T>::constructSolution(const gsMatrix<T>& solVector, 
-                                                         gsMultiPatch<T>& result) const
+                                                         gsMultiPatch<T>& result,
+                                                         int unk) const
 {
     GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
-    
-    // The final solution is the deformed shell, therefore we add the
-    // solVector to the undeformed coefficients
-    result = m_patches;
+    // unk should be 0 or 1
+
+    // empty the multipatch container
+    result.clear();
+
+    gsMatrix<T> coeffs;
+
+    // deformation or pressure dimension
+    const index_t uDim = ( unk == 0 ? m_dim : 1 );
 
     for (size_t p=0; p < m_patches.nPatches(); ++p )
     {
-        // Update solution coefficients on patch p
-        const int sz  = m_bases[0][p].size(); // m_patches[p].size();
+        // Constructing solution coefficients on patch p
+        const int sz  = m_bases[unk][p].size(); // m_patches[p].size();
 
-        gsMatrix<T> & coeffs = result.patch(p).coefs();
+        coeffs.resize( sz, uDim);
 
-        for (index_t j = 0; j < m_dim; ++j) // For all components x, y, z
+        for (index_t j = 0; j < uDim; ++j) // For all components
         {
-            const gsDofMapper & mapper = m_dofMappers[j];// grab mapper for this component
+            // grab mapper for this component            
+            const gsDofMapper & mapper = m_dofMappers[ (unk == 0 ? j : m_dim) ];
 
             for (index_t i = 0; i < sz; ++i)
             {
@@ -413,6 +420,8 @@ void  gsElasticityMixedTHAssembler<T>::constructSolution(const gsMatrix<T>& solV
                 }
             }
         }
+        
+        result.addPatch( m_bases[unk][p].makeGeometry( give(coeffs) ) );
     }
 }
 

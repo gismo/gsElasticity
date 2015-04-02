@@ -27,9 +27,9 @@ public:
     gsVisitorLinearElasticityMixedTH(T lambda, T mu, T rho, const gsFunction<T> & body_force, T tfac = 1.0) : 
     m_lambda(lambda),
     m_mu(mu),
-	m_rho(rho),
-    m_bodyForce_ptr(&body_force),
-	m_tfac(tfac)
+    m_rho(rho),
+    m_tfac(tfac),
+    m_bodyForce_ptr(&body_force)
     { }
 
     void initialize(gsBasisRefs<T> const   & basisRefs,
