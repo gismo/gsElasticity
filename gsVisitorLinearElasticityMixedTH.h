@@ -120,9 +120,9 @@ public:
 						localMatK(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
 						localMatK(0*numActive+i, 1*numActive+j) += weight * 
-							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
+							( m_mu*physGrad(1,i)*physGrad(0,j) );
 						localMatK(1*numActive+i, 0*numActive+j) += weight * 
-							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
+							( m_mu*physGrad(0,i)*physGrad(1,j) );
 						localMatK(1*numActive+i, 1*numActive+j) += weight * 
 							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*physGrad(0,i)*physGrad(0,j) );
 					}
@@ -143,19 +143,19 @@ public:
 						localMatK(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
 						localMatK(0*numActive+i, 1*numActive+j) += weight * 
-							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
+							( m_mu*physGrad(1,i)*physGrad(0,j) );
 						localMatK(0*numActive+i, 2*numActive+j) += weight * 
-							( m_lambda*physGrad(0,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(0,j) );
+							( m_mu*physGrad(2,i)*physGrad(0,j) );
 						localMatK(1*numActive+i, 0*numActive+j) += weight * 
-							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
+							( m_mu*physGrad(0,i)*physGrad(1,j) );
 						localMatK(1*numActive+i, 1*numActive+j) += weight * 
 							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*(physGrad(0,i)*physGrad(0,j)+physGrad(2,i)*physGrad(2,j)) );
 						localMatK(1*numActive+i, 2*numActive+j) += weight * 
-							( m_lambda*physGrad(1,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(1,j) );
+							( m_mu*physGrad(2,i)*physGrad(1,j) );
 						localMatK(2*numActive+i, 0*numActive+j) += weight * 
-							( m_lambda*physGrad(2,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(2,j) );
+							( m_mu*physGrad(0,i)*physGrad(2,j) );
 						localMatK(2*numActive+i, 1*numActive+j) += weight * 
-							( m_lambda*physGrad(2,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(2,j) );
+							( m_mu*physGrad(1,i)*physGrad(2,j) );
 						localMatK(2*numActive+i, 2*numActive+j) += weight * 
 							( v_2mulam*physGrad(2,i)*physGrad(2,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );				
 					}
