@@ -240,8 +240,20 @@ public:
 
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+	
+protected:
+    // Lambda, mu, rho
+    T m_lambda, m_mu, m_rho;
+	
+    // Body forces
+    const gsFunction<T> * m_bodyForce_ptr;
+
+	// Factor for time-dependent body force
+	T m_tfac;
 
 protected:
+	// Dimension
+	size_t m_dim, m_dimStrain;
 
     // Basis values
     gsMatrix<T>        basisData;
@@ -249,31 +261,12 @@ protected:
 	gsMatrix<T>		   physGrad, physGrad_symm;
     index_t            numActive;
 
-    gsVector<T> normal;
-
     // Material matrix
     gsMatrix<T> m_C;
-    
-
-protected:
-
-	// Dimension
-	size_t m_dim, m_dimStrain;
-
-    // Lambda, mu, rho
-    T m_lambda, m_mu, m_rho;
-
-	// Factor for time-dependent body force
-	T m_tfac;
-
-protected:
-
-    // Surface forces
-    const gsFunction<T> * m_bodyForce_ptr;
 
     // Local values of the surface forces
     gsMatrix<T> forceVals;
-    
+
 protected:
     // Local matrices
     gsMatrix<T> localMat;

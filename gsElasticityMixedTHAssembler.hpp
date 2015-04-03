@@ -412,7 +412,7 @@ void  gsElasticityMixedTHAssembler<T>::constructSolution(const gsMatrix<T>& solV
             {
                 if ( mapper.is_free(i, p) ) // DoF value is in the solVector ?
                 {
-                    coeffs(i,j) += solVector( mapper.index(i, p), 0);
+                    coeffs(i,j) = solVector( mapper.index(i, p), 0);
                 }
                 else // eliminated DoF: fill with Dirichlet data
                 {

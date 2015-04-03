@@ -235,10 +235,39 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
+	// Lambda, mu, rho
+    using Base::m_lambda;
+	using Base::m_mu;
+	using Base::m_rho;
+
+	// Body forces
+    using Base::m_bodyForce_ptr;
 
 	/// Contains the geometry evaluations for the deformed configuration
     typename gsGeometry<T>::Evaluator m_deformation;
+
+	using Base::m_tfac;
+
+protected:
+	// Dimension
+	using Base::m_dim;
+	using Base::m_dimStrain;
 	
+	// Basis values
+    using Base::basisData;
+    using Base::actives;
+    using Base::numActive;
+	using Base::physGrad;
+	
+    // Local values of the surface forces
+    using Base::forceVals;
+
+protected:
+    // Local matrices
+    using Base::localMat;
+    using Base::localRhs;	
+
+protected:
 	// Kinematics
 	T weight;
 	gsMatrix<T> defDer_k;
@@ -258,41 +287,6 @@ protected:
 	gsMatrix<T> locResMat;
 	gsVector<T> locResVec;
 	T locKtgVal;
-
-protected:
-
-    // Basis values
-    using Base::basisData;
-    using Base::actives;
-    using Base::numActive;
-    using Base::normal;
-	using Base::physGrad;	
-
-protected:
-
-	// Dimension
-	using Base::m_dim;
-	using Base::m_dimStrain;
-
-    // Lambda, mu, rho
-    using Base::m_lambda;
-	using Base::m_mu;
-	using Base::m_rho;
-
-protected:
-
-    // Body forces
-    using Base::m_bodyForce_ptr;
-	using Base::m_tfac;
-
-    // Local values of the surface forces
-    using Base::forceVals;
-    
-protected:
-    // Local matrices
-    using Base::localMat;
-    using Base::localRhs;
-
 };
 
 
