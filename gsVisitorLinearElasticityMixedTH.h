@@ -99,7 +99,7 @@ public:
         const typename gsMatrix<T>::Block bVals  = basisData.topRows(numActive);
         const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
 
-		const typename gsMatrix<T>::Block bVals_p  = basisVals_p.topRows(numActive_p);
+		//const typename gsMatrix<T>::Block bVals_p  = basisVals_p.topRows(numActive_p);
 
 		const T v_2mulam = 2.*m_mu;
 
