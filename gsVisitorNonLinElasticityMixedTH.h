@@ -61,7 +61,7 @@ public:
 		             const gsGeometry<T> & pressure)
     {
         m_deformation = safe(deformation.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
-		m_pressure = safe(pressure.evaluator(NEED_NORMAL)); 
+		m_pressure = safe(pressure.evaluator(NEED_VALUE)); 
     }
 
     /// Evaluate on element
@@ -105,6 +105,7 @@ public:
 			// Evaluate pressure
 			prex_k = m_mu * (m_pressure->value(k))(0,0);
 			muprex = m_mu - prex_k;
+
 			// Displacement gradient, H = du = (dx/dxi)'^-1 * (du/dxi)'
 			displGrad = geoEval.jacobian(k).transpose().inverse() * defDer_k;
 
@@ -115,17 +116,18 @@ public:
 
 			// Determinant of deformation gradient, J = det(F)
 			detF = defGrad.determinant();
-			logdetF = std::log(detF);
+			logdetF = weight * m_mu * std::log(detF);
 
 			// Inverse of Fi = F^-1
 			defGrad_inv = defGrad.inverse();
 
+			// Local internal force vector contribution, mu*(F-Fi') + p*Fi' 
+			locResMat = (weight*m_mu) * (defGrad - defGrad_inv.transpose()) + (weight*prex_k) * defGrad_inv.transpose();
+
 			// 1st basis function (U/i)
 			for (index_t i = 0; i < numActive; i++)
 			{
-				// Local internal force vector contribution, mu*(F-Fi') + p*Fi' 
-				locResMat = m_mu * (defGrad - defGrad_inv.transpose()) + prex_k * defGrad_inv.transpose();
-				locResVec = weight * locResMat * physGrad.col(i);
+				locResVec = locResMat * physGrad.col(i);
 
 				// Spatial dimensions of 1st basis function
 				for (size_t di = 0; di < m_dim; di++)
@@ -142,8 +144,7 @@ public:
 						
 					// 2nd basis function (V/j)
 					for (index_t j = 0; j < numActive; j++)
-					{
-						
+					{						
 						// Spatial dimensions of 2nd basis function
 						for (size_t dj = 0; dj < m_dim; dj++)
 						{				
@@ -155,8 +156,8 @@ public:
 
 							// Local tangent stiffnees matrix contribution
 							locKtgVal = m_mu * ( gradU.transpose()*gradV ).trace()
-							          + muprex * ( defGrad_inv_gradU * defGrad_inv_gradV ).trace()
-							          + prex_k * defGrad_inv_gradU_trace * defGrad_inv_gradV.trace();
+							          + muprex * ( defGrad_inv_gradU * defGrad_inv_gradV ).trace();
+							          //+ prex_k * defGrad_inv_gradU_trace * defGrad_inv_gradV.trace();
 
 							// Write to Mat
 							localMatK(di*numActive+i, dj*numActive+j) += weight * locKtgVal;
@@ -166,9 +167,7 @@ public:
 					// 2nd basis function for pressure (Q/j)
 					for (index_t j = 0; j < numActive_p; j++)
 					{
-						localMatB(j, 0*numActive+i) += weight * m_mu * physGrad(0,i) * basisVals_p(j,k);
-						localMatB(j, 1*numActive+i) += weight * m_mu * physGrad(1,i) * basisVals_p(j,k);
-						localMatB(j, 2*numActive+i) += weight * m_mu * physGrad(2,i) * basisVals_p(j,k);
+						localMatB(j, di*numActive+i) += weight * m_mu * physGrad(di,i) * basisVals_p(j,k);
 					}
 				}				
 			}
@@ -178,7 +177,7 @@ public:
 
 			for (index_t i = 0; i < numActive_p; i++)
 			{
-				localRhs_p(i) -= weight * logdetF * basisVals_p(i,k);
+				localRhs_p(i) -= logdetF * basisVals_p(i,k);
 				
 				// near incompressible
 				if (m_lambda < std::numeric_limits<T>::infinity())
@@ -233,7 +232,6 @@ protected:
 	T locKtgVal;
 
 	gsVector<T> locResVec_p;
-	T nearmup;
 
 protected:
 
@@ -271,6 +269,8 @@ protected:
 
     // Local values of the surface forces
     using Base::forceVals;
+
+	using Base::nearmup;
     
 protected:
     // Local matrices

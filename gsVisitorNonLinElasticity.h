@@ -130,18 +130,19 @@ public:
 			// Inverse of Fi = F^-1
 			defGrad_inv = defGrad.inverse();
 
+			// Local internal force vector contribution, mu*(F-Fi') + lambda*log(J)*Fi' 
+			locResMat = (weight * m_mu) * (defGrad - defGrad_inv.transpose()) + (weight * m_lambda * logdetF) * defGrad_inv.transpose();
+
 			// 1st basis function (U/i)
 			for (index_t i = 0; i < numActive; i++)
-			{
-				// Local internal force vector contribution, mu*(F-Fi') + lambda*log(J)*Fi' 
-				locResMat = m_mu * (defGrad - defGrad_inv.transpose()) + m_lambda * logdetF * defGrad_inv.transpose();
+			{		
 				locResVec = locResMat * physGrad.col(i);
 
 				// Spatial dimensions of 1st basis function
 				for (size_t di = 0; di < m_dim; di++)
 				{				
 					// Write to Rhs
-					localRhs(di*numActive+i) -= weight * locResVec(di);
+					localRhs(di*numActive+i) -= locResVec(di);
 					
 					// Write gradient as matrix
 					gradU.setZero();
@@ -152,8 +153,7 @@ public:
 						
 					// 2nd basis function (V/j)
 					for (index_t j = 0; j < numActive; j++)
-					{
-						
+					{						
 						// Spatial dimensions of 2nd basis function
 						for (size_t dj = 0; dj < m_dim; dj++)
 						{				

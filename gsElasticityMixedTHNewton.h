@@ -138,7 +138,7 @@ namespace gismo
 
 
 template <class T> 
-void gsElasticityNewton<T>::solve()
+void gsElasticityMixedTHNewton<T>::solve()
 {
     firstIteration();
 
@@ -162,7 +162,7 @@ void gsElasticityNewton<T>::solve()
 
 
 template <class T> 
-void gsElasticityNewton<T>::firstIteration()
+void gsElasticityMixedTHNewton<T>::firstIteration()
 {
     // ----- First iteration -----
     m_converged = false;
@@ -175,7 +175,8 @@ void gsElasticityNewton<T>::firstIteration()
     m_updateVector = m_solver.solve( m_assembler.rhs() );
 
     // Update the deformed solution
-    m_assembler.setSolution(m_updateVector, m_curSolution);
+    m_assembler.constructSolution(m_updateVector, m_curSolution, 0);
+	m_assembler.constructSolution(m_updateVector, m_curPressure, 1);
 
     // Compute initial residue
     m_residue = m_assembler.rhs().norm();
@@ -188,10 +189,10 @@ void gsElasticityNewton<T>::firstIteration()
 }
 
 template <class T> 
-void gsElasticityNewton<T>::nextIteration()
+void gsElasticityMixedTHNewton<T>::nextIteration()
 {
         // Construct linear system for next iteration
-        m_assembler.assemble( m_curSolution );
+        m_assembler.assemble( m_curSolution, m_curPressure );
 	
         // Compute the newton update
         //m_solver.compute( m_assembler.matrix() );
@@ -199,7 +200,7 @@ void gsElasticityNewton<T>::nextIteration()
         m_updateVector = m_solver.solve( m_assembler.rhs() );
         
         // Update the deformed solution
-        m_assembler.updateSolution(m_updateVector, m_curSolution);
+        m_assembler.updateSolution(m_updateVector, m_curSolution, m_curPressure);
         
         // Compute residue
         m_residue = m_assembler.rhs().norm();

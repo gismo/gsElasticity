@@ -174,11 +174,12 @@ public:
 			// near incompressible
 			if (m_lambda < std::numeric_limits<T>::infinity())
 			{
+				nearmup = weight * m_mu*m_mu/m_lambda;
 				for (index_t i = 0; i < numActive_p; i++)
 				{
 					for (index_t j = 0; j < numActive_p; j++)
 					{
-						localMatC(i, j) -= weight * m_mu*m_mu/m_lambda * basisVals_p(i,k) * basisVals_p(j,k);
+						localMatC(i, j) -= nearmup * basisVals_p(i,k) * basisVals_p(j,k);
 					}
 				}
 			}
@@ -324,6 +325,9 @@ protected:
     
 	// Local values of the surface forces
     gsMatrix<T> forceVals;
+
+	// variable factors
+	T nearmup;
 
 protected:
     // Local matrices
