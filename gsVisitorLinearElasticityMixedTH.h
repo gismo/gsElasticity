@@ -1,6 +1,8 @@
 /** @file gsVisitorLinearElasticityMixedTH.h
 
-    @brief Taylor-Hood element visitor for a 2-field mixed method for (near) incompressible linear elasticity for 2D plain strain and 3D continua.
+    @brief Taylor-Hood element visitor for a 2-field mixed method for 
+	linear (near) incompressible linear elasticity for 2D plain strain 
+	and 3D continua.
 
     This file is part of the G+Smo library.
 

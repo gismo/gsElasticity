@@ -23,7 +23,7 @@
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticityMixedTH.h>
-//#include <gsElasticity/gsVisitorNonLinElasticityMixedTH.h>
+#include <gsElasticity/gsVisitorNonLinElasticityMixedTH.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
 
 // ---
@@ -184,8 +184,8 @@ void gsElasticityMixedTHAssembler<T>::assemble(const gsMultiPatch<T> & deformed,
     
     // Resize the load vector
     m_rhs.setZero(m_dofs, 1);
-	/*
-    gsVisitorNonLinElasticityMixedTH<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0), m_tfac_force);
+	
+    gsVisitorNonLinElasticityMixedTH<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0), deformed_p.patch(0), m_tfac_force);
 	
     // Assemble volume stiffness and load vector integrals
     for (unsigned np=0; np < m_patches.nPatches(); ++np )
@@ -196,7 +196,7 @@ void gsElasticityMixedTHAssembler<T>::assemble(const gsMultiPatch<T> & deformed,
         // with index np and add to m_matrix and m_rhs
         this->apply(visitor, np);
     }
-	*/
+	
     // Enforce Neumann forces
     assembleNeumann();
 

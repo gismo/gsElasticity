@@ -1,6 +1,7 @@
 /** @file gsVisitorNonLinElasticity.h
 
-    @brief Element visitor for nonlinear elasticity for 2D plain strain and 3D continua.
+    @brief Element visitor for nonlinear elasticity for 2D plain strain 
+	and 3D continua.
 
     This file is part of the G+Smo library.
 

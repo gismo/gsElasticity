@@ -1,6 +1,7 @@
 /** @file gsElasticityAssembler.h
 
-    @brief Provides nonlinear (near) incompressible elasticity system matrices with mixed TH elements for 2D plain strain and 3D continua.
+    @brief Provides nonlinear (near) incompressible elasticity system 
+	matrices with mixed TH elements for 2D plain strain and 3D continua.
 
     This file is part of the G+Smo library.
 
