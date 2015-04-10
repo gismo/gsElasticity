@@ -67,7 +67,7 @@ public:
     void constructSolution(const gsMatrix<T>& solVector, 
                            gsMultiPatch<T>& result) const;
 
-    // Set solution from solVector
+    // Set solution from solVector, overwrites previous solution
     void setSolution(const gsMatrix<T>& solVector, 
                      gsMultiPatch<T>& result) const;
 

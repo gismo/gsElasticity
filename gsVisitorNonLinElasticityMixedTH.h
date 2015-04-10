@@ -84,7 +84,7 @@ public:
         const typename gsMatrix<T>::Block bVals  = basisData.topRows(numActive);
         const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
 
-		const typename gsMatrix<T>::Block bVals_p  = basisVals_p.topRows(numActive_p);
+		//const typename gsMatrix<T>::Block bVals_p  = basisVals_p.topRows(numActive_p);
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {           
@@ -249,7 +249,7 @@ protected:
     using Base::actives_p;
 	using Base::numActive_p;
 
-	using Base::normal;
+	//using Base::normal;
 	using Base::m_C;
 
 protected:
