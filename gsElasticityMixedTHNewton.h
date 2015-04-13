@@ -15,7 +15,7 @@
 #pragma once
 
 #include <cmath>
-
+#include <gsIO/gsMatrixIO.h>
 
 namespace gismo
 {
@@ -67,7 +67,7 @@ public:
 		if (i == 0)
 			return m_curSolution;
 		else
-			return m_curPressure;
+			return m_truePressure;
 	}
 
     /// Tells if the Newton method converged
@@ -96,9 +96,14 @@ protected:
     /// The latest/current solution
     gsMultiPatch<T>     m_curSolution;
 	gsMultiPatch<T>     m_curPressure;
+	gsMultiPatch<T>     m_truePressure;
 
     /// Solution of the linear system in each iteration
     gsMatrix<T>         m_updateVector;
+	gsMatrix<T>         m_solVector;
+
+	/// RHS vector of forces only
+	gsMatrix<T>         m_rhs0;
 
     /// Linear solver employed
     Eigen::SparseLU<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  m_solver;
@@ -125,6 +130,8 @@ protected:
     T m_residue;
 	T m_updnorm;
 
+	char m_itStr[20];
+
 };
 
 
@@ -144,18 +151,40 @@ void gsElasticityMixedTHNewton<T>::solve()
 
     const T initResidue = m_residue;
 	const T initUpdate = m_updnorm;
+
+	/* // Debug matrix output
+	saveMarket(m_assembler.matrix(),"matK_0.mm");
+	saveMarket(m_assembler.rhs(),"matb_0.mm");
+	saveMarket(m_updateVector,"matdx_0.mm");
+	*/
     
     // ----- Iterations start -----
     for (m_numIterations = 1; m_numIterations < m_maxIterations; ++m_numIterations)
     {
         nextIteration();
-        
+
+		/* // Debug matrix output
+		sprintf(m_itStr,"matK_%i.mm",m_numIterations);
+		saveMarket(m_assembler.matrix(),m_itStr);
+		sprintf(m_itStr,"matb_%i.mm",m_numIterations);
+		saveMarket(m_assembler.rhs(),m_itStr);
+		sprintf(m_itStr,"matx_%i.mm",m_numIterations);
+		saveMarket(m_updateVector,m_itStr);
+        */
+
         // termination criteria
         if ( std::abs(m_updnorm / initUpdate)  < m_tolerance || 
              std::abs(m_residue / initResidue) < m_tolerance )
         {
             m_converged = true;
-            break;
+			m_truePressure = m_curPressure;
+		    T mu, lambda, rho;
+			m_assembler.get_material(lambda, mu, rho);
+			for (size_t i=0; i < m_truePressure.nPatches(); i++)
+				m_truePressure.patch(i).scale(mu);
+            
+			std::cout << "Energy: " << m_solVector.transpose()*m_rhs0 << "\n";
+			break;
         }
     }
 }
@@ -170,9 +199,13 @@ void gsElasticityMixedTHNewton<T>::firstIteration()
     // Construct the linear system
     m_assembler.assemble();
 
+	// Save RHS
+	m_rhs0 = m_assembler.rhs();
+
     // Compute the newton update
     m_solver.compute( m_assembler.matrix() );
     m_updateVector = m_solver.solve( m_assembler.rhs() );
+	m_solVector = m_updateVector;
 
     // Update the deformed solution
     m_assembler.constructSolution(m_updateVector, m_curSolution, 0);
@@ -182,7 +215,7 @@ void gsElasticityMixedTHNewton<T>::firstIteration()
     m_residue = m_assembler.rhs().norm();
 	m_updnorm = m_updateVector.norm();
 
-	gsDebug<<"Iteration: "<< 0
+	std::cout  <<"Iteration: "<< 0
                <<", residue: "<< m_residue
                <<", update norm: "<< m_updnorm
                <<"\n";
@@ -198,6 +231,7 @@ void gsElasticityMixedTHNewton<T>::nextIteration()
         //m_solver.compute( m_assembler.matrix() );
 		m_solver.factorize( m_assembler.matrix() );
         m_updateVector = m_solver.solve( m_assembler.rhs() );
+		m_solVector += m_updateVector;
         
         // Update the deformed solution
         m_assembler.updateSolution(m_updateVector, m_curSolution, m_curPressure);
@@ -206,10 +240,10 @@ void gsElasticityMixedTHNewton<T>::nextIteration()
         m_residue = m_assembler.rhs().norm();
         m_updnorm = m_updateVector.norm();
 
-        gsDebug<<"Iteration: "<< m_numIterations
-               <<", residue: "<< m_residue
-               <<", update norm: "<< m_updnorm
-               <<"\n";
+        std::cout <<"Iteration: "<< m_numIterations
+                  <<", residue: "<< m_residue
+                  <<", update norm: "<< m_updnorm
+                  <<"\n";
 }
 
 

@@ -107,6 +107,16 @@ void gsElasticityMixedTHAssembler<T>::set_tfac(const T tfac_neumann,
 }
 
 template<class T>
+void gsElasticityMixedTHAssembler<T>::get_material(T& lambda,
+		                                           T& mu,
+					                               T& rho)
+{
+    lambda = m_lambda;
+	mu = m_mu;
+	rho = m_rho;
+}
+
+template<class T>
 void gsElasticityMixedTHAssembler<T>::assembleNeumann()
 {
     std::cout << "Linear Elasticity: assemble Neumann BC." << std::endl;

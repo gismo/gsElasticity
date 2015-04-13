@@ -167,7 +167,7 @@ public:
 					// 2nd basis function for pressure (Q/j)
 					for (index_t j = 0; j < numActive_p; j++)
 					{
-						localMatB(j, di*numActive+i) += weight * m_mu * physGrad(di,i) * basisVals_p(j,k);
+						localMatB(j, di*numActive+i) += weight * m_mu * defGrad_inv_gradU_trace * basisVals_p(j,k);
 					}
 				}				
 			}

@@ -83,6 +83,11 @@ public:
 	/// Set factor for time-dependent external forces (at current time-step)
     void set_tfac(const T tfac_neumann,
 		          const T tfac_force);
+
+	// Get material constants lambda, mu, rho
+	void get_material(T& lambda,
+		              T& mu,
+					  T& rho);
     
 protected:
 
