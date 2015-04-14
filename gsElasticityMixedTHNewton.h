@@ -70,6 +70,15 @@ public:
 			return m_truePressure;
 	}
 
+	/// Returns the solution vector
+	void solVector(gsMatrix<T> & solVector)
+	{
+		if (!m_converged)
+			gsWarn << "Iteration has not converged - doing nothing!\n";
+		else
+			solVector = m_solVector;
+	}
+
     /// Tells if the Newton method converged
     bool converged() const {return m_converged;}
 
@@ -183,7 +192,7 @@ void gsElasticityMixedTHNewton<T>::solve()
 			for (size_t i=0; i < m_truePressure.nPatches(); i++)
 				m_truePressure.patch(i).scale(mu);
             
-			std::cout << "Energy: " << m_solVector.transpose()*m_rhs0 << "\n";
+			gsInfo << "Energy: " << m_solVector.transpose()*m_rhs0 << "\n";
 			break;
         }
     }
@@ -224,26 +233,26 @@ void gsElasticityMixedTHNewton<T>::firstIteration()
 template <class T> 
 void gsElasticityMixedTHNewton<T>::nextIteration()
 {
-        // Construct linear system for next iteration
-        m_assembler.assemble( m_curSolution, m_curPressure );
+    // Construct linear system for next iteration
+    m_assembler.assemble( m_curSolution, m_curPressure );
 	
-        // Compute the newton update
-        //m_solver.compute( m_assembler.matrix() );
-		m_solver.factorize( m_assembler.matrix() );
-        m_updateVector = m_solver.solve( m_assembler.rhs() );
-		m_solVector += m_updateVector;
+    // Compute the newton update
+    //m_solver.compute( m_assembler.matrix() );
+	m_solver.factorize( m_assembler.matrix() );
+    m_updateVector = m_solver.solve( m_assembler.rhs() );
+	m_solVector += m_updateVector;
         
-        // Update the deformed solution
-        m_assembler.updateSolution(m_updateVector, m_curSolution, m_curPressure);
+    // Update the deformed solution
+    m_assembler.updateSolution(m_updateVector, m_curSolution, m_curPressure);
         
-        // Compute residue
-        m_residue = m_assembler.rhs().norm();
-        m_updnorm = m_updateVector.norm();
+    // Compute residue
+    m_residue = m_assembler.rhs().norm();
+    m_updnorm = m_updateVector.norm();
 
-        std::cout <<"Iteration: "<< m_numIterations
-                  <<", residue: "<< m_residue
-                  <<", update norm: "<< m_updnorm
-                  <<"\n";
+    std::cout <<"Iteration: "<< m_numIterations
+                <<", residue: "<< m_residue
+                <<", update norm: "<< m_updnorm
+                <<"\n";
 }
 
 

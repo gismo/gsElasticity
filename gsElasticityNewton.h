@@ -34,7 +34,7 @@ public:
 
     /// Constructor giving access to the gsElasticityAssembler object to create a linear system per iteration
     gsElasticityNewton(  gsElasticityAssembler<T> & assembler, 
-                       const gsMultiPatch<T> & initialSolution)
+                         const gsMultiPatch<T> & initialSolution)
     : m_assembler(assembler),
       m_curSolution(initialSolution),
       m_numIterations(0),
@@ -61,6 +61,15 @@ public:
 
     /// Returns the latest configuration
     const gsMultiPatch<T> & solution() const {return  m_curSolution;}
+
+	/// Returns the solution vector
+	void solVector(gsMatrix<T> & solVector)
+	{
+		if (!m_converged)
+			gsWarn << "Iteration has not converged - doing nothing!\n";
+		else
+			solVector = m_solVector;
+	}
 
     /// Tells if the Newton method converged
     bool converged() const {return m_converged;}
@@ -90,6 +99,10 @@ protected:
 
     /// Solution of the linear system in each iteration
     gsMatrix<T>         m_updateVector;
+	gsMatrix<T>         m_solVector;
+
+	/// RHS vector of forces only
+	gsMatrix<T>         m_rhs0;
 
     /// Linear solver employed
     Eigen::SparseLU<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  m_solver;
@@ -147,6 +160,8 @@ void gsElasticityNewton<T>::solve()
              std::abs(m_residue / initResidue) < m_tolerance )
         {
             m_converged = true;
+
+			gsInfo << "Energy: " << m_solVector.transpose()*m_rhs0 << "\n";
             break;
         }
     }
@@ -162,9 +177,13 @@ void gsElasticityNewton<T>::firstIteration()
     // Construct the linear system
     m_assembler.assemble();
 
+	// Save RHS
+	m_rhs0 = m_assembler.rhs();
+
     // Compute the newton update
     m_solver.compute( m_assembler.matrix() );
     m_updateVector = m_solver.solve( m_assembler.rhs() );
+	m_solVector = m_updateVector;
 
     // Update the deformed solution
     m_assembler.setSolution(m_updateVector, m_curSolution);
@@ -189,7 +208,8 @@ void gsElasticityNewton<T>::nextIteration()
         //m_solver.compute( m_assembler.matrix() );
 		m_solver.factorize( m_assembler.matrix() );
         m_updateVector = m_solver.solve( m_assembler.rhs() );
-        
+        m_solVector += m_updateVector;
+
         // Update the deformed solution
         m_assembler.updateSolution(m_updateVector, m_curSolution);
         
