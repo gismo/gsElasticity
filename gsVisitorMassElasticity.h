@@ -78,7 +78,7 @@ public:
 			{
 				for (index_t j = 0; j < numActive; j++)
 				{
-					const T int_val = weight * m_rho * basisData(k,i) * basisData(k,j);
+					const T int_val = weight * m_rho * basisData(i,k) * basisData(j,k);
 						
 					for (size_t di = 0; di < m_dim; di++)
 						localMat(di*numActive+i, di*numActive+j) += int_val;

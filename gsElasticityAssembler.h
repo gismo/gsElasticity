@@ -63,6 +63,8 @@ public:
     /// Main assembly routine for the non-linear case
     void assemble(const gsMultiPatch<T> & deformed);
 
+	void assembleMass();
+
     /// Reconstruct solution from computed solution vector
     void constructSolution(const gsMatrix<T>& solVector, 
                            gsMultiPatch<T>& result) const;

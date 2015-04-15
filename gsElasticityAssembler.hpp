@@ -25,6 +25,7 @@
 #include <gsElasticity/gsVisitorLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinElasticity.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
+#include <gsElasticity/gsVisitorMassElasticity.h>
 
 // ---
 #include <gsCore/gsBoxTopology.h>
@@ -338,7 +339,6 @@ void  gsElasticityAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
     }
 }
 
-
 template<class T>
 void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, 
                                                   gsMultiPatch<T>& result) const
@@ -375,5 +375,47 @@ void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     }
 }
 
+
+template<class T>
+void gsElasticityAssembler<T>::assembleMass()
+{
+    std::cout << "Linear Elasticity: assemble mass matrix." << std::endl;
+	
+	//computeDirichletDofs();
+    index_t numDirichlet = 0;
+    for (index_t i = 0; i < m_dim; ++i)
+        numDirichlet += m_dofMappers[i].boundarySize();
+    m_ddof.setZero(numDirichlet, 1);
+
+    if (m_dofs == 0 ) // Are there any interior dofs ?
+    {
+        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
+        return;
+    }
+
+    // Pre-allocate non-zero elements for each column of the
+    // sparse matrix
+    size_t nonZerosPerCol = m_dim;
+    for (index_t i = 0; i < m_dim; ++i) // to do: improve
+        nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
+
+    m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
+    m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
+        
+    // Resize the load vector
+    m_rhs.setZero(m_dofs, 1 );
+
+    // Assemble volume stiffness and load vector integrals
+    gsVisitorMassElasticity<T> visitor(m_rho);
+    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    {
+        //Assemble stiffness matrix and rhs for the local patch
+        // with index np and add to m_matrix and m_rhs
+        this->apply(visitor, np);
+    }
+
+    // Assembly is done, compress the matrix
+    m_matrix.makeCompressed();   
+}
 
 }// namespace gismo
