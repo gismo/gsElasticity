@@ -111,7 +111,9 @@ public:
 			{
 				for (index_t i = 0; i < numActive; i++)
 				{
-					for (index_t j = 0; j < numActive; j++)
+					//for (index_t j = 0; j < numActive; j++)
+					// Exploit symmetry of K
+					for (index_t j = i; j < numActive; j++)
 					{
 						localMat(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
@@ -128,7 +130,9 @@ public:
 			{
 				for (index_t i = 0; i < numActive; i++)
 				{
-					for (index_t j = 0; j < numActive; j++)
+					//for (index_t j = 0; j < numActive; j++)
+					// Exploit symmetry of K
+					for (index_t j = i; j < numActive; j++)
 					{
 						localMat(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
@@ -152,36 +156,6 @@ public:
 				}
 			}
 
-			/*
-			if (m_dim == 2)
-			{
-				m_virtualStrain.row(0) = physGrad.row(0);
-				m_virtualStrain.row(1) = physGrad.row(1);
-				m_virtualStrain.row(2) = physGrad.row(0) + physGrad.row(1);
-			}
-			else if (m_dim == 3)
-			{
-				m_virtualStrain.row(0) = physGrad.row(0);
-				m_virtualStrain.row(1) = physGrad.row(1);
-				m_virtualStrain.row(2) = physGrad.row(2);
-				m_virtualStrain.row(3) = physGrad.row(0) + physGrad.row(1);
-				m_virtualStrain.row(4) = physGrad.row(1) + physGrad.row(2);
-				m_virtualStrain.row(5) = physGrad.row(0) + physGrad.row(2);
-			}
-
-			// Local block A
-            localMat..noalias()  += weight * (m_virtualStrain.transpose() * m_C * m_virtualStrain);
-
-			// Compute needed quantities...
-            computeMaterialMatrix(geoEval, k);
-            computeStrainDers(geoEval, bGrads, k);
-
-			// Local stiffness matrix contribution
-            localMat.noalias() += weight *  ( E_m_der.transpose() * m_C * E_m_der + 
-                                              E_f_der.transpose() * m_C * E_f_der * 
-                                              (m_thickness*m_thickness/3.0) );
-            */
-			
 			// Local rhs vector contribution
             for (size_t j = 0; j < m_dim; ++j)
                 localRhs.middleRows(j*numActive,numActive).noalias() += 
@@ -203,9 +177,9 @@ public:
         for (size_t ci = 0; ci != m_dim; ++ci)
 			mappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
 
-        for (size_t ci = 0; ci!= m_dim; ++ci)
+        for (index_t ai=0; ai < numActive; ++ai)
 		{          
-			for (index_t ai=0; ai < numActive; ++ai)
+			for (size_t ci = 0; ci!= m_dim; ++ci)
             {
                 const index_t gi = ci * numActive +  ai; // row index
                 const index_t ii = ci_actives[ci](ai);
@@ -214,8 +188,11 @@ public:
                 {
                     rhsMatrix.row(ii) += localRhs.row(gi);
                     
-                    for (size_t cj = 0; cj!= m_dim; ++cj)
-                        for (index_t aj=0; aj < numActive; ++aj)
+					//for (index_t aj=0; aj < numActive; ++aj)
+					// Exploit symmetry of K
+					for (index_t aj=ai; aj < numActive; ++aj)
+					{
+						for (size_t cj = 0; cj!= m_dim; ++cj)                        
                         {
                             const index_t gj = cj * numActive +  aj; // column index
                             const index_t jj = ci_actives[cj](aj);
@@ -223,15 +200,37 @@ public:
                             if ( mappers[cj].is_free_index(jj) )
                             {
                                 sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
+								if (aj > ai)
+									sysMatrix.coeffRef(jj, ii) += localMat(gi, gj);
                             }
                             else // Fixed DoF ?
                             {
                                 const index_t bjj = mappers[cj].global_to_bindex(jj);
-								rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * 
-                                    eliminatedDofs.row( bjj );
+								rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * eliminatedDofs.row( bjj );
                             }
                         }
+					}
                 }
+				else
+				{
+					// Must be careful with non-free indices now  --  not sure if this is correct!
+					
+					const index_t bii = mappers[ci].global_to_bindex(ii);
+					
+					for (index_t aj=0; aj < ai; ++aj)
+					{
+						for (size_t cj = 0; cj!= m_dim; ++cj)                        
+                        {
+							const index_t gj = cj * numActive +  aj; // column index
+                            const index_t jj = ci_actives[cj](aj);
+                            
+                            if ( mappers[cj].is_free_index(jj) )
+							{                                
+								rhsMatrix.row(jj).noalias() -= localMat(gj, gi) * eliminatedDofs.row( bii );
+                            }
+						}
+					}
+				}
             }
 
 		}

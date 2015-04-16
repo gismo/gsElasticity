@@ -143,7 +143,9 @@ public:
 					defGrad_inv_gradU_trace = defGrad_inv_gradU.trace();	// tr(Fi*dU) = Fi':dU
 						
 					// 2nd basis function (V/j)
-					for (index_t j = 0; j < numActive; j++)
+					//for (index_t j = 0; j < numActive; j++)
+					// Exploit symmetry of C
+					for (index_t j = i; j < numActive; j++)
 					{						
 						// Spatial dimensions of 2nd basis function
 						for (size_t dj = 0; dj < m_dim; dj++)
@@ -184,7 +186,9 @@ public:
 				{
 					localRhs_p(i) += nearmup/m_mu * prex_k * basisVals_p(i,k);
 					
-					for (index_t j = 0; j < numActive_p; j++)
+					//for (index_t j = 0; j < numActive_p; j++)
+					// Exploit symmetry of C
+					for (index_t j = i; j < numActive_p; j++)
 					{
 						localMatC(i, j) -= nearmup * basisVals_p(i,k) * basisVals_p(j,k);
 					}

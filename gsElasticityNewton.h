@@ -186,7 +186,7 @@ void gsElasticityNewton<T>::firstIteration()
 	m_solVector = m_updateVector;
 
     // Update the deformed solution
-    m_assembler.setSolution(m_updateVector, m_curSolution);
+    m_assembler.constructSolution(m_updateVector, m_curSolution);
 
     // Compute initial residue
     m_residue = m_assembler.rhs().norm();

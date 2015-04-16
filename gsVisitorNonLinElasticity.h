@@ -78,27 +78,6 @@ public:
         const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
 		//const gsMatrix<T> & defGrads = m_deformation->jacobians();
 
-		/*
-		T weight;
-		gsMatrix<T> defDer_k(m_dim,m_dim);
-		gsVector<T> defDer_kv(m_dim*m_dim);
-
-		gsMatrix<T> displGrad(m_dim,m_dim);
-		gsMatrix<T> defGrad(m_dim,m_dim);
-		gsMatrix<T> defGrad_inv(m_dim,m_dim);
-		T detF, mulamlogJ;
-
-		gsMatrix<T> gradU(m_dim,m_dim);
-		gsMatrix<T> gradV(m_dim,m_dim);
-		gsMatrix<T> defGrad_inv_gradU(m_dim,m_dim);
-		gsMatrix<T> defGrad_inv_gradV(m_dim,m_dim);
-		T defGrad_inv_gradU_trace;
-
-		gsMatrix<T> locResMat(m_dim,m_dim);
-		gsVector<T> locResVec(m_dim);
-		T locKtgVal;
-		*/
-
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {           
             // Multiply weight by the geometry measure
@@ -152,7 +131,9 @@ public:
 					defGrad_inv_gradU_trace = defGrad_inv_gradU.trace();	// tr(Fi*dU) = Fi':dU
 						
 					// 2nd basis function (V/j)
-					for (index_t j = 0; j < numActive; j++)
+					//for (index_t j = 0; j < numActive; j++)
+					// Exploit symmetry of K
+					for (index_t j = i; j < numActive; j++)
 					{						
 						// Spatial dimensions of 2nd basis function
 						for (size_t dj = 0; dj < m_dim; dj++)
@@ -182,55 +163,7 @@ public:
         }
         //gsDebug<< "local Mat: \n"<< localMat << "\n";
     }
-    
-	/*
-    inline void localToGlobal(const gsStdVectorRef<gsDofMapper> & mappers,
-                              const gsMatrix<T>     & eliminatedDofs,
-                              const int patchIndex,
-                              gsSparseMatrix<T>     & sysMatrix,
-                              gsMatrix<T>           & rhsMatrix )
-    {
-       	
-		// Local DoFs to global DoFs
-		std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
 
-        for (size_t ci = 0; ci != m_dim; ++ci)
-			mappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
-
-        for (size_t ci = 0; ci!= m_dim; ++ci)
-		{          
-			for (index_t ai=0; ai < numActive; ++ai)
-            {
-                const index_t gi = ci * numActive +  ai; // row index
-                const index_t ii = ci_actives[ci](ai);
-
-                if ( mappers[ci].is_free_index(ii) )
-                {
-                    rhsMatrix.row(ii) += localRhs.row(gi);
-                    
-                    for (size_t cj = 0; cj!= m_dim; ++cj)
-                        for (index_t aj=0; aj < numActive; ++aj)
-                        {
-                            const index_t gj = cj * numActive +  aj; // column index
-                            const index_t jj = ci_actives[cj](aj);
-                            
-                            if ( mappers[cj].is_free_index(jj) )
-                            {
-                                sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
-                            }
-                            else // Fixed DoF ?
-                            {
-                                const index_t bjj = mappers[cj].global_to_bindex(jj);
-								rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * 
-                                    eliminatedDofs.row( bjj );
-                            }
-                        }
-                }
-            }
-
-		}
-    }
-    */
 
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

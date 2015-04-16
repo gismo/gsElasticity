@@ -345,16 +345,17 @@ void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 {
     GISMO_ASSERT(m_dofs == m_rhs.rows(), "Something went wrong, assemble() not called?");
     
-    // The final solution is the deformed shell, therefore we add the
-    // solVector to the undeformed coefficients
-    result = m_patches;
+    // empty the multipatch container
+    result.clear();
+
+	gsMatrix<T> coeffs;
 
     for (size_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update solution coefficients on patch p
         const int sz  = m_bases[0][p].size(); // m_patches[p].size();
 
-        gsMatrix<T> & coeffs = result.patch(p).coefs();
+        coeffs.resize(sz, m_dim);
 
         for (index_t j = 0; j < m_dim; ++j) // For all components x, y, z
         {
@@ -364,7 +365,7 @@ void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
             {
                 if ( mapper.is_free(i, p) ) // DoF value is in the solVector ?
                 {
-                    coeffs(i,j) += solVector( mapper.index(i, p), 0);
+                    coeffs(i,j) = solVector( mapper.index(i, p), 0);
                 }
                 else // eliminated DoF: fill with Dirichlet data
                 {
@@ -372,6 +373,8 @@ void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                 }
             }
         }
+
+		result.addPatch( m_bases[0][p].makeGeometry( give(coeffs) ) );
     }
 }
 

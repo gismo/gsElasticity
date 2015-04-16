@@ -62,7 +62,7 @@ public:
         geoEval.evaluateAt(quNodes);
 
         // Initialize local matrix/rhs
-        localMat.setZero(m_dim*numActive, m_dim*numActive);
+        localMat.setZero(numActive, numActive);
     }
     
     inline void assemble(gsDomainIterator<T>    & element, 
@@ -76,12 +76,12 @@ public:
 
 			for (index_t i = 0; i < numActive; i++)
 			{
-				for (index_t j = 0; j < numActive; j++)
+				// Exploit symmetry and local diagonal form of M
+				for (index_t j = i; j < numActive; j++)
 				{
 					const T int_val = weight * m_rho * basisData(i,k) * basisData(j,k);
 						
-					for (size_t di = 0; di < m_dim; di++)
-						localMat(di*numActive+i, di*numActive+j) += int_val;
+					localMat(i, j) += int_val;
 				}
 			}
 
@@ -103,32 +103,37 @@ public:
         for (size_t ci = 0; ci != m_dim; ++ci)
 			mappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
 
-        for (size_t ci = 0; ci!= m_dim; ++ci)
-		{          
-			for (index_t ai=0; ai < numActive; ++ai)
-            {
-                const index_t gi = ci * numActive +  ai; // row index
+        for (index_t ai=0; ai < numActive; ++ai)    
+		{
+			const index_t gi = ai; // row index
+
+			for (size_t ci = 0; ci!= m_dim; ++ci)   
+            {               
                 const index_t ii = ci_actives[ci](ai);
 
                 if ( mappers[ci].is_free_index(ii) )
-                {
-                    
-                    for (size_t cj = 0; cj!= m_dim; ++cj)
-                        for (index_t aj=0; aj < numActive; ++aj)
+                {                   
+					// Exploit symmetry of M 
+					for (index_t aj=ai; aj < numActive; ++aj)
+					{
+                        const index_t gj = aj; // column index
+
+						// Exploit local diagonal form of M 
+						size_t cj = ci;
+                       
+                        const index_t jj = ci_actives[cj](aj);
+                            
+                        if ( mappers[cj].is_free_index(jj) )
                         {
-                            const index_t gj = cj * numActive +  aj; // column index
-                            const index_t jj = ci_actives[cj](aj);
-                            
-                            if ( mappers[cj].is_free_index(jj) )
-                            {
-                                sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
-                            }
-                            
-                        }
+                            sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
+							if (aj > ai)
+								sysMatrix.coeffRef(jj, ii) += localMat(gi, gj);
+                        }                           
+					}
                 }
             }
-
 		}
+
     }
     
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html

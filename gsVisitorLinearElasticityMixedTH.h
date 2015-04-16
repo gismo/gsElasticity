@@ -117,7 +117,9 @@ public:
 			{
 				for (index_t i = 0; i < numActive; i++)
 				{
-					for (index_t j = 0; j < numActive; j++)
+					//for (index_t j = 0; j < numActive; j++)
+					// Exploit symmetry of A
+					for (index_t j = i; j < numActive; j++)
 					{
 						localMatK(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
@@ -140,7 +142,9 @@ public:
 			{
 				for (index_t i = 0; i < numActive; i++)
 				{
-					for (index_t j = 0; j < numActive; j++)
+					//for (index_t j = 0; j < numActive; j++)
+					// Exploit symmetry of A
+					for (index_t j = i; j < numActive; j++)
 					{
 						localMatK(0*numActive+i, 0*numActive+j) += weight * 
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
@@ -177,7 +181,9 @@ public:
 				nearmup = weight * m_mu*m_mu/m_lambda;
 				for (index_t i = 0; i < numActive_p; i++)
 				{
-					for (index_t j = 0; j < numActive_p; j++)
+					//for (index_t j = 0; j < numActive_p; j++)
+					// Exploit symmetry of C
+					for (index_t j = i; j < numActive_p; j++)				
 					{
 						localMatC(i, j) -= nearmup * basisVals_p(i,k) * basisVals_p(j,k);
 					}
@@ -219,9 +225,17 @@ public:
                     rhsMatrix.row(ii) += localRhs_u.row(gi);
                     
 					// matrix A
-                    for (size_t cj = 0; cj!= m_dim; ++cj)
+					/*
+					for (size_t cj = 0; cj!= m_dim; ++cj)
 					{
-                        for (index_t aj=0; aj < numActive; ++aj)
+                        //for (index_t aj=0; aj < numActive; ++aj)
+						for (index_t aj=ai; aj < numActive; ++aj)
+                        {
+					*/
+					// Exploit symmetry of A
+                    for (index_t aj=ai; aj < numActive; ++aj)
+					{
+                        for (size_t cj = 0; cj!= m_dim; ++cj)
                         {
                             const index_t gj = cj * numActive +  aj; // column index
                             const index_t jj = ci_actives[cj](aj);
@@ -229,6 +243,8 @@ public:
                             if ( mappers[cj].is_free_index(jj) )
                             {
                                 sysMatrix.coeffRef(ii, jj) += localMatK(gi, gj);
+								if (aj > ai)
+									sysMatrix.coeffRef(jj, ii) += localMatK(gi, gj);
                             }
                             else // Fixed DoF ?
                             {
@@ -254,12 +270,31 @@ public:
                         else // Fixed DoF ?
                         {
                             const index_t bjj = mappers[cj].global_to_bindex(jj);
-							rhsMatrix.row(ii).noalias() -= localMatB(gj, gi) * 
-                                eliminatedDofs.row( bjj );
+							rhsMatrix.row(ii).noalias() -= localMatB(gj, gi) * eliminatedDofs.row( bjj );
                         }
                     }
 					
                 }
+				else
+				{
+					// Must be careful with non-free indices now  --  not sure if this is correct!
+					
+					const index_t bii = mappers[ci].global_to_bindex(ii);
+					
+					for (index_t aj=0; aj < ai; ++aj)
+					{
+						for (size_t cj = 0; cj!= m_dim; ++cj)                        
+                        {
+							const index_t gj = cj * numActive +  aj; // column index
+                            const index_t jj = ci_actives[cj](aj);
+                            
+                            if ( mappers[cj].is_free_index(jj) )
+							{                                
+								rhsMatrix.row(jj).noalias() -= localMatK(gj, gi) * eliminatedDofs.row( bii );
+                            }
+						}
+					}
+				}
             }
 
 		}
@@ -276,7 +311,9 @@ public:
                 rhsMatrix.row(ii) += localRhs_p.row(gi);
 
 				size_t cj = m_dim;
-                for (index_t aj=0; aj < numActive_p; ++aj)
+                //for (index_t aj=0; aj < numActive_p; ++aj)
+				// Exploit symmetry of C
+				for (index_t aj=ai; aj < numActive_p; ++aj)
                 {
                     const index_t gj = aj;					// column index
                     const index_t jj = ci_actives[cj](aj);
@@ -284,6 +321,8 @@ public:
                     if ( mappers[cj].is_free_index(jj) )
                     {
                         sysMatrix.coeffRef(ii, jj) += localMatC(gi, gj);
+						if (aj > ai)
+							sysMatrix.coeffRef(jj, ii) += localMatC(gi, gj);
                     }                    
                 }
 			}
