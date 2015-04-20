@@ -178,7 +178,7 @@ void gsElasticityMassAssembler<T>::computeDirichletDofsIntpl()
 
         // Interpolate dirichlet boundary 
         gsBasis<T> * h = basis.boundaryBasis(it->side());
-        gsGeometry<T> * geo = h->interpolate(fpts);
+        gsGeometry<T> * geo = h->interpolateAtAnchors(fpts);
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
