@@ -23,20 +23,20 @@ namespace gismo {
  *  this is not very stable: when tested on 10e6 random values
  *  the relative error can go up till 10e-8
  */
-template <typename T=real_t>
+
 class ElasticityConstantsConverter
 {
 private:
-    T _k;
-    T _e;
-    T _l;
-    T _g;
-    T _n;
-    T _m;
+    real_t _k;
+    real_t _e;
+    real_t _l;
+    real_t _g;
+    real_t _n;
+    real_t _m;
 private:
-    static inline T abs(const T& a) { return  a>=0 ? a : -a; }
+    static inline real_t abs(const real_t& a) { return  a>=0 ? a : -a; }
 public:
-    bool operator== (const ElasticityConstantsConverter<T> &other)
+    bool operator== (const ElasticityConstantsConverter &other)
     {
         bool passed = true;
         double tolerance = 10e-6;
@@ -48,27 +48,27 @@ public:
         passed = passed && abs(_m-other._m)<abs(_m)*tolerance;
         return passed;
     }
-    const T& getK() const
+    const real_t& getK() const
     {
         return _k;
     }
-    const T& getE() const
+    const real_t& getE() const
     {
         return _e;
     }
-    const T& getL() const
+    const real_t& getL() const
     {
         return _l;
     }
-    const T& getG() const
+    const real_t& getG() const
     {
         return _g;
     }
-    const T& getN() const
+    const real_t& getN() const
     {
         return _n;
     }
-    const T& getM() const
+    const real_t& getM() const
     {
         return _m;
     }
@@ -87,7 +87,7 @@ public:
     /// \param m P-wave modulus
     ///
     ///
-    void setKE(const T &k, const T &e )
+    void setKE(const real_t &k, const real_t &e )
     {
         _k = k;
         _e = e;
@@ -96,51 +96,51 @@ public:
         _n = (3*k-e)/(6*k);
         _m = 3*k*(3*k+e)/(9*k-e);
     }
-    void setKL(const T &k, const T &l )
+    void setKL(const real_t &k, const real_t &l )
     {
         _e = 9*k*(k-l)/(3*k-l);
         setKE(k,_e);
     }
-    void setKG(const T &k, const T &g )
+    void setKG(const real_t &k, const real_t &g )
     {
         _e = 9*k*g/(3*k+g);
         setKE(k,_e);
     }
-    void setKN(const T &k, const T &n )
+    void setKN(const real_t &k, const real_t &n )
     {
         _e = 3*k*(1-2*n);
         setKE(k,_e);
     }
-    void setEG(const T &e, const T &g )
+    void setEG(const real_t &e, const real_t &g )
     {
         _k = e*g/(9*g-3*e);
         setKE(_k,e);
     }
-    void setEN(const T &e, const T &n )
+    void setEN(const real_t &e, const real_t &n )
     {
         _k = e/(3-6*n);
         setKE(_k,e);
     }
-    void setLG(const T &l, const T &g )
+    void setLG(const real_t &l, const real_t &g )
     {
         _k = l+2*g/3;
         _e = g*(3*l+2*g)/(l+g);
         setKE(_k,_e);
 
     }
-    void setLN(const T &l, const T &n )
+    void setLN(const real_t &l, const real_t &n )
     {
         _k = l*(1+n)/(3*n);
         _e = l*(1+n)*(1-2*n)/n;
         setKE(_k,_e);
     }
-    void setGN(const T &g, const T &n )
+    void setGN(const real_t &g, const real_t &n )
     {
         _k = 2*g*(1+n)/(3-6*n);
         _e = 2*g*(1+n);
         setKE(_k,_e);
     }
-    void setGM(const T &g, const T &m )
+    void setGM(const real_t &g, const real_t &m )
     {
         _k = m-4*g/3;
         _e = g*(3*m-4*g)/(m-g);
@@ -148,8 +148,7 @@ public:
     }
 };
 
-template <typename T>
-std::ostream &operator<< (std::ostream &out, const ElasticityConstantsConverter<T> &data)
+std::ostream &operator<< (std::ostream &out, const ElasticityConstantsConverter &data)
 {
     out<<"K = "<<data.getK()<<", E = "<<data.getE()<<", L = "<<data.getL()<<", G = "<<data.getG()<<", N = "<<data.getN()<<", M = "<<data.getM()<<"\n";
     return out;
