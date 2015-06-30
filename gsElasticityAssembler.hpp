@@ -89,7 +89,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
         m_dofMappers[i].setShift( inShift );
 		m_dofMappers[i].setBoundaryShift( bdShift );
 		inShift += m_dofMappers[i].freeSize();
-		bdShift += m_dofMappers[i].boundarySize();
+        bdShift += m_dofMappers[i].boundarySize();
 	}
 }
 
@@ -446,13 +446,13 @@ void gsElasticityAssembler<T>::computeStresses(
 
     // Do this pointwise, since we have no assumptions
     // on the evaluation points.
-    for( size_t k=0; k < u.cols(); k++ )
+    for( size_t k=0; k < size_t( u.cols() ); k++ )
     {
         // active functions at the evaluation point
         m_bases[0].basis(patchIndex).active_into( u.col(k), actives);
         // for each component, make global DoFs out of these local DoFs
         std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
-        for( size_t ci = 0; ci < m_dim; ++ci )
+        for( index_t ci = 0; ci < m_dim; ++ci )
             m_dofMappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
 
         // compute the gradients of the basis functions at the eval.pt.
@@ -468,7 +468,7 @@ void gsElasticityAssembler<T>::computeStresses(
         uPartDers.setZero();
         for( index_t dc=0; dc < m_dim; dc++) // component
             for( index_t dd=0; dd < m_dim; dd++) // derivative
-                for( size_t ai=0; ai < actives.rows(); ai++ ) // active function
+                for( size_t ai=0; ai < size_t( actives.rows() ); ai++ ) // active function
                 {
                     unsigned tmpi = ci_actives[ dc ](ai,0);
                     real_t tmpCoef;

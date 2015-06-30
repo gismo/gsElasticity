@@ -56,7 +56,16 @@ public:
 
 public:
 
-    /// Main assembly routine.
+    /** \brief Main assembly routine.
+     *
+     * Assembles the system matrix. The vector of unknowns
+     * is sorted such that all DOFs associated with the
+     * first coordinate direction of the solution
+     * come first, then all
+     * DOFs associated with the second coordinate direction,
+     * and last, all DOFs associated with the third
+     * coordinate direction.
+     */
     void assemble();
 
     /// Main assembly routine for the non-linear case
@@ -64,7 +73,22 @@ public:
 
 	void assembleMass();
 
-    /// Reconstruct solution from computed solution vector
+    /** \brief Reconstruct solution from computed solution vector
+     *
+     * \param[in] solVector The vector of coefficients for the
+     * \em free DOF (i.e., those that are NOT on the
+     * Dirichlet (displacement) boundary.\n
+     * Given as
+     * gsMatrix of size <em>d*n</em> x \em 1, where\n
+     * \em d is the dimension of the domain and\n
+     * \em n is the number of free DOF.\n
+     * The coefficients are ordered such that (in 3D) the
+     * first \em n coefficients correspond to basis
+     * functions of type \f$ (B_i,0,0)^T\f$, the next \em n
+     * coefficients corrspond to basis
+     * functions of type \f$ (0,B_i,0)^T\f$, and so on.
+     * \param[out] result
+     */
     void constructSolution(const gsMatrix<T>& solVector, 
                            gsMultiPatch<T>& result) const;
 
