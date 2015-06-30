@@ -20,7 +20,6 @@ namespace gismo
 
 /** @brief Assembles linear and non linear elasticity matrices for 2D plain strain and 3D continua.
 
-
     \tparam T coefficient type
 
     \ingroup Elasticity   
@@ -68,6 +67,33 @@ public:
     /// Reconstruct solution from computed solution vector
     void constructSolution(const gsMatrix<T>& solVector, 
                            gsMultiPatch<T>& result) const;
+
+    /** \brief Computes stresses \f$ \sigma_{ij}\f$ of
+    * already computed solution.
+    *
+    * \param[in] solVector Solution vector containing the
+    * computed \em free degrees of freedom (i.e., without
+    * the DOFs on the Dirichlet (=displacement) boundary
+    * \param[in] u Evaluation points as matrix of size
+    * <em>d</em> x <em>n</em> where \em d is the dimension
+    * of the domain and \em n the number of evaluation points.
+    * Each column in \em u corresponds to one point in the
+    * parameter domain.
+    * \param[in] patchIndex Index of the patch on which
+    * the computation shall be done.
+    * \param[out] result Gets overwritten in with the
+    * computed stresses. Matrix of size <em>k</em> x <em>n</em>,
+    * where <em>k=3</em> in 2D and <em>k=6</em> in 3D.\n
+    * Each column corresponds to an evaluation point and contains\n
+    * in 2D:
+    * \f$ (\sigma_{11},\sigma_{22},\sigma_{12})^T\f$.\n
+    * in 3D:
+    * \f$ (\sigma_{11},\sigma_{22},\sigma_{33},\sigma_{12},\sigma_{13},\sigma_{23})^T\f$.\n
+    */
+    void computeStresses(const gsMatrix<T>& solVector,
+                         const gsMatrix<T>& u,
+                         int patchIndex,
+                         gsMatrix<T> &result) const;
 
     // Set solution from solVector, overwrites previous solution
     void setSolution(const gsMatrix<T>& solVector, 
