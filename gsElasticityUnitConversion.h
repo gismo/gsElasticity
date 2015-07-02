@@ -13,6 +13,7 @@
 
 
 #include <gsCore/gsConfig.h>
+#include <limits>
 #pragma once
 
 namespace gismo {
@@ -39,7 +40,7 @@ public:
     bool operator== (const ElasticityConstantsConverter &other)
     {
         bool passed = true;
-        double tolerance = 10e-6;
+        real_t tolerance = math::sqrt(std::numeric_limits<real_t>::epsilon());
         passed = passed && abs(_k-other._k)<abs(_k)*tolerance;
         passed = passed && abs(_e-other._e)<abs(_e)*tolerance;
         passed = passed && abs(_l-other._l)<abs(_l)*tolerance;
