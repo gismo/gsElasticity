@@ -33,6 +33,7 @@
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsKnotVector.h>
 
+
 namespace gismo
 {
 
@@ -78,6 +79,8 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 	m_tfac_neumann = 1.0;
 	m_tfac_force = 1.0;
 
+	m_MATERIAL_LAW = 1; 
+
 
     // Add shifts to global matrix indices to get the global dof
     // number for each unknown coordinate
@@ -89,7 +92,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
         m_dofMappers[i].setShift( inShift );
 		m_dofMappers[i].setBoundaryShift( bdShift );
 		inShift += m_dofMappers[i].freeSize();
-        bdShift += m_dofMappers[i].boundarySize();
+		bdShift += m_dofMappers[i].boundarySize();
 	}
 }
 
@@ -101,10 +104,18 @@ void gsElasticityAssembler<T>::set_tfac(const T tfac_neumann,
 	m_tfac_force = tfac_force;
 }
 
+/// Sets the \em m_MATERIAL_LAW to 0: St. Venant-Kirchhoff, 1: Neo-Hooke
+template<class T>
+void gsElasticityAssembler<T>::set_MaterialLaw(const int material)
+{
+    GISMO_ASSERT( (material >= 0) && (material <= 1), "Only 0 (St. Venant-Kirchhoff) or 1 (Neo-Hooke) allowed!");
+	m_MATERIAL_LAW = material;
+}
+
 template<class T>
 void gsElasticityAssembler<T>::assembleNeumann()
 {
-    std::cout << "Linear Elasticity: assemble Neumann BC." << std::endl;
+    std::cout << "Elasticity: assemble Neumann BC." << std::endl;
 	
 	for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.neumannBegin();
           it != m_bConditions.neumannEnd(); 
@@ -122,7 +133,9 @@ void gsElasticityAssembler<T>::assemble()
 {
     std::cout << "Linear Elasticity: assemble stiffness matrix." << std::endl;
 	
-    computeDirichletDofsL2Proj();
+
+	//computeDirichletDofsL2Proj(); 
+	computeDirichletDofsIntpl();
 
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
@@ -162,13 +175,14 @@ void gsElasticityAssembler<T>::assemble()
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 {
-    std::cout << "Nonlinear elasticity: assemble residual and tangential stiffness matrix." << std::endl;
+    std::cout << "Nonlinear elasticity: assemble residual and tangential matrix." << std::endl;
 	
 	if ( m_ddof.size() == 0 )
     {
         assemble();
         return;
     }
+
 
     // Initialize the matrix and rhs vector
     m_matrix.setZero();
@@ -178,6 +192,8 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 
     gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0), m_tfac_force);
 	//gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0));
+
+	visitor.set_MaterialLaw(m_MATERIAL_LAW);
 
     // Assemble volume stiffness and load vector integrals
     for (unsigned np=0; np < m_patches.nPatches(); ++np )
@@ -198,25 +214,31 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 
 
 // WARNING: WORKS ONLY FOR TENSOR-PRODUCT-BASES!
-template<class T> // outdated: AM: is non-homogeneous not called yet
+template<class T> 
 void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
 {
-    const gsDofMapper &mapper = m_dofMappers.front();
+    //const gsDofMapper &mapper = m_dofMappers.front();
     
-    m_ddof.resize( mapper.boundarySize(), 1 ); //--mrhs
+    //m_ddof.resize( mapper.boundarySize(), 1 ); //--mrhs
     
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.dirichletBegin();
           it != m_bConditions.dirichletEnd(); 
 		  ++it )
     {
-        const int unk = it->unknown();
+        if ( it->isHomogeneous() )
+			continue;
+		
+		const int unk = it->unknown();
         const int k   = it->patch();
-        const gsBasis<T> & basis = (m_bases[unk])[k];
+        const gsBasis<T> & basis = (m_bases[unk/m_dim])[k];
+
+		const gsDofMapper &mapper = m_dofMappers[unk];
 
         // Get dofs on this boundary
         gsMatrix<unsigned> * boundary = basis.boundary(it->side()) ;
 
+		/*
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )
         {
@@ -228,6 +250,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
             delete boundary;
             continue;
         }
+		*/
 
         // Get the side information
         int dir = it->side().direction( );
@@ -264,7 +287,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
         for (index_t k=0; k!= boundary->size(); ++k)
         {
             const int ii= mapper.bindex( (*boundary)(k) , it->patch() );
-            m_ddof.row(ii) = dVals.row(k);
+            m_ddof.row(ii) = m_tfac_neumann * dVals.row(k);
         }
         delete h;
         delete geo;
@@ -419,6 +442,35 @@ void gsElasticityAssembler<T>::computeDirichletDofsL2Proj()
 
 
 template<class T>
+void  gsElasticityAssembler<T>::reComputeDirichletDofs(gsMultiPatch<T> &deformed)
+{
+	computeDirichletDofsIntpl();
+
+	// -> deformed must be set using updated m_ddof! How?
+	for (size_t p=0; p < m_patches.nPatches(); ++p )
+    {
+        // Update displacement solution coefficients on patch p
+        const int sz  = m_bases[0][p].size();
+
+        gsMatrix<T> & coeffs = deformed.patch(p).coefs();
+	
+        for (index_t j = 0; j < m_dim; ++j)
+        {
+            const gsDofMapper & mapper = m_dofMappers[j];
+            for (index_t i = 0; i < sz; ++i)
+            {
+				if ( !mapper.is_free(i, p) ) // eliminated DoF: fill with Dirichlet data              
+                {
+                    coeffs(i,j) = m_ddof(mapper.bindex(i, p), 0);
+                } 
+            }
+        }
+	}
+
+}
+
+
+template<class T>
 void  gsElasticityAssembler<T>::setSolution(const gsMatrix<T>& solVector, 
                                             gsMultiPatch<T>& result) const
 {
@@ -564,6 +616,7 @@ void gsElasticityAssembler<T>::assembleMass()
     m_matrix.makeCompressed();   
 }
 
+
 template<class T>
 void gsElasticityAssembler<T>::computeStresses(
         const gsMatrix<T>& solVector,
@@ -645,5 +698,4 @@ void gsElasticityAssembler<T>::computeStresses(
         }
     }
 }
-
 }// namespace gismo

@@ -50,7 +50,7 @@ public:
         // Set Geometry evaluation flags
         evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
-        /* // not really used
+		/*
 		m_C.resize(m_dimStrain,m_dimStrain);
 		if (m_dim == 2)
         {
@@ -65,7 +65,7 @@ public:
 			m_C(1,0) = m_C(2,0) = m_C(2,1) = m_lambda;
 			m_C(3,3) = m_C(4,4) = m_C(5,5) = m_mu;
 		}
-        */
+		*/
     }
 
     // Evaluate on element.
@@ -113,22 +113,18 @@ public:
 			{
 				for (index_t i = 0; i < numActive; i++)
 				{
-                    for (index_t j = 0; j < numActive; j++)
+					//for (index_t j = 0; j < numActive; j++)
 					// Exploit symmetry of K
-                    //for (index_t j = i; j < numActive; j++)
+					for (index_t j = i; j < numActive; j++)
 					{
 						localMat(0*numActive+i, 0*numActive+j) += weight * 
-                            ( v_2mulam*physGrad(0,i)*physGrad(0,j) +
-                              m_mu*physGrad(1,i)*physGrad(1,j) );
+							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
 						localMat(0*numActive+i, 1*numActive+j) += weight * 
-                            ( m_lambda*physGrad(0,i)*physGrad(1,j) +
-                              m_mu*physGrad(1,i)*physGrad(0,j) );
+							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
 						localMat(1*numActive+i, 0*numActive+j) += weight * 
-                            ( m_lambda*physGrad(1,i)*physGrad(0,j) +
-                              m_mu*physGrad(0,i)*physGrad(1,j) );
+							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
 						localMat(1*numActive+i, 1*numActive+j) += weight * 
-                            ( v_2mulam*physGrad(1,i)*physGrad(1,j) +
-                              m_mu*physGrad(0,i)*physGrad(0,j) );
+							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*physGrad(0,i)*physGrad(0,j) );
 					}
 				}
 			}
@@ -138,40 +134,26 @@ public:
 				{
 					//for (index_t j = 0; j < numActive; j++)
 					// Exploit symmetry of K
-                    // It seems like something was done incorrectly
-                    // here, going back to the version
-                    // not-exploiting-symmetry-but-staying-on-the-safe-side
-                    for (index_t j = 0; j < numActive; j++)
+					for (index_t j = i; j < numActive; j++)
 					{
-                        localMat(0*numActive+i, 0*numActive+j) += weight *
-                            ( v_2mulam*physGrad(0,i)*physGrad(0,j) +
-                              m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
-                        localMat(0*numActive+i, 1*numActive+j) += weight *
-                            ( m_lambda*physGrad(0,i)*physGrad(1,j) +
-                              m_mu*physGrad(1,i)*physGrad(0,j) );
-                        localMat(0*numActive+i, 2*numActive+j) += weight *
-                            ( m_lambda*physGrad(0,i)*physGrad(2,j) +
-                              m_mu*physGrad(2,i)*physGrad(0,j) );
-
-                        localMat(1*numActive+i, 0*numActive+j) += weight *
-                            ( m_lambda*physGrad(1,i)*physGrad(0,j) +
-                              m_mu*physGrad(0,i)*physGrad(1,j) );
-                        localMat(1*numActive+i, 1*numActive+j) += weight *
-                            ( v_2mulam*physGrad(1,i)*physGrad(1,j) +
-                              m_mu*(physGrad(0,i)*physGrad(0,j)+physGrad(2,i)*physGrad(2,j)) );
-                        localMat(1*numActive+i, 2*numActive+j) += weight *
-                            ( m_lambda*physGrad(1,i)*physGrad(2,j) +
-                              m_mu*physGrad(2,i)*physGrad(1,j) );
-
-                        localMat(2*numActive+i, 0*numActive+j) += weight *
-                            ( m_lambda*physGrad(2,i)*physGrad(0,j) +
-                              m_mu*physGrad(0,i)*physGrad(2,j) );
-                        localMat(2*numActive+i, 1*numActive+j) += weight *
-                            ( m_lambda*physGrad(2,i)*physGrad(1,j) +
-                              m_mu*physGrad(1,i)*physGrad(2,j) );
-                        localMat(2*numActive+i, 2*numActive+j) += weight *
-                            ( v_2mulam*physGrad(2,i)*physGrad(2,j) +
-                              m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );
+						localMat(0*numActive+i, 0*numActive+j) += weight * 
+							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
+						localMat(0*numActive+i, 1*numActive+j) += weight * 
+							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
+						localMat(0*numActive+i, 2*numActive+j) += weight * 
+							( m_lambda*physGrad(0,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(0,j) );
+						localMat(1*numActive+i, 0*numActive+j) += weight * 
+							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
+						localMat(1*numActive+i, 1*numActive+j) += weight * 
+							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*(physGrad(0,i)*physGrad(0,j)+physGrad(2,i)*physGrad(2,j)) );
+						localMat(1*numActive+i, 2*numActive+j) += weight * 
+							( m_lambda*physGrad(1,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(1,j) );
+						localMat(2*numActive+i, 0*numActive+j) += weight * 
+							( m_lambda*physGrad(2,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(2,j) );
+						localMat(2*numActive+i, 1*numActive+j) += weight * 
+							( m_lambda*physGrad(2,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(2,j) );
+						localMat(2*numActive+i, 2*numActive+j) += weight * 
+							( v_2mulam*physGrad(2,i)*physGrad(2,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );				
 					}
 				}
 			}
@@ -199,7 +181,7 @@ public:
 
         for (index_t ai=0; ai < numActive; ++ai)
 		{          
-            for (size_t ci = 0; ci!= m_dim; ++ci)
+			for (size_t ci = 0; ci!= m_dim; ++ci)
             {
                 const index_t gi = ci * numActive +  ai; // row index
                 const index_t ii = ci_actives[ci](ai);
@@ -207,38 +189,54 @@ public:
                 if ( mappers[ci].is_free_index(ii) )
                 {
                     rhsMatrix.row(ii) += localRhs.row(gi);
-
-                    for (index_t aj=0; aj < numActive; ++aj)
-                    // Exploit symmetry of K
-                    //for (index_t aj=ai; aj < numActive; ++aj)
-                    // !!! Symmetry CANNOT be exploited, because modification
-                    // of the right-hand-side is a non-symmetric operation !!!
-                    {
-                        for (size_t cj = 0; cj!= m_dim; ++cj)
+                    
+					//for (index_t aj=0; aj < numActive; ++aj)
+					// Exploit symmetry of K
+					for (index_t aj=ai; aj < numActive; ++aj)
+					{
+						for (size_t cj = 0; cj!= m_dim; ++cj)                        
                         {
                             const index_t gj = cj * numActive +  aj; // column index
                             const index_t jj = ci_actives[cj](aj);
-
+                            
                             if ( mappers[cj].is_free_index(jj) )
                             {
                                 sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
-                                //if (aj > ai) // symmetry CANNOT be exploited (see above)
-                                //	sysMatrix.coeffRef(jj, ii) += localMat(gi, gj);
+								if (aj > ai)
+									sysMatrix.coeffRef(jj, ii) += localMat(gi, gj);
                             }
-                            else // Fixed DOF, modification of the RHS
+                            else // Fixed DoF ?
                             {
                                 const index_t bjj = mappers[cj].global_to_bindex(jj);
-                                rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * eliminatedDofs.row( bjj );
+								rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * eliminatedDofs.row( bjj );
                             }
                         }
-                    }
+					}
                 }
-                else
-                {
-                    // if the row corresponds to a fixed DOF,
-                    // it simply gets removed/ignored.
-                    // no modification of the RHS occurs.
-                }
+				else
+				{
+					// Must be careful with non-free indices now due to symmetry
+					// - Fixed DoF switch above does not include rows ai for fixed DoFs aj with ai > aj
+					// - Handle these DoFs here
+
+					const index_t bii = mappers[ci].global_to_bindex(ii);
+					
+					// for (index_t aj=0; aj < ai; ++aj)				// Old - wrong
+					for (index_t aj = ai+1; aj < numActive; ++aj)		// New - hopefully right
+					{
+						for (size_t cj = 0; cj!= m_dim; ++cj)                        
+                        {
+							const index_t gj = cj * numActive +  aj; // column index
+                            const index_t jj = ci_actives[cj](aj);
+                            
+                            if ( mappers[cj].is_free_index(jj) )
+							{                                
+								// rhsMatrix.row(jj).noalias() -= localMat(gj, gi) * eliminatedDofs.row( bii );		// Old
+								rhsMatrix.row(jj).noalias() -= localMat(gi, gj) * eliminatedDofs.row( bii );		// New
+                            }
+						}
+					}
+				}
             }
 
 		}
@@ -246,7 +244,7 @@ public:
     
 
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    //EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	
 protected:
     // Lambda, mu, rho

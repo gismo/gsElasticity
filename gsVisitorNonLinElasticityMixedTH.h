@@ -202,6 +202,103 @@ public:
         }
         //gsDebug<< "local Mat: \n"<< localMat << "\n";
     }
+
+
+	// We need to over-write localToGlobal from linear visitor, 
+	//   because RHS should not be modified anymore for fixed DoFs!
+	inline void localToGlobal(const gsStdVectorRef<gsDofMapper> & mappers,
+                              const gsMatrix<T>     & eliminatedDofs,
+                              const int patchIndex,
+                              gsSparseMatrix<T>     & sysMatrix,
+                              gsMatrix<T>           & rhsMatrix )
+    {
+       	
+		// Local DoFs to global DoFs
+		std::vector< gsMatrix<unsigned> > ci_actives(m_dim+1,actives);
+
+        for (size_t ci = 0; ci != m_dim; ++ci)
+			mappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
+		
+		mappers[m_dim].localToGlobal(actives_p, patchIndex, ci_actives[m_dim]);
+
+        for (size_t ci = 0; ci!= m_dim; ++ci)
+		{          
+			for (index_t ai=0; ai < numActive; ++ai)
+            {
+                const index_t gi = ci * numActive +  ai; // row index
+                const index_t ii = ci_actives[ci](ai);
+
+                if ( mappers[ci].is_free_index(ii) )
+                {
+                    rhsMatrix.row(ii) += localRhs_u.row(gi);
+                    
+					// Exploit symmetry of A
+                    for (index_t aj=ai; aj < numActive; ++aj)
+					{
+                        for (size_t cj = 0; cj!= m_dim; ++cj)
+                        {
+                            const index_t gj = cj * numActive +  aj; // column index
+                            const index_t jj = ci_actives[cj](aj);
+                            
+                            if ( mappers[cj].is_free_index(jj) )
+                            {
+                                sysMatrix.coeffRef(ii, jj) += localMatK(gi, gj);
+								if (aj > ai)
+									sysMatrix.coeffRef(jj, ii) += localMatK(gi, gj);
+							}                            
+                        }
+					}
+
+					// matrix B and B'
+					size_t cj = m_dim;
+                    for (index_t aj=0; aj < numActive_p; ++aj)
+                    {
+                        const index_t gj = aj;					// column index
+                        const index_t jj = ci_actives[cj](aj);
+                            
+                        if ( mappers[cj].is_free_index(jj) )
+                        {
+                            sysMatrix.coeffRef(ii, jj) += localMatB(gj, gi);
+							sysMatrix.coeffRef(jj, ii) += localMatB(gj, gi);
+                        }
+                    }
+					
+                }
+				
+            }
+
+		}
+
+		// matrix C
+		size_t ci = m_dim;
+		for (index_t ai=0; ai < numActive_p; ++ai)
+        {
+            const index_t gi = ai;					// row index
+            const index_t ii = ci_actives[ci](ai);
+
+			if ( mappers[ci].is_free_index(ii) )
+            {
+                rhsMatrix.row(ii) += localRhs_p.row(gi);
+
+				size_t cj = m_dim;
+                //for (index_t aj=0; aj < numActive_p; ++aj)
+				// Exploit symmetry of C
+				for (index_t aj=ai; aj < numActive_p; ++aj)
+                {
+                    const index_t gj = aj;					// column index
+                    const index_t jj = ci_actives[cj](aj);
+                            
+                    if ( mappers[cj].is_free_index(jj) )
+                    {
+                        sysMatrix.coeffRef(ii, jj) += localMatC(gi, gj);
+						if (aj > ai)
+							sysMatrix.coeffRef(jj, ii) += localMatC(gi, gj);
+                    }                    
+                }
+			}
+		}
+
+    }
     
 
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html

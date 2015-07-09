@@ -119,7 +119,7 @@ void gsElasticityMixedTHAssembler<T>::get_material(T& lambda,
 template<class T>
 void gsElasticityMixedTHAssembler<T>::assembleNeumann()
 {
-    std::cout << "Linear Elasticity: assemble Neumann BC." << std::endl;
+    std::cout << "Elasticity: assemble Neumann BC." << std::endl;
 	
 	for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.neumannBegin();
           it != m_bConditions.neumannEnd(); 
@@ -137,11 +137,12 @@ void gsElasticityMixedTHAssembler<T>::assemble()
 {
     std::cout << "Linear Elasticity Mixed TH: assemble stiffness matrix." << std::endl;
 	
-	//computeDirichletDofs();
     index_t numDirichlet = 0;
     for (index_t i = 0; i <= m_dim; ++i)
         numDirichlet += m_dofMappers[i].boundarySize();
     m_ddof.setZero(numDirichlet, 1);
+	
+	computeDirichletDofsIntpl();
 
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
@@ -181,7 +182,7 @@ void gsElasticityMixedTHAssembler<T>::assemble()
 template<class T>
 void gsElasticityMixedTHAssembler<T>::assemble(const gsMultiPatch<T> & deformed, const gsMultiPatch<T> & deformed_p)
 {
-    std::cout << "Nonlinear elasticity mixed TH: assemble residual and tangential stiffness matrix." << std::endl;
+    std::cout << "Nonlinear elasticity mixed TH: assemble residual and tangential matrix." << std::endl;
 	
 	if ( m_ddof.size() == 0 )
     {
@@ -214,12 +215,13 @@ void gsElasticityMixedTHAssembler<T>::assemble(const gsMultiPatch<T> & deformed,
     m_matrix.makeCompressed();   
 }
 
+/*
 template<class T> // AM: is non-homogeneous not called yet
 void gsElasticityMixedTHAssembler<T>::computeDirichletDofsIntpl()
 {
-    const gsDofMapper &mapper = m_dofMappers.front();
+    //const gsDofMapper &mapper = m_dofMappers.front();
     
-    m_ddof.resize( mapper.boundarySize(), 1 ); //--mrhs
+    //m_ddof.resize( mapper.boundarySize(), 1 ); //--mrhs
     
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.dirichletBegin();
@@ -286,6 +288,122 @@ void gsElasticityMixedTHAssembler<T>::computeDirichletDofsIntpl()
         delete geo;
         delete boundary;
     }
+}
+*/
+
+template<class T> // AM: is non-homogeneous not called yet
+void gsElasticityMixedTHAssembler<T>::computeDirichletDofsIntpl()
+{
+    //const gsDofMapper &mapper = m_dofMappers.front();
+    
+    //m_ddof.resize( mapper.boundarySize(), 1 ); //--mrhs
+    
+    // Iterate over all patch-sides with Dirichlet-boundary conditions
+    for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.dirichletBegin();
+          it != m_bConditions.dirichletEnd(); 
+		  ++it )
+    {
+        if ( it->isHomogeneous() )
+			continue;
+		
+		const int unk = it->unknown();
+        const int k   = it->patch();
+        const gsBasis<T> & basis = (m_bases[unk/m_dim])[k];
+
+		const gsDofMapper &mapper = m_dofMappers[unk];
+
+        // Get dofs on this boundary
+        gsMatrix<unsigned> * boundary = basis.boundary(it->side()) ;
+
+		/*
+        // If the condition is homogeneous then fill with zeros
+        if ( it->isHomogeneous() )
+        {
+            for (index_t i=0; i!= boundary->size(); ++i)
+            {
+                const int ii= mapper.bindex( (*boundary)(i) , k );
+                m_ddof.row(ii).setZero();
+            }
+            delete boundary;
+            continue;
+        }
+		*/
+
+        // Get the side information
+        int dir = it->side().direction( );
+        index_t param = (it->side().parameter() ? 1 : 0);
+
+        // Compute grid of points on the face ("face anchors")
+        std::vector< gsVector<T> > rr;
+        rr.reserve( m_dim );
+
+        for ( int i = 0; i < m_dim; ++i)
+        {
+            if ( i == dir )
+            {
+                gsVector<T> b(1); 
+                b[0] = ( basis.component(i).support() ) (0, param);
+                rr.push_back(b);
+            }
+            else
+            {   
+                rr.push_back( basis.component(i).anchors()->transpose() );
+            }
+        }
+
+        // Compute dirichlet values
+        gsMatrix<T> fpts = 
+            it->function()->eval( m_patches[it->patch()].eval(  gsPointGrid( rr ) ) );
+
+        // Interpolate dirichlet boundary 
+        gsBasis<T> * h = basis.boundaryBasis(it->side());
+        gsGeometry<T> * geo = h->interpolateAtAnchors(fpts);
+        const gsMatrix<T> & dVals =  geo->coefs();
+
+		//gsMatrix<T> & coeffs = m_deformed.patch(p).coefs();
+
+        // Save corresponding boundary dofs
+        for (index_t k=0; k!= boundary->size(); ++k)
+        {
+            const int ii= mapper.bindex( (*boundary)(k) , it->patch() );
+            m_ddof.row(ii) = m_tfac_neumann * dVals.row(k);
+			
+			// coeffs.Row( (*boundary)(k) + unk*basis.size() ) = m_ddof.row(ii)
+			
+        }
+        delete h;
+        delete geo;
+        delete boundary;
+    }
+}
+
+
+template<class T>
+void  gsElasticityMixedTHAssembler<T>::reComputeDirichletDofs(gsMultiPatch<T> &deformed)
+{
+	computeDirichletDofsIntpl();
+
+	// -> deformed must be set using updated m_ddof! How?
+	for (size_t p=0; p < m_patches.nPatches(); ++p )
+    {
+        // Update displacement solution coefficients on patch p
+        const int sz  = m_bases[0][p].size();
+
+        gsMatrix<T> & coeffs = deformed.patch(p).coefs();
+	
+        for (index_t j = 0; j < m_dim; ++j)
+        {
+            const gsDofMapper & mapper = m_dofMappers[j];
+            for (index_t i = 0; i < sz; ++i)
+            {
+				if ( !mapper.is_free(i, p) ) // eliminated DoF: fill with Dirichlet data              
+                {
+                    coeffs(i,j) = m_ddof(mapper.bindex(i, p), 0);
+                } 
+            }
+        }
+	}
+
 }
 
 

@@ -157,7 +157,9 @@ void gsElasticityNewton<T>::solve()
         
         // termination criteria
         if ( std::abs(m_updnorm / initUpdate)  < m_tolerance || 
-             std::abs(m_residue / initResidue) < m_tolerance )
+             std::abs(m_residue / initResidue) < m_tolerance || 
+             std::abs(m_updnorm) < m_tolerance*1e-3 || 
+             std::abs(m_residue) < m_tolerance*1e-3 )
         {
             m_converged = true;
 

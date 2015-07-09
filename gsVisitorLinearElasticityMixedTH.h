@@ -267,7 +267,7 @@ public:
                             sysMatrix.coeffRef(ii, jj) += localMatB(gj, gi);
 							sysMatrix.coeffRef(jj, ii) += localMatB(gj, gi);
                         }
-                        else // Fixed DoF ?
+                        else // Fixed DoF ?  -  this should actually never happen, because we do not have Dirichlet BC for p
                         {
                             const index_t bjj = mappers[cj].global_to_bindex(jj);
 							rhsMatrix.row(ii).noalias() -= localMatB(gj, gi) * eliminatedDofs.row( bjj );
@@ -277,11 +277,14 @@ public:
                 }
 				else
 				{
-					// Must be careful with non-free indices now  --  not sure if this is correct!
-					
+					// Must be careful with non-free indices now due to symmetry
+					// - Fixed DoF switch above does not include rows ai for fixed DoFs aj with ai > aj
+					// - Handle these DoFs here
+
 					const index_t bii = mappers[ci].global_to_bindex(ii);
 					
-					for (index_t aj=0; aj < ai; ++aj)
+					// for (index_t aj=0; aj < ai; ++aj)				// Old - wrong
+					for (index_t aj = ai+1; aj < numActive; ++aj)		// New - hopefully right
 					{
 						for (size_t cj = 0; cj!= m_dim; ++cj)                        
                         {
@@ -290,10 +293,26 @@ public:
                             
                             if ( mappers[cj].is_free_index(jj) )
 							{                                
-								rhsMatrix.row(jj).noalias() -= localMatK(gj, gi) * eliminatedDofs.row( bii );
+								// rhsMatrix.row(jj).noalias() -= localMatK(gj, gi) * eliminatedDofs.row( bii );		// Old
+								rhsMatrix.row(jj).noalias() -= localMatK(gi, gj) * eliminatedDofs.row( bii );		// New
                             }
 						}
 					}
+
+					// Another bug: all rows of p-DoFs must also be modified!
+
+					size_t cj = m_dim;
+                    for (index_t aj=0; aj < numActive_p; ++aj)
+                    {
+                        const index_t gj = aj;					// row index
+                        const index_t jj = ci_actives[cj](aj);
+                            
+                        if ( mappers[cj].is_free_index(jj) )
+                        {
+							rhsMatrix.row(jj).noalias() -= localMatB(gj, gi) * eliminatedDofs.row( bii );
+                        }
+                    }
+
 				}
             }
 

@@ -89,6 +89,10 @@ public:
 		              T& mu,
 					  T& rho);
     
+	// Re-Compute Dirichlet DoFs after Update and set deformed to correct values
+	//   needed for nonlinear with changing Dirichlet BC (displacement control)
+	void reComputeDirichletDofs(gsMultiPatch<T> &deformed);
+
 protected:
 
     /// Neumann contributions

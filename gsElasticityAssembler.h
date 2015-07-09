@@ -20,6 +20,7 @@ namespace gismo
 
 /** @brief Assembles linear and non linear elasticity matrices for 2D plain strain and 3D continua.
 
+
     \tparam T coefficient type
 
     \ingroup Elasticity   
@@ -92,8 +93,7 @@ public:
     void constructSolution(const gsMatrix<T>& solVector, 
                            gsMultiPatch<T>& result) const;
 
-    /** \brief Computes stresses \f$ \sigma_{ij}\f$ of
-    * already computed solution.
+	/** \brief Computes stresses \f$ \sigma_{ij}\f$ of    * already computed solution.
     *
     * \param[in] solVector Solution vector containing the
     * computed \em free degrees of freedom (i.e., without
@@ -130,29 +130,36 @@ public:
 	/// Set factor for time-dependent external forces (at current time-step)
     void set_tfac(const T tfac_neumann,
 		          const T tfac_force);
+
+	/// Set the \em m_MATERIAL_LAW for nonlinear assembly to 0: St. Venant-Kirchhoff, 1: Neo-Hooke
+    void set_MaterialLaw(const int material);
+
+	/// Re-Compute Dirichlet DoFs after Update and set deformed to correct values
+	///   needed for nonlinear with changing Dirichlet BC (displacement control)
+	void reComputeDirichletDofs(gsMultiPatch<T> &deformed);
     
 protected:
 
     /// Neumann contributions
     void assembleNeumann();
 
-    /** Computes the Dirichlet DoF values by interpolation
-     *
-     * \warning Works only for tensor-product-bases!
-     */
+	/** Computes the Dirichlet DoF values by interpolation 
+	    * 
+		* \warning Works only for tensor-product-bases! 
+	*/ 
     void computeDirichletDofsIntpl();
 
-    /** \brief Computes Dirichlet-boundary conditions by L2-projection.
-     *
-     * ...if the dirichlet::strategy is chosen as dirichlet::elimination.\n
-     * A global \f$L_2\f$-projection is applied to the given Dirichlet
-     * (displacement) data
-     * and the eliminated coefficients are set to the corresponding values.
-     * The projection is global in the sense that all Dirichlet-DOFs are
-     * computed at once.
-     *
-     */
-    void computeDirichletDofsL2Proj();
+	/** \brief Computes Dirichlet-boundary conditions by L2-projection.
+		*
+		* ...if the dirichlet::strategy is chosen as dirichlet::elimination.\n
+		* A global \f$L_2\f$-projection is applied to the given Dirichlet
+		* (displacement) data
+		* and the eliminated coefficients are set to the corresponding values.
+		* The projection is global in the sense that all Dirichlet-DOFs are
+		* computed at once.
+		*
+	*/
+	void computeDirichletDofsL2Proj();
 
 protected:
 
@@ -160,6 +167,7 @@ protected:
     T m_lambda;
     T m_mu;
 	T m_rho;
+	int m_MATERIAL_LAW;
 
 	/// Dimension (parameter space = physical space = deformation vector)
 	index_t m_dim;
