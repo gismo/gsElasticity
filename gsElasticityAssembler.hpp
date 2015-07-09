@@ -122,11 +122,7 @@ void gsElasticityAssembler<T>::assemble()
 {
     std::cout << "Linear Elasticity: assemble stiffness matrix." << std::endl;
 	
-	//computeDirichletDofs();
-    index_t numDirichlet = 0;
-    for (index_t i = 0; i < m_dim; ++i)
-        numDirichlet += m_dofMappers[i].boundarySize();
-    m_ddof.setZero(numDirichlet, 1);
+    computeDirichletDofsL2Proj();
 
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
@@ -144,7 +140,8 @@ void gsElasticityAssembler<T>::assemble()
     m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
         
     // Resize the load vector
-    m_rhs.setZero(m_dofs, 1 );
+    m_rhs.resize(m_dofs, 1 );
+    m_rhs.setZero();
 
     // Assemble volume stiffness and load vector integrals
     gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force);
@@ -199,7 +196,9 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
     m_matrix.makeCompressed();   
 }
 
-template<class T> // AM: is non-homogeneous not called yet
+
+// WARNING: WORKS ONLY FOR TENSOR-PRODUCT-BASES!
+template<class T> // outdated: AM: is non-homogeneous not called yet
 void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
 {
     const gsDofMapper &mapper = m_dofMappers.front();
@@ -272,6 +271,151 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
         delete boundary;
     }
 }
+
+template<class T>
+void gsElasticityAssembler<T>::computeDirichletDofsL2Proj()
+{
+    size_t totalDirDofs = 0;
+    for( size_t i=0; i < size_t( m_dofMappers.size() ); i++)
+        totalDirDofs += m_dofMappers[i].boundarySize();
+    // ...note that gsDofMapper.boundarySize() counts only to the
+    // eliminated DOFs.
+
+    m_ddof.resize( totalDirDofs, 1 );
+
+    // Set up matrix, right-hand-side and solution vector/matrix for
+    // the L2-projection
+    gsSparseEntries<T> projMatEntries;
+    gsMatrix<T>        globProjRhs( totalDirDofs, 1 );
+    globProjRhs.setZero();
+
+    // Temporaries
+    gsMatrix<T> quNodes;
+    gsVector<T> quWeights;
+
+    gsMatrix<T> rhsVals(1,1);
+    gsMatrix<unsigned> globIdxAct;
+    gsMatrix<T> basisVals;
+
+    // Iterate over all patch-sides with Dirichlet-boundary conditions
+    for ( typename gsBoundaryConditions<T>::const_iterator
+              iter = m_bConditions.dirichletBegin();
+          iter != m_bConditions.dirichletEnd(); ++iter )
+    {
+        const int unk = iter->unknown();
+        const int patchIdx   = iter->patch();
+        const gsBasis<T> & basis = (m_bases[0])[patchIdx];
+
+        typename gsGeometry<T>::Evaluator geoEval( m_patches[patchIdx].evaluator(NEED_MEASURE));
+
+        // Set up quadrature. The number of integration points in the direction
+        // that is NOT along the element has to be set to 1.
+        gsVector<index_t> numQuNodes( basis.dim() );
+        for( int i=0; i < int( basis.dim() ); i++)
+            numQuNodes[i] = (basis.degree(i)+1);
+        numQuNodes[ iter->side().direction()] = 1;
+
+        gsGaussRule<T> bdQuRule(numQuNodes);
+
+        // Create the iterator along the given part boundary.
+        typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
+
+        for(; bdryIter->good(); bdryIter->next() )
+        {
+            bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
+                          quNodes, quWeights);
+
+            geoEval->evaluateAt( quNodes );
+
+            // the values of the boundary condition are stored
+            // to rhsVals. Here, "rhs" refers to the right-hand-side
+            // of the L2-projection, not of the PDE.
+            gsMatrix<T> quPhys = m_patches[patchIdx].eval( quNodes );
+            rhsVals.resize( quPhys.rows(), quPhys.cols() );
+            iter->function()->eval_into( quPhys , rhsVals );
+
+            basis.eval_into( quNodes, basisVals);
+
+            // Indices involved here:
+            // --- Local index:
+            // Index of the basis function/DOF on the patch.
+            // Does not take into account any boundary or interface conditions.
+            // --- Global Index:
+            // Each DOF has a unique global index that runs over all patches.
+            // This global index includes a re-ordering such that all eliminated
+            // DOFs come at the end.
+            // The global index also takes care of glued interface, i.e., corresponding
+            // DOFs on different patches will have the same global index, if they are
+            // glued together.
+            // --- Boundary Index (actually, it's a "Dirichlet Boundary Index"):
+            // The eliminated DOFs, which come last in the global indexing,
+            // have their own numbering starting from zero.
+
+            // Get the global indices (second line) of the local
+            // active basis (first line) functions/DOFs:
+            basis.active_into(quNodes.col(0), globIdxAct );
+            m_dofMappers[unk].localToGlobal( globIdxAct, patchIdx, globIdxAct);
+
+            // Out of the active functions/DOFs on this element, collect all those
+            // which correspond to a boundary DOF.
+            // This is checked by calling mapper.is_boundary_index( global Index )
+
+            // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
+            // something like a "element-wise index"
+            std::vector<index_t> eltBdryFcts;
+            eltBdryFcts.reserve(m_dofMappers[unk].boundarySize());
+            for( size_t i=0; i < size_t( globIdxAct.rows() ); i++)
+                if( m_dofMappers[unk].is_boundary_index( globIdxAct(i,0)) )
+                {
+                    eltBdryFcts.push_back( i );
+                    //isB( globIdxAct(i,0) , unk ) = globIdxAct(i,0);
+                }
+
+            // Do the actual assembly:
+            for( index_t k=0; k < quNodes.cols(); k++ )
+            {
+                const T weight_k = quWeights[k] * geoEval->measure(k);
+
+                // Only run through the active boundary functions on the element:
+                for( size_t i0=0; i0 < size_t( eltBdryFcts.size() ); i0++ )
+                {
+                    // Each active boundary function/DOF in eltBdryFcts has...
+                    // ...the above-mentioned "element-wise index"
+                    const unsigned i = eltBdryFcts[i0];
+                    // ...the boundary index.
+                    const unsigned ii = m_dofMappers[unk].global_to_bindex( globIdxAct( i ));
+
+                    for( size_t j0=0; j0 < size_t( eltBdryFcts.size() ); j0++ )
+                    {
+                        const unsigned j = eltBdryFcts[j0];
+                        const unsigned jj = m_dofMappers[unk].global_to_bindex( globIdxAct( j ));
+
+                        // Use the "element-wise index" to get the needed
+                        // function value.
+                        // Use the boundary index to put the value in the proper
+                        // place in the global projection matrix.
+                        projMatEntries.add(ii, jj, weight_k * basisVals(i,k) * basisVals(j,k));
+                    } // for j
+
+                    globProjRhs.row(ii) += weight_k *  basisVals(i,k) * rhsVals.col(k).transpose();
+
+                } // for i
+            } // for k
+        } // bdryIter
+    } // boundaryConditions-Iterator
+
+    gsSparseMatrix<T> globProjMat( totalDirDofs, totalDirDofs );
+    globProjMat.setFrom( projMatEntries );
+    globProjMat.makeCompressed();
+
+    // Solve the linear system:
+    // The position in the solution vector already corresponds to the
+    // numbering by the boundary index. Hence, we can simply take them
+    // for the values of the eliminated Dirichlet DOFs.
+    gsSparseSolver<>::CGDiagonal solver;
+    m_ddof = solver.compute( globProjMat ).solve ( globProjRhs );
+
+} // computeDirichletDofsL2Proj
 
 
 template<class T>

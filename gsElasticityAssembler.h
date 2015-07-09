@@ -136,8 +136,23 @@ protected:
     /// Neumann contributions
     void assembleNeumann();
 
-    /// Computes the Dirichlet DoF values by interpolation
+    /** Computes the Dirichlet DoF values by interpolation
+     *
+     * \warning Works only for tensor-product-bases!
+     */
     void computeDirichletDofsIntpl();
+
+    /** \brief Computes Dirichlet-boundary conditions by L2-projection.
+     *
+     * ...if the dirichlet::strategy is chosen as dirichlet::elimination.\n
+     * A global \f$L_2\f$-projection is applied to the given Dirichlet
+     * (displacement) data
+     * and the eliminated coefficients are set to the corresponding values.
+     * The projection is global in the sense that all Dirichlet-DOFs are
+     * computed at once.
+     *
+     */
+    void computeDirichletDofsL2Proj();
 
 protected:
 
