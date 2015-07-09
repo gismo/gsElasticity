@@ -133,6 +133,10 @@ void gsElasticityAssembler<T>::assemble()
 {
     std::cout << "Linear Elasticity: assemble stiffness matrix." << std::endl;
 	
+	index_t numDirichlet = 0;
+    for (index_t i = 0; i < m_dim; ++i)
+        numDirichlet += m_dofMappers[i].boundarySize();
+    m_ddof.setZero(numDirichlet, 1);
 
 	//computeDirichletDofsL2Proj(); 
 	computeDirichletDofsIntpl();
