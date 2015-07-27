@@ -58,7 +58,7 @@ gsElasticityMixedTHAssembler<T>::gsElasticityMixedTHAssembler(gsMultiPatch<T> co
 	m_bases.push_back(bases_p);
     
     // Initialize material properties
-	if (abs(poissons_ratio-0.5) < 1e-8)
+	if (math::abs(poissons_ratio-0.5) < 1e-8)
 		m_lambda = std::numeric_limits<T>::infinity();
 	else
 		m_lambda = E_modulus * poissons_ratio / ( (1.+poissons_ratio)*(1.-2.*poissons_ratio)) ;
