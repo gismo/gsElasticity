@@ -124,27 +124,7 @@ protected:
                          gsMatrix<T>            & quNodes)
     {
         // Evaluate discrete solution
-        gsMatrix<T> tmpGrads;
-        discSolution.deriv_into(quNodes, tmpGrads);
-
-        unsigned qN( quNodes.cols() );
-        unsigned pd = tmpGrads.cols() / qN;
-        m_discSolGrads.resize( m_parDim * pd, qN);
-        m_discSolGrads.setZero();
-
-        // need to re-format the gradients, because they are
-        // provided in the format of gsGeometry,
-        // but transformDeriv2Hgrad needs them in the format of
-        // gsFunction.
-        //
-        // Can be done more efficiently using matrix-blocks,
-        // but this is to get it running first.
-        for( unsigned k=0; k < qN; k++)
-        {
-            for( unsigned i=0; i < m_parDim; i++)
-                for( unsigned j=0; j < m_parDim; j++)
-                    m_discSolGrads( i * m_parDim + j , k ) = tmpGrads( i, k*m_parDim + j);
-        }
+        discSolution.deriv_into(quNodes, m_discSolGrads);
         discSolution.deriv2_into(quNodes, m_discSol2nd);
 
         // Compute geometry related values

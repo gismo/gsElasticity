@@ -152,11 +152,9 @@ protected:
             const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k);
             gsMatrix<T> Jinv = J.inverse();
             gsMatrix<T> discSolG;
-            if( m_parDim == 2 )
-                discSolG = m_discSolGrads.template block<2,2>(0, k*m_parDim);
-            else
-                discSolG = m_discSolGrads.template block<3,3>(0, k*m_parDim);
 
+            discSolG = m_discSolGrads.col(k);
+            discSolG.resize( m_parDim, m_parDim );
             discSolG = discSolG * Jinv.transpose();
 
             gsMatrix<T> exSolG = m_exactSolGrads.col(k);
