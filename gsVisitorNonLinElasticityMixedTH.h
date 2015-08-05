@@ -81,8 +81,8 @@ public:
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
-        const typename gsMatrix<T>::Block bVals  = basisData.topRows(numActive);
-        const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
+        gsMatrix<T> & bVals  = basisData[0];
+        gsMatrix<T> & bGrads = basisData[1];
 
 		//const typename gsMatrix<T>::Block bVals_p  = basisVals_p.topRows(numActive_p);
 

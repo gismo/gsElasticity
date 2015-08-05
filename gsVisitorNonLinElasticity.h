@@ -93,8 +93,8 @@ public:
                              gsGeometryEvaluator<T> & geoEval,
                              gsVector<T> const      & quWeights)
     {
-        const typename gsMatrix<T>::Block bVals  = basisData.topRows(numActive);
-        const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
+        gsMatrix<T> & bVals  = basisData[0];
+        gsMatrix<T> & bGrads = basisData[1];
 		//const gsMatrix<T> & defGrads = m_deformation->jacobians();
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
@@ -187,8 +187,8 @@ public:
                              gsGeometryEvaluator<T> & geoEval,
                              gsVector<T> const      & quWeights)
     {
-        const typename gsMatrix<T>::Block bVals  = basisData.topRows(numActive);
-        const typename gsMatrix<T>::Block bGrads = basisData.middleRows(numActive, m_dim*numActive);
+        gsMatrix<T> & bVals  = basisData[0];
+        gsMatrix<T> & bGrads = basisData[1];
 		//const gsMatrix<T> & defGrads = m_deformation->jacobians();
 
 		size_t v_dim = m_dim*(m_dim+1)/2;
