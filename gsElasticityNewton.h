@@ -105,9 +105,9 @@ protected:
 	gsMatrix<T>         m_rhs0;
 
     /// Linear solver employed
-    gsSparseSolver<>::LU m_solver;
-    //gsSparseSolver<>::BiCGSTABDiagonal solver;
-    //gsSparseSolver<>::QR  solver;
+    typename gsSparseSolver<T>::LU m_solver;
+    //typename gsSparseSolver<T>::BiCGSTABDiagonal solver;
+    //typename gsSparseSolver<T>::QR  solver;
 
 protected:
 

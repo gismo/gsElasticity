@@ -121,9 +121,9 @@ protected:
 	gsMatrix<T>         m_rhs0;
 
     /// Linear solver employed
-	gsSparseSolver<>::LU  m_solver;
-    //gsSparseSolver<>::BiCGSTABDiagonal solver;
-    //gsSparseSolver<>::QR  solver;
+	typename gsSparseSolver<T>::LU  m_solver;
+    //typename gsSparseSolver<T>::BiCGSTABDiagonal solver;
+    //typename gsSparseSolver<T>::QR  solver;
 	// Old:
     //Eigen::SparseLU<gsSparseMatrix<>, Eigen::COLAMDOrdering<index_t> >  m_solver;
     //Eigen::BiCGSTAB< gsSparseMatrix<>, Eigen::DiagonalPreconditioner<real_t> > solver;
