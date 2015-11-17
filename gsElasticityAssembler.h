@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsAssemblerBase.h>
+#include <gsAssembler/gsAssemblerBase2.h>
 
 namespace gismo
 {
@@ -26,10 +26,10 @@ namespace gismo
     \ingroup Elasticity   
 */
 template <class T>
-class gsElasticityAssembler : public gsAssemblerBase<T>
+class gsElasticityAssembler : public gsAssemblerBase2<T>
 {
 public:
-    typedef gsAssemblerBase<T> Base;
+    typedef gsAssemblerBase2<T> Base;
 
 public:
 
@@ -189,14 +189,14 @@ protected:
 
 protected:
 
-    // Members from gsAssemblerBase
-    using gsAssemblerBase<T>::m_patches;
-    using gsAssemblerBase<T>::m_bases;
-    using gsAssemblerBase<T>::m_dofMappers;
-    using gsAssemblerBase<T>::m_ddof;
-    using gsAssemblerBase<T>::m_matrix;
-    using gsAssemblerBase<T>::m_rhs;
-    using gsAssemblerBase<T>::m_dofs;
+    // Members from gsAssemblerBase2
+    using gsAssemblerBase2<T>::m_patches;
+    using gsAssemblerBase2<T>::m_bases;
+    using gsAssemblerBase2<T>::m_dofMappers;
+    using gsAssemblerBase2<T>::m_ddof;
+    using gsAssemblerBase2<T>::m_matrix;
+    using gsAssemblerBase2<T>::m_rhs;
+    using gsAssemblerBase2<T>::m_dofs;
 };
 
 
