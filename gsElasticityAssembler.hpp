@@ -288,10 +288,10 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
-        for (index_t k=0; k!= boundary->size(); ++k)
+        for (index_t k2=0; k2!= boundary->size(); ++k2)
         {
-            const int ii= mapper.bindex( (*boundary)(k) , it->patch() );
-            m_ddof.row(ii) = m_tfac_neumann * dVals.row(k);
+            const int ii= mapper.bindex( (*boundary)(k2) , it->patch() );
+            m_ddof.row(ii) = m_tfac_neumann * dVals.row(k2);
         }
         delete h;
         delete geo;
