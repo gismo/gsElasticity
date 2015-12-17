@@ -116,7 +116,7 @@ public:
 
 			// Determinant of deformation gradient, J = det(F)
 			detF = defGrad.determinant();
-			logdetF = weight * m_mu * std::log(detF);
+            logdetF = weight * m_mu * math::log(detF);
 
 			// Inverse of Fi = F^-1
 			defGrad_inv = defGrad.inverse();
