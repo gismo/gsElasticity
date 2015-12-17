@@ -193,8 +193,8 @@ void gsElasticityMixedTHNewton<T>::solve()
         */
 
         // termination criteria
-        if ( std::abs(m_updnorm / initUpdate)  < m_tolerance || 
-             std::abs(m_residue / initResidue) < m_tolerance )
+        if ( math::abs(m_updnorm / initUpdate)  < m_tolerance ||
+             math::abs(m_residue / initResidue) < m_tolerance )
         {
             m_converged = true;
 			m_truePressure = m_curPressure;
@@ -242,10 +242,10 @@ void gsElasticityMixedTHNewton<T>::solve( gsMatrix<T> init_solVector )
         */
 
         // termination criteria
-        if ( std::abs(m_updnorm / initUpdate)  < m_tolerance || 
-             std::abs(m_residue / initResidue) < m_tolerance || 
-             std::abs(m_updnorm) < m_tolerance*1e-3 || 
-             std::abs(m_residue) < m_tolerance*1e-3 )
+        if ( math::abs(m_updnorm / initUpdate)  < m_tolerance ||
+             math::abs(m_residue / initResidue) < m_tolerance ||
+             math::abs(m_updnorm) < m_tolerance*1e-3 ||
+             math::abs(m_residue) < m_tolerance*1e-3 )
         {
             m_converged = true;
 			m_truePressure = m_curPressure;
