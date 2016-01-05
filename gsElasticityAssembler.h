@@ -93,7 +93,40 @@ public:
     void constructSolution(const gsMatrix<T>& solVector, 
                            gsMultiPatch<T>& result) const;
 
-	/** \brief Computes stresses \f$ \sigma_{ij}\f$ of    * already computed solution.
+    /** \brief Computes stresses \f$ \sigma_{ij}\f$ of
+    * already computed solution.
+    *
+    * The computed stresses are written in a
+    * Matrix of size <em>k</em> x <em>n</em>,
+    * where <em>k=3</em> in 2D and <em>k=6</em> in 3D.\n
+    *
+    * If the von Mises stresses \f$ \sigma_v \f$, given by\n
+    * in 2D:
+    * \f[
+      \sigma_v^2 =
+      \sigma_{11}^2 + \sigma_{11}\sigma_{22} + \sigma_{22}^2 +
+      3 \sigma_{12}^2,
+    \f]
+    * in 3D:
+    * \f[
+      \sigma_v^2 = \frac{1}{2}(
+      (\sigma_{11}-\sigma_{22})^2 +
+      (\sigma_{11}-\sigma_{33})^2 +
+      (\sigma_{22}-\sigma_{33})^2 +
+      6 ( \sigma_{12}^2 + \sigma_{13}^2 + \sigma_{23}^2 ) ),
+    \f]
+    * are also computed, these
+    * are added as an additional line in the Matrix.
+    *
+    * Each column corresponds to an evaluation point and contains\n
+    * in 2D, \em without von Mises stress:\n
+    * \f$ (\sigma_{11},\sigma_{22},\sigma_{12})^T\f$.\n
+    * in 2D, \em with von Mises stress:\n
+    * \f$ (\sigma_{11},\sigma_{22},\sigma_{12},\sigma_v)^T\f$.\n
+    * in 3D, \em without von Mises stress:\n
+    * \f$ (\sigma_{11},\sigma_{22},\sigma_{33},\sigma_{12},\sigma_{13},\sigma_{23})^T\f$.\n
+    * in 3D, \em with von Mises stress:\n
+    * \f$ (\sigma_{11},\sigma_{22},\sigma_{33},\sigma_{12},\sigma_{13},\sigma_{23},\sigma_v)^T\f$.\n
     *
     * \param[in] solVector Solution vector containing the
     * computed \em free degrees of freedom (i.e., without
@@ -106,18 +139,16 @@ public:
     * \param[in] patchIndex Index of the patch on which
     * the computation shall be done.
     * \param[out] result Gets overwritten in with the
-    * computed stresses. Matrix of size <em>k</em> x <em>n</em>,
-    * where <em>k=3</em> in 2D and <em>k=6</em> in 3D.\n
-    * Each column corresponds to an evaluation point and contains\n
-    * in 2D:
-    * \f$ (\sigma_{11},\sigma_{22},\sigma_{12})^T\f$.\n
-    * in 3D:
-    * \f$ (\sigma_{11},\sigma_{22},\sigma_{33},\sigma_{12},\sigma_{13},\sigma_{23})^T\f$.\n
+    * computed stresses. See above for the format.
+    * \param[in] computeVonMises indicates whether the von Mises stress
+    * should also be computed. If \em true, the von Mises stress
+    * is
     */
     void computeStresses(const gsMatrix<T>& solVector,
                          const gsMatrix<T>& u,
                          int patchIndex,
-                         gsMatrix<T> &result) const;
+                         gsMatrix<T> &result,
+                         bool computeVonMises = false) const;
 
     // Set solution from solVector, overwrites previous solution
     void setSolution(const gsMatrix<T>& solVector, 

@@ -115,9 +115,7 @@ void gsElasticityAssembler<T>::set_MaterialLaw(const int material)
 template<class T>
 void gsElasticityAssembler<T>::assembleNeumann()
 {
-    std::cout << "Elasticity: assemble Neumann BC." << std::endl;
-	
-	for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.neumannBegin();
+    for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.neumannBegin();
           it != m_bConditions.neumannEnd(); 
 		  ++it )
     {
@@ -131,15 +129,13 @@ void gsElasticityAssembler<T>::assembleNeumann()
 template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
-    std::cout << "Linear Elasticity: assemble stiffness matrix." << std::endl;
-	
-	index_t numDirichlet = 0;
+    index_t numDirichlet = 0;
     for (index_t i = 0; i < m_dim; ++i)
         numDirichlet += m_dofMappers[i].boundarySize();
     m_ddof.setZero(numDirichlet, 1);
 
-	//computeDirichletDofsL2Proj(); 
-	computeDirichletDofsIntpl();
+    computeDirichletDofsL2Proj();
+    //computeDirichletDofsIntpl();
 
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
@@ -626,12 +622,13 @@ void gsElasticityAssembler<T>::computeStresses(
         const gsMatrix<T>& solVector,
         const gsMatrix<T>& u,
         int patchIndex,
-        gsMatrix<T>& result) const
+        gsMatrix<T>& result,
+        bool computeVonMises ) const
 {
     //m_dim = m_basis.dim();
     size_t dimStrain = (m_dim*(m_dim+1))/2;
 
-    result.resize( dimStrain, u.cols() );
+    result.resize( dimStrain, u.cols() + unsigned( computeVonMises) );
     result.setZero();
 
     unsigned evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
@@ -689,6 +686,16 @@ void gsElasticityAssembler<T>::computeStresses(
             result(1,k) = m_lambda * ( uPartDers(0,0)+uPartDers(1,1) ) + 2*m_mu*uPartDers(1,1);
             // sigma_{12}:
             result(2,k) = m_mu * ( uPartDers(0,1) + uPartDers(1,0) );
+
+            if( computeVonMises )
+            {
+                result(3,k) = math::sqrt(
+                            result(0,k)*result(0,k)
+                            - result(0,k)*result(1,k)
+                            + result(1,k)*result(1,k)
+                            + 3.0 * result(2,k)*result(2,k) );
+            }
+
         }
         else if( m_dim == 3 )
         {
@@ -699,6 +706,17 @@ void gsElasticityAssembler<T>::computeStresses(
             result(3,k) = m_mu * ( uPartDers(0,1) + uPartDers(1,0) ); // sigma_{12}
             result(4,k) = m_mu * ( uPartDers(0,2) + uPartDers(2,0) ); // sigma_{13}
             result(5,k) = m_mu * ( uPartDers(2,1) + uPartDers(1,2) ); // sigma_{23}
+
+            if( computeVonMises )
+            {
+                T tmp =   (result(0,k)-result(1,k))*(result(0,k)-result(1,k))
+                        + (result(0,k)-result(2,k))*(result(0,k)-result(2,k))
+                        + (result(1,k)-result(2,k))*(result(1,k)-result(2,k))
+                        + 6.0 * ( result(3,k)*result(3,k) + result(4,k)*result(4,k) + result(5,k)*result(5,k) );
+
+                result(6,k) = math::sqrt( 0.5 * tmp );
+            }
+
         }
     }
 }
