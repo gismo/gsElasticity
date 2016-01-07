@@ -134,8 +134,8 @@ void gsElasticityAssembler<T>::assemble()
         numDirichlet += m_dofMappers[i].boundarySize();
     m_ddof.setZero(numDirichlet, 1);
 
-    computeDirichletDofsL2Proj();
-    //computeDirichletDofsIntpl();
+    //computeDirichletDofsL2Proj();
+    computeDirichletDofsIntpl();
 
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
