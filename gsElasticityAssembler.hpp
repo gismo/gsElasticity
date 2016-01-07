@@ -628,7 +628,7 @@ void gsElasticityAssembler<T>::computeStresses(
     //m_dim = m_basis.dim();
     size_t dimStrain = (m_dim*(m_dim+1))/2;
 
-    result.resize( dimStrain, u.cols() + unsigned( computeVonMises) );
+    result.resize( dimStrain + unsigned( computeVonMises), u.cols() );
     result.setZero();
 
     unsigned evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
