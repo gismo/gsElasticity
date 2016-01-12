@@ -709,12 +709,12 @@ void gsElasticityAssembler<T>::computeStresses(
 
             if( computeVonMises )
             {
-                T tmp =   (result(0,k)-result(1,k))*(result(0,k)-result(1,k))
+                T tmp2 =   (result(0,k)-result(1,k))*(result(0,k)-result(1,k))
                         + (result(0,k)-result(2,k))*(result(0,k)-result(2,k))
                         + (result(1,k)-result(2,k))*(result(1,k)-result(2,k))
                         + 6.0 * ( result(3,k)*result(3,k) + result(4,k)*result(4,k) + result(5,k)*result(5,k) );
 
-                result(6,k) = math::sqrt( 0.5 * tmp );
+                result(6,k) = math::sqrt( 0.5 * tmp2 );
             }
 
         }
