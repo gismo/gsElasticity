@@ -38,10 +38,6 @@ namespace gismo
  * and the target space are the same
  * (i.e., \f$ u_h: \mathbb R^d \rightarrow \mathbb R^d\f$).
  *
- * \warning Note that the terms regarding the Neumann (traction) boundary
- * conditions
- * are NOT IMPLEMENTED YET! (15.Jul.2015).
- *
  * \warning Work in Progress!
  *
  * \ingroup Assembler
