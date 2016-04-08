@@ -163,7 +163,7 @@ public:
                 localRhs.middleRows(j*numActive,numActive).noalias() += 
                     weight * m_rho * forceVals(j,k) * m_tfac * bVals.col(k) ;
         }
-        //gsDebug<< "local Mat: \n"<< localMat << "\n";
+       // gsInfo<< "local Mat: \n"<< localMat << "\n";
     }
     
     inline void localToGlobal(const gsStdVectorRef<gsDofMapper> & mappers,
