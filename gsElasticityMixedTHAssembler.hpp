@@ -155,7 +155,7 @@ void gsElasticityMixedTHAssembler<T>::assemble()
     size_t nonZerosPerCol = m_dim;
     for (index_t i = 0; i < m_dim; ++i) // to do: improve
         nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
-	nonZerosPerCol += 2 * m_bases.back().maxDegree(0) + 1;
+    nonZerosPerCol += 2 * m_bases.back().maxDegree(0) + 1;
 
     m_matrix = gsSparseMatrix<T>(m_dofs, m_dofs); // Clean matrices
     m_matrix.reserve( gsVector<int>::Constant(m_dofs, nonZerosPerCol) );
