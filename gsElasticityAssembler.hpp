@@ -276,7 +276,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
 
         // Compute dirichlet values
         gsMatrix<T> fpts = 
-            it->function()->eval( m_patches[it->patch()].eval(  gsPointGrid( rr ) ) );
+            it->function()->eval( m_patches[it->patch()].eval(  gsPointGrid<T>( rr ) ) );
 
         // Interpolate dirichlet boundary 
         gsBasis<T> * h = basis.boundaryBasis(it->side());
