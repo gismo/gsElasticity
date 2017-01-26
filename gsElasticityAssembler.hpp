@@ -236,7 +236,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
 		const gsDofMapper &mapper = m_dofMappers[unk];
 
         // Get dofs on this boundary
-        gsMatrix<unsigned> * boundary = basis.boundary(it->side()) ;
+        gsMatrix<unsigned> boundary = basis.boundary(it->side()) ;
 
 		/*
         // If the condition is homogeneous then fill with zeros
@@ -270,7 +270,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
             }
             else
             {   
-                rr.push_back( basis.component(i).anchors()->transpose() );
+                rr.push_back( basis.component(i).anchors().transpose() );
             }
         }
 
@@ -284,14 +284,13 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
-        for (index_t k2=0; k2!= boundary->size(); ++k2)
+        for (index_t k2=0; k2!= boundary.size(); ++k2)
         {
-            const int ii= mapper.bindex( (*boundary)(k2) , it->patch() );
+            const int ii= mapper.bindex( (boundary)(k2) , it->patch() );
             m_ddof.row(ii) = m_tfac_neumann * dVals.row(k2);
         }
         delete h;
         delete geo;
-        delete boundary;
     }
 }
 

@@ -136,17 +136,16 @@ void gsElasticityMassAssembler<T>::computeDirichletDofsIntpl()
         const gsBasis<T> & basis = (m_bases[unk])[k];
 
         // Get dofs on this boundary
-        gsMatrix<unsigned> * boundary = basis.boundary(it->side()) ;
+        gsMatrix<unsigned> boundary = basis.boundary(it->side()) ;
 
         // If the condition is homogeneous then fill with zeros
         if ( it->isHomogeneous() )
         {
-            for (index_t i=0; i!= boundary->size(); ++i)
+            for (index_t i=0; i!= boundary.size(); ++i)
             {
-                const int ii= mapper.bindex( (*boundary)(i) , k );
+                const int ii= mapper.bindex( (boundary)(i) , k );
                 m_ddof.row(ii).setZero();
             }
-            delete boundary;
             continue;
         }
 
@@ -168,7 +167,7 @@ void gsElasticityMassAssembler<T>::computeDirichletDofsIntpl()
             }
             else
             {   
-                rr.push_back( basis.component(i).anchors()->transpose() );
+                rr.push_back( basis.component(i).anchors().transpose() );
             }
         }
 
@@ -182,14 +181,13 @@ void gsElasticityMassAssembler<T>::computeDirichletDofsIntpl()
         const gsMatrix<T> & dVals =  geo->coefs();
 
         // Save corresponding boundary dofs
-        for (index_t k2=0; k2!= boundary->size(); ++k2)
+        for (index_t k2=0; k2!= boundary.size(); ++k2)
         {
-            const int ii= mapper.bindex( (*boundary)(k2) , it->patch() );
+            const int ii= mapper.bindex( (boundary)(k2) , it->patch() );
             m_ddof.row(ii) = dVals.row(k2);
         }
         delete h;
         delete geo;
-        delete boundary;
     }
 }
 
