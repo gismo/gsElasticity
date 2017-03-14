@@ -350,7 +350,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsL2Proj()
             geoEval->evaluateAt( quNodes );
 
             // the values of the boundary condition are stored
-            // to rhsVals. Here, "rhs" refers to the right-hand-side
+            // to m_rhsGradV. Here, "rhs" refers to the right-hand-side
             // of the L2-projection, not of the PDE.
             gsMatrix<T> quPhys = m_patches[patchIdx].eval( quNodes );
             rhsVals.resize( quPhys.rows(), quPhys.cols() );
