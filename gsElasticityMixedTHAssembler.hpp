@@ -355,7 +355,7 @@ void gsElasticityMixedTHAssembler<T>::computeDirichletDofsIntpl()
 
         // Interpolate dirichlet boundary 
         gsBasis<T> * h = basis.boundaryBasis(it->side());
-        gsGeometry<T> * geo = h->interpolateAtAnchors(fpts);
+        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
         const gsMatrix<T> & dVals =  geo->coefs();
 
 		//gsMatrix<T> & coeffs = m_deformed.patch(p).coefs();
@@ -370,7 +370,6 @@ void gsElasticityMixedTHAssembler<T>::computeDirichletDofsIntpl()
 			
         }
         delete h;
-        delete geo;
     }
 }
 
