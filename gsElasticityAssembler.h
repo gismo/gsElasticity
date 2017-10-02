@@ -8,15 +8,26 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): O. Weeger
+    Author(s): O. Weeger, A.Shamanskiy (TU Kaiserslautern)
 */
 
 #pragma once
 
 #include <gsAssembler/gsAssemblerBase2.h>
 
+#include <gsElasticity/gsMultiFunction.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+
 namespace gismo
 {
+
+template< class T>
+class gsStressFunction;
+
+template< class T>
+class gsMultiFunction;
+
+enum class stress_type {normal,shear,von_mises};
 
 /** @brief Assembles linear and non linear elasticity matrices for 2D plain strain and 3D continua.
 
@@ -48,12 +59,9 @@ public:
 							// Boundary conditions
 							gsBoundaryConditions<T> const & bconditions,
 							// Body force per unit surface/volume (in 2D/3D)
-							const gsFunction<T> & body_force
-							// Points on physical domain
-							// const gsMatrix<T> pointCoords,
-							// Point forces
-							// const gsMatrix<T> pointForces
-							);
+                            const gsFunction<T> & body_force,
+                            dirichlet::values computeStrategy = dirichlet::l2Projection,
+                            dirichlet::strategy enforceStrategy = dirichlet::elimination);
 
 public:
 
@@ -168,8 +176,22 @@ public:
 	/// Re-Compute Dirichlet DoFs after Update and set deformed to correct values
 	///   needed for nonlinear with changing Dirichlet BC (displacement control)
 	void reComputeDirichletDofs(gsMultiPatch<T> &deformed);
+
+    /// Generate patchwise stress-functions to be used for visualization.
+    void constructStresses(const gsMatrix<T>& solVector,
+                           gsMultiFunction<T>& result,
+                           stress_type type) const;
+
+    friend class gsStressFunction<T>;
+
+    /// Set precomputed Neumann data on certain boundaries.
+    /// Data may come from other solvers.
+    void setNeumannDoF(gsMatrix<T> & values,gsBoundaryConditions<T> & boundaries);
+
     
 protected:
+
+    void computeDirichletDofs();
 
     /// Neumann contributions
     void assembleNeumann();
@@ -228,8 +250,66 @@ protected:
     using gsAssemblerBase2<T>::m_matrix;
     using gsAssemblerBase2<T>::m_rhs;
     using gsAssemblerBase2<T>::m_dofs;
+    using gsAssemblerBase2<T>::m_options;
 };
 
+/** @brief Allows computation and visualization of von Mises stresses for linear elasticity.
+
+    \tparam T coefficient type
+
+    \ingroup Elasticity
+*/
+template <class T>
+class gsStressFunction : public gsFunction<T>
+{
+public:
+
+    gsStressFunction(const gsMatrix<T> & solVector, const gsElasticityAssembler<T> & assembler, index_t patchNum, stress_type type)
+        : m_displacement(solVector),
+          m_assembler(assembler),
+          m_patch(patchNum),
+          m_type(type)
+    {
+
+    }
+
+    int domainDim() const
+    {
+        return m_assembler.m_bases[0].dim();
+    }
+
+    int targetDim() const
+    {
+        switch(m_type)
+        {
+        case stress_type::normal:
+        {
+            return domainDim();
+        }
+        case stress_type::shear:
+        {
+            return (domainDim() == 2) ? 1 : 3;
+        }
+        case stress_type::von_mises:
+        {
+            return 1;
+        }
+        default:
+            gsInfo << "Bad stress type\n";
+            return -1;
+        };
+    }
+
+    void eval_into(const gsMatrix< T > & u,gsMatrix< T > & result ) const;
+
+
+protected:
+    const gsMatrix<T>& m_displacement;
+    const gsElasticityAssembler<T>& m_assembler;
+    index_t m_patch;
+    stress_type m_type;
+
+}; // class definition ends
 
 } // namespace gismo
 

@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): O. Weeger
+    Author(s): O. Weeger, A. Shamanskiy (TU Kaiserslautern)
 */
 
 #pragma once
@@ -44,10 +44,9 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 												T poissons_ratio,
 												T density_rho,
 												gsBoundaryConditions<T> const & bconditions,
-												const gsFunction<T> & body_force
-												// const gsMatrix<T> pointCoords,
-												// const gsMatrix<T> pointForces
-												)
+                                                const gsFunction<T> & body_force,
+                                                dirichlet::values computeStrategy,
+                                                dirichlet::strategy enforceStrategy)
 :   Base(patches), 
 	m_rho(density_rho),
     m_bConditions(bconditions),
@@ -94,6 +93,9 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 		inShift += m_dofMappers[i].freeSize();
 		bdShift += m_dofMappers[i].boundarySize();
 	}
+
+    m_options.dirValues = computeStrategy;
+    m_options.dirStrategy = enforceStrategy;
 }
 
 template<class T>
@@ -129,13 +131,7 @@ void gsElasticityAssembler<T>::assembleNeumann()
 template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
-    index_t numDirichlet = 0;
-    for (index_t i = 0; i < m_dim; ++i)
-        numDirichlet += m_dofMappers[i].boundarySize();
-    m_ddof.setZero(numDirichlet, 1);
-
-    //computeDirichletDofsL2Proj();
-    computeDirichletDofsIntpl();
+    computeDirichletDofs();
 
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
@@ -212,15 +208,35 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
     m_matrix.makeCompressed();   
 }
 
+template<class T>
+void gsElasticityAssembler<T>::computeDirichletDofs()
+{
+    size_t numDDofs = 0;
+    for (auto&& mapper : m_dofMappers)
+    {
+        numDDofs += mapper.boundarySize();
+    }
+    m_ddof.setZero(numDDofs,1);
+
+    if (m_options.dirValues == dirichlet::interpolation)
+    {
+        computeDirichletDofsIntpl();
+    }
+    else if (m_options.dirValues == dirichlet::l2Projection)
+    {
+        computeDirichletDofsL2Proj();
+    }
+    else
+    {
+        gsInfo << "This Dirichlet value strategy is not implemented\n";
+    }
+}
+
 
 // WARNING: WORKS ONLY FOR TENSOR-PRODUCT-BASES!
 template<class T> 
 void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
-{
-    //const gsDofMapper &mapper = m_dofMappers.front();
-    
-    //m_ddof.resize( mapper.boundarySize(), 1 ); //--mrhs
-    
+{   
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.dirichletBegin();
           it != m_bConditions.dirichletEnd(); 
@@ -228,7 +244,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
     {
         if ( it->isHomogeneous() )
 			continue;
-		
+
 		const int unk = it->unknown();
         const int k   = it->patch();
         const gsBasis<T> & basis = (m_bases[unk/m_dim])[k];
@@ -323,6 +339,9 @@ void gsElasticityAssembler<T>::computeDirichletDofsL2Proj()
               iter = m_bConditions.dirichletBegin();
           iter != m_bConditions.dirichletEnd(); ++iter )
     {
+        if ( iter->isHomogeneous() )
+            continue;
+
         const int unk = iter->unknown();
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[0])[patchIdx];
@@ -718,4 +737,49 @@ void gsElasticityAssembler<T>::computeStresses(
         }
     }
 }
+
+template <class T>
+void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
+                                                 gsMultiFunction<T>& result,
+                                                 stress_type type) const
+{
+    result.clear();
+    for (std::size_t i = 0; i < m_patches.nPatches(); ++i )
+    {
+        result.addFunction(new gsStressFunction<T>(solVector,*this,i,type));
+    }
+}
+
+template <class T>
+void gsStressFunction<T>::eval_into(const gsMatrix< T > & u,gsMatrix< T > & result ) const
+{
+    gsMatrix<T> fullStress;
+    result.clear();
+    m_assembler.computeStresses(m_displacement,u,m_patch,fullStress,true);
+    result.resize(targetDim(),u.cols());
+
+    switch(m_type)
+    {
+    case stress_type::normal:
+    {
+        result.block(0,0,targetDim(),u.cols()) = fullStress.block(0,0,targetDim(),u.cols());
+        break;
+    }
+    case stress_type::shear:
+    {
+        result.block(0,0,targetDim(),u.cols()) = fullStress.block(domainDim(),0,targetDim(),u.cols());
+        break;
+    }
+    case stress_type::von_mises:
+    {
+        result.block(0,0,1,u.cols()) = fullStress.block(fullStress.rows()-1,0,1,u.cols());
+        break;
+    }
+    default:
+        gsInfo << "Bad stress type\n";
+        result.setZero();
+        break;
+    };
+}
+
 }// namespace gismo
