@@ -184,10 +184,18 @@ public:
 
     friend class gsStressFunction<T>;
 
+    /*
+    /// Construct mass matrices on every boundary
+    /// for which Neumann data are to be given as precomputed DoFs.
+    /// This function should be called once before setting the DoFs
+    /// with "setNeumannDoF" function.
+    void prepareNeumannDataAssimilation(gsBoundaryConditions<T> & boundaries);
+
+
     /// Set precomputed Neumann data on certain boundaries.
     /// Data may come from other solvers.
     void setNeumannDoF(gsMatrix<T> & values,gsBoundaryConditions<T> & boundaries);
-
+    */
     
 protected:
 
@@ -214,6 +222,7 @@ protected:
 	*/
 	void computeDirichletDofsL2Proj();
 
+
 protected:
 
 	/// Material parameters
@@ -233,6 +242,9 @@ protected:
 	/// Factor for time-dependent external forces
 	T m_tfac_neumann;
 	T m_tfac_force;
+
+    /// For setting Neumann data from precomputed DoFs
+    std::map<typename gsBoundaryConditions<T>::const_iterator,gsSparseMatrix<T> > neumannSidesMatrices;
    
     // Determines how the (fixed) Dirichlet values should be computed
     //dirichlet::values  m_dirValues;

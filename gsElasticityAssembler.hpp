@@ -750,6 +750,74 @@ void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
     }
 }
 
+/*template <class T>
+void gsElasticityAssembler<T>::prepareNeumannDataAssimilation(gsBoundaryConditions<T> &boundaries)
+{
+
+    std::vector<index_t> globalNeumannIndices;
+    gsSparseEntries<T> matrixEntries;
+    for (typename gsBoundaryConditions<T>::const_iterator it = boundaries.neumannBegin();
+         it != boundaries.neumannEnd(); ++it)
+    {
+        const gsBasisRefs<T> bases(m_bases, it->patch());
+        //const gsBasis<T> & basis = m_bases[0].basis(it->patch());
+        typename gsGeometry<T>::Evaluator geoEval(m_patches.patch(it->patch()).evaluator(NEED_MEASURE));
+        gsGaussRule<T> bdQuRule(bases[0],1.0,1,it->side().direction());
+
+        gsMatrix<T> quNodes;
+        gsVector<T> quWeights;
+        gsMatrix<T> basisVals;
+        gsMatrix<unsigned> activeLocal;
+        gsMatrix<unsigned> activeGlobal;
+
+        typename gsBasis<T>::domainIter bdIter = bases[0].makeDomainIterator(it->side());
+        for (; bdIter->good(); bdIter->next())
+        {
+            bdQuRule.mapTo(bdIter->lowerCorner(),bdIter->upperCorner(),quNodes,quWeights);
+
+            geoEval->evaluateAt(quNodes);
+            bases[0].eval_into(quNodes,basisVals);
+
+            bases[0].active_into(quNodes.col(0),activeLocal);
+            m_dofMappers[0].localToGlobal(activeLocal,0,activeGlobal);
+
+            if(std::find(globalNeumannIndices.begin(),globalNeumannIndices.end(),activeGlobal(i)) != globalNeumannIndices.end())
+
+            for (int i = 0; i < activeGlobal.rows(); ++i)
+                if(std::find(globalNeumannIndices.begin(),globalNeumannIndices.end(),activeGlobal(i)) == globalNeumannIndices.end())
+                {
+                    globalNeumannIndices.push_back(activeGlobal(i));
+                }
+
+            for (int quadP = 0; quadP < quWeights.rows(); ++quadP)
+            {
+                const T weight = quWeights[quadP]*geoEval->measure(quadP);
+
+                for (int i = 0; unsigned(i) < activeGlobal.rows(); ++i)
+                {
+                    index_t I = m_dofMappers[0].global_to_bindex(activeGlobal(activeBoundary[i]));
+                    neumannSidesMatrices[it].coeffRef(I,I) += weight*basisVals(activeBoundary[i],quadP)*basisVals(activeBoundary[i],quadP);
+                    for (int j = i+1; unsigned(j) < activeBoundary.size(); ++j)
+                    {
+                        index_t J = m_dofMappers[0].global_to_bindex(activeGlobal(activeBoundary[j]));
+                        neumannSidesMatrices[it].coeffRef(I,J) += weight*basisVals(activeBoundary[i],quadP)*basisVals(activeBoundary[j],quadP);
+                        neumannSidesMatrices[it].coeffRef(J,I) += weight*basisVals(activeBoundary[i],quadP)*basisVals(activeBoundary[j],quadP);
+                    }
+                }
+            }
+        }
+        neumannSidesMatrices[it].makeCompressed();
+        gsInfo << neumannSidesMatrices[it].toDense() << std::endl;
+    }
+
+}
+
+template <class T>
+void gsElasticityAssembler<T>::setNeumannDoF(gsMatrix<T> & values, gsBoundaryConditions<T> & boundaries)
+{
+
+}*/
+
 template <class T>
 void gsStressFunction<T>::eval_into(const gsMatrix< T > & u,gsMatrix< T > & result ) const
 {
