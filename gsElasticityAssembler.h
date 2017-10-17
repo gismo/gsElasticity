@@ -27,7 +27,7 @@ class gsStressFunction;
 template< class T>
 class gsMultiFunction;
 
-enum class stress_type {normal,shear,von_mises};
+struct stress_type { enum type{normal = 0, shear = 1, von_mises = 2}; };
 
 /** @brief Assembles linear and non linear elasticity matrices for 2D plain strain and 3D continua.
 
@@ -180,7 +180,7 @@ public:
     /// Generate patchwise stress-functions to be used for visualization.
     void constructStresses(const gsMatrix<T>& solVector,
                            gsMultiFunction<T>& result,
-                           stress_type type) const;
+                           stress_type::type type) const;
 
     friend class gsStressFunction<T>;
 
@@ -276,7 +276,7 @@ class gsStressFunction : public gsFunction<T>
 {
 public:
 
-    gsStressFunction(const gsMatrix<T> & solVector, const gsElasticityAssembler<T> & assembler, index_t patchNum, stress_type type)
+    gsStressFunction(const gsMatrix<T> & solVector, const gsElasticityAssembler<T> & assembler, index_t patchNum, stress_type::type type)
         : m_displacement(solVector),
           m_assembler(assembler),
           m_patch(patchNum),
@@ -319,7 +319,7 @@ protected:
     const gsMatrix<T>& m_displacement;
     const gsElasticityAssembler<T>& m_assembler;
     index_t m_patch;
-    stress_type m_type;
+    stress_type::type m_type;
 
 }; // class definition ends
 

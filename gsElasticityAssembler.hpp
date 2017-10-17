@@ -208,14 +208,17 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
     m_matrix.makeCompressed();   
 }
 
+struct Sum
+{
+    Sum() { sum = 0; }
+    void operator()(gsDofMapper add) {sum += add.boundarySize(); }
+    size_t sum;
+};
+
 template<class T>
 void gsElasticityAssembler<T>::computeDirichletDofs()
 {
-    size_t numDDofs = 0;
-    for (auto&& mapper : m_dofMappers)
-    {
-        numDDofs += mapper.boundarySize();
-    }
+    size_t numDDofs = std::for_each(m_dofMappers.begin(), m_dofMappers.end(), Sum()).sum;
     m_ddof.setZero(numDDofs,1);
 
     if (m_options.dirValues == dirichlet::interpolation)
@@ -741,7 +744,7 @@ void gsElasticityAssembler<T>::computeStresses(
 template <class T>
 void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
                                                  gsMultiFunction<T>& result,
-                                                 stress_type type) const
+                                                 stress_type::type type) const
 {
     result.clear();
     for (std::size_t i = 0; i < m_patches.nPatches(); ++i )
