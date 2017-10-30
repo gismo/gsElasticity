@@ -25,6 +25,7 @@
 #include <gsElasticity/gsVisitorLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinElasticity.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
+#include <gsElasticity/gsVisitorElasticityPressure.h>
 #include <gsElasticity/gsVisitorMassElasticity.h>
 
 // ---
@@ -749,83 +750,179 @@ void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
     result.clear();
     for (std::size_t i = 0; i < m_patches.nPatches(); ++i )
     {
-        result.addFunction(new gsStressFunction<T>(solVector,*this,i,type));
+        result.addFunction(std::unique_ptr<gsFunction<T> >(new gsStressFunction<T>(solVector,*this,i,type)));
+        //gsFunction<T> * temp = new gsStressFunction<T>(solVector,*this,i,type);
+        //result.addFunction(temp);
     }
-}
-
-/*template <class T>
-void gsElasticityAssembler<T>::prepareNeumannDataAssimilation(gsBoundaryConditions<T> &boundaries)
-{
-
-    std::vector<index_t> globalNeumannIndices;
-    gsSparseEntries<T> matrixEntries;
-    for (typename gsBoundaryConditions<T>::const_iterator it = boundaries.neumannBegin();
-         it != boundaries.neumannEnd(); ++it)
-    {
-        const gsBasisRefs<T> bases(m_bases, it->patch());
-        //const gsBasis<T> & basis = m_bases[0].basis(it->patch());
-        typename gsGeometry<T>::Evaluator geoEval(m_patches.patch(it->patch()).evaluator(NEED_MEASURE));
-        gsGaussRule<T> bdQuRule(bases[0],1.0,1,it->side().direction());
-
-        gsMatrix<T> quNodes;
-        gsVector<T> quWeights;
-        gsMatrix<T> basisVals;
-        gsMatrix<unsigned> activeLocal;
-        gsMatrix<unsigned> activeGlobal;
-
-        typename gsBasis<T>::domainIter bdIter = bases[0].makeDomainIterator(it->side());
-        for (; bdIter->good(); bdIter->next())
-        {
-            bdQuRule.mapTo(bdIter->lowerCorner(),bdIter->upperCorner(),quNodes,quWeights);
-
-            geoEval->evaluateAt(quNodes);
-            bases[0].eval_into(quNodes,basisVals);
-
-            bases[0].active_into(quNodes.col(0),activeLocal);
-            m_dofMappers[0].localToGlobal(activeLocal,0,activeGlobal);
-
-            if(std::find(globalNeumannIndices.begin(),globalNeumannIndices.end(),activeGlobal(i)) != globalNeumannIndices.end())
-
-            for (int i = 0; i < activeGlobal.rows(); ++i)
-                if(std::find(globalNeumannIndices.begin(),globalNeumannIndices.end(),activeGlobal(i)) == globalNeumannIndices.end())
-                {
-                    globalNeumannIndices.push_back(activeGlobal(i));
-                }
-
-            for (int quadP = 0; quadP < quWeights.rows(); ++quadP)
-            {
-                const T weight = quWeights[quadP]*geoEval->measure(quadP);
-
-                for (int i = 0; unsigned(i) < activeGlobal.rows(); ++i)
-                {
-                    index_t I = m_dofMappers[0].global_to_bindex(activeGlobal(activeBoundary[i]));
-                    neumannSidesMatrices[it].coeffRef(I,I) += weight*basisVals(activeBoundary[i],quadP)*basisVals(activeBoundary[i],quadP);
-                    for (int j = i+1; unsigned(j) < activeBoundary.size(); ++j)
-                    {
-                        index_t J = m_dofMappers[0].global_to_bindex(activeGlobal(activeBoundary[j]));
-                        neumannSidesMatrices[it].coeffRef(I,J) += weight*basisVals(activeBoundary[i],quadP)*basisVals(activeBoundary[j],quadP);
-                        neumannSidesMatrices[it].coeffRef(J,I) += weight*basisVals(activeBoundary[i],quadP)*basisVals(activeBoundary[j],quadP);
-                    }
-                }
-            }
-        }
-        neumannSidesMatrices[it].makeCompressed();
-        gsInfo << neumannSidesMatrices[it].toDense() << std::endl;
-    }
-
 }
 
 template <class T>
-void gsElasticityAssembler<T>::setNeumannDoF(gsMatrix<T> & values, gsBoundaryConditions<T> & boundaries)
+const gsMatrix<T> & gsElasticityAssembler<T>::rhsExtra()
 {
+    if (m_rhsExtra.rows() == 0)
+    {
+        gsInfo << "rhsExtra is equal to rhs, returning rhs instead.\n";
+        return m_rhs;
+    }
+    else
+    {
+        return m_rhsExtra;
+    }
+}
 
-}*/
+template <class T>
+void gsElasticityAssembler<T>::addNeummannData(const gsMultiPatch<> &sourceGeometry,
+                                               const gsMultiPatch<> &sourceSolution,
+                                               int sourcePatch, const boxSide &sourceSide,
+                                               int targetPatch, const boxSide &targetSide)
+{
+    int matchingMode = checkMatchingBoundaries(*(sourceGeometry.patch(sourcePatch).boundary(sourceSide)),
+                                               *(m_patches.patch(targetPatch).boundary(targetSide)));
+    if (matchingMode == 0)
+    {
+        gsInfo << "Doesn't look like matching boundaries!\n";
+        gsInfo << "Source " << sourcePatch << " " << sourceSide << std::endl;
+        gsInfo << "Target " << targetPatch << " " << targetSide << std::endl;
+    }
+    else
+    {
+        if (m_rhsExtra.rows() == 0 && m_rhs.rows() != 0)
+            m_rhsExtra = m_rhs;
+
+        const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
+        const gsMatrix<T> coefs = sourceSolution.piece(sourcePatch).boundary(sourceSide)->coefs();
+
+        std::map<unsigned,T> neumannDoFs;
+        for (int i = 0; i < localBoundaryIndices.rows(); ++i)
+        {
+            if (matchingMode == 1)
+                neumannDoFs[localBoundaryIndices(i)] = coefs(i);
+            else
+                neumannDoFs[localBoundaryIndices(i)] = coefs(localBoundaryIndices.rows() - i - 1);
+        }
+
+        gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhsExtra);
+        this->apply(visitor,targetPatch,targetSide);
+    }
+}
+
+template <class T>
+void gsElasticityAssembler<T>::addNeummannData(const gsField<> &sourceField,
+                                               int sourcePatch, const boxSide &sourceSide,
+                                               int targetPatch, const boxSide &targetSide)
+{
+    int matchingMode = checkMatchingBoundaries(*(sourceField.patch(sourcePatch).boundary(sourceSide)),
+                                               *(m_patches.patch(targetPatch).boundary(targetSide)));
+    if (matchingMode == 0)
+    {
+        gsInfo << "Doesn't look like matching boundaries!\n";
+        gsInfo << "Source " << sourcePatch << " " << sourceSide << std::endl;
+        gsInfo << "Target " << targetPatch << " " << targetSide << std::endl;
+    }
+    else
+    {
+        if (m_rhsExtra.rows() == 0 && m_rhs.rows() != 0)
+            m_rhsExtra = m_rhs;
+
+        const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
+        const gsMatrix<T> coefs = sourceField.igaFunction(sourcePatch).boundary(sourceSide)->coefs();
+
+        std::map<unsigned,T> neumannDoFs;
+        for (int i = 0; i < localBoundaryIndices.rows(); ++i)
+        {
+            if (matchingMode == 1)
+                neumannDoFs[localBoundaryIndices(i)] = coefs(i);
+            else
+                neumannDoFs[localBoundaryIndices(i)] = coefs(localBoundaryIndices.rows() - i - 1);
+        }
+
+        gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhsExtra);
+        this->apply(visitor,targetPatch,targetSide);
+    }
+}
+
+template <class T>
+int gsElasticityAssembler<T>::checkMatchingBoundaries(const gsGeometry<> & sourceBoundary,
+                                                      const gsGeometry<> & targetBoundary)
+{
+    const T absTol = 1e-6; // another magic number
+
+    gsMatrix<> startPoint;
+    startPoint.resize(1,1);
+    startPoint << 0.;
+    gsMatrix<> endPoint;
+    endPoint.resize(1,1);
+    endPoint << 1.;
+
+    gsMatrix<> sourceStart = sourceBoundary.eval(startPoint);
+    gsMatrix<> targetStart = targetBoundary.eval(startPoint);
+
+    gsMatrix<> sourceEnd = sourceBoundary.eval(endPoint);
+    gsMatrix<> targetEnd = targetBoundary.eval(endPoint);
+
+    if ((sourceStart-targetStart).norm() + (sourceEnd-targetEnd).norm() < absTol)
+    {
+        return 1;
+    }
+    else if ((sourceStart-targetEnd).norm() + (sourceEnd-targetStart).norm() < absTol)
+    {
+        return -1;
+    }
+    else
+    {
+        gsInfo << "Source start\n" << sourceStart << std::endl << "Source end\n" << sourceEnd << std::endl;
+        gsInfo << "Target start\n" << targetStart << std::endl << "Target end\n" << targetEnd << std::endl;
+        return 0;
+    }
+}
+
+template <class T>
+void gsElasticityAssembler<T>::clampPatchCorner(int patch,int corner)
+{
+    unsigned cornerIndex;
+    if (corner == 0 || corner == 1)
+    {
+        const gsMatrix<unsigned> & boundaryIndices = m_bases[0].basis(patch).boundary(boundary::south);
+        if (corner == 0)
+            cornerIndex = boundaryIndices(0);
+        else
+            cornerIndex = boundaryIndices(boundaryIndices.rows()-1);
+    }
+    else if (corner == 2 || corner == 3)
+    {
+        const gsMatrix<unsigned> & boundaryIndices = m_bases[0].basis(patch).boundary(boundary::north);
+        if (corner == 2)
+            cornerIndex = boundaryIndices(0);
+        else
+            cornerIndex = boundaryIndices(boundaryIndices.rows()-1);
+    }
+    else
+    {
+        gsInfo << "Bad corner number!\n"
+               << "0 - south-west\n"
+               << "1 - south-east\n"
+               << "2 - north-west\n"
+               << "3 - north-east\n";
+        return;
+    }
+
+    const T PP = 1e9; // magic number
+
+    for (int i = 0; i < m_dim; ++i)
+    {
+        index_t globalIndex = m_dofMappers[i].index(cornerIndex,patch);
+        m_matrix.coeffRef(globalIndex,globalIndex) = PP;
+        m_rhs(globalIndex) = 0;
+    }
+}
+
 
 template <class T>
 void gsStressFunction<T>::eval_into(const gsMatrix< T > & u,gsMatrix< T > & result ) const
 {
     gsMatrix<T> fullStress;
     result.clear();
+    //gsInfo << m_displacement<<std::endl;
     m_assembler.computeStresses(m_displacement,u,m_patch,fullStress,true);
     result.resize(targetDim(),u.cols());
 

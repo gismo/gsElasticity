@@ -11,6 +11,7 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): A. Shamanskiy (TU Kaiserslautern)
+    Inspired by gsWriteParaview.h by A. Mantzaflaris
 */
 
 #include <gsCore/gsForwardDeclarations.h>

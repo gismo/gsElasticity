@@ -1,4 +1,4 @@
-/** @file gsVisitorElasticityNeumann.h
+/** @file gsVisitorElasticityPressure.h
 
     @brief Neumann conditions visitor for 2d/3D elasticity.
 
@@ -8,7 +8,8 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): O. Weeger
+    Author(s): A. Shamanskiy
+    Inspired by gsVisitorElasticityNeumann by O. Weeger
 */
 
 #pragma once
@@ -18,14 +19,14 @@ namespace gismo
 
 
 template <class T>
-class gsVisitorElasticityNeumann
+class gsVisitorElasticityPressure
 {
 public:
 
-    gsVisitorElasticityNeumann(const gsFunction<T> & neudata, boxSide s, T tfac = 1.0) : 
-    neudata_ptr(&neudata), side(s)
-    { 
-        m_tfac = tfac;
+    gsVisitorElasticityPressure(const std::map<unsigned,T> & pressure, boxSide s, gsMatrix<T> & rhsExtra) :
+    m_rhsExtra(rhsExtra), pressureData(pressure), side(s)
+    {
+
 	}
 
     void initialize(const gsBasis<T> & basis, 
@@ -55,20 +56,25 @@ public:
     {
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0), actives);
-        numActive = actives.rows();
+        basis.active_into(quNodes.col(0),localActiveIndices);
+        numActiveFunctions = localActiveIndices.rows();
  
         // Evaluate basis functions on element
-        basis.eval_into(quNodes, basisData);
+        basis.eval_into(quNodes, basisValues);
 
         // Compute geometry related values
         geoEval.evaluateAt(quNodes);
 
-        // Evaluate the Neumann data
-        neudata_ptr->eval_into(geoEval.values(), neuData);
+        // Compute pressure values
+        pressureValues.setZero(1,quNodes.cols());
+        for (int j = 0; j < numActiveFunctions; ++j)
+        {
+            if(pressureData.find(localActiveIndices.at(j)) != pressureData.end())
+                pressureValues += basisValues.row(j)*pressureData.at(localActiveIndices.at(j));
+        }
 
         // Initialize local matrix/rhs
-        localRhs.setZero(m_dim*numActive, 1 );
+        localRhs.setZero(m_dim*numActiveFunctions, 1 );
     }
 
     inline void assemble(gsDomainIterator<T>    & element, 
@@ -90,11 +96,11 @@ public:
             geoEval.outerNormal(k, side, unormal);
             
             // Multiply quadrature weight by the measure of normal and time-dependent factor
-            const T weight = quWeights[k] * unormal.norm() * m_tfac;
+            const T weight = quWeights[k] * pressureValues.at(k);
 
             for (index_t j = 0; j < m_dim; ++j)
-                localRhs.middleRows(j*numActive,numActive).noalias() += 
-                    weight * neuData(j,k) * basisData.col(k) ;
+                localRhs.middleRows(j*numActiveFunctions,numActiveFunctions).noalias() -=
+                     weight * unormal(j,0) * basisValues.col(k) ;
         }
     }
     
@@ -106,42 +112,39 @@ public:
     {
 		for (index_t ci = 0; ci!= m_dim; ++ci)
 		{          
-			gsMatrix<unsigned> ci_actives(actives);
-			mappers[ci].localToGlobal(actives, patchIndex, ci_actives);
+            gsMatrix<unsigned> ci_actives(localActiveIndices);
+            mappers[ci].localToGlobal(localActiveIndices, patchIndex, ci_actives);
 			
-			for (index_t ai = 0; ai < numActive; ++ai)
+            for (index_t ai = 0; ai < numActiveFunctions; ++ai)
             {
-                const index_t gi = ci * numActive +  ai; // row index
+                const index_t gi = ci * numActiveFunctions +  ai; // row index
                 const index_t ii = ci_actives(ai);
 
                 if ( mappers[ci].is_free_index(ii) )
-                    rhsMatrix.row(ii) += localRhs.row(gi);
+                    m_rhsExtra.row(ii) += localRhs.row(gi);
             }
 		}
     }
 
 protected:
 
-    index_t numActive;
 	index_t m_dim;
+    gsMatrix<T> localRhs; // Local rhs
+    gsMatrix <T> & m_rhsExtra; // Global rhs
     
-    // Neumann function
-    const gsFunction<T> * neudata_ptr;
+    // Pressure info
+    const std::map<unsigned,T> & pressureData; // map of active indices and corresponding values
     boxSide side;
-	T m_tfac;
+    gsMatrix<T> pressureValues;
 
     // Basis values
-    gsMatrix<T>      basisData;
-    gsMatrix<unsigned> actives;
+    gsMatrix<T>      basisValues;
+    gsMatrix<unsigned> localActiveIndices;
+    index_t numActiveFunctions;
 
     // Normal and Neumann values
 	gsVector<T> unormal;
-    gsMatrix<T> neuData;
-
-    // Local matrix and rhs
-    gsMatrix<T> localMat;
-    gsMatrix<T> localRhs;
-
+    gsMatrix<T> neuData;   
 };
 
 

@@ -182,21 +182,27 @@ public:
                            gsMultiFunction<T>& result,
                            stress_type::type type) const;
 
+    /// Add already computed neumann boundary data to the rhs vector.
+    /// Resulting rhs is saved in rhsExtra member and can be accessed
+    /// or cleared by the corresponding class methods.
+
+    void addNeummannData(const gsMultiPatch<> & sourceGeometry,
+                          const gsMultiPatch<> & sourceSolution,
+                          int sourcePatch, const boxSide & sourceSide,
+                          int targetPatch, const boxSide & targetSide);
+
+    void addNeummannData(const gsField<> & sourceField,
+                          int sourcePatch, const boxSide & sourceSide,
+                          int targetPatch, const boxSide & targetSide);
+
+    const gsMatrix<T> & rhsExtra();
+
+    void resetRhsExtra() { m_rhsExtra.clear(); }
+
+    void clampPatchCorner(int patch,int corner);
+
     friend class gsStressFunction<T>;
 
-    /*
-    /// Construct mass matrices on every boundary
-    /// for which Neumann data are to be given as precomputed DoFs.
-    /// This function should be called once before setting the DoFs
-    /// with "setNeumannDoF" function.
-    void prepareNeumannDataAssimilation(gsBoundaryConditions<T> & boundaries);
-
-
-    /// Set precomputed Neumann data on certain boundaries.
-    /// Data may come from other solvers.
-    void setNeumannDoF(gsMatrix<T> & values,gsBoundaryConditions<T> & boundaries);
-    */
-    
 protected:
 
     void computeDirichletDofs();
@@ -222,6 +228,13 @@ protected:
 	*/
 	void computeDirichletDofsL2Proj();
 
+    /// Check if two boundaries have at least the same starting and ending points
+    /// Returns 1 if they match, return -1 if they match,
+    /// but parameterization directions are opposite,
+    /// return 0 if ends don't match
+    int checkMatchingBoundaries(const gsGeometry<> & sourceBoundary,
+                                const gsGeometry<> & targetBoundary);
+
 
 protected:
 
@@ -243,8 +256,7 @@ protected:
 	T m_tfac_neumann;
 	T m_tfac_force;
 
-    /// For setting Neumann data from precomputed DoFs
-    std::map<typename gsBoundaryConditions<T>::const_iterator,gsSparseMatrix<T> > neumannSidesMatrices;
+    gsMatrix<T> m_rhsExtra;
    
     // Determines how the (fixed) Dirichlet values should be computed
     //dirichlet::values  m_dirValues;
@@ -316,7 +328,7 @@ public:
 
 
 protected:
-    const gsMatrix<T>& m_displacement;
+    gsMatrix<T> m_displacement;
     const gsElasticityAssembler<T>& m_assembler;
     index_t m_patch;
     stress_type::type m_type;

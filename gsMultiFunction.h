@@ -32,7 +32,7 @@ public:
 
     gsMultiFunction();
 
-    ~gsMultiFunction();
+    //~gsMultiFunction();
 
     int domainDim() const
     {
@@ -47,22 +47,24 @@ public:
     const gsFunctionSet<T> & piece(const index_t k) const
     {
         GISMO_ASSERT((unsigned) k < m_functions.size(), "Invalid function index requested from gsMultiFunction" );
-        return *m_functions[k];
+        return *(m_functions[k]);
     }
 
-    void addFunction(gsFunction<T>* f);
+    //void addFunction(gsFunction<T>* f);
+    void addFunction(std::unique_ptr<gsFunction<T> > f);
 
     void clear()
     {
         m_dim = -1;
         m_parDim = -1;
-        freeAll(m_functions);
+        //freeAll(m_functions);
         m_functions.clear();
     }
 
 protected:
 
-    std::vector<gsFunction<T> *> m_functions;
+    //std::vector<gsFunction<T> *> m_functions;
+    std::vector<std::unique_ptr<gsFunction<T> > > m_functions;
     int m_dim;
     int m_parDim;
 

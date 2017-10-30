@@ -9,6 +9,7 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): A. Shamanskiy (TU Kaiserslautern)
+    Inspired by gsWriteParaview.hpp by A. Mantzaflaris
 */
 
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
