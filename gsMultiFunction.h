@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsCore/gsFunctionSet.h>
+// #include <gsCore/gsFunction.h>
 
 namespace gismo
 {
@@ -51,7 +51,7 @@ public:
     }
 
     //void addFunction(gsFunction<T>* f);
-    void addFunction(std::unique_ptr<gsFunction<T> > f);
+    void addFunction(typename gsFunction<T>::Ptr f);
 
     void clear()
     {
@@ -62,9 +62,8 @@ public:
     }
 
 protected:
-
     //std::vector<gsFunction<T> *> m_functions;
-    std::vector<std::unique_ptr<gsFunction<T> > > m_functions;
+    std::vector<typename gsFunction<T>::Ptr> m_functions;
     int m_dim;
     int m_parDim;
 
