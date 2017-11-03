@@ -750,7 +750,7 @@ void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
     result.clear();
     for (std::size_t i = 0; i < m_patches.nPatches(); ++i )
     {
-        result.addFunction(std::unique_ptr<gsFunction<T> >(new gsStressFunction<T>(solVector,*this,i,type)));
+        result.addFunction(typename gsFunction<T>::uPtr(new gsStressFunction<T>(solVector,*this,i,type)));
         //gsFunction<T> * temp = new gsStressFunction<T>(solVector,*this,i,type);
         //result.addFunction(temp);
     }
