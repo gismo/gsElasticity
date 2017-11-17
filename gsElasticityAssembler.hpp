@@ -209,17 +209,12 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
     m_matrix.makeCompressed();   
 }
 
-struct Sum
-{
-    Sum() { sum = 0; }
-    void operator()(gsDofMapper add) {sum += add.boundarySize(); }
-    size_t sum;
-};
+size_t sumBoundarySize(size_t a, gsDofMapper b) { return a + b.boundarySize(); }
 
 template<class T>
 void gsElasticityAssembler<T>::computeDirichletDofs()
 {
-    size_t numDDofs = std::for_each(m_dofMappers.begin(), m_dofMappers.end(), Sum()).sum;
+    size_t numDDofs = std::accumulate(m_dofMappers.begin(), m_dofMappers.end(), (size_t)0, sumBoundarySize);
     m_ddof.setZero(numDDofs,1);
 
     if (m_options.dirValues == dirichlet::interpolation)
