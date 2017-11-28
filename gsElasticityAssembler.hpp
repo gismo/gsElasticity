@@ -97,6 +97,8 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 
     m_options.dirValues = computeStrategy;
     m_options.dirStrategy = enforceStrategy;
+
+    computeDirichletDofs();
 }
 
 template<class T>
@@ -132,7 +134,8 @@ void gsElasticityAssembler<T>::assembleNeumann()
 template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
-    computeDirichletDofs();
+
+    //computeDirichletDofs();
 
     if (m_dofs == 0 ) // Are there any interior dofs ?
     {
@@ -155,7 +158,7 @@ void gsElasticityAssembler<T>::assemble()
 
     // Assemble volume stiffness and load vector integrals
     gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force);
-    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    for (unsigned np = 0; np < m_patches.nPatches(); ++np )
     {
         //Assemble stiffness matrix and rhs for the local patch
         // with index np and add to m_matrix and m_rhs
@@ -176,7 +179,8 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 	
 	if ( m_ddof.size() == 0 )
     {
-        assemble();
+        // assemble(); and uncomment "computeDirichletDofs();" in assemble(); and comment "computeDirichletDofs();" in constructor
+        computeDirichletDofs();
         return;
     }
 
@@ -752,11 +756,10 @@ void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
 }
 
 template <class T>
-const gsMatrix<T> & gsElasticityAssembler<T>::rhsExtra()
+const gsMatrix<T> & gsElasticityAssembler<T>::rhs()
 {
     if (m_rhsExtra.rows() == 0)
     {
-        gsInfo << "rhsExtra is equal to rhs, returning rhs instead.\n";
         return m_rhs;
     }
     else
@@ -773,13 +776,7 @@ void gsElasticityAssembler<T>::addNeummannData(const gsMultiPatch<> &sourceGeome
 {
     int matchingMode = checkMatchingBoundaries(*(sourceGeometry.patch(sourcePatch).boundary(sourceSide)),
                                                *(m_patches.patch(targetPatch).boundary(targetSide)));
-    if (matchingMode == 0)
-    {
-        gsInfo << "Doesn't look like matching boundaries!\n";
-        gsInfo << "Source " << sourcePatch << " " << sourceSide << std::endl;
-        gsInfo << "Target " << targetPatch << " " << targetSide << std::endl;
-    }
-    else
+    if (matchingMode != 0)
     {
         if (m_rhsExtra.rows() == 0 && m_rhs.rows() != 0)
             m_rhsExtra = m_rhs;
@@ -792,7 +789,7 @@ void gsElasticityAssembler<T>::addNeummannData(const gsMultiPatch<> &sourceGeome
         {
             if (matchingMode == 1)
                 neumannDoFs[localBoundaryIndices(i)] = coefs(i);
-            else
+            if (matchingMode == -1)
                 neumannDoFs[localBoundaryIndices(i)] = coefs(localBoundaryIndices.rows() - i - 1);
         }
 
@@ -808,13 +805,7 @@ void gsElasticityAssembler<T>::addNeummannData(const gsField<> &sourceField,
 {
     int matchingMode = checkMatchingBoundaries(*(sourceField.patch(sourcePatch).boundary(sourceSide)),
                                                *(m_patches.patch(targetPatch).boundary(targetSide)));
-    if (matchingMode == 0)
-    {
-        gsInfo << "Doesn't look like matching boundaries!\n";
-        gsInfo << "Source " << sourcePatch << " " << sourceSide << std::endl;
-        gsInfo << "Target " << targetPatch << " " << targetSide << std::endl;
-    }
-    else
+    if (matchingMode != 0)
     {
         if (m_rhsExtra.rows() == 0 && m_rhs.rows() != 0)
             m_rhsExtra = m_rhs;
@@ -827,7 +818,7 @@ void gsElasticityAssembler<T>::addNeummannData(const gsField<> &sourceField,
         {
             if (matchingMode == 1)
                 neumannDoFs[localBoundaryIndices(i)] = coefs(i);
-            else
+            if (matchingMode == -1)
                 neumannDoFs[localBoundaryIndices(i)] = coefs(localBoundaryIndices.rows() - i - 1);
         }
 
@@ -865,11 +856,71 @@ int gsElasticityAssembler<T>::checkMatchingBoundaries(const gsGeometry<> & sourc
     }
     else
     {
+        gsInfo << "Doesn't look like matching boundaries!\n";
         gsInfo << "Source start\n" << sourceStart << std::endl << "Source end\n" << sourceEnd << std::endl;
         gsInfo << "Target start\n" << targetStart << std::endl << "Target end\n" << targetEnd << std::endl;
         return 0;
     }
 }
+
+template <class T>
+void gsElasticityAssembler<T>::setDirichletDoFs(const gsMultiPatch<> & sourceGeometry,
+                                                const gsMultiPatch<> & sourceSolution,
+                                                int sourcePatch, const boxSide & sourceSide,
+                                                int targetPatch, const boxSide & targetSide)
+{
+    int matchingMode = checkMatchingBoundaries(*(sourceGeometry.patch(sourcePatch).boundary(sourceSide)),
+                                               *(m_patches.patch(targetPatch).boundary(targetSide)));
+    if (matchingMode == 1)
+    {
+        setDirichletDoFs(sourceSolution.piece(sourcePatch).boundary(sourceSide)->coefs(),targetPatch,targetSide);
+    }
+    else if (matchingMode == -1)
+    {
+        setDirichletDoFs(sourceSolution.piece(sourcePatch).boundary(sourceSide)->coefs().colwise().reverse(),targetPatch,targetSide);
+    }
+
+}
+
+template <class T>
+void gsElasticityAssembler<T>::setDirichletDoFs(const gsField<> & sourceField,
+                                                int sourcePatch, const boxSide & sourceSide,
+                                                int targetPatch, const boxSide & targetSide)
+{
+    int matchingMode = checkMatchingBoundaries(*(sourceField.patch(sourcePatch).boundary(sourceSide)),
+                                               *(m_patches.patch(targetPatch).boundary(targetSide)));
+    if (matchingMode == 1)
+    {
+        setDirichletDoFs(sourceField.igaFunction(sourcePatch).boundary(sourceSide)->coefs(),targetPatch,targetSide);
+    }
+    else if (matchingMode == -1)
+    {
+        setDirichletDoFs(sourceField.igaFunction(sourcePatch).boundary(sourceSide)->coefs().colwise().reverse(),targetPatch,targetSide);
+    }
+
+}
+
+template <class T>
+void gsElasticityAssembler<T>::setDirichletDoFs(const gsMatrix<> & ddofs,
+                                                int targetPatch,
+                                                const boxSide & targetSide)
+{
+    const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
+
+    for (index_t d = 0; d < m_dim; ++d)
+    {
+        gsMatrix<unsigned> systemIndices;
+        const gsDofMapper & mapper = m_dofMappers[d];
+        mapper.localToGlobal(localBoundaryIndices,targetPatch,systemIndices);
+
+        for (index_t i = 0; i != systemIndices.size(); ++i)
+        {
+            index_t dirichletIndex = mapper.global_to_bindex(systemIndices(i));
+            m_ddof(dirichletIndex,0) = ddofs(i,d);
+        }
+    }
+}
+
 
 template <class T>
 void gsElasticityAssembler<T>::clampPatchCorner(int patch,int corner)
@@ -908,6 +959,40 @@ void gsElasticityAssembler<T>::clampPatchCorner(int patch,int corner)
         index_t globalIndex = m_dofMappers[i].index(cornerIndex,patch);
         m_matrix.coeffRef(globalIndex,globalIndex) = PP;
         m_rhs(globalIndex) = 0;
+    }
+}
+
+template <class T>
+void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector,
+                                              gsMultiPatch<T> &result)
+{
+    result.clear();
+    gsMatrix<T> newCoeffs;
+
+    for (size_t p = 0; p < m_patches.nPatches(); ++p)
+    {
+        index_t pNum = m_bases[0][p].size();
+        newCoeffs.resize(pNum,m_dim);
+
+        gsMatrix<T> & coeffs = m_patches.patch(p).coefs();
+
+        for (index_t d = 0; d < m_dim; ++d)
+        {
+            const gsDofMapper & mapper = m_dofMappers[d];
+
+            for (index_t i = 0; i < pNum; ++i )
+            {
+                if (mapper.is_free(i,p))
+                {
+                    newCoeffs(i,d) = coeffs(i,d) + solVector(mapper.index(i,p),0);
+                }
+                else
+                {
+                    newCoeffs(i,d) = coeffs(i,d) + m_ddof(mapper.bindex(i,p),0);
+                }
+            }
+        }
+        result.addPatch(m_bases[0][p].makeGeometry(give(newCoeffs)));
     }
 }
 

@@ -184,7 +184,7 @@ public:
 
     /// Add already computed neumann boundary data to the rhs vector.
     /// Resulting rhs is saved in rhsExtra member and can be accessed
-    /// or cleared by the corresponding class methods.
+    /// or cleared by the corresponding class methods. (2D only!!)
 
     void addNeummannData(const gsMultiPatch<> & sourceGeometry,
                           const gsMultiPatch<> & sourceSolution,
@@ -195,11 +195,33 @@ public:
                           int sourcePatch, const boxSide & sourceSide,
                           int targetPatch, const boxSide & targetSide);
 
-    const gsMatrix<T> & rhsExtra();
+    /// Add already computed Dirichlet boundary data to the specified sides.
+    /// To be used in 2D only. And only with dirichlet::penalization/elimination strategy
+
+    void setDirichletDoFs(const gsMultiPatch<> & sourceGeometry,
+                          const gsMultiPatch<> & sourceSolution,
+                          int sourcePatch, const boxSide & sourceSide,
+                          int targetPatch, const boxSide & targetSide);
+
+    void setDirichletDoFs(const gsField<> & sourceField,
+                          int sourcePatch, const boxSide & sourceSide,
+                          int targetPatch, const boxSide & targetSide);
+
+    void setDirichletDoFs(const gsMatrix<> & ddofs,
+                          int targetPatch,
+                          const boxSide & targetSide);
+
+
+
+    const gsMatrix<T> & rhs();
 
     void resetRhsExtra() { m_rhsExtra.clear(); }
 
     void clampPatchCorner(int patch,int corner);
+
+    void deformGeometry(const gsMatrix<T> & solVector,
+                        gsMultiPatch<T> & result);
+
 
     friend class gsStressFunction<T>;
 
@@ -257,6 +279,7 @@ protected:
 	T m_tfac_force;
 
     gsMatrix<T> m_rhsExtra;
+    std::map<unsigned,T> externalDDofs;
    
     // Determines how the (fixed) Dirichlet values should be computed
     //dirichlet::values  m_dirValues;

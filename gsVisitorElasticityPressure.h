@@ -17,7 +17,6 @@
 namespace gismo
 {
 
-
 template <class T>
 class gsVisitorElasticityPressure
 {
@@ -142,9 +141,8 @@ protected:
     gsMatrix<unsigned> localActiveIndices;
     index_t numActiveFunctions;
 
-    // Normal and Neumann values
-	gsVector<T> unormal;
-    gsMatrix<T> neuData;   
+    // Normal values
+	gsVector<T> unormal; 
 };
 
 
