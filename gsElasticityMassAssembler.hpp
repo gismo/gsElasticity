@@ -176,7 +176,7 @@ void gsElasticityMassAssembler<T>::computeDirichletDofsIntpl()
             it->function()->eval( m_patches[it->patch()].eval(  gsPointGrid<T>( rr ) ) );
 
         // Interpolate dirichlet boundary 
-        gsBasis<T> * h = basis.boundaryBasis(it->side());
+        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
         typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
         const gsMatrix<T> & dVals =  geo->coefs();
 
@@ -186,7 +186,6 @@ void gsElasticityMassAssembler<T>::computeDirichletDofsIntpl()
             const int ii= mapper.bindex( (boundary)(k2) , it->patch() );
             m_ddof.row(ii) = dVals.row(k2);
         }
-        delete h;
     }
 }
 

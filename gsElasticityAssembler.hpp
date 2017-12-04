@@ -298,7 +298,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
             it->function()->eval( m_patches[it->patch()].eval(  gsPointGrid<T>( rr ) ) );
 
         // Interpolate dirichlet boundary 
-        gsBasis<T> * h = basis.boundaryBasis(it->side());
+        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
         typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
         const gsMatrix<T> & dVals =  geo->coefs();
 
@@ -308,7 +308,6 @@ void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
             const int ii= mapper.bindex( (boundary)(k2) , it->patch() );
             m_ddof.row(ii) = m_tfac_neumann * dVals.row(k2);
         }
-        delete h;
     }
 }
 
