@@ -87,7 +87,7 @@ template <class T>
 void gsWriteVector(const gsMatrix<T> & vector,const std::string& fname)
 {
     std::ofstream ofs;
-    ofs.open(fname,std::ofstream::out);
+    ofs.open(fname.c_str(),std::ofstream::out);
     ofs << vector;
     ofs.close();
 }
@@ -96,7 +96,7 @@ template <class T>
 bool gsReadVector(gsMatrix<T> & vector,const std::string& fname)
 {
     std::vector<T> inputVector;
-    std::ifstream input(fname);
+    std::ifstream input(fname.c_str());
     bool result = false;
     if (input)
     {
