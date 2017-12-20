@@ -41,6 +41,9 @@ gsElPoissonAssembler<T>::gsElPoissonAssembler(const gsMultiPatch<T> & patches,
     typename gsPde<T>::Ptr pde( new gsElPoissonPde<T>(patches,bcInfo,force,conductivity) );
     gsAssembler<T>::initialize(pde, bases, m_options);
 
+    m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
+    gsAssembler<T>::computeDirichletDofs();
+
 }
 
 template<class T>
@@ -50,10 +53,10 @@ void gsElPoissonAssembler<T>::assemble()
                  "Sparse system is not initialized, call initialize() or refresh()");
 
     // Reserve sparse system
-    m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
+    //m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
 
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
-    gsAssembler<T>::computeDirichletDofs();
+    //gsAssembler<T>::computeDirichletDofs();
 
     // Clean the sparse system
    // m_system.setZero(); //<< this call leads to a quite significant performance degrade!
