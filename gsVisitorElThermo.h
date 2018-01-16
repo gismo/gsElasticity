@@ -69,9 +69,7 @@ public:
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            gsMatrix<T> physGrad;
             geoEval.transformGradients(k,basisData[1],physGrad);
-            gsMatrix<T> heatGrad;
             heatGrad.setZero(m_dim,1);
 
             for (int j = 0; j < numActiveFunctions; ++j)
@@ -115,7 +113,7 @@ public:
 protected:
 
     const gsMatrix<T> & thermoCoeffs;
-    gsMatrix<T> heatGrad;
+    gsMatrix<T> heatGrad, physGrad;
 
     index_t m_dim;
     gsMatrix<T> localRhs; // Local rhs
