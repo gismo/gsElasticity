@@ -783,13 +783,19 @@ void gsElasticityAssembler<T>::addNeummannData(const gsMultiPatch<> &sourceGeome
         const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
         const gsMatrix<T> coefs = sourceSolution.piece(sourcePatch).boundary(sourceSide)->coefs();
 
+        int numLayers = localBoundaryIndices.rows()/coefs.rows();
+
         std::map<unsigned,T> neumannDoFs;
-        for (int i = 0; i < localBoundaryIndices.rows(); ++i)
+        for (int l = 0; l < numLayers; ++l)
         {
-            if (matchingMode == 1)
-                neumannDoFs[localBoundaryIndices(i)] = coefs(i);
-            if (matchingMode == -1)
-                neumannDoFs[localBoundaryIndices(i)] = coefs(localBoundaryIndices.rows() - i - 1);
+            for (int i = 0; i < coefs.rows(); ++i)
+            {
+                if (matchingMode == 1)
+                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(i);
+                if (matchingMode == -1)
+                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(coefs.rows() - i - 1);
+            }
+
         }
 
         gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhsExtra);
@@ -812,13 +818,18 @@ void gsElasticityAssembler<T>::addNeummannData(const gsField<> &sourceField,
         const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
         const gsMatrix<T> coefs = sourceField.igaFunction(sourcePatch).boundary(sourceSide)->coefs();
 
+        int numLayers = localBoundaryIndices.rows()/coefs.rows();
+
         std::map<unsigned,T> neumannDoFs;
-        for (int i = 0; i < localBoundaryIndices.rows(); ++i)
+        for (int l = 0; l < numLayers; ++l)
         {
-            if (matchingMode == 1)
-                neumannDoFs[localBoundaryIndices(i)] = coefs(i);
-            if (matchingMode == -1)
-                neumannDoFs[localBoundaryIndices(i)] = coefs(localBoundaryIndices.rows() - i - 1);
+            for (int i = 0; i < coefs.rows(); ++i)
+            {
+                if (matchingMode == 1)
+                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(i);
+                if (matchingMode == -1)
+                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(coefs.rows() - i - 1);
+            }
         }
 
         gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhsExtra);
@@ -834,22 +845,40 @@ int gsElasticityAssembler<T>::checkMatchingBoundaries(const gsGeometry<> & sourc
 
     gsMatrix<> startPoint;
     startPoint.resize(1,1);
-    startPoint << 0.;
+    startPoint.at(0) = 0.;
     gsMatrix<> endPoint;
     endPoint.resize(1,1);
-    endPoint << 1.;
+    endPoint.at(0) = 1.;
 
     gsMatrix<> sourceStart = sourceBoundary.eval(startPoint);
-    gsMatrix<> targetStart = targetBoundary.eval(startPoint);
-
     gsMatrix<> sourceEnd = sourceBoundary.eval(endPoint);
+
+    if (targetBoundary.dimensions().first == 2)
+    {
+        startPoint.conservativeResize(2,1);
+        startPoint(1) = 0.;
+        endPoint.conservativeResize(2,1);
+        endPoint(1) = 0.;
+
+    }
+    gsMatrix<> targetStart = targetBoundary.eval(startPoint);
     gsMatrix<> targetEnd = targetBoundary.eval(endPoint);
 
-    if ((sourceStart-targetStart).norm() + (sourceEnd-targetEnd).norm() < absTol)
+    real_t alignedCheck = (sourceStart.at(0)-targetStart.at(0))*(sourceStart.at(0)-targetStart.at(0)) +
+                          (sourceStart.at(1)-targetStart.at(1))*(sourceStart.at(1)-targetStart.at(1)) +
+                          (sourceEnd.at(0)-targetEnd.at(0))*(sourceEnd.at(0)-targetEnd.at(0)) +
+                          (sourceEnd.at(1)-targetEnd.at(1))*(sourceEnd.at(1)-targetEnd.at(1));
+
+    real_t reverseCheck = (sourceStart.at(0)-targetEnd.at(0))*(sourceStart.at(0)-targetEnd.at(0)) +
+                          (sourceStart.at(1)-targetEnd.at(1))*(sourceStart.at(1)-targetEnd.at(1)) +
+                          (sourceEnd.at(0)-targetStart.at(0))*(sourceEnd.at(0)-targetStart.at(0)) +
+                          (sourceEnd.at(1)-targetStart.at(1))*(sourceEnd.at(1)-targetStart.at(1));
+
+    if (alignedCheck < absTol)
     {
         return 1;
     }
-    else if ((sourceStart-targetEnd).norm() + (sourceEnd-targetStart).norm() < absTol)
+    else if (reverseCheck < absTol)
     {
         return -1;
     }
