@@ -48,21 +48,36 @@ public:
 
    void penalizeDirichletDofs();
 
-   /// Should only be used with penalization Dirichlet enforcement strategy
-   void setDirichletDoFs(const gsMatrix<> & ddofs, int targetPatch, const boxSide & targetSide);
-
-   void setDirichletDoFs(const gsMultiPatch<> & sourceGeometry,
+   /// Add already computed Dirichlet boundary data to the specified sides.
+   /// Orientation check only for 2D.
+   void addDirichletData(const gsMultiPatch<> & sourceGeometry,
                          const gsMultiPatch<> & sourceSolution,
                          int sourcePatch, const boxSide & sourceSide,
                          int targetPatch, const boxSide & targetSide);
 
-   void setDirichletDoFs(const gsField<> & sourceField,
+   void addDirichletData(const gsField<> & sourceField,
                          int sourcePatch, const boxSide & sourceSide,
                          int targetPatch, const boxSide & targetSide);
+
+   /// Add already computed neumann boundary data to the rhs vector.
+   /// Resulting rhs is saved in rhsExtra member and can be accessed
+   /// or cleared by the corresponding class methods.
+   /// Orientation check for 2D only.
+
+   void addNeummannData(const gsMultiPatch<> & sourceGeometry,
+                        const gsMultiPatch<> & sourceSolution,
+                        int sourcePatch, const boxSide & sourceSide,
+                        int targetPatch, const boxSide & targetSide);
+
+   void addNeummannData(const gsField<> & sourceField,
+                        int sourcePatch, const boxSide & sourceSide,
+                        int targetPatch, const boxSide & targetSide);
 
    void setUnitingConstraint(const boxSide & side, bool verbosity = false);
 
 protected:
+
+   void setDirichletDoFs(const gsMatrix<> & ddofs, int targetPatch, const boxSide & targetSide);
 
    /// Check if two boundaries have at least the same starting and ending points
    /// Returns 1 if they match, return -1 if they match,

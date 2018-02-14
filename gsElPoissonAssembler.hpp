@@ -139,15 +139,29 @@ void gsElPoissonAssembler<T>::setDirichletDoFs(const gsMatrix<> & ddofs, int tar
 {
     const gsDofMapper & mapper = m_system.colMapper(0);
     const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
-    for (index_t i = 0; i != localBoundaryIndices.size(); ++i)
+
+    if (m_options.getInt("DirichletStrategy") == dirichlet::penalize)
     {
-        index_t globalIndex = mapper.index(localBoundaryIndices(i),targetPatch);
-        m_system.rhs().row(globalIndex) = PP * ddofs.row(i);
+        for (index_t i = 0; i != localBoundaryIndices.size(); ++i)
+        {
+            index_t globalIndex = mapper.index(localBoundaryIndices(i),targetPatch);
+            m_system.rhs().row(globalIndex) = PP * ddofs.row(i);
+        }
+    }
+    else if (m_options.getInt("DirichletStrategy") == dirichlet::elimination)
+    {
+        gsMatrix<unsigned> systemIndices;
+        mapper.localToGlobal(localBoundaryIndices,targetPatch,systemIndices);
+        for (index_t i = 0; i != systemIndices.size(); ++i)
+        {
+            index_t dirichletIndex = mapper.global_to_bindex(systemIndices(i));
+            m_ddof[0](dirichletIndex,0) = ddofs(i,0);
+        }
     }
 }
 
 template <class T>
-void gsElPoissonAssembler<T>::setDirichletDoFs(const gsMultiPatch<> & sourceGeometry,
+void gsElPoissonAssembler<T>::addDirichletData(const gsMultiPatch<> & sourceGeometry,
                                                const gsMultiPatch<> & sourceSolution,
                                                int sourcePatch, const boxSide & sourceSide,
                                                int targetPatch, const boxSide & targetSide)
@@ -164,19 +178,17 @@ void gsElPoissonAssembler<T>::setDirichletDoFs(const gsMultiPatch<> & sourceGeom
         setDirichletDoFs(sourceSolution.piece(sourcePatch).boundary(sourceSide)->coefs().colwise().reverse(),targetPatch,targetSide);
     }
     else
-    {
-        gsInfo << "Doesn't look like matching boundaries!\n";
-        gsInfo << "Source " << sourcePatch << " " << sourceSide << std::endl;
-        gsInfo << "Target " << targetPatch << " " << targetSide << std::endl;
-    }
+        gsInfo << "Doesn't look like matching boundaries!\n"
+               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
+               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
 }
 
 template <class T>
-void gsElPoissonAssembler<T>::setDirichletDoFs(const gsField<> & sourceField,
+void gsElPoissonAssembler<T>::addDirichletData(const gsField<> & sourceField,
                                                int sourcePatch, const boxSide & sourceSide,
                                                int targetPatch, const boxSide & targetSide)
 {
-    int matchingMode = checkMatchingBoundaries(*(sourceField.patch(sourcePatch).boundary(sourceSide)),
+    int matchingMode = checkMatchingBoundaries(*(sourceField.patches().patch(sourcePatch).boundary(sourceSide)),
                                                *(m_pde_ptr->patches().patch(targetPatch).boundary(targetSide)));
     if (matchingMode == 1)
     {
@@ -187,11 +199,9 @@ void gsElPoissonAssembler<T>::setDirichletDoFs(const gsField<> & sourceField,
         setDirichletDoFs(sourceField.igaFunction(sourcePatch).boundary(sourceSide)->coefs().colwise().reverse(),targetPatch,targetSide);
     }
     else
-    {
-        gsInfo << "Doesn't look like matching boundaries!\n";
-        gsInfo << "Source " << sourcePatch << " " << sourceSide << std::endl;
-        gsInfo << "Target " << targetPatch << " " << targetSide << std::endl;
-    }
+        gsInfo << "Doesn't look like matching boundaries!\n"
+               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
+               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
 }
 
 template <class T>
@@ -200,33 +210,38 @@ int gsElPoissonAssembler<T>::checkMatchingBoundaries(const gsGeometry<> & source
 {
     const T absTol = 1e-6; // another magic number
 
-    gsMatrix<> startPoint;
-    startPoint.resize(1,1);
-    startPoint << 0.;
-    gsMatrix<> endPoint;
-    endPoint.resize(1,1);
-    endPoint << 1.;
+    int sDim = sourceBoundary.dimensions().first;
+    int tDim = targetBoundary.dimensions().first;
 
-    gsMatrix<> sourceStart = sourceBoundary.eval(startPoint);
-    gsMatrix<> targetStart = targetBoundary.eval(startPoint);
-
-    gsMatrix<> sourceEnd = sourceBoundary.eval(endPoint);
-    gsMatrix<> targetEnd = targetBoundary.eval(endPoint);
-
-    if ((sourceStart-targetStart).norm() + (sourceEnd-targetEnd).norm() < absTol)
+    if (sDim == 1 && tDim == 1)
     {
+        gsMatrix<> startPoint;
+        startPoint.resize(1,1);
+        startPoint << 0.;
+        gsMatrix<> endPoint;
+        endPoint.resize(1,1);
+        endPoint << 1.;
+
+        gsMatrix<> sourceStart = sourceBoundary.eval(startPoint);
+        gsMatrix<> targetStart = targetBoundary.eval(startPoint);
+
+        gsMatrix<> sourceEnd = sourceBoundary.eval(endPoint);
+        gsMatrix<> targetEnd = targetBoundary.eval(endPoint);
+
+        if ((sourceStart-targetStart).norm() + (sourceEnd-targetEnd).norm() < absTol)
+            return 1;
+        else if ((sourceStart-targetEnd).norm() + (sourceEnd-targetStart).norm() < absTol)
+            return -1;
+        else
+            return 0;
+    }
+    else if (sDim == 2 && tDim == 2)
+    {
+        gsInfo << "Accurate orientation check for two 3D is not implemented\n";
         return 1;
     }
-    else if ((sourceStart-targetEnd).norm() + (sourceEnd-targetStart).norm() < absTol)
-    {
-        return -1;
-    }
-    else
-    {
-        gsInfo << "Source start\n" << sourceStart << std::endl << "Source end\n" << sourceEnd << std::endl;
-        gsInfo << "Target start\n" << targetStart << std::endl << "Target end\n" << targetEnd << std::endl;
-        return 0;
-    }
+
+    return 0;
 }
 
 template <class T>
@@ -257,6 +272,23 @@ void gsElPoissonAssembler<T>::setUnitingConstraint(const boxSide & side, bool ve
         m_system.matrix().coeffRef(size + i,globalIndex2) = -1.;
         m_system.matrix().coeffRef(globalIndex2,size + i) = -1.;
     }
+}
+
+template <class T>
+void gsElPoissonAssembler<T>::addNeummannData(const gsMultiPatch<> & sourceGeometry,
+                                              const gsMultiPatch<> & sourceSolution,
+                                              int sourcePatch, const boxSide & sourceSide,
+                                              int targetPatch, const boxSide & targetSide)
+{
+
+}
+
+template <class T>
+void gsElPoissonAssembler<T>::addNeummannData(const gsField<> & sourceField,
+                                              int sourcePatch, const boxSide & sourceSide,
+                                              int targetPatch, const boxSide & targetSide)
+{
+
 }
 
 
