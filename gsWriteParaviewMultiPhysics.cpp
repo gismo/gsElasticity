@@ -26,16 +26,16 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
                                  std::string const & fn,
                                  unsigned npts, bool mesh)
 {
-    const unsigned n = fields.begin()->second->nPatches();
+    const unsigned numP = fields.begin()->second->patches().nPatches();
     gsParaviewCollection collection(fn);
     std::string fileName = fn.substr(fn.find_last_of("/\\")+1); // file name without a path
 
-    for ( unsigned i=0; i < n; ++i )
+    for ( unsigned i=0; i < numP; ++i )
     {
         const gsBasis<> & dom = fields.begin()->second->isParametrized() ?
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
-        writeSinglePatchMultiField( fields, i, fn + util::to_string(i), npts);
+        gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
         collection.addPart(fileName + util::to_string(i), ".vts");
 
         if ( mesh )
@@ -48,12 +48,27 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
 }
 
 template<class T>
-void writeSinglePatchMultiField(std::map<std::string,const gsField<T> *> fields,
+void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
+                                         gsParaviewCollection & collection, int time, unsigned npts)
+{
+    const unsigned numP = fields.begin()->second->patches().nPatches();
+    std::string fileName = fn.substr(fn.find_last_of("/\\")+1); // file name without a path
+
+    for ( size_t p = 0; p < numP; ++p)
+    {
+        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + std::to_string(time) + "_" + std::to_string(p),npts);
+        collection.addTimestep(fileName + std::to_string(time) + "_",p,time,".vts");
+    }
+
+}
+
+template<class T>
+void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T> *> fields,
                                 const unsigned patchNum,
                                 std::string const & fn,
                                 unsigned npts)
 {
-    const gsFunction<> & geometry = fields.begin()->second->patch(patchNum);
+    const gsFunction<> & geometry = fields.begin()->second->patches().patch(patchNum);
     const unsigned n = geometry.targetDim();
     const unsigned d = geometry.domainDim();
 
@@ -174,7 +189,11 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<real_t>* > 
                      unsigned npts, bool mesh);
 
 TEMPLATE_INST
-void writeSinglePatchMultiField(std::map<std::string,const gsField<real_t>* > fields,
+void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<real_t> *> fields, std::string const & fn,
+                                         gsParaviewCollection & collection, int time, unsigned npts);
+
+TEMPLATE_INST
+void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<real_t>* > fields,
                                 const unsigned patchNum,
                                 std::string const & fn,
                                 unsigned npts);

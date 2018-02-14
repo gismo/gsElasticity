@@ -801,6 +801,10 @@ void gsElasticityAssembler<T>::addNeummannData(const gsMultiPatch<> &sourceGeome
         gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhsExtra);
         this->apply(visitor,targetPatch,targetSide);
     }
+    else
+        gsInfo << "Doesn't look like matching boundaries!\n"
+               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
+               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
 }
 
 template <class T>
@@ -827,7 +831,7 @@ void gsElasticityAssembler<T>::addNeummannData(const gsField<> &sourceField,
             {
                 if (matchingMode == 1)
                     neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(i);
-                if (matchingMode == -1)
+                else if (matchingMode == -1)
                     neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(coefs.rows() - i - 1);
             }
         }
@@ -835,12 +839,92 @@ void gsElasticityAssembler<T>::addNeummannData(const gsField<> &sourceField,
         gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhsExtra);
         this->apply(visitor,targetPatch,targetSide);
     }
-}
+    else
+        gsInfo << "Doesn't look like matching boundaries!\n"
+               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
+               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
+ }
 
 template <class T>
 int gsElasticityAssembler<T>::checkMatchingBoundaries(const gsGeometry<> & sourceBoundary,
                                                       const gsGeometry<> & targetBoundary)
 {
+    const T absTol = 1e-6; // another magic number
+
+    int sDim = sourceBoundary.dimensions().first;
+    int tDim = targetBoundary.dimensions().first;
+
+    if (sDim == 1 && tDim == 1)
+    {
+        gsMatrix<> startPoint;
+        startPoint.resize(1,1);
+        startPoint.at(0) = 0.;
+        gsMatrix<> endPoint;
+        endPoint.resize(1,1);
+        endPoint.at(0) = 1.;
+
+        gsMatrix<> sourceStart = sourceBoundary.eval(startPoint);
+        gsMatrix<> sourceEnd = sourceBoundary.eval(endPoint);
+
+        gsMatrix<> targetStart = targetBoundary.eval(startPoint);
+        gsMatrix<> targetEnd = targetBoundary.eval(endPoint);
+
+        if ((sourceStart-targetStart).norm() + (sourceEnd-targetEnd).norm() < absTol &&
+             sourceBoundary.coefsSize() == targetBoundary.coefsSize())
+            return 1;
+        else if ((sourceStart-targetEnd).norm() + (sourceEnd-targetStart).norm() < absTol &&
+                  sourceBoundary.coefsSize() == targetBoundary.coefsSize())
+            return -1;
+        else
+            return 0;
+    }
+    else if (sDim == 1 && tDim == 2)
+    {
+        gsMatrix<> startPoint;
+        startPoint.resize(1,1);
+        startPoint.at(0) = 0.;
+        gsMatrix<> endPoint;
+        endPoint.resize(1,1);
+        endPoint.at(0) = 1.;
+
+        gsMatrix<> sourceStart = sourceBoundary.eval(startPoint);
+        gsMatrix<> sourceEnd = sourceBoundary.eval(endPoint);
+
+        if (targetBoundary.dimensions().first == 2)
+        {
+            startPoint.conservativeResize(2,1);
+            startPoint(1) = 0.;
+            endPoint.conservativeResize(2,1);
+            endPoint(1) = 0.;
+
+        }
+        gsMatrix<> targetStart = targetBoundary.eval(startPoint);
+        gsMatrix<> targetEnd = targetBoundary.eval(endPoint);
+
+        real_t alignedCheck = (sourceStart.at(0)-targetStart.at(0))*(sourceStart.at(0)-targetStart.at(0)) +
+                              (sourceStart.at(1)-targetStart.at(1))*(sourceStart.at(1)-targetStart.at(1)) +
+                              (sourceEnd.at(0)-targetEnd.at(0))*(sourceEnd.at(0)-targetEnd.at(0)) +
+                              (sourceEnd.at(1)-targetEnd.at(1))*(sourceEnd.at(1)-targetEnd.at(1));
+
+        real_t reverseCheck = (sourceStart.at(0)-targetEnd.at(0))*(sourceStart.at(0)-targetEnd.at(0)) +
+                              (sourceStart.at(1)-targetEnd.at(1))*(sourceStart.at(1)-targetEnd.at(1)) +
+                              (sourceEnd.at(0)-targetStart.at(0))*(sourceEnd.at(0)-targetStart.at(0)) +
+                              (sourceEnd.at(1)-targetStart.at(1))*(sourceEnd.at(1)-targetStart.at(1));
+
+        if (alignedCheck < absTol)
+            return 1;
+        else if (reverseCheck < absTol)
+            return -1;
+        else
+            return 0;
+    }
+    else if (sDim == 2 && tDim == 2)
+    {
+        gsInfo << "Accurate orientation check for two 3D is not implemented\n";
+        return 1;
+    }
+
+    /*
     const T absTol = 1e-6; // another magic number
 
     gsMatrix<> startPoint;
@@ -889,10 +973,12 @@ int gsElasticityAssembler<T>::checkMatchingBoundaries(const gsGeometry<> & sourc
         gsInfo << "Target start\n" << targetStart << std::endl << "Target end\n" << targetEnd << std::endl;
         return 0;
     }
+    */
+    return 0;
 }
 
 template <class T>
-void gsElasticityAssembler<T>::setDirichletDoFs(const gsMultiPatch<> & sourceGeometry,
+void gsElasticityAssembler<T>::addDirichletData(const gsMultiPatch<> & sourceGeometry,
                                                 const gsMultiPatch<> & sourceSolution,
                                                 int sourcePatch, const boxSide & sourceSide,
                                                 int targetPatch, const boxSide & targetSide)
@@ -907,15 +993,19 @@ void gsElasticityAssembler<T>::setDirichletDoFs(const gsMultiPatch<> & sourceGeo
     {
         setDirichletDoFs(sourceSolution.piece(sourcePatch).boundary(sourceSide)->coefs().colwise().reverse(),targetPatch,targetSide);
     }
+    else
+        gsInfo << "Doesn't look like matching boundaries!\n"
+               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
+               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
 
 }
 
 template <class T>
-void gsElasticityAssembler<T>::setDirichletDoFs(const gsField<> & sourceField,
+void gsElasticityAssembler<T>::addDirichletData(const gsField<> & sourceField,
                                                 int sourcePatch, const boxSide & sourceSide,
                                                 int targetPatch, const boxSide & targetSide)
 {
-    int matchingMode = checkMatchingBoundaries(*(sourceField.patch(sourcePatch).boundary(sourceSide)),
+    int matchingMode = checkMatchingBoundaries(*(sourceField.patches().patch(sourcePatch).boundary(sourceSide)),
                                                *(m_patches.patch(targetPatch).boundary(targetSide)));
     if (matchingMode == 1)
     {
@@ -925,6 +1015,10 @@ void gsElasticityAssembler<T>::setDirichletDoFs(const gsField<> & sourceField,
     {
         setDirichletDoFs(sourceField.igaFunction(sourcePatch).boundary(sourceSide)->coefs().colwise().reverse(),targetPatch,targetSide);
     }
+    else
+        gsInfo << "Doesn't look like matching boundaries!\n"
+               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
+               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
 
 }
 

@@ -184,7 +184,8 @@ public:
 
     /// Add already computed neumann boundary data to the rhs vector.
     /// Resulting rhs is saved in rhsExtra member and can be accessed
-    /// or cleared by the corresponding class methods. (2D only!!)
+    /// or cleared by the corresponding class methods.
+    /// (orientation and size check for 2D/2.5D only)
 
     void addNeummannData(const gsMultiPatch<> & sourceGeometry,
                           const gsMultiPatch<> & sourceSolution,
@@ -196,20 +197,18 @@ public:
                           int targetPatch, const boxSide & targetSide);
 
     /// Add already computed Dirichlet boundary data to the specified sides.
-    /// To be used in 2D only. And only with dirichlet::penalization/elimination strategy
+    /// Orientation check only for 2D.
 
-    void setDirichletDoFs(const gsMultiPatch<> & sourceGeometry,
+    void addDirichletData(const gsMultiPatch<> & sourceGeometry,
                           const gsMultiPatch<> & sourceSolution,
                           int sourcePatch, const boxSide & sourceSide,
                           int targetPatch, const boxSide & targetSide);
 
-    void setDirichletDoFs(const gsField<> & sourceField,
+    void addDirichletData(const gsField<> & sourceField,
                           int sourcePatch, const boxSide & sourceSide,
                           int targetPatch, const boxSide & targetSide);
 
-    void setDirichletDoFs(const gsMatrix<> & ddofs,
-                          int targetPatch,
-                          const boxSide & targetSide);
+
 
 
 
@@ -256,6 +255,10 @@ protected:
     /// return 0 if ends don't match
     int checkMatchingBoundaries(const gsGeometry<> & sourceBoundary,
                                 const gsGeometry<> & targetBoundary);
+
+    void setDirichletDoFs(const gsMatrix<> & ddofs,
+                          int targetPatch,
+                          const boxSide & targetSide);
 
 
 protected:

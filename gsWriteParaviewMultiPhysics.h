@@ -13,12 +13,12 @@
     Author(s): A. Shamanskiy (TU Kaiserslautern)
     Inspired by gsWriteParaview.h by A. Mantzaflaris
 */
+#pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsIO/gsParaviewCollection.h>
 
 #define NS 1000
-
-#pragma once
 
 namespace gismo
 {
@@ -33,6 +33,17 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> field
                      unsigned npts=NS, bool mesh = false);
 
 
+/// \brief Write a file containing several fields defined on the same geometry to ONE paraview file
+/// and adds it as a timestep to a Paraview collection
+/// \param fields a map of field pointers
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each patch
+/// \param mesh if true, the parameter mesh is plotted as well
+template<class T>
+void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
+                                         gsParaviewCollection & collection, int time, unsigned npts=NS);
+
+
 /// \brief Extract and evaluate geometry and the fields for a single patch
 ///
 /// \param fields a map of field pointers
@@ -40,7 +51,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> field
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each patch
 template<class T>
-void writeSinglePatchMultiField(std::map<std::string, const gsField<T> *> fields,
+void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string, const gsField<T> *> fields,
                                 const unsigned patchNum,
                                 std::string const & fn,
                                 unsigned npts);
