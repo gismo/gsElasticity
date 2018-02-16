@@ -56,8 +56,8 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
 
     for ( size_t p = 0; p < numP; ++p)
     {
-        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + std::to_string(time) + "_" + std::to_string(p),npts);
-        collection.addTimestep(fileName + std::to_string(time) + "_",p,time,".vts");
+        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + util::to_string(time) + "_" + util::to_string(p),npts);
+        collection.addTimestep(fileName + util::to_string(time) + "_",p,time,".vts");
     }
 
 }
