@@ -60,8 +60,8 @@ public:
     void setDeformed(const gsGeometry<T> & deformation,
 		             const gsGeometry<T> & pressure)
     {
-        m_deformation = safe(deformation.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
-		m_pressure = safe(pressure.evaluator(NEED_VALUE)); 
+        m_deformation = memory::make_unique(deformation.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
+		m_pressure = memory::make_unique(pressure.evaluator(NEED_VALUE));
     }
 
     /// Evaluate on element

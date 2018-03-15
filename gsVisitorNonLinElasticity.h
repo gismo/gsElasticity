@@ -58,7 +58,7 @@ public:
 	/// Sets the gsGeometryEvaluator \em m_deformation using \em deformed
     void setDeformed(const gsGeometry<T> & deformed)
     {
-        m_deformation = safe(deformed.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
+        m_deformation = memory::make_unique(deformed.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
     }
 
 	/// Sets the \em m_MATERIAL_LAW to 0: St. Venant-Kirchhoff, 1: Neo-Hooke
