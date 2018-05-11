@@ -291,5 +291,74 @@ void gsElPoissonAssembler<T>::addNeummannData(const gsField<> & sourceField,
 
 }
 
+template <class T>
+gsFluxFunction<T>::gsFluxFunction(int sourcePatch, boundary::side sourceSide,
+                                  gsMultiPatch<T> const & sourceGeo,
+                                  gsMultiPatch<T> const & sourceSolution,
+                                  T alpha)
+    : m_patch(sourcePatch),
+      m_side(sourceSide),
+      m_geo(sourceGeo),
+      m_sol(sourceSolution),
+      m_alpha(alpha)
+{
+
+}
+
+template <class T>
+void gsFluxFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const
+{
+    gsMatrix<T> params;
+    m_geo.patch(m_patch).invertPoints(u,params);
+
+    typename gsGeometry<T>::Evaluator geoEval(
+                m_geo.patch(m_patch).evaluator(NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM));
+    geoEval->evaluateAt(params);
+    gsMatrix<T> grads;
+    m_sol.patch(m_patch).deriv_into(params,grads);
+
+    gsMatrix<T> physGrad;
+    gsVector<T> normal;
+    result.resize(1,params.cols());
+    for (int i = 0; i < params.cols(); ++i)
+    {
+        geoEval->outerNormal(i,m_side,normal);
+        geoEval->transformGradients(i,grads,physGrad);
+        result.at(i) = (-1*m_alpha*physGrad.transpose()*normal/normal.norm())(0,0);
+    }
+}
+
+template <class T>
+gsGradFunction<T>::gsGradFunction(int sourcePatch,
+                                  gsMultiPatch<T> const & sourceGeo,
+                                  gsMultiPatch<T> const & sourceSolution)
+    : m_patch(sourcePatch),
+      m_geo(sourceGeo),
+      m_sol(sourceSolution)
+{
+
+}
+
+template <class T>
+void gsGradFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const
+{
+    typename gsGeometry<T>::Evaluator geoEval(
+                m_geo.patch(m_patch).evaluator(NEED_GRAD_TRANSFORM));
+    geoEval->evaluateAt(u);
+
+    gsMatrix<T> grads;
+    m_sol.patch(m_patch).deriv_into(u,grads);
+    result.resize(targetDim(),u.cols());
+
+    gsMatrix<T> physGrad;
+    for (int i = 0; i < u.cols(); ++i)
+    {
+        geoEval->transformGradients(i,grads,physGrad);
+
+        result(0,i) = physGrad.at(0);
+        result(1,i) = physGrad.at(1);
+    }
+}
+
 
 }// namespace gismo

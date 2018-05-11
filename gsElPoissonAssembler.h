@@ -22,6 +22,13 @@
 namespace gismo
 {
 
+template< class T>
+class gsFluxFunction;
+
+template< class T>
+class gsGradFunction;
+
+
 /** @brief
    Thermo-elasticity module utilizes the Poisson Assembler to solve
    the heat equation. Since the incoming heat data from Navier-Stokes solver
@@ -130,6 +137,66 @@ bool gsReadVector(gsMatrix<T> & vector,const std::string& fname)
 
     return result;
 }
+
+
+template <class T>
+class gsFluxFunction : public gsFunction<T>
+{
+public:
+
+    gsFluxFunction(int sourcePatch,boundary::side sourceSide,gsMultiPatch<T> const & sourceGeo,
+                   gsMultiPatch<T> const & sourceSolution, T alpha = 1.);
+
+    int domainDim() const
+    {
+        return m_geo.domainDim();
+    }
+
+    int targetDim() const
+    {
+        return m_sol.targetDim();
+    }
+
+    void eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const;
+
+protected:
+
+    int const m_patch;
+    boundary::side m_side;
+    gsMultiPatch<T> const & m_geo;
+    gsMultiPatch<T> const & m_sol;
+    T m_alpha;
+
+}; // class definition ends
+
+template <class T>
+class gsGradFunction : public gsFunction<T>
+{
+public:
+
+    gsGradFunction(int sourcePatch,gsMultiPatch<T> const & sourceGeo,
+                   gsMultiPatch<T> const & sourceSolution);
+
+    int domainDim() const
+    {
+        return m_geo.domainDim();
+    }
+
+    int targetDim() const
+    {
+        return m_sol.targetDim()*m_geo.domainDim();
+    }
+
+    void eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const;
+
+protected:
+
+    int const m_patch;
+    gsMultiPatch<T> const & m_geo;
+    gsMultiPatch<T> const & m_sol;
+
+}; // class definition ends
+
 
 } // namespace gismo
 

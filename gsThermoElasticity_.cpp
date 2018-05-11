@@ -8,5 +8,7 @@ namespace gismo
 {
     CLASS_TEMPLATE_INST gsElPoissonAssembler<real_t>;
     CLASS_TEMPLATE_INST gsElThermoAssembler<real_t>;
+    CLASS_TEMPLATE_INST gsFluxFunction<real_t>;
+    CLASS_TEMPLATE_INST gsGradFunction<real_t>;
 }
 
