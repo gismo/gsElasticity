@@ -47,11 +47,15 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 												gsBoundaryConditions<T> const & bconditions,
                                                 const gsFunction<T> & body_force,
                                                 dirichlet::values computeStrategy,
-                                                dirichlet::strategy enforceStrategy)
+                                                dirichlet::strategy enforceStrategy,
+                                                gsFunction<T> * E,
+                                                gsFunction<T> * pr)
 :   Base(patches), 
 	m_rho(density_rho),
     m_bConditions(bconditions),
-    m_bodyForce(&body_force)
+    m_bodyForce(&body_force),
+    f_E(E),
+    f_pr(pr)
 {
     // Copy the spline basis
     m_bases.push_back(bases);
@@ -67,8 +71,9 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 	
     // Mark boundary dofs
     m_dofMappers.resize(m_dim);
-	for (index_t i = 0; i < m_dim; i++)
-		m_bases.front().getMapper(true, m_bConditions, i, m_dofMappers[i], true); // m_bases.front().getMapper(true, m_bConditions, m_dofMappers[i]); 
+    for (index_t i = 0; i < m_dim; i++)
+        m_bases.front().getMapper(enforceStrategy,iFace::glue,m_bConditions,m_dofMappers[i],i,true);
+        //m_bases.front().getMapper(true, m_bConditions, i, m_dofMappers[i], true); // m_bases.front().getMapper(true, m_bConditions, m_dofMappers[i]);
 
     // Determine system size
     m_dofs = 0;
@@ -157,7 +162,7 @@ void gsElasticityAssembler<T>::assemble()
     m_rhs.setZero();
 
     // Assemble volume stiffness and load vector integrals
-    gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force);
+    gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force,f_E,f_pr);
     for (unsigned np = 0; np < m_patches.nPatches(); ++np )
     {
         //Assemble stiffness matrix and rhs for the local patch
@@ -176,20 +181,13 @@ template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 {
     std::cout << "Nonlinear elasticity: assemble residual and tangential matrix." << std::endl;
-	
-	if ( m_ddof.size() == 0 )
-    {
-        // assemble(); and uncomment "computeDirichletDofs();" in assemble(); and comment "computeDirichletDofs();" in constructor
-        computeDirichletDofs();
-        return;
-    }
 
-
-    // Initialize the matrix and rhs vector
+    m_matrix.resize(m_dofs,m_dofs);
     m_matrix.setZero();
-    
-    // Resize the load vector
-    m_rhs.setZero(m_dofs, 1);
+
+    m_rhs.resize(m_dofs,1);
+    m_rhs.setZero();
+
 
     gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0), m_tfac_force);
 	//gsVisitorNonLinElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0));
@@ -211,6 +209,8 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 
     // Assembly is done, compress the matrix
     m_matrix.makeCompressed();   
+
+
 }
 
 size_t sumBoundarySize(size_t a, gsDofMapper b) { return a + b.boundarySize(); }

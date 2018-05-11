@@ -61,7 +61,10 @@ public:
 							// Body force per unit surface/volume (in 2D/3D)
                             const gsFunction<T> & body_force,
                             dirichlet::values computeStrategy = dirichlet::l2Projection,
-                            dirichlet::strategy enforceStrategy = dirichlet::elimination);
+                            dirichlet::strategy enforceStrategy = dirichlet::elimination,
+                            gsFunction<T> * E = nullptr,
+                            gsFunction<T> * pr = nullptr);
+
 
 public:
 
@@ -209,7 +212,9 @@ public:
                           int targetPatch, const boxSide & targetSide);
 
 
-
+    void setDirichletDoFs(const gsMatrix<> & ddofs,
+                          int targetPatch,
+                          const boxSide & targetSide);
 
 
     const gsMatrix<T> & rhs();
@@ -256,9 +261,7 @@ protected:
     int checkMatchingBoundaries(const gsGeometry<> & sourceBoundary,
                                 const gsGeometry<> & targetBoundary);
 
-    void setDirichletDoFs(const gsMatrix<> & ddofs,
-                          int targetPatch,
-                          const boxSide & targetSide);
+
 
 
 protected:
@@ -266,6 +269,8 @@ protected:
 	/// Material parameters
     T m_lambda;
     T m_mu;
+
+
 	T m_rho;
 	int m_MATERIAL_LAW;
 
@@ -289,6 +294,9 @@ protected:
 
     // Strategy for enforcing Dirichlet DoFs
     //dirichlet::strategy m_dirStrategy;
+
+    gsFunction<T> * f_E;
+    gsFunction<T> * f_pr;
 
 protected:
 

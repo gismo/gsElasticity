@@ -25,12 +25,15 @@ class gsVisitorLinearElasticity
 public:
 
     /// Constructor
-    gsVisitorLinearElasticity(T lambda, T mu, T rho, const gsFunction<T> & body_force, T tfac = 1.0) : 
+    gsVisitorLinearElasticity(T lambda, T mu, T rho, const gsFunction<T> & body_force, T tfac = 1.0,
+                              gsFunction<T> * E = nullptr, gsFunction<T> * pr = nullptr) :
     m_lambda(lambda),
     m_mu(mu),
 	m_rho(rho),
     m_bodyForce_ptr(&body_force),
-	m_tfac(tfac)
+    m_tfac(tfac),
+    f_E(E),
+    f_pr(pr)
     { }
 
     void initialize(const gsBasis<T> & basis, 
@@ -83,6 +86,11 @@ public:
         
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geoEval.evaluateAt(quNodes);
+
+        if (f_E != nullptr)
+            f_E->eval_into(quNodes,eData);
+        if (f_pr != nullptr)
+            f_pr->eval_into(quNodes,prData);
         
         // Evaluate right-hand side at the geometry points
         m_bodyForce_ptr->eval_into( geoEval.values(), forceVals );
@@ -99,10 +107,22 @@ public:
         gsMatrix<T> & bVals  = basisData[0];
         gsMatrix<T> & bGrads = basisData[1];
 
-		const T v_2mulam = 2.*m_mu + m_lambda;
+        T v_2mulam = 2.*m_mu + m_lambda;
 
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
-        {           
+        {
+            if (f_E != nullptr)
+            {
+                T E = eData.at(k);
+                T pr = prData.at(k);
+
+                m_lambda = E * pr / ( (1. + pr) * (1. - 2.*pr) );
+                m_mu = E / (2.*(1.+pr));
+
+                v_2mulam = 2.*m_mu + m_lambda;
+            }
+
+
             // Multiply weight by the geometry measure
             const T weight = quWeights[k] * geoEval.measure(k);
 
@@ -249,6 +269,8 @@ public:
 protected:
     // Lambda, mu, rho
     T m_lambda, m_mu, m_rho;
+
+
 	
     // Body forces
     const gsFunction<T> * m_bodyForce_ptr;
@@ -262,6 +284,10 @@ protected:
 
     // Basis values
     std::vector<gsMatrix<T> > basisData;
+
+    gsMatrix<T> eData;
+    gsMatrix<T> prData;
+
     gsMatrix<unsigned> actives;
 	gsMatrix<T>		   physGrad, physGrad_symm;
     index_t            numActive;
@@ -276,6 +302,9 @@ protected:
     // Local matrices
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
+
+    gsFunction<T> * f_E;
+    gsFunction<T> * f_pr;
 };
 
 
