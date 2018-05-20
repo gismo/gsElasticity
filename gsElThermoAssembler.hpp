@@ -77,14 +77,14 @@ void gsElThermoAssembler<T>::assembleThermo(const gsMultiPatch<T> & heatField)
 
     for (unsigned p = 0; p < m_patches.nPatches(); ++p)
     {
-        gsVisitorElThermo<T> visitor(heatField.piece(p).coefs(),m_rhsExtra,
+        gsVisitorElThermo<T> visitor(heatField.piece(p),m_rhsExtra,
                                      m_lambda,m_mu,m_thExpCoef);
         this->apply(visitor,p);
     }
 
     for(std::vector<std::pair<int, int> >::iterator it = nonDirichletSides.begin(); it != nonDirichletSides.end(); ++it)
     {
-        gsVisitorElThermoBoundary<T> bVisitor(heatField.piece(it->first).coefs(),it->second,m_rhsExtra,m_initTemp,
+        gsVisitorElThermoBoundary<T> bVisitor(heatField.piece(it->first),it->second,m_rhsExtra,m_initTemp,
                                               m_lambda,m_mu,m_thExpCoef);
         this->apply(bVisitor,it->first,it->second);
     }

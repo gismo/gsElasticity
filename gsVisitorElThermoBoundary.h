@@ -21,9 +21,9 @@ class gsVisitorElThermoBoundary
 {
 public:
 
-    gsVisitorElThermoBoundary(const gsMatrix<T> & heatCoeffs, boxSide s, gsMatrix<T> & rhsExtra, T initTemp,
+    gsVisitorElThermoBoundary(const gsGeometry<T> & heatSol, boxSide s, gsMatrix<T> & rhsExtra, T initTemp,
                               T lambda, T mu, T thExpCoef) :
-        thermoCoeffs(heatCoeffs),side(s),m_rhsExtra(rhsExtra),startTemp(initTemp),
+        thermoSol(heatSol),side(s),m_rhsExtra(rhsExtra),startTemp(initTemp),
         m_lambda(lambda),m_mu(mu),m_thExpCoef(thExpCoef)
     {
 
@@ -64,11 +64,7 @@ public:
         geoEval.evaluateAt(quNodes);
 
         // Compute heat(thermo) values
-        thermoValues.setZero(1,quNodes.cols());
-        for (int j = 0; j < numActiveFunctions; ++j)
-        {
-            thermoValues += basisValues.row(j)*thermoCoeffs.at(localActiveIndices.at(j));
-        }
+        thermoSol.eval_into(quNodes,thermoValues);
 
         // Initialize local rhs
         localRhs.setZero(m_dim*numActiveFunctions, 1 );
@@ -117,7 +113,7 @@ public:
 protected:
 
     // Thermo info
-    const gsMatrix<T> & thermoCoeffs;
+    const gsGeometry<T> & thermoSol;
     boxSide side;
     gsMatrix<T> thermoValues;
 

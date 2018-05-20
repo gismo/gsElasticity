@@ -21,9 +21,9 @@ class gsVisitorElThermo
 {
 public:
 
-    gsVisitorElThermo(const gsMatrix<T> & heatCoeffs, gsMatrix<T> & rhsExtra,
+    gsVisitorElThermo(const gsGeometry<T> & heatSol, gsMatrix<T> & rhsExtra,
                       T lambda, T mu, T thExpCoef) :
-        thermoCoeffs(heatCoeffs),m_rhsExtra(rhsExtra),
+        thermoSol(heatSol),m_rhsExtra(rhsExtra),
         m_lambda(lambda),m_mu(mu),m_thExpCoef(thExpCoef)
     {
 
@@ -42,7 +42,7 @@ public:
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
     }
 
@@ -61,6 +61,7 @@ public:
 
         heatGrad.setZero(2,quNodes.cols());
         localRhs.setZero(m_dim*numActiveFunctions,1);
+        thermoSol.deriv_into(quNodes,heatGrad);
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
@@ -69,20 +70,14 @@ public:
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
-            geoEval.transformGradients(k,basisData[1],physGrad);
-            heatGrad.setZero(m_dim,1);
+            geoEval.transformGradients(k,heatGrad,physGrad);
 
-            for (int j = 0; j < numActiveFunctions; ++j)
-            {
-                heatGrad += thermoCoeffs.at(localActiveIndices.at(j)) * physGrad.col(j);
-            }
-
-            const T weight = m_thExpCoef*(2*m_mu+m_dim*m_lambda)*quWeights[k];
+            const T weight = m_thExpCoef*(2*m_mu+m_dim*m_lambda)*quWeights[k]*geoEval.measure(k);
 
             for (index_t d = 0; d < m_dim; ++d)
             {
-                localRhs.middleRows(d*numActiveFunctions,numActiveFunctions).noalias() +=
-                        weight * heatGrad(d,0) * basisData[0].col(k);
+                localRhs.middleRows(d*numActiveFunctions,numActiveFunctions).noalias() -=
+                        weight * physGrad(d,0) * basisData[0].col(k);
             }
         }
     }
@@ -112,7 +107,7 @@ public:
 
 protected:
 
-    const gsMatrix<T> & thermoCoeffs;
+    const gsGeometry<T> & thermoSol;
     gsMatrix<T> heatGrad, physGrad;
 
     index_t m_dim;
