@@ -329,11 +329,8 @@ void gsFluxFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) c
 }
 
 template <class T>
-gsGradFunction<T>::gsGradFunction(int sourcePatch,
-                                  gsMultiPatch<T> const & sourceGeo,
-                                  gsMultiPatch<T> const & sourceSolution)
+gsGradFunction<T>::gsGradFunction(int sourcePatch,gsMultiPatch<T> const & sourceSolution)
     : m_patch(sourcePatch),
-      m_geo(sourceGeo),
       m_sol(sourceSolution)
 {
 
@@ -342,6 +339,23 @@ gsGradFunction<T>::gsGradFunction(int sourcePatch,
 template <class T>
 void gsGradFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const
 {
+    m_sol.patch(m_patch).deriv_into(u,result);
+}
+
+template <class T>
+gsPhysGradFunction<T>::gsPhysGradFunction(int sourcePatch,
+                                          gsMultiPatch<T> const & sourceGeo,
+                                          gsMultiPatch<T> const & sourceSolution)
+    : m_patch(sourcePatch),
+      m_geo(sourceGeo),
+      m_sol(sourceSolution)
+{
+
+}
+
+template <class T>
+void gsPhysGradFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const
+{
     typename gsGeometry<T>::Evaluator geoEval(
                 m_geo.patch(m_patch).evaluator(NEED_GRAD_TRANSFORM));
     geoEval->evaluateAt(u);
@@ -349,15 +363,40 @@ void gsGradFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) c
     gsMatrix<T> grads;
     m_sol.patch(m_patch).deriv_into(u,grads);
     result.resize(targetDim(),u.cols());
-
     gsMatrix<T> physGrad;
     for (int i = 0; i < u.cols(); ++i)
     {
         geoEval->transformGradients(i,grads,physGrad);
-
         result(0,i) = physGrad.at(0);
         result(1,i) = physGrad.at(1);
     }
+}
+
+template <class T>
+gsDetFunction<T>::gsDetFunction(int sourcePatch, gsMultiPatch<T> const & sourceGeo)
+    : m_patch(sourcePatch),
+      m_geo(sourceGeo)
+{
+
+}
+
+template <class T>
+void gsDetFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const
+{
+    typename gsGeometry<T>::Evaluator geoEval(
+                m_geo.patch(m_patch).evaluator(NEED_MEASURE));
+    geoEval->evaluateAt(u);
+    result.resize(1,u.cols());
+    gsInfo << "GradsTR\n";
+    gsMatrix<T> grads;
+    m_geo.patch(m_patch).deriv_into(u,grads);
+    gsInfo << grads << std::endl;
+    gsInfo << jac
+    for (int i = 0; i < u.cols(); ++i)
+    {
+        result(0,i) = geoEval->jacDet(i);
+    }
+
 }
 
 

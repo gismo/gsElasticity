@@ -28,6 +28,12 @@ class gsFluxFunction;
 template< class T>
 class gsGradFunction;
 
+template< class T>
+class gsPhysGradFunction;
+
+template< class T>
+class gsDetFunction;
+
 
 /** @brief
    Thermo-elasticity module utilizes the Poisson Assembler to solve
@@ -174,8 +180,34 @@ class gsGradFunction : public gsFunction<T>
 {
 public:
 
-    gsGradFunction(int sourcePatch,gsMultiPatch<T> const & sourceGeo,
-                   gsMultiPatch<T> const & sourceSolution);
+    gsGradFunction(int sourcePatch,gsMultiPatch<T> const & sourceSolution);
+
+    int domainDim() const
+    {
+        return m_sol.domainDim();
+    }
+
+    int targetDim() const
+    {
+        return m_sol.targetDim()*m_sol.domainDim();
+    }
+
+    void eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const;
+
+protected:
+
+    int const m_patch;
+    gsMultiPatch<T> const & m_sol;
+
+}; // class definition ends
+
+template <class T>
+class gsPhysGradFunction : public gsFunction<T>
+{
+public:
+
+    gsPhysGradFunction(int sourcePatch,gsMultiPatch<T> const & sourceGeo,
+                       gsMultiPatch<T> const & sourceSolution);
 
     int domainDim() const
     {
@@ -194,6 +226,32 @@ protected:
     int const m_patch;
     gsMultiPatch<T> const & m_geo;
     gsMultiPatch<T> const & m_sol;
+
+}; // class definition ends
+
+template <class T>
+class gsDetFunction : public gsFunction<T>
+{
+public:
+
+    gsDetFunction(int sourcePatch,gsMultiPatch<T> const & sourceGeo);
+
+    int domainDim() const
+    {
+        return m_geo.domainDim();
+    }
+
+    int targetDim() const
+    {
+        return 1;
+    }
+
+    void eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const;
+
+protected:
+
+    int const m_patch;
+    gsMultiPatch<T> const & m_geo;
 
 }; // class definition ends
 
