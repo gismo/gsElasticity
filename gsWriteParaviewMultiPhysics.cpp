@@ -85,10 +85,11 @@ void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T
     {
         data[it->first] = it->second->isParametric() ?
                     it->second->function(patchNum).eval(pts) : it->second->function(patchNum).eval(eval_geo);
-        if ( data[it->first].rows() > 1 )
+
+        if ( data[it->first].rows() == 2 )
         {
             data[it->first].conservativeResize(3,eval_geo.cols() );
-            data[it->first].bottomRows( 3-d ).setZero();
+            data[it->first].row(2).setZero();
         }
     }
 
@@ -113,14 +114,14 @@ void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T
         gsWarn<< "Data is more than 3 dimensions.\n";
     }
 
-    for (typename std::map<std::string, gsMatrix<> >::iterator it = data.begin(); it != data.end(); it++)
+    /*for (typename std::map<std::string, gsMatrix<> >::iterator it = data.begin(); it != data.end(); it++)
     {
         if ( it->second.rows() > 1 )
         {
             it->second.conservativeResize(3,eval_geo.cols() );
-            it->second.bottomRows( 3-d ).setZero();
+            it->second.bottomRows( 3-dd ).setZero();
         }
-    }
+    }*/
 
     gsWriteParaviewMultiTPgrid(eval_geo, data, np.template cast<index_t>(), fn);
 }
