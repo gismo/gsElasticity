@@ -391,7 +391,7 @@ void gsDetFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) co
     gsMatrix<T> grads;
     m_geo.patch(m_patch).deriv_into(u,grads);
     gsInfo << grads << std::endl;
-    gsInfo << jac
+    //gsInfo << jac
     for (int i = 0; i < u.cols(); ++i)
     {
         result(0,i) = geoEval->jacDet(i);
