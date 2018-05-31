@@ -275,6 +275,23 @@ void gsElPoissonAssembler<T>::setUnitingConstraint(const boxSide & side, bool ve
 }
 
 template <class T>
+void gsElPoissonAssembler<T>::extractSolutionVector(const gsMultiPatch<> & solution, gsVector<> & vector)
+{
+    vector.setOnes(gsPoissonAssembler<T>::numDofs(),1);
+    const gsDofMapper & mapper = m_system.colMapper(0);
+
+    for (unsigned p = 0; p < solution.nPatches(); ++p)
+    {
+        for (int i = 0; i < solution.patch(p).coefs().rows(); ++i)
+        {
+            int globalI = mapper.index(i,p);
+            if (mapper.is_free_index(globalI))
+                vector(globalI,0) = solution.patch(p).coefs()(i,0);
+        }
+    }
+}
+
+template <class T>
 void gsElPoissonAssembler<T>::addNeummannData(const gsMultiPatch<> & sourceGeometry,
                                               const gsMultiPatch<> & sourceSolution,
                                               int sourcePatch, const boxSide & sourceSide,
@@ -290,6 +307,8 @@ void gsElPoissonAssembler<T>::addNeummannData(const gsField<> & sourceField,
 {
 
 }
+
+
 
 template <class T>
 gsFluxFunction<T>::gsFluxFunction(int sourcePatch, boundary::side sourceSide,
@@ -387,11 +406,9 @@ void gsDetFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) co
                 m_geo.patch(m_patch).evaluator(NEED_MEASURE));
     geoEval->evaluateAt(u);
     result.resize(1,u.cols());
-    gsInfo << "GradsTR\n";
     gsMatrix<T> grads;
     m_geo.patch(m_patch).deriv_into(u,grads);
-    gsInfo << grads << std::endl;
-    //gsInfo << jac
+
     for (int i = 0; i < u.cols(); ++i)
     {
         result(0,i) = geoEval->jacDet(i);

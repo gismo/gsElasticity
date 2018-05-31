@@ -88,6 +88,8 @@ public:
 
    void setUnitingConstraint(const boxSide & side, bool verbosity = false);
 
+   void extractSolutionVector(const gsMultiPatch<> & solution, gsVector<> & vector);
+
 protected:
 
    void setDirichletDoFs(const gsMatrix<> & ddofs, int targetPatch, const boxSide & targetSide);
