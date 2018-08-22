@@ -30,7 +30,8 @@ gsElThermoAssembler<T>::gsElThermoAssembler(const gsMultiPatch<T> & patches,
                                             T initTemp,
                                             const gsBoundaryConditions<T> & bcInfo,
                                             const gsFunction<T> & force,
-                                            const gsMultiPatch<T> & heatSolution,
+                                            //const gsMultiPatch<T> & heatSolution,
+                                            const gsFunctionSet<T> & heatSolution,
                                             dirichlet::strategy enforceStrategy,
                                             dirichlet::values computeStrategy)
     :gsElasticityAssembler<T>(patches,bases,youngModulus,poissonsRatio,1.,bcInfo,force,computeStrategy,enforceStrategy),
@@ -69,7 +70,8 @@ void gsElThermoAssembler<T>::findNonDirichletSides()
 }
 
 template <class T>
-void gsElThermoAssembler<T>::assembleThermo(const gsMultiPatch<T> & heatField)
+//void gsElThermoAssembler<T>::assembleThermo(const gsMultiPatch<T> & heatField)
+void gsElThermoAssembler<T>::assembleThermo(const gsFunctionSet<T> & heatField)
 {
     GISMO_ASSERT(m_rhs.rows() != 0,
                  "Assemble() hasn't been called!");
@@ -77,21 +79,23 @@ void gsElThermoAssembler<T>::assembleThermo(const gsMultiPatch<T> & heatField)
 
     for (unsigned p = 0; p < m_patches.nPatches(); ++p)
     {
-        gsVisitorElThermo<T> visitor(heatField.piece(p),m_rhsExtra,
+        gsVisitorElThermo<T> visitor(heatField.function(p),m_rhsExtra,
                                      m_lambda,m_mu,m_thExpCoef);
         this->apply(visitor,p);
     }
 
     for(std::vector<std::pair<int, int> >::iterator it = nonDirichletSides.begin(); it != nonDirichletSides.end(); ++it)
     {
-        gsVisitorElThermoBoundary<T> bVisitor(heatField.piece(it->first),it->second,m_rhsExtra,m_initTemp,
+        gsVisitorElThermoBoundary<T> bVisitor(heatField.function(it->first),it->second,m_rhsExtra,m_initTemp,
                                               m_lambda,m_mu,m_thExpCoef);
         this->apply(bVisitor,it->first,it->second);
     }
 }
 
 template <class T>
-void gsElThermoAssembler<T>::setHeatSolution(const gsMultiPatch<T> & heatSolution)
+//void gsElThermoAssembler<T>::setHeatSolution(const gsMultiPatch<T> & heatSolution)
+void gsElThermoAssembler<T>::setHeatSolution(const gsFunctionSet<T> & heatSolution)
+
 {
     assembleThermo(heatSolution);
 }

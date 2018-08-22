@@ -21,7 +21,7 @@ class gsVisitorElThermoBoundary
 {
 public:
 
-    gsVisitorElThermoBoundary(const gsGeometry<T> & heatSol, boxSide s, gsMatrix<T> & rhsExtra, T initTemp,
+    gsVisitorElThermoBoundary(const gsFunction<T> & heatSol, boxSide s, gsMatrix<T> & rhsExtra, T initTemp,
                               T lambda, T mu, T thExpCoef) :
         thermoSol(heatSol),side(s),m_rhsExtra(rhsExtra),startTemp(initTemp),
         m_lambda(lambda),m_mu(mu),m_thExpCoef(thExpCoef)
@@ -113,7 +113,7 @@ public:
 protected:
 
     // Thermo info
-    const gsGeometry<T> & thermoSol;
+    const gsFunction<T> & thermoSol;
     boxSide side;
     gsMatrix<T> thermoValues;
 

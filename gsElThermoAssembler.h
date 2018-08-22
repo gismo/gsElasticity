@@ -31,7 +31,8 @@ public:
                         T initTemp,
                         const gsBoundaryConditions<T> & bcInfo,
                         const gsFunction<T> & force,
-                        const gsMultiPatch<T> & heatSolution,
+                        //const gsMultiPatch<T> & heatSolution,
+                        const gsFunctionSet<T> & heatSolution,
                         dirichlet::strategy enforceStrategy = dirichlet::elimination,
                         dirichlet::values computeStrategy = dirichlet::l2Projection);
 
@@ -40,17 +41,20 @@ public:
     /// independently by "assembleThermo()",
     /// useful for time-dependent themo-elasticity
     void assemble();
-    void setHeatSolution(const gsMultiPatch<T> & heatSolution);
+    //void setHeatSolution(const gsMultiPatch<T> & heatSolution);
+    void setHeatSolution(const gsFunctionSet<T> & heatSolution);
 
 protected:
 
     void findNonDirichletSides();
-    void assembleThermo(const gsMultiPatch<T> & heatField);
+    //void assembleThermo(const gsMultiPatch<T> & heatField);
+    void assembleThermo(const gsFunctionSet<T> & heatField);
 
 protected:
     T m_thExpCoef;
     T m_initTemp;
-    const gsMultiPatch<T> & m_heatSolution;
+    //const gsMultiPatch<T> & m_heatSolution;
+    const gsFunctionSet<T> & m_heatSolution;
     std::vector<std::pair<int,int> > nonDirichletSides;
 
     using gsElasticityAssembler<T>::m_patches;

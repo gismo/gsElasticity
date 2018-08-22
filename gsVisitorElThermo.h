@@ -21,7 +21,7 @@ class gsVisitorElThermo
 {
 public:
 
-    gsVisitorElThermo(const gsGeometry<T> & heatSol, gsMatrix<T> & rhsExtra,
+    gsVisitorElThermo(const gsFunction<T> & heatSol, gsMatrix<T> & rhsExtra,
                       T lambda, T mu, T thExpCoef) :
         thermoSol(heatSol),m_rhsExtra(rhsExtra),
         m_lambda(lambda),m_mu(mu),m_thExpCoef(thExpCoef)
@@ -107,7 +107,7 @@ public:
 
 protected:
 
-    const gsGeometry<T> & thermoSol;
+    const gsFunction<T> & thermoSol;
     gsMatrix<T> heatGrad, physGrad;
 
     index_t m_dim;
