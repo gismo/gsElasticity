@@ -15,7 +15,7 @@
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsIO/gsWriteParaview.hpp>
 
-#define PLOT_PRECISION 5
+#define PLOT_PRECISION 10
 
 namespace gismo
 {
