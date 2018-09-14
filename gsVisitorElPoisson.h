@@ -31,7 +31,6 @@ public:
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
-                         gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
         gsMatrix<T> & bVals  = basisData[0];
@@ -40,10 +39,10 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
-            const T weight = quWeights[k] * geoEval.measure(k);
+            const T weight = quWeights[k] * md.measure(k);
 
             // Compute physical gradients at k as a Dim x NumActive matrix
-            geoEval.transformGradients(k, bGrads, physGrad);
+            transformGradients(md, k, bGrads, physGrad);
 
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
             localMat.noalias() += pde_ptr->k() * weight * (physGrad.transpose() * physGrad);
@@ -58,7 +57,7 @@ protected:
     using gsVisitorPoisson<T>::localRhs;
     using gsVisitorPoisson<T>::localMat;
     using gsVisitorPoisson<T>::rhsVals;
-
+    using gsVisitorPoisson<T>::md;
 };
 
 } // namespace ends;

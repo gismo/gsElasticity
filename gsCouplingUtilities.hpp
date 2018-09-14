@@ -10,6 +10,7 @@
 */
 
 #include <gsThermoElasticity/gsCouplingUtilities.h>
+#include <gsCore/gsGeometryEvaluator.h>
 
 namespace gismo
 {
@@ -34,8 +35,7 @@ void gsFluxFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) c
     gsMatrix<T> params;
     m_geo.patch(m_patch).invertPoints(u,params);
 
-    typename gsGeometry<T>::Evaluator geoEval(
-                m_geo.patch(m_patch).evaluator(NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM));
+    typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM, m_geo.patch(m_patch)));
     geoEval->evaluateAt(params);
     gsMatrix<T> grads;
     m_sol.patch(m_patch).deriv_into(params,grads);
@@ -110,8 +110,7 @@ gsPhysGradFunction<T>::gsPhysGradFunction(int sourcePatch,
 template <class T>
 void gsPhysGradFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const
 {
-    typename gsGeometry<T>::Evaluator geoEval(
-                m_geo.patch(m_patch).evaluator(NEED_GRAD_TRANSFORM));
+    typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(NEED_GRAD_TRANSFORM, m_geo.patch(m_patch)));
     geoEval->evaluateAt(u);
 
     gsMatrix<T> grads;
@@ -137,8 +136,7 @@ gsDetFunction<T>::gsDetFunction(int sourcePatch, gsMultiPatch<T> const & sourceG
 template <class T>
 void gsDetFunction<T>::eval_into(gsMatrix<T> const & u, gsMatrix<T> & result) const
 {
-    typename gsGeometry<T>::Evaluator geoEval(
-                m_geo.patch(m_patch).evaluator(NEED_MEASURE));
+    typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(NEED_MEASURE, m_geo.patch(m_patch)));
     geoEval->evaluateAt(u);
     result.resize(1,u.cols());
     gsMatrix<T> grads;
