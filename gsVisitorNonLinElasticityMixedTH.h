@@ -35,8 +35,8 @@ public:
 									 const gsGeometry<T> & pressure,
 									 T tfac = 1.0) : 
     Base(lambda, mu, rho, body_force, tfac),
-	m_deformation(deformation.evaluator(NEED_JACOBIAN)),
-	m_pressure(pressure.evaluator(NEED_NORMAL))
+	m_deformation(getEvaluator(NEED_JACOBIAN, deformation)),
+	m_pressure(getEvaluator(NEED_NORMAL, pressure))
     { 
 		m_dim = body_force.targetDim();
 
@@ -60,8 +60,8 @@ public:
     void setDeformed(const gsGeometry<T> & deformation,
 		             const gsGeometry<T> & pressure)
     {
-        m_deformation = memory::make_unique(deformation.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
-		m_pressure = memory::make_unique(pressure.evaluator(NEED_VALUE));
+        m_deformation = memory::make_unique(getEvaluator(NEED_JACOBIAN, deformation)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
+		m_pressure = memory::make_unique(getEvaluator(NEED_VALUE, pressure));
     }
 
     /// Evaluate on element
@@ -307,8 +307,8 @@ public:
 protected:
 
 	/// Contains the geometry evaluations for the deformed configuration
-    typename gsGeometry<T>::Evaluator m_deformation;
-	typename gsGeometry<T>::Evaluator m_pressure;
+	typename gsGeometryEvaluator<T>::uPtr m_deformation;
+	typename gsGeometryEvaluator<T>::uPtr m_pressure;
 	
 	// Kinematics
 	T weight;

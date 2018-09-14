@@ -33,7 +33,7 @@ public:
                               const gsGeometry<T> & deformed,
 							  T tfac = 1.0) : 
     Base(lambda,mu,rho,body_force,tfac),
-    m_deformation(deformed.evaluator(NEED_JACOBIAN)) // NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM))
+    m_deformation(getEvaluator(NEED_JACOBIAN, deformed)) // NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM))
     { 
 		m_dim = body_force.targetDim();
 
@@ -58,7 +58,7 @@ public:
 	/// Sets the gsGeometryEvaluator \em m_deformation using \em deformed
     void setDeformed(const gsGeometry<T> & deformed)
     {
-        m_deformation = memory::make_unique(deformed.evaluator(NEED_JACOBIAN)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
+        m_deformation = memory::make_unique(getEvaluator(NEED_JACOBIAN, deformed)); // (NEED_MEASURE | NEED_JACOBIAN | NEED_GRAD_TRANSFORM));
     }
 
 	/// Sets the \em m_MATERIAL_LAW to 0: St. Venant-Kirchhoff, 1: Neo-Hooke
@@ -427,7 +427,7 @@ protected:
     using Base::m_bodyForce_ptr;
 
 	/// Contains the geometry evaluations for the deformed configuration
-    typename gsGeometry<T>::Evaluator m_deformation;
+    typename gsGeometryEvaluator<T>::uPtr m_deformation;
 
 	// Body forces
 	using Base::m_tfac;

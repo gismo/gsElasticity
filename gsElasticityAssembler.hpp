@@ -348,7 +348,7 @@ void gsElasticityAssembler<T>::computeDirichletDofsL2Proj()
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[0])[patchIdx];
 
-        typename gsGeometry<T>::Evaluator geoEval( m_patches[patchIdx].evaluator(NEED_MEASURE));
+        typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(NEED_MEASURE, m_patches[patchIdx]));
 
         // Set up quadrature. The number of integration points in the direction
         // that is NOT along the element has to be set to 1.
@@ -651,8 +651,7 @@ void gsElasticityAssembler<T>::computeStresses(
     result.setZero();
 
     unsigned evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-    typename gsGeometry<T>::Evaluator geoEval(
-        m_patches[patchIndex].evaluator(evFlags));
+    typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(evFlags, m_patches[patchIndex]));
 
     // Evaluate basis functions on element
     gsMatrix<T> basisGrad( m_dim, 1 );
