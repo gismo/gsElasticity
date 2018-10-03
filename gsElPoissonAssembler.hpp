@@ -280,7 +280,7 @@ void gsElPoissonAssembler<T>::extractSolutionVector(const gsMultiPatch<> & solut
     vector.setOnes(gsPoissonAssembler<T>::numDofs(),1);
     const gsDofMapper & mapper = m_system.colMapper(0);
 
-    for (unsigned p = 0; p < solution.nPatches(); ++p)
+    for (index_t p = 0; p < solution.nPatches(); ++p)
     {
         for (int i = 0; i < solution.patch(p).coefs().rows(); ++i)
         {

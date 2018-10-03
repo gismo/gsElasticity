@@ -77,7 +77,7 @@ void gsElThermoAssembler<T>::assembleThermo(const gsFunctionSet<T> & heatField)
                  "Assemble() hasn't been called!");
     m_rhsExtra = m_rhs;
 
-    for (unsigned p = 0; p < m_patches.nPatches(); ++p)
+    for (index_t p = 0; p < m_patches.nPatches(); ++p)
     {
         gsVisitorElThermo<T> visitor(heatField.function(p),m_rhsExtra,
                                      m_lambda,m_mu,m_thExpCoef);
