@@ -163,7 +163,7 @@ void gsElasticityAssembler<T>::assemble()
 
     // Assemble volume stiffness and load vector integrals
     gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force,f_E,f_pr);
-    for (unsigned np = 0; np < m_patches.nPatches(); ++np )
+    for (index_t np = 0; np < m_patches.nPatches(); ++np )
     {
         //Assemble stiffness matrix and rhs for the local patch
         // with index np and add to m_matrix and m_rhs
@@ -195,7 +195,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 	visitor.set_MaterialLaw(m_MATERIAL_LAW);
 
     // Assemble volume stiffness and load vector integrals
-    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    for (index_t np=0; np < m_patches.nPatches(); ++np )
     {
         visitor.setDeformed( deformed.patch(np) );
 
@@ -466,7 +466,7 @@ void  gsElasticityAssembler<T>::reComputeDirichletDofs(gsMultiPatch<T> &deformed
 	computeDirichletDofsIntpl();
 
 	// -> deformed must be set using updated m_ddof! How?
-	for (size_t p=0; p < m_patches.nPatches(); ++p )
+	for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update displacement solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
@@ -497,7 +497,7 @@ void  gsElasticityAssembler<T>::setSolution(const gsMatrix<T>& solVector,
 
     std::vector<gsFunction<T> * > sols ;
 
-    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
@@ -532,7 +532,7 @@ void  gsElasticityAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
 
     std::vector<gsFunction<T> * > sols ;
 
-    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
@@ -564,7 +564,7 @@ void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
 	gsMatrix<T> coeffs;
 
-    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update solution coefficients on patch p
         const int sz  = m_bases[0][p].size(); // m_patches[p].size();
@@ -624,7 +624,7 @@ void gsElasticityAssembler<T>::assembleMass()
 
     // Assemble volume stiffness and load vector integrals
     gsVisitorMassElasticity<T> visitor(m_rho);
-    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    for (index_t np=0; np < m_patches.nPatches(); ++np )
     {
         //Assemble stiffness matrix and rhs for the local patch
         // with index np and add to m_matrix and m_rhs
@@ -745,7 +745,7 @@ void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
                                                  stress_type::type type) const
 {
     result.clear();
-    for (std::size_t i = 0; i < m_patches.nPatches(); ++i )
+    for (index_t i = 0; i < m_patches.nPatches(); ++i )
     {
         result.addFunction(typename gsFunction<T>::uPtr(new gsStressFunction<T>(solVector,*this,i,type)));
         //gsFunction<T> * temp = new gsStressFunction<T>(solVector,*this,i,type);
@@ -1090,7 +1090,7 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector,
     result.clear();
     gsMatrix<T> newCoeffs;
 
-    for (size_t p = 0; p < m_patches.nPatches(); ++p)
+    for (index_t p = 0; p < m_patches.nPatches(); ++p)
     {
         index_t pNum = m_bases[0][p].size();
         newCoeffs.resize(pNum,m_dim);

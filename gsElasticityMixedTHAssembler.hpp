@@ -165,7 +165,7 @@ void gsElasticityMixedTHAssembler<T>::assemble()
 
     // Assemble volume stiffness and load vector integrals
     gsVisitorLinearElasticityMixedTH<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force);
-    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    for (index_t np=0; np < m_patches.nPatches(); ++np )
     {
         //Assemble stiffness matrix and rhs for the local patch
         // with index np and add to m_matrix and m_rhs
@@ -199,7 +199,7 @@ void gsElasticityMixedTHAssembler<T>::assemble(const gsMultiPatch<T> & deformed,
     gsVisitorNonLinElasticityMixedTH<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, deformed.patch(0), deformed_p.patch(0), m_tfac_force);
 	
     // Assemble volume stiffness and load vector integrals
-    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    for (index_t np=0; np < m_patches.nPatches(); ++np )
     {
         visitor.setDeformed( deformed.patch(np), deformed_p.patch(np) );
 
@@ -379,7 +379,7 @@ void  gsElasticityMixedTHAssembler<T>::reComputeDirichletDofs(gsMultiPatch<T> &d
 	computeDirichletDofsIntpl();
 
 	// -> deformed must be set using updated m_ddof! How?
-	for (size_t p=0; p < m_patches.nPatches(); ++p )
+	for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update displacement solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
@@ -411,7 +411,7 @@ void  gsElasticityMixedTHAssembler<T>::setSolution(const gsMatrix<T>& solVector,
 
     std::vector<gsFunction<T> * > sols ;
 
-    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update displacement solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
@@ -467,7 +467,7 @@ void  gsElasticityMixedTHAssembler<T>::updateSolution(const gsMatrix<T>& solVect
 
     std::vector<gsFunction<T> * > sols ;
 
-    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Update displacement solution coefficients on patch p
         const int sz  = m_bases[0][p].size();
@@ -519,7 +519,7 @@ void  gsElasticityMixedTHAssembler<T>::constructSolution(const gsMatrix<T>& solV
     // deformation or pressure dimension
     const index_t uDim = ( unk == 0 ? m_dim : 1 );
 
-    for (size_t p=0; p < m_patches.nPatches(); ++p )
+    for (index_t p=0; p < m_patches.nPatches(); ++p )
     {
         // Constructing solution coefficients on patch p
         const int sz  = m_bases[unk][p].size(); // m_patches[p].size();

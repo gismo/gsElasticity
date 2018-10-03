@@ -108,7 +108,7 @@ void gsElasticityMassAssembler<T>::assemble()
 
     // Assemble volume stiffness and load vector integrals
     gsVisitorMassElasticity<T> visitor(m_rho);
-    for (unsigned np=0; np < m_patches.nPatches(); ++np )
+    for (index_t np=0; np < m_patches.nPatches(); ++np )
     {
         //Assemble stiffness matrix and rhs for the local patch
         // with index np and add to m_matrix and m_rhs

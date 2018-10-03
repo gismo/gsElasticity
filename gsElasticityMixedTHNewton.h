@@ -200,7 +200,7 @@ void gsElasticityMixedTHNewton<T>::solve()
 			m_truePressure = m_curPressure;
 		    T mu, lambda, rho;
 			m_assembler.get_material(lambda, mu, rho);
-			for (size_t i=0; i < m_truePressure.nPatches(); i++)
+			for (index_t i=0; i < m_truePressure.nPatches(); i++)
 				m_truePressure.patch(i).scale(mu);
             
 			gsInfo << "Energy: " << m_solVector.transpose()*m_rhs0 << "\n";
@@ -251,7 +251,7 @@ void gsElasticityMixedTHNewton<T>::solve( gsMatrix<T> init_solVector )
 			m_truePressure = m_curPressure;
 		    T mu, lambda, rho;
 			m_assembler.get_material(lambda, mu, rho);
-			for (size_t i=0; i < m_truePressure.nPatches(); i++)
+			for (index_t i=0; i < m_truePressure.nPatches(); i++)
 				m_truePressure.patch(i).scale(mu);
             
 			//gsInfo << "Energy: " << m_solVector.transpose()*m_rhs0 << "\n";
