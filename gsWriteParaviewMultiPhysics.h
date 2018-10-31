@@ -30,7 +30,7 @@ namespace gismo
 /// \param mesh if true, the parameter mesh is plotted as well
 template<class T>
 void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
-                     unsigned npts=NS, bool mesh = false);
+                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false);
 
 
 /// \brief Write a file containing several fields defined on the same geometry to ONE paraview file

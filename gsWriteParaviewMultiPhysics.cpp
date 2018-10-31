@@ -24,7 +24,7 @@ namespace gismo
 template<class T>
 void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields,
                                  std::string const & fn,
-                                 unsigned npts, bool mesh)
+                                 unsigned npts, bool mesh, bool ctrlNet)
 {
     const unsigned numP = fields.begin()->second->patches().nPatches();
     gsParaviewCollection collection(fn);
@@ -43,6 +43,12 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
             writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
             collection.addPart(fileName + util::to_string(i) + "_mesh", ".vtp");
         }
+        if ( ctrlNet ) // Output the control net
+        {
+            writeSingleControlNet(fields.begin()->second->patch(i), fn + util::to_string(i) + "_cnet");
+            collection.addPart(fileName + util::to_string(i) + "_cnet", ".vtp");
+        }
+
     }
     collection.save();
 }
@@ -187,7 +193,7 @@ void gsWriteParaviewMultiTPgrid(gsMatrix<T> const& points,
 
 TEMPLATE_INST
 void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<real_t>* > fields, std::string const & fn,
-                     unsigned npts, bool mesh);
+                     unsigned npts, bool mesh, bool cnet);
 
 TEMPLATE_INST
 void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<real_t> *> fields, std::string const & fn,
