@@ -292,18 +292,22 @@ void gsElPoissonAssembler<T>::extractSolutionVector(const gsMultiPatch<> & solut
 }
 
 template <class T>
-void gsElPoissonAssembler<T>::addNeummannData(const gsMultiPatch<> & sourceGeometry,
-                                              const gsMultiPatch<> & sourceSolution,
-                                              int sourcePatch, const boxSide & sourceSide,
-                                              int targetPatch, const boxSide & targetSide)
+void gsElPoissonAssembler<T>::addNeummannData(const gsMultiPatch<> & , // sourceGeometry,
+                                              const gsMultiPatch<> & , // sourceSolution,
+                                              int                    , // sourcePatch,
+                                              const boxSide        & , // sourceSide,
+                                              int                    , // targetPatch,
+                                              const boxSide        & ) // targetSide)
 {
 
 }
 
 template <class T>
-void gsElPoissonAssembler<T>::addNeummannData(const gsField<> & sourceField,
-                                              int sourcePatch, const boxSide & sourceSide,
-                                              int targetPatch, const boxSide & targetSide)
+void gsElPoissonAssembler<T>::addNeummannData(const gsField<> & , // sourceField,
+                                              int               , // sourcePatch,
+                                              const boxSide   & , // sourceSide,
+                                              int               , // targetPatch,
+                                              const boxSide   & ) // targetSide)
 {
 
 }

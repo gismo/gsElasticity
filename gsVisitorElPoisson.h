@@ -30,7 +30,7 @@ public:
         pde_ptr = static_cast<const gsElPoissonPde<T>*>(&pde);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
+    inline void assemble(gsDomainIterator<T>    & , // element,
                          gsVector<T> const      & quWeights)
     {
         gsMatrix<T> & bVals  = basisData[0];

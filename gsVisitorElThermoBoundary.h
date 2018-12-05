@@ -70,7 +70,7 @@ public:
         localRhs.setZero(m_dim*numActiveFunctions, 1 );
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
+    inline void assemble(gsDomainIterator<T>    & , // element,
                          gsGeometryEvaluator<T> & geoEval,
                          gsVector<T> const      & quWeights)
     {
@@ -89,10 +89,10 @@ public:
     }
 
     void localToGlobal(const gsStdVectorRef<gsDofMapper> & mappers,
-                       const gsMatrix<T>     & eliminatedDofs,
-                       const int             patchIndex,
-                       gsSparseMatrix<T>     & sysMatrix,
-                       gsMatrix<T>           & rhsMatrix )
+                       const gsMatrix<T>     & , // eliminatedDofs,
+                       const int               patchIndex,
+                       gsSparseMatrix<T>     & , // sysMatrix,
+                       gsMatrix<T>           & ) // rhsMatrix )
     {
         for (index_t d = 0; d!= m_dim; ++d)
         {
