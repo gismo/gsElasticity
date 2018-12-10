@@ -21,6 +21,7 @@
 #define NS 1000
 
 #Hello world
+#Bye
 
 namespace gismo
 {
