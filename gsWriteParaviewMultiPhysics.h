@@ -20,6 +20,8 @@
 
 #define NS 1000
 
+#Hello world
+
 namespace gismo
 {
 /// \brief Write a file containing several fields defined on the same geometry to ONE paraview file
