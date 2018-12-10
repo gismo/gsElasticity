@@ -13,14 +13,62 @@
 */
 
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
-#include <gsIO/gsWriteParaview.hpp>
+#include <gsUtils/gsPointGrid.h>
+#include <gsUtils/gsMesh/gsMesh.h>
+#include <gsCore/gsFunction.h>
+#include <gsCore/gsField.h>
+#include <gsIO/gsWriteParaview.h>
+
 
 #define PLOT_PRECISION 11
 
 
-
 namespace gismo
 {
+
+
+//---------- START REPEATED from gsWriteParaview.hpp
+
+template<class T>
+void writeSingleControlNet(const gsGeometry<T> & Geo,
+                           std::string const & fn)
+{
+    const int d = Geo.parDim();
+    gsMesh<T> msh;
+    Geo.controlNet(msh);
+    const unsigned n = Geo.geoDim();
+    if ( n == 1 )
+    {
+        gsMatrix<T> anch = Geo.basis().anchors();
+        // Lift vertices at anchor positions
+        for (std::size_t i = 0; i!= msh.numVertices(); ++i)
+        {
+            msh.vertex(i)[d] = msh.vertex(i)[0];
+            msh.vertex(i).topRows(d) = anch.col(i);
+        }
+    }
+    else if (n>3)
+    {
+        gsDebug<<"Writing 4th coordinate\n";
+        const gsMatrix<T> & cp = Geo.coefs();
+        gsWriteParaviewPoints<T>(cp.transpose(), fn );
+        return;
+    }
+
+    gsWriteParaview(msh, fn, false);
+}
+
+template<class T>
+void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
+                         std::string const & fn, unsigned resolution = 8)
+{
+    gsMesh<T> msh(basis, resolution);
+    Geo.evaluateMesh(msh);
+    gsWriteParaview(msh, fn, false);
+}
+
+
+//---------- END REPEATED from gsWriteParaview.hpp
 
 
 template<class T>
