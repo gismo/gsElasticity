@@ -21,8 +21,8 @@ namespace gismo
 {
     CLASS_TEMPLATE_INST gsElasticityAssembler<real_t>;
 	CLASS_TEMPLATE_INST gsElasticityMassAssembler<real_t>;
-	CLASS_TEMPLATE_INST gsElasticityMixedTHAssembler<real_t>;
-	CLASS_TEMPLATE_INST gsElasticityNewton<real_t>;
-	CLASS_TEMPLATE_INST gsElasticityMixedTHNewton<real_t>;
+//	CLASS_TEMPLATE_INST gsElasticityMixedTHAssembler<real_t>;
+//	CLASS_TEMPLATE_INST gsElasticityNewton<real_t>;
+//	CLASS_TEMPLATE_INST gsElasticityMixedTHNewton<real_t>;
     CLASS_TEMPLATE_INST gsMultiFunction<real_t>;
 }

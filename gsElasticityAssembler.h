@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsAssemblerBase2.h>
+#include <gsAssembler/gsAssembler.h>
 
 #include <gsElasticity/gsMultiFunction.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
@@ -34,20 +34,20 @@ struct stress_type { enum type{normal = 0, shear = 1, von_mises = 2}; };
 
     \tparam T coefficient type
 
-    \ingroup Elasticity   
+    \ingroup Elasticity
 */
 template <class T>
-class gsElasticityAssembler : public gsAssemblerBase2<T>
+class gsElasticityAssembler : public gsAssembler<T>
 {
 public:
-    typedef gsAssemblerBase2<T> Base;
+    typedef gsAssembler<T> Base;
 
 public:
 
 /** @brief Constructor of the assembler object.
 
     \param[in] patches is a gsMultiPatch object describing the geometry.
-    
+
     \ingroup Assembler
 */
     gsElasticityAssembler(  gsMultiPatch<T> const & patches,
@@ -101,7 +101,7 @@ public:
      * functions of type \f$ (0,B_i,0)^T\f$, and so on.
      * \param[out] result
      */
-    void constructSolution(const gsMatrix<T>& solVector, 
+    void constructSolution(const gsMatrix<T>& solVector,
                            gsMultiPatch<T>& result) const;
 
     /** \brief Computes stresses \f$ \sigma_{ij}\f$ of
@@ -162,11 +162,11 @@ public:
                          bool computeVonMises = false) const;
 
     // Set solution from solVector, overwrites previous solution
-    void setSolution(const gsMatrix<T>& solVector, 
+    void setSolution(const gsMatrix<T>& solVector,
                      gsMultiPatch<T>& result) const;
 
 	 // Newton update of the solution from solVector
-    void updateSolution(const gsMatrix<T>& solVector, 
+    void updateSolution(const gsMatrix<T>& solVector,
                         gsMultiPatch<T>& result) const;
 
 	/// Set factor for time-dependent external forces (at current time-step)
@@ -231,15 +231,13 @@ public:
 
 protected:
 
-    void computeDirichletDofs();
-
     /// Neumann contributions
     void assembleNeumann();
 
-	/** Computes the Dirichlet DoF values by interpolation 
-	    * 
-		* \warning Works only for tensor-product-bases! 
-	*/ 
+	/** Computes the Dirichlet DoF values by interpolation
+	    *
+		* \warning Works only for tensor-product-bases!
+	*/
     void computeDirichletDofsIntpl();
 
 	/** \brief Computes Dirichlet-boundary conditions by L2-projection.
@@ -288,7 +286,7 @@ protected:
 
     gsMatrix<T> m_rhsExtra;
     std::map<unsigned,T> externalDDofs;
-   
+
     // Determines how the (fixed) Dirichlet values should be computed
     //dirichlet::values  m_dirValues;
 
@@ -300,15 +298,12 @@ protected:
 
 protected:
 
-    // Members from gsAssemblerBase2
-    using gsAssemblerBase2<T>::m_patches;
-    using gsAssemblerBase2<T>::m_bases;
-    using gsAssemblerBase2<T>::m_dofMappers;
-    using gsAssemblerBase2<T>::m_ddof;
-    using gsAssemblerBase2<T>::m_matrix;
-    using gsAssemblerBase2<T>::m_rhs;
-    using gsAssemblerBase2<T>::m_dofs;
-    using gsAssemblerBase2<T>::m_options;
+    // Members from gsAssembler
+    using Base::m_pde_ptr;
+    using Base::m_bases;
+    using Base::m_ddof;
+    using Base::m_options;
+    using Base::m_system;
 };
 
 /** @brief Allows computation and visualization of von Mises stresses for linear elasticity.
@@ -371,9 +366,6 @@ protected:
 
 } // namespace gismo
 
-
-//////////////////////////////////////////////////
-//////////////////////////////////////////////////
 
 
 #ifndef GISMO_BUILD_LIB

@@ -14,6 +14,7 @@
 #pragma once
 
 //#include <gsElasticity/gsElasticityAssembler.hpp>
+#include <gsCore/gsFuncData.h>
 
 namespace gismo
 {
@@ -36,9 +37,10 @@ public:
     f_pr(pr)
     { }
 
-    void initialize(const gsBasis<T> & basis, 
-                    gsQuadRule<T>    & rule, 
-                    unsigned         & evFlags )
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
+                    const gsOptionList & options,
+                    gsQuadRule<T>    & rule)
     {
         m_dim = basis.dim();
 		m_dimStrain = (m_dim*(m_dim+1))/2;
@@ -46,62 +48,45 @@ public:
 		gsVector<index_t> numQuadNodes(m_dim);
         for (size_t i = 0; i < m_dim; ++i) // to do: improve
             numQuadNodes[i] = basis.degree(i) + 1;
-        
+
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
         // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-
-		/*
-		m_C.resize(m_dimStrain,m_dimStrain);
-		if (m_dim == 2)
-        {
-			m_C(0,0) = m_C(1,1) = 2*m_mu + m_lambda;
-			m_C(0,1) = m_C(1,0) = m_lambda;
-			m_C(2,2) = m_mu;
-		}
-		else if (m_dim == 3)
-		{
-			m_C(0,0) = m_C(1,1) = m_C(2,2) = 2*m_mu + m_lambda;
-			m_C(0,1) = m_C(0,2) = m_C(1,2) = m_lambda;
-			m_C(1,0) = m_C(2,0) = m_C(2,1) = m_lambda;
-			m_C(3,3) = m_C(4,4) = m_C(5,5) = m_mu;
-		}
-		*/
+        md.flags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
     // Evaluate on element.
     inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometryEvaluator<T> & geoEval,
+                         gsGeometry<T> const & geo,
                          gsMatrix<T> const      & quNodes)
     {
+        md.points = quNodes;
         // Compute the active basis functions
         // Assumes actives are the same for all quadrature points on the elements
         basis.active_into(quNodes.col(0), actives);
         numActive = actives.rows();
-        
+
         // Evaluate basis functions on element
         basis.evalAllDers_into( quNodes, 1, basisData);
-        
+
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
-        geoEval.evaluateAt(quNodes);
+        geo.computeMap(md);
 
         if (f_E != nullptr)
             f_E->eval_into(quNodes,eData);
         if (f_pr != nullptr)
             f_pr->eval_into(quNodes,prData);
-        
+
         // Evaluate right-hand side at the geometry points
-        m_bodyForce_ptr->eval_into( geoEval.values(), forceVals );
-        
+        m_bodyForce_ptr->eval_into( md.values[0], forceVals );
+
         // Initialize local matrix/rhs
         localMat.setZero(m_dim*numActive, m_dim*numActive);
         localRhs.setZero(m_dim*numActive, 1);
     }
-    
-    inline void assemble(gsDomainIterator<T>    & element, 
-                         gsGeometryEvaluator<T> & geoEval,
+
+    inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
     {
         gsMatrix<T> & bVals  = basisData[0];
@@ -124,10 +109,10 @@ public:
 
 
             // Multiply weight by the geometry measure
-            const T weight = quWeights[k] * geoEval.measure(k);
+            const T weight = quWeights[k] * md.measure(k);
 
-			// compute physical gradients at k as a Dim x NumActive matrix
-            geoEval.transformGradients(k, bGrads, physGrad);
+            // Compute physical gradients at k as a Dim x NumActive matrix
+            transformGradients(md, k, bGrads, physGrad);
 
 			if (m_dim == 2)
 			{
@@ -137,13 +122,13 @@ public:
 					// Exploit symmetry of K
 					for (index_t j = i; j < numActive; j++)
 					{
-						localMat(0*numActive+i, 0*numActive+j) += weight * 
+						localMat(0*numActive+i, 0*numActive+j) += weight *
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
-						localMat(0*numActive+i, 1*numActive+j) += weight * 
+						localMat(0*numActive+i, 1*numActive+j) += weight *
 							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
-						localMat(1*numActive+i, 0*numActive+j) += weight * 
+						localMat(1*numActive+i, 0*numActive+j) += weight *
 							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
-						localMat(1*numActive+i, 1*numActive+j) += weight * 
+						localMat(1*numActive+i, 1*numActive+j) += weight *
 							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*physGrad(0,i)*physGrad(0,j) );
 					}
 				}
@@ -156,122 +141,55 @@ public:
 					// Exploit symmetry of K
 					for (index_t j = i; j < numActive; j++)
 					{
-						localMat(0*numActive+i, 0*numActive+j) += weight * 
+						localMat(0*numActive+i, 0*numActive+j) += weight *
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
-						localMat(0*numActive+i, 1*numActive+j) += weight * 
+						localMat(0*numActive+i, 1*numActive+j) += weight *
 							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
-						localMat(0*numActive+i, 2*numActive+j) += weight * 
+						localMat(0*numActive+i, 2*numActive+j) += weight *
 							( m_lambda*physGrad(0,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(0,j) );
-						localMat(1*numActive+i, 0*numActive+j) += weight * 
+						localMat(1*numActive+i, 0*numActive+j) += weight *
 							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
-						localMat(1*numActive+i, 1*numActive+j) += weight * 
+						localMat(1*numActive+i, 1*numActive+j) += weight *
 							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*(physGrad(0,i)*physGrad(0,j)+physGrad(2,i)*physGrad(2,j)) );
-						localMat(1*numActive+i, 2*numActive+j) += weight * 
+						localMat(1*numActive+i, 2*numActive+j) += weight *
 							( m_lambda*physGrad(1,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(1,j) );
-						localMat(2*numActive+i, 0*numActive+j) += weight * 
+						localMat(2*numActive+i, 0*numActive+j) += weight *
 							( m_lambda*physGrad(2,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(2,j) );
-						localMat(2*numActive+i, 1*numActive+j) += weight * 
+						localMat(2*numActive+i, 1*numActive+j) += weight *
 							( m_lambda*physGrad(2,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(2,j) );
-						localMat(2*numActive+i, 2*numActive+j) += weight * 
-							( v_2mulam*physGrad(2,i)*physGrad(2,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );				
+						localMat(2*numActive+i, 2*numActive+j) += weight *
+							( v_2mulam*physGrad(2,i)*physGrad(2,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );
 					}
 				}
 			}
 
 			// Local rhs vector contribution
             for (size_t j = 0; j < m_dim; ++j)
-                localRhs.middleRows(j*numActive,numActive).noalias() += 
+                localRhs.middleRows(j*numActive,numActive).noalias() +=
                     weight * m_rho * forceVals(j,k) * m_tfac * bVals.col(k) ;
         }
        // gsInfo<< "local Mat: \n"<< localMat << "\n";
     }
-    
-    inline void localToGlobal(const gsStdVectorRef<gsDofMapper> & mappers,
-                              const gsMatrix<T>     & eliminatedDofs,
-                              const int patchIndex,
-                              gsSparseMatrix<T>     & sysMatrix,
-                              gsMatrix<T>           & rhsMatrix )
+
+    inline void localToGlobal(const int patchIndex,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
     {
-       	
-		// Local DoFs to global DoFs
-		std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
-
+        std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
         for (size_t ci = 0; ci != m_dim; ++ci)
-			mappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
+            system.mapColIndices(actives, patchIndex, ci_actives[ci], ci);
 
-        for (index_t ai=0; ai < numActive; ++ai)
-		{          
-			for (size_t ci = 0; ci!= m_dim; ++ci)
-            {
-                const index_t gi = ci * numActive +  ai; // row index
-                const index_t ii = ci_actives[ci](ai);
-
-                if ( mappers[ci].is_free_index(ii) )
-                {
-                    rhsMatrix.row(ii) += localRhs.row(gi);
-                    
-					//for (index_t aj=0; aj < numActive; ++aj)
-					// Exploit symmetry of K
-					for (index_t aj=ai; aj < numActive; ++aj)
-					{
-						for (size_t cj = 0; cj!= m_dim; ++cj)                        
-                        {
-                            const index_t gj = cj * numActive +  aj; // column index
-                            const index_t jj = ci_actives[cj](aj);
-                            
-                            if ( mappers[cj].is_free_index(jj) )
-                            {
-                                sysMatrix.coeffRef(ii, jj) += localMat(gi, gj);
-								if (aj > ai)
-									sysMatrix.coeffRef(jj, ii) += localMat(gi, gj);
-                            }
-                            else // Fixed DoF ?
-                            {
-                                const index_t bjj = mappers[cj].global_to_bindex(jj);
-								rhsMatrix.row(ii).noalias() -= localMat(gi, gj) * eliminatedDofs.row( bjj );
-                            }
-                        }
-					}
-                }
-				else
-				{
-					// Must be careful with non-free indices now due to symmetry
-					// - Fixed DoF switch above does not include rows ai for fixed DoFs aj with ai > aj
-					// - Handle these DoFs here
-
-					const index_t bii = mappers[ci].global_to_bindex(ii);
-					
-					// for (index_t aj=0; aj < ai; ++aj)				// Old - wrong
-					for (index_t aj = ai+1; aj < numActive; ++aj)		// New - hopefully right
-					{
-						for (size_t cj = 0; cj!= m_dim; ++cj)                        
-                        {
-							const index_t gj = cj * numActive +  aj; // column index
-                            const index_t jj = ci_actives[cj](aj);
-                            
-                            if ( mappers[cj].is_free_index(jj) )
-							{                                
-								// rhsMatrix.row(jj).noalias() -= localMat(gj, gi) * eliminatedDofs.row( bii );		// Old
-								rhsMatrix.row(jj).noalias() -= localMat(gi, gj) * eliminatedDofs.row( bii );		// New
-                            }
-						}
-					}
-				}
-            }
-
-		}
+        system.push(localMat, localRhs, ci_actives,eliminatedDofs);
     }
-    
+
 
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-	
+
 protected:
     // Lambda, mu, rho
     T m_lambda, m_mu, m_rho;
 
-
-	
     // Body forces
     const gsFunction<T> * m_bodyForce_ptr;
 
@@ -305,8 +223,9 @@ protected:
 
     gsFunction<T> * f_E;
     gsFunction<T> * f_pr;
+
+    gsMapData<T> md;
 };
 
 
 } // namespace gismo
-
