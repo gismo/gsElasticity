@@ -12,7 +12,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = UNIKL_DATA_DIR"lshape.xml";
+    std::string filename = "lshape.xml";
     int numUniRef = 3; // number of h-refinements
     int numPlotPoints = 10000;
 
@@ -24,8 +24,11 @@ int main(int argc, char* argv[]){
 
     // source function, rhs
     gsConstantFunction<> f(0.,0.,2);
+    /*
     // boundary displacement in y-direction, dirichlet BC
     gsConstantFunction<> g(0.1,2);
+    */
+    gsConstantFunction<> g(0.0, 0.1,2);
 
     // material parameters
     real_t youngsModulus = 74e9;
@@ -34,12 +37,17 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
+
+    bcInfo.addCondition(2,boundary::east,condition_type::dirichlet,0); // third number is a component (coordinate) number
+    bcInfo.addCondition(2,boundary::north,condition_type::dirichlet,&g);
+
+/*
     // Dirichlet BC are imposed separately for every component (coordinate)
     bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0);  // first number is a patch number
     bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);  // second number is actually a NULL pointer, meaning 0 function
     bcInfo.addCondition(2,boundary::north,condition_type::dirichlet,0,0); // third number is a component (coordinate) number
     bcInfo.addCondition(2,boundary::north,condition_type::dirichlet,&g,1);
-
+*/
 
     //=============================================//
                   // Assembly //
@@ -96,6 +104,6 @@ int main(int argc, char* argv[]){
     gsWriteParaviewMultiPhysics(fields,"lshape",numPlotPoints);
     gsInfo << "Finished.\n";
     gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
-  
+
     return 0;
 }

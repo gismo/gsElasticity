@@ -40,3 +40,17 @@ set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${PROJECT_NAME}>
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}"
   DESTINATION include/gismo
   FILES_MATCHING PATTERN "*.h" )
+
+
+# add example files
+aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
+foreach(file ${FILES})
+    add_gismo_executable(${file})
+    get_filename_component(tarname ${file} NAME_WE) # name without extension
+    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
+    set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
+    # install the example executables (optionally)
+    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
+endforeach(file ${FILES})
+
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
