@@ -120,7 +120,7 @@ public:
 				{
 					//for (index_t j = 0; j < numActive; j++)
 					// Exploit symmetry of K
-					for (index_t j = i; j < numActive; j++)
+                    for (index_t j = 0; j < numActive; j++)
 					{
 						localMat(0*numActive+i, 0*numActive+j) += weight *
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
@@ -139,7 +139,7 @@ public:
 				{
 					//for (index_t j = 0; j < numActive; j++)
 					// Exploit symmetry of K
-					for (index_t j = i; j < numActive; j++)
+                    for (index_t j = 0; j < numActive; j++)
 					{
 						localMat(0*numActive+i, 0*numActive+j) += weight *
 							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );

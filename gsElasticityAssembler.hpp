@@ -20,6 +20,7 @@
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsField.h>
 #include <gsUtils/gsPointGrid.h>
+#include <gsPde/gsPoissonPde.h>
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
@@ -40,7 +41,7 @@ namespace gismo
 
 template<class T>
 gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
-												gsMultiBasis<T> const & bases,
+                                                gsMultiBasis<T> const & basis,
 												T E_modulus,
 												T poissons_ratio,
 												T density_rho,
@@ -61,11 +62,14 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     m_options.setInt("DirichletStrategy", enforceStrategy);
 
     // Copy the spline basis
-	m_dim = body_force.targetDim();
-    m_bases.resize(m_dim, bases);
+    m_dim = body_force.targetDim();
+    for (int d = 0; d < m_dim; ++d)
+        m_bases.push_back(basis);
 
-    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,body_force) );
-    Base::initialize(pde, bases, m_options);
+    gsPiecewiseFunction<T> pwf;
+    pwf.addPiece(body_force);
+    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,pwf) );
+    Base::initialize(pde, m_bases, m_options);
 
     // Refresh .....
 	GISMO_ASSERT(m_dim == patches.parDim(), "Dimensions not matching!");
@@ -74,7 +78,10 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     std::vector<gsDofMapper> m_dofMappers(m_dim);
     for (index_t i = 0; i < m_dim; i++)
         m_bases.front().getMapper(enforceStrategy,iFace::glue,m_bConditions,m_dofMappers[i],i,true);
-    m_system = gsSparseSystem<T>(m_dofMappers, m_dim, m_dim);
+
+    gsVector<unsigned> dims;
+    dims.setOnes(m_dim);
+    m_system = gsSparseSystem<T>(m_dofMappers, dims);
 
     // Initialize material properties
     m_lambda = E_modulus * poissons_ratio / ( (1.+poissons_ratio)*(1.-2.*poissons_ratio)) ;
@@ -135,7 +142,8 @@ void gsElasticityAssembler<T>::assemble()
     m_system.reserve(nonZerosPerCol, 1);
 
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
-    Base::computeDirichletDofs();
+    for (int i = 0; i < m_dim; ++i)
+        Base::computeDirichletDofs(i);
 
     // Assemble volume stiffness and load vector integrals
     gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force,f_E,f_pr);
@@ -365,7 +373,7 @@ void  gsElasticityAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
     }
 }
 
- template<class T>
+/*template<class T>
 void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                                                   gsMultiPatch<T>& result) const
 {
@@ -402,7 +410,7 @@ void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 
 		result.addPatch( m_bases[0][p].makeGeometry( give(coeffs) ) );
     }
-}
+}*/
 
 
 template<class T>

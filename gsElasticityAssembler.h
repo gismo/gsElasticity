@@ -101,8 +101,8 @@ public:
      * functions of type \f$ (0,B_i,0)^T\f$, and so on.
      * \param[out] result
      */
-    void constructSolution(const gsMatrix<T>& solVector,
-                           gsMultiPatch<T>& result) const;
+   /* void constructSolution(const gsMatrix<T>& solVector,
+                           gsMultiPatch<T>& result) const;*/
 
     /** \brief Computes stresses \f$ \sigma_{ij}\f$ of
     * already computed solution.
