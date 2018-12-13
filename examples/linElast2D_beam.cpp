@@ -12,7 +12,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/lshape.xml";
+    std::string filename = ELAST_DATA_DIR"/beam2D.xml";
     int numUniRef = 3; // number of h-refinements
     int numPlotPoints = 10000;
 
@@ -25,8 +25,8 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
-    // boundary displacement in y-direction, dirichlet BC
-    gsFunctionExpr<> bdry_disp("0.1",2);
+    // boundary displacement in y-direction, Neumann BC
+    gsConstantFunction<> f(1.,0.,2);
 
     // material parameters
     real_t youngsModulus = 200.;//74e9;
@@ -34,10 +34,10 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
-    bcInfo.addCondition(2,boundary::north,condition_type::dirichlet,0,0);
-    bcInfo.addCondition(2,boundary::north,condition_type::dirichlet,&bdry_disp,1);
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
+    bcInfo.addCondition(0,boundary::east,condition_type::neumann,&f);
+    //bcInfo.addCondition(0,boundary::north,condition_type::dirichlet,&g,1);
 
     //=============================================//
                   // Assembly //
@@ -95,7 +95,7 @@ int main(int argc, char* argv[]){
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
     //fields["vonMises"] = &vonMisesStressField;
-    gsWriteParaviewMultiPhysics(fields,"lshape",numPlotPoints);
+    gsWriteParaviewMultiPhysics(fields,"beam2D",numPlotPoints);
     gsInfo << "Finished.\n";
     gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 

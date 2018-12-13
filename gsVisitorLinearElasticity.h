@@ -8,224 +8,155 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): O. Weeger
+    Author(s): O. Weeger, A. Shamanskiy (TU Kaiserslautern)
 */
 
 #pragma once
 
-//#include <gsElasticity/gsElasticityAssembler.hpp>
-#include <gsCore/gsFuncData.h>
+#include <gsAssembler/gsQuadrature.h>
 
 namespace gismo
 {
-
 
 template <class T>
 class gsVisitorLinearElasticity
 {
 public:
 
-    /// Constructor
-    gsVisitorLinearElasticity(T lambda, T mu, T rho, const gsFunction<T> & body_force, T tfac = 1.0,
-                              gsFunction<T> * E = nullptr, gsFunction<T> * pr = nullptr) :
-    m_lambda(lambda),
-    m_mu(mu),
-	m_rho(rho),
-    m_bodyForce_ptr(&body_force),
-    m_tfac(tfac),
-    f_E(E),
-    f_pr(pr)
-    { }
+    gsVisitorLinearElasticity(const gsPde<T> & pde_)
+    {
+        pde_ptr = static_cast<const gsPoissonPde<T>*>(&pde_);
+    }
 
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
                     const gsOptionList & options,
-                    gsQuadRule<T>    & rule)
+                    gsQuadRule<T> & rule)
     {
-        m_dim = basis.dim();
-		m_dimStrain = (m_dim*(m_dim+1))/2;
+        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here (?)
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
-		gsVector<index_t> numQuadNodes(m_dim);
-        for (size_t i = 0; i < m_dim; ++i) // to do: improve
-            numQuadNodes[i] = basis.degree(i) + 1;
+        dim = basis.dim();
+        rho = options.getReal("Density");
+        timefactor = options.getReal("TimeFactor");
 
-        // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-
-        // Set Geometry evaluation flags
-        md.flags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        T E = options.getReal("YoungsModulus");
+        T pr = options.getReal("PoissonsRatio");
+        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
+        mu     = E / ( 2. * ( 1. + pr ) );
     }
 
-    // Evaluate on element.
     inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
                          gsGeometry<T> const & geo,
                          gsMatrix<T> const      & quNodes)
     {
+        // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
-        // Compute the active basis functions
-        // Assumes actives are the same for all quadrature points on the elements
-        basis.active_into(quNodes.col(0), actives);
-        numActive = actives.rows();
-
+        // find local indices which are active on the element
+        basis.active_into(quNodes.col(0), localIndices);
+        numActiveFunctions = localIndices.rows();
         // Evaluate basis functions on element
-        basis.evalAllDers_into( quNodes, 1, basisData);
-
-        // Compute image of Gauss nodes under geometry mapping as well as Jacobians
+        basis.evalAllDers_into( quNodes, 1, basisValues);
+        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
-
-        if (f_E != nullptr)
-            f_E->eval_into(quNodes,eData);
-        if (f_pr != nullptr)
-            f_pr->eval_into(quNodes,prData);
-
-        // Evaluate right-hand side at the geometry points
-        m_bodyForce_ptr->eval_into( md.values[0], forceVals );
-
+        // Evaluate right-hand side at the image of the quadrature points
+        pde_ptr->rhs()->eval_into( md.values[0], forceValues );
         // Initialize local matrix/rhs
-        localMat.setZero(m_dim*numActive, m_dim*numActive);
-        localRhs.setZero(m_dim*numActive, 1);
+        localMat.setZero(dim*numActiveFunctions, dim*numActiveFunctions);
+        localRhs.setZero(dim*numActiveFunctions, 1);
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
     {
-        gsMatrix<T> & bVals  = basisData[0];
-        gsMatrix<T> & bGrads = basisData[1];
+        gsMatrix<T> & bVals  = basisValues[0];
+        gsMatrix<T> & bGrads = basisValues[1];
 
-        T v_2mulam = 2.*m_mu + m_lambda;
+        T lam2mu =  lambda + 2 * mu;
+        index_t N = numActiveFunctions;
 
-        for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
+        // Loop over the quadrature nodes
+        for (index_t q = 0; q < quWeights.rows(); ++q)
         {
-            if (f_E != nullptr)
-            {
-                T E = eData.at(k);
-                T pr = prData.at(k);
+            // Multiply quadrature weight by the geometry measure
+            const T weight = quWeights[q] * md.measure(q);
+            // Compute physical gradients at q as a dim x numActiveFunction matrix
+            gsMatrix<T> physGrad;
+            transformGradients(md, q, bGrads, physGrad);
 
-                m_lambda = E * pr / ( (1. + pr) * (1. - 2.*pr) );
-                m_mu = E / (2.*(1.+pr));
-
-                v_2mulam = 2.*m_mu + m_lambda;
-            }
-
-
-            // Multiply weight by the geometry measure
-            const T weight = quWeights[k] * md.measure(k);
-
-            // Compute physical gradients at k as a Dim x NumActive matrix
-            transformGradients(md, k, bGrads, physGrad);
-
-			if (m_dim == 2)
-			{
-				for (index_t i = 0; i < numActive; i++)
-				{
-					//for (index_t j = 0; j < numActive; j++)
-					// Exploit symmetry of K
-                    for (index_t j = 0; j < numActive; j++)
+            if (dim == 2)
+                for (index_t i = 0; i < N; i++)
+                    for (index_t j = 0; j < N; j++)
 					{
-						localMat(0*numActive+i, 0*numActive+j) += weight *
-							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*physGrad(1,i)*physGrad(1,j) );
-						localMat(0*numActive+i, 1*numActive+j) += weight *
-							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
-						localMat(1*numActive+i, 0*numActive+j) += weight *
-							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
-						localMat(1*numActive+i, 1*numActive+j) += weight *
-							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*physGrad(0,i)*physGrad(0,j) );
-					}
-				}
-			}
-			else if (m_dim == 3)
-			{
-				for (index_t i = 0; i < numActive; i++)
-				{
-					//for (index_t j = 0; j < numActive; j++)
-					// Exploit symmetry of K
-                    for (index_t j = 0; j < numActive; j++)
-					{
-						localMat(0*numActive+i, 0*numActive+j) += weight *
-							( v_2mulam*physGrad(0,i)*physGrad(0,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
-						localMat(0*numActive+i, 1*numActive+j) += weight *
-							( m_lambda*physGrad(0,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(0,j) );
-						localMat(0*numActive+i, 2*numActive+j) += weight *
-							( m_lambda*physGrad(0,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(0,j) );
-						localMat(1*numActive+i, 0*numActive+j) += weight *
-							( m_lambda*physGrad(1,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(1,j) );
-						localMat(1*numActive+i, 1*numActive+j) += weight *
-							( v_2mulam*physGrad(1,i)*physGrad(1,j) + m_mu*(physGrad(0,i)*physGrad(0,j)+physGrad(2,i)*physGrad(2,j)) );
-						localMat(1*numActive+i, 2*numActive+j) += weight *
-							( m_lambda*physGrad(1,i)*physGrad(2,j) + m_mu*physGrad(2,i)*physGrad(1,j) );
-						localMat(2*numActive+i, 0*numActive+j) += weight *
-							( m_lambda*physGrad(2,i)*physGrad(0,j) + m_mu*physGrad(0,i)*physGrad(2,j) );
-						localMat(2*numActive+i, 1*numActive+j) += weight *
-							( m_lambda*physGrad(2,i)*physGrad(1,j) + m_mu*physGrad(1,i)*physGrad(2,j) );
-						localMat(2*numActive+i, 2*numActive+j) += weight *
-							( v_2mulam*physGrad(2,i)*physGrad(2,j) + m_mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );
-					}
-				}
-			}
+                        localMat(0*N+i, 0*N+j) += weight *
+                            ( lam2mu*physGrad(0,i)*physGrad(0,j) + mu*physGrad(1,i)*physGrad(1,j) );
+                        localMat(0*N+i, 1*N+j) += weight *
+                            ( lambda*physGrad(0,i)*physGrad(1,j) + mu*physGrad(1,i)*physGrad(0,j) );
+                        localMat(1*N+i, 0*N+j) += weight *
+                            ( lambda*physGrad(1,i)*physGrad(0,j) + mu*physGrad(0,i)*physGrad(1,j) );
+                        localMat(1*N+i, 1*N+j) += weight *
+                            ( lam2mu*physGrad(1,i)*physGrad(1,j) + mu*physGrad(0,i)*physGrad(0,j) );
+                    }
 
-			// Local rhs vector contribution
-            for (size_t j = 0; j < m_dim; ++j)
-                localRhs.middleRows(j*numActive,numActive).noalias() +=
-                    weight * m_rho * forceVals(j,k) * m_tfac * bVals.col(k) ;
+            else if (dim == 3)
+                for (index_t i = 0; i < N; i++)
+                    for (index_t j = 0; j < N; j++)
+					{
+                        localMat(0*N+i, 0*N+j) += weight *
+                            ( lam2mu*physGrad(0,i)*physGrad(0,j) + mu*(physGrad(1,i)*physGrad(1,j)+physGrad(2,i)*physGrad(2,j)) );
+                        localMat(0*N+i, 1*N+j) += weight *
+                            ( lambda*physGrad(0,i)*physGrad(1,j) + mu*physGrad(1,i)*physGrad(0,j) );
+                        localMat(0*N+i, 2*N+j) += weight *
+                            ( lambda*physGrad(0,i)*physGrad(2,j) + mu*physGrad(2,i)*physGrad(0,j) );
+                        localMat(1*N+i, 0*N+j) += weight *
+                            ( lambda*physGrad(1,i)*physGrad(0,j) + mu*physGrad(0,i)*physGrad(1,j) );
+                        localMat(1*N+i, 1*N+j) += weight *
+                            ( lam2mu*physGrad(1,i)*physGrad(1,j) + mu*(physGrad(0,i)*physGrad(0,j)+physGrad(2,i)*physGrad(2,j)) );
+                        localMat(1*N+i, 2*N+j) += weight *
+                            ( lambda*physGrad(1,i)*physGrad(2,j) + mu*physGrad(2,i)*physGrad(1,j) );
+                        localMat(2*N+i, 0*N+j) += weight *
+                            ( lambda*physGrad(2,i)*physGrad(0,j) + mu*physGrad(0,i)*physGrad(2,j) );
+                        localMat(2*N+i, 1*N+j) += weight *
+                            ( lambda*physGrad(2,i)*physGrad(1,j) + mu*physGrad(1,i)*physGrad(2,j) );
+                        localMat(2*N+i, 2*N+j) += weight *
+                            ( lam2mu*physGrad(2,i)*physGrad(2,j) + mu*(physGrad(1,i)*physGrad(1,j)+physGrad(0,i)*physGrad(0,j)) );
+                    }
+
+            for (index_t d = 0; d < dim; ++d)
+                localRhs.middleRows(d*N,N).noalias() += weight * rho * forceValues(d,q) * timefactor * bVals.col(q) ;
         }
-       // gsInfo<< "local Mat: \n"<< localMat << "\n";
     }
 
     inline void localToGlobal(const int patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
-        std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
-        for (size_t ci = 0; ci != m_dim; ++ci)
-            system.mapColIndices(actives, patchIndex, ci_actives[ci], ci);
+        std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
+        for (index_t d = 0; d < dim; ++d)
+            system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
 
-        system.push(localMat, localRhs, ci_actives,eliminatedDofs);
+        system.push(localMat, localRhs, globalIndices,eliminatedDofs);
     }
 
-
-    // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
 protected:
-    // Lambda, mu, rho
-    T m_lambda, m_mu, m_rho;
+    // general problem info
+    index_t dim;
+    const gsPoissonPde<T> * pde_ptr;
+    // geometry mapping
+    gsMapData<T> md;
 
-    // Body forces
-    const gsFunction<T> * m_bodyForce_ptr;
+    // Lame coefficients, density and time factor
+    T lambda, mu, rho, timefactor;
 
-	// Factor for time-dependent body force
-	T m_tfac;
-
-protected:
-	// Dimension
-	size_t m_dim, m_dimStrain;
-
-    // Basis values
-    std::vector<gsMatrix<T> > basisData;
-
-    gsMatrix<T> eData;
-    gsMatrix<T> prData;
-
-    gsMatrix<unsigned> actives;
-	gsMatrix<T>		   physGrad, physGrad_symm;
-    index_t            numActive;
-
-    // Material matrix
-    gsMatrix<T> m_C;
-
-    // Local values of the surface forces
-    gsMatrix<T> forceVals;
-
-protected:
-    // Local matrices
+    // local components of the global linear system
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
 
-    gsFunction<T> * f_E;
-    gsFunction<T> * f_pr;
-
-    gsMapData<T> md;
+    // Stored evaluations
+    index_t numActiveFunctions;
+    gsMatrix<unsigned> localIndices;
+    std::vector<gsMatrix<T> > basisValues;
+    gsMatrix<T> forceValues;
 };
-
 
 } // namespace gismo

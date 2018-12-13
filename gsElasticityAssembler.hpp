@@ -15,11 +15,8 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 
-#include <gsAssembler/gsGaussRule.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsField.h>
-#include <gsUtils/gsPointGrid.h>
 #include <gsPde/gsPoissonPde.h>
 
 // Element visitors
@@ -29,12 +26,6 @@
 //#include <gsElasticity/gsVisitorElasticityPressure.h>
 //#include <gsElasticity/gsVisitorMassElasticity.h>
 
-// ---
-#include <gsCore/gsBoxTopology.h>
-#include <gsNurbs/gsTensorBSplineBasis.h>
-#include <gsNurbs/gsBSplineBasis.h>
-#include <gsNurbs/gsKnotVector.h>
-
 
 namespace gismo
 {
@@ -42,123 +33,81 @@ namespace gismo
 template<class T>
 gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
                                                 gsMultiBasis<T> const & basis,
-												T E_modulus,
-												T poissons_ratio,
-												T density_rho,
-												gsBoundaryConditions<T> const & bconditions,
-                                                const gsFunction<T> & body_force,
-                                                dirichlet::values computeStrategy,
-                                                dirichlet::strategy enforceStrategy,
-                                                gsFunction<T> * E,
-                                                gsFunction<T> * pr)
-:   Base(),
-	m_rho(density_rho),
-    m_bConditions(bconditions),
-    m_bodyForce(&body_force),
-    f_E(E),
-    f_pr(pr)
+                                                gsBoundaryConditions<T> const & bconditions,
+                                                const gsFunction<T> & body_force)
 {
-    m_options.setInt("DirichletValues"  , computeStrategy);
-    m_options.setInt("DirichletStrategy", enforceStrategy);
-
-    // Copy the spline basis
+    // Always concieved as a meaningful class, now gsPde is just a container for
+    // the domain, boundary conditions and the right-hand side;
+    // any derived class can surve this purpuse, for example gsPoissonPde;
+    // TUDO: change/remove gsPde from gsAssembler logic
+    gsPiecewiseFunction<T> rightHandSides;
+    rightHandSides.addPiece(body_force);
+    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rightHandSides) );
+    // gsAssembler<>::initialize requires a vector of bases, one for each unknown;
+    // different bases are used to compute Dirichlet DoFs;
+    // but always the first basis is used for the assembly;
+    // TODO: change gsAssembler logic
     m_dim = body_force.targetDim();
     for (int d = 0; d < m_dim; ++d)
         m_bases.push_back(basis);
 
-    gsPiecewiseFunction<T> pwf;
-    pwf.addPiece(body_force);
-    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,pwf) );
-    Base::initialize(pde, m_bases, m_options);
+    Base::initialize(pde, m_bases, defaultOptions());
+}
 
-    // Refresh .....
-	GISMO_ASSERT(m_dim == patches.parDim(), "Dimensions not matching!");
-	GISMO_ASSERT(m_dim == m_bases.front().dim(), "Dimensions not matching!");
-	GISMO_ASSERT(m_dim == 2 || m_dim == 3, "Only for 2D and 3D!");
+template <class T>
+gsOptionList gsElasticityAssembler<T>::defaultOptions()
+{
+    gsOptionList opt = Base::defaultOptions();
+    opt.addReal("YoungsModulus","Youngs modulus of the material",200e9);
+    opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
+    opt.addReal("Density","Density of the material",8e3);
+    opt.addReal("TimeFactor","Time factor for the time-dependent forces",1.);
+    opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",0);
+    return opt;
+}
+
+template <class T>
+void gsElasticityAssembler<T>::refresh()
+{
+    GISMO_ASSERT(m_dim == m_pde_ptr->domain().parDim(), "The RHS dimension and the domain dimension don't match!");
+    GISMO_ASSERT(m_dim == 2 || m_dim == 3, "Only two- and three-dimenstion domains are supported!");
+
     std::vector<gsDofMapper> m_dofMappers(m_dim);
-    for (index_t i = 0; i < m_dim; i++)
-        m_bases.front().getMapper(enforceStrategy,iFace::glue,m_bConditions,m_dofMappers[i],i,true);
+    for (index_t d = 0; d < m_dim; d++)
+        m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
+                             iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
     gsVector<unsigned> dims;
     dims.setOnes(m_dim);
     m_system = gsSparseSystem<T>(m_dofMappers, dims);
-
-    // Initialize material properties
-    m_lambda = E_modulus * poissons_ratio / ( (1.+poissons_ratio)*(1.-2.*poissons_ratio)) ;
-    m_mu     = E_modulus / (2.*(1.+poissons_ratio)) ;
-
-	// Initialize factors for time-dependent external forces
-	m_tfac_neumann = 1.0;
-	m_tfac_force = 1.0;
-
-	m_MATERIAL_LAW = 1;
-}
-
-template<class T>
-void gsElasticityAssembler<T>::set_tfac(const T tfac_neumann,
-		                                const T tfac_force)
-{
-	m_tfac_neumann = tfac_neumann;
-	m_tfac_force = tfac_force;
-}
-
-/// Sets the \em m_MATERIAL_LAW to 0: St. Venant-Kirchhoff, 1: Neo-Hooke
-template<class T>
-void gsElasticityAssembler<T>::set_MaterialLaw(const int material)
-{
-    GISMO_ASSERT( (material >= 0) && (material <= 1), "Only 0 (St. Venant-Kirchhoff) or 1 (Neo-Hooke) allowed!");
-	m_MATERIAL_LAW = material;
-}
-
-template<class T>
-void gsElasticityAssembler<T>::assembleNeumann()
-{
-    for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.neumannBegin();
-          it != m_bConditions.neumannEnd();
-		  ++it )
-    {
-        gsVisitorElasticityNeumann<T> neumann(*it->function(), it->side(), m_tfac_neumann);
-        Base::template push<gsVisitorElasticityNeumann<T> >(neumann, *it);
-    }
 }
 
 template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
-    gsWarn << " USING extensions/gsElasticity.\n";
-    //computeDirichletDofs();
-
-    if ( this->numDofs() == 0 ) // Are there any interior dofs ?
+    if ( this->numDofs() == 0 )
     {
-        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n" <<"\n" ;
+        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n";
         return;
     }
 
-    // Pre-allocate non-zero elements for each column of the
-    // sparse matrix
-    size_t nonZerosPerCol = m_dim;
-    for (index_t i = 0; i < m_dim; ++i) // to do: improve
-        nonZerosPerCol *= 2 * m_bases.front().maxDegree(i) + 1;
-    m_system.reserve(nonZerosPerCol, 1);
+    m_system.reserve(m_bases[0], m_options, 1);
 
-    // Compute the Dirichlet Degrees of freedom (if needed by m_options)
-    for (int i = 0; i < m_dim; ++i)
-        Base::computeDirichletDofs(i);
+    for (int d = 0; d < m_dim; ++d)
+        Base::computeDirichletDofs(d);
 
-    // Assemble volume stiffness and load vector integrals
-    gsVisitorLinearElasticity<T> visitor(m_lambda, m_mu, m_rho, *m_bodyForce, m_tfac_force,f_E,f_pr);
-    Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+    // Compute volumetric integrals and write to the global linear system
+    Base::template push<gsVisitorLinearElasticity<T> >();
+    // Compute surface integrals and write to the global rhs vector
+    Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
-    // Enforce Neumann boundary conditions
-    assembleNeumann();
-
-    // Assembly is done, compress the matrix
     m_system.matrix().makeCompressed();
 }
 
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 {
+    GISMO_NO_IMPLEMENTATION
 /*
     std::cout << "Nonlinear elasticity: assemble residual and tangential matrix." << std::endl;
 
@@ -189,98 +138,14 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 
     // Assembly is done, compress the matrix
     m_matrix.makeCompressed();
-
-
-}
-
-size_t sumBoundarySize(size_t a, gsDofMapper b) { return a + b.boundarySize(); }
-
-template<class T>
-void gsElasticityAssembler<T>::computeDirichletDofs()
-{
-    size_t numDDofs = std::accumulate(m_dofMappers.begin(), m_dofMappers.end(), (size_t)0, sumBoundarySize);
-    m_ddof.setZero(numDDofs,1);
-
-    if (m_options.dirValues == dirichlet::interpolation)
-    {
-        computeDirichletDofsIntpl();
-    }
-    else if (m_options.dirValues == dirichlet::l2Projection)
-    {
-        computeDirichletDofsL2Proj();
-    }
-    else
-    {
-        gsInfo << "This Dirichlet value strategy is not implemented\n";
-    }
-}
-
-
-// WARNING: WORKS ONLY FOR TENSOR-PRODUCT-BASES!
-template<class T>
-void gsElasticityAssembler<T>::computeDirichletDofsIntpl()
-{
-    // Iterate over all patch-sides with Dirichlet-boundary conditions
-    for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.dirichletBegin();
-          it != m_bConditions.dirichletEnd();
-		  ++it )
-    {
-        if ( it->isHomogeneous() )
-			continue;
-
-		const int unk = it->unknown();
-        const int k   = it->patch();
-        const gsBasis<T> & basis = (m_bases[unk/m_dim])[k];
-
-		const gsDofMapper &mapper = m_dofMappers[unk];
-
-        // Get dofs on this boundary
-        gsMatrix<unsigned> boundary = basis.boundary(it->side()) ;
-
-        // Get the side information
-        int dir = it->side().direction( );
-        index_t param = (it->side().parameter() ? 1 : 0);
-
-        // Compute grid of points on the face ("face anchors")
-        std::vector< gsVector<T> > rr;
-        rr.reserve( m_dim );
-
-        for ( int i = 0; i < m_dim; ++i)
-        {
-            if ( i == dir )
-            {
-                gsVector<T> b(1);
-                b[0] = ( basis.component(i).support() ) (0, param);
-                rr.push_back(b);
-            }
-            else
-            {
-                rr.push_back( basis.component(i).anchors().transpose() );
-            }
-        }
-
-        // Compute dirichlet values
-        gsMatrix<T> fpts =
-            it->function()->eval( m_pde_ptr->domain()[it->patch()].eval(  gsPointGrid<T>( rr ) ) );
-
-        // Interpolate dirichlet boundary
-        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
-        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-        const gsMatrix<T> & dVals =  geo->coefs();
-
-        // Save corresponding boundary dofs
-        for (index_t k2=0; k2!= boundary.size(); ++k2)
-        {
-            const int ii= mapper.bindex( (boundary)(k2) , it->patch() );
-            m_ddof.row(ii) = m_tfac_neumann * dVals.row(k2);
-        }
-    }
 */
 }
+
 
 template<class T>
 void  gsElasticityAssembler<T>::reComputeDirichletDofs(gsMultiPatch<T> &deformed)
 {
+    GISMO_NO_IMPLEMENTATION
     /*
 	computeDirichletDofsIntpl();
 
@@ -305,15 +170,14 @@ void  gsElasticityAssembler<T>::reComputeDirichletDofs(gsMultiPatch<T> &deformed
         }
 	}
     */
-
 }
-
 
 template<class T>
 void  gsElasticityAssembler<T>::setSolution(const gsMatrix<T>& solVector,
                                             gsMultiPatch<T>& result) const
 {
-    GISMO_ASSERT(this->numDofs() == m_system.rhs().rows(), "Something went wrong, assemble() not called?");
+    GISMO_NO_IMPLEMENTATION
+    /*GISMO_ASSERT(this->numDofs() == m_system.rhs().rows(), "Something went wrong, assemble() not called?");
 
     std::vector<gsFunction<T> * > sols ;
 
@@ -340,15 +204,15 @@ void  gsElasticityAssembler<T>::setSolution(const gsMatrix<T>& solVector,
                 }
             }
         }
-    }
+    }*/
 }
-
 
 template<class T>
 void  gsElasticityAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
                                                gsMultiPatch<T>& result) const
 {
-    GISMO_ASSERT(this->numDofs() == m_system.rhs().rows(), "Something went wrong, assemble() not called?");
+    GISMO_NO_IMPLEMENTATION
+    /*GISMO_ASSERT(this->numDofs() == m_system.rhs().rows(), "Something went wrong, assemble() not called?");
 
     std::vector<gsFunction<T> * > sols ;
 
@@ -370,52 +234,13 @@ void  gsElasticityAssembler<T>::updateSolution(const gsMatrix<T>& solVector,
                 }
             }
         }
-    }
+    }*/
 }
-
-/*template<class T>
-void  gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                                  gsMultiPatch<T>& result) const
-{
-    GISMO_ASSERT(this->numDofs() == m_system.rhs().rows(), "Something went wrong, assemble() not called?");
-
-    // empty the multipatch container
-    result.clear();
-
-	gsMatrix<T> coeffs;
-
-    for (index_t p=0; p < m_pde_ptr->domain().nPatches(); ++p )
-    {
-        // Update solution coefficients on patch p
-        const int sz  = m_bases[0][p].size(); // m_pde_ptr->domain()[p].size();
-
-        coeffs.resize(sz, m_dim);
-
-        for (index_t j = 0; j < m_dim; ++j) // For all components x, y, z
-        {
-            const gsDofMapper & mapper =  m_system.colMapper(j);
-
-            for (index_t i = 0; i < sz; ++i)
-            {
-                if ( mapper.is_free(i, p) ) // DoF value is in the solVector ?
-                {
-                    coeffs(i,j) = solVector( mapper.index(i, p), 0);
-                }
-                else // eliminated DoF: fill with Dirichlet data
-                {
-                    coeffs(i,j) = m_ddof[0](mapper.bindex(i, p), 0);
-                }
-            }
-        }
-
-		result.addPatch( m_bases[0][p].makeGeometry( give(coeffs) ) );
-    }
-}*/
-
 
 template<class T>
 void gsElasticityAssembler<T>::assembleMass()
 {
+    GISMO_NO_IMPLEMENTATION
     /*
     std::cout << "Linear Elasticity: assemble mass matrix." << std::endl;
 
@@ -466,6 +291,7 @@ void gsElasticityAssembler<T>::computeStresses(
         gsMatrix<T>& result,
         bool computeVonMises ) const
 {
+    GISMO_NO_IMPLEMENTATION
     /*
     //m_dim = m_basis.dim();
     size_t dimStrain = (m_dim*(m_dim+1))/2;
@@ -590,87 +416,6 @@ const gsMatrix<T> & gsElasticityAssembler<T>::rhs()
     }
 }
 
-template <class T>
-void gsElasticityAssembler<T>::addNeummannData(const gsMultiPatch<> &sourceGeometry,
-                                               const gsMultiPatch<> &sourceSolution,
-                                               int sourcePatch, const boxSide &sourceSide,
-                                               int targetPatch, const boxSide &targetSide)
-{
-    /*
-    int matchingMode = checkMatchingBoundaries(*(sourceGeometry.patch(sourcePatch).boundary(sourceSide)),
-                                               *(m_pde_ptr->domain().patch(targetPatch).boundary(targetSide)));
-    if (matchingMode != 0)
-    {
-        if (m_rhsExtra.rows() == 0 && m_system.rhs().rows() != 0)
-            m_rhsExtra = m_system.rhs();
-
-        const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
-        const gsMatrix<T> coefs = sourceSolution.piece(sourcePatch).boundary(sourceSide)->coefs();
-
-        int numLayers = localBoundaryIndices.rows()/coefs.rows();
-
-        std::map<unsigned,T> neumannDoFs;
-        for (int l = 0; l < numLayers; ++l)
-        {
-            for (int i = 0; i < coefs.rows(); ++i)
-            {
-                if (matchingMode == 1)
-                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(i);
-                if (matchingMode == -1)
-                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(coefs.rows() - i - 1);
-            }
-
-        }
-
-        gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhsExtra);
-        this->apply(visitor,targetPatch,targetSide);
-    }
-    else
-        gsInfo << "Doesn't look like matching boundaries!\n"
-               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
-               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
-    */
-}
-
-template <class T>
-void gsElasticityAssembler<T>::addNeummannData(const gsField<> &sourceField,
-                                               int sourcePatch, const boxSide &sourceSide,
-                                               int targetPatch, const boxSide &targetSide)
-{
-    /*
-    int matchingMode = checkMatchingBoundaries(*(sourceField.patch(sourcePatch).boundary(sourceSide)),
-                                               *(m_pde_ptr->domain().patch(targetPatch).boundary(targetSide)));
-    if (matchingMode != 0)
-    {
-        if (m_rhsExtra.rows() == 0 && m_system.rhs().rows() != 0)
-            m_rhsExtra = m_system.rhs();
-
-        const gsMatrix<unsigned> & localBoundaryIndices = (m_bases[0])[targetPatch].boundary(targetSide);
-        const gsMatrix<T> coefs = sourceField.igaFunction(sourcePatch).boundary(sourceSide)->coefs();
-
-        int numLayers = localBoundaryIndices.rows()/coefs.rows();
-
-        std::map<unsigned,T> neumannDoFs;
-        for (int l = 0; l < numLayers; ++l)
-        {
-            for (int i = 0; i < coefs.rows(); ++i)
-            {
-                if (matchingMode == 1)
-                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(i);
-                else if (matchingMode == -1)
-                    neumannDoFs[localBoundaryIndices(l*coefs.rows()+i)] = coefs(coefs.rows() - i - 1);
-            }
-        }
-
-        gsVisitorElasticityPressure<T> visitor(neumannDoFs,targetSide,m_rhs Extra);
-        this->apply(visitor,targetPatch,targetSide);
-    }
-    else
-        gsInfo << "Doesn't look like matching boundaries!\n"
-               << "Source: p " << sourcePatch << " s " << sourceSide << std::endl
-               << "Target: p " << targetPatch << " s " << targetSide << std::endl;
-    */
- }
 
 template <class T>
 int gsElasticityAssembler<T>::checkMatchingBoundaries(const gsGeometry<> & sourceBoundary,
@@ -870,52 +615,12 @@ void gsElasticityAssembler<T>::setDirichletDoFs(const gsMatrix<> & ddofs,
     }
 }
 
-
-template <class T>
-void gsElasticityAssembler<T>::clampPatchCorner(int patch,int corner)
-{
-    unsigned cornerIndex;
-    if (corner == 0 || corner == 1)
-    {
-        const gsMatrix<unsigned> & boundaryIndices = m_bases[0].basis(patch).boundary(boundary::south);
-        if (corner == 0)
-            cornerIndex = boundaryIndices(0);
-        else
-            cornerIndex = boundaryIndices(boundaryIndices.rows()-1);
-    }
-    else if (corner == 2 || corner == 3)
-    {
-        const gsMatrix<unsigned> & boundaryIndices = m_bases[0].basis(patch).boundary(boundary::north);
-        if (corner == 2)
-            cornerIndex = boundaryIndices(0);
-        else
-            cornerIndex = boundaryIndices(boundaryIndices.rows()-1);
-    }
-    else
-    {
-        gsInfo << "Bad corner number!\n"
-               << "0 - south-west\n"
-               << "1 - south-east\n"
-               << "2 - north-west\n"
-               << "3 - north-east\n";
-        return;
-    }
-
-    const T PP = 1e9; // magic number
-
-    for (int i = 0; i < m_dim; ++i)
-    {
-        index_t globalIndex = m_system.colMapper(i).index(cornerIndex,patch);
-        m_system.matrix().coeffRef(globalIndex,globalIndex) = PP;
-        m_system.rhs().coeffRef(globalIndex) = 0;
-    }
-}
-
 template <class T>
 void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector,
                                               gsMultiPatch<T> &result)
 {
-    result.clear();
+    GISMO_NO_IMPLEMENTATION
+    /*result.clear();
     gsMatrix<T> newCoeffs;
 
     for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
@@ -942,9 +647,8 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector,
             }
         }
         result.addPatch(m_bases[0][p].makeGeometry(give(newCoeffs)));
-    }
+    }*/
 }
-
 
 template <class T>
 void gsStressFunction<T>::eval_into(const gsMatrix< T > & u,gsMatrix< T > & result ) const
