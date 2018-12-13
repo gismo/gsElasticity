@@ -3,13 +3,23 @@
  <Geometry type="TensorBSpline2" id="1">
    <Basis type="TensorBSplineBasis2">
     <Basis type="BSplineBasis" index="0">
-     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+     <KnotVector degree="2">0.0 0.0 0.0 1.0 1.0 1.0</KnotVector>
     </Basis>
     <Basis type="BSplineBasis" index="1">
-     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+     <KnotVector degree="2">0.0 0.0 0.0 1.0 1.0 1.0</KnotVector>
     </Basis>
    </Basis>
-  <coefs geoDim="2">0 0 1 0 0 1 1 1 </coefs>
+  <coefs geoDim="2">
+0 0
+2 0
+4 0
+0 0.5
+2 0.5
+4 0.5
+0 1
+2 1 
+4 1 
+</coefs>
  </Geometry>
 </xml>
 

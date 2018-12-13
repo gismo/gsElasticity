@@ -13,79 +13,70 @@
 
 #pragma once
 
+#include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsFuncData.h>
+
 namespace gismo
 {
-
 
 template <class T>
 class gsVisitorElasticityNeumann
 {
 public:
 
-    gsVisitorElasticityNeumann(const gsFunction<T> & neudata, boxSide s, T tfac = 1.0) :
-    neudata_ptr(&neudata), side(s)
-    {
-        m_tfac = tfac;
-	}
+    gsVisitorElasticityNeumann(const gsPde<T> & , const boundary_condition<T> & s)
+        : neumannFunction_ptr( s.function().get() ),
+          patchSide( s.side() )
+    {}
 
     void initialize(const gsBasis<T>   & basis,
                     const index_t ,
                     const gsOptionList & options,
                     gsQuadRule<T>      & rule)
     {
-        m_dim = basis.dim();
+        rule = gsQuadrature::get(basis, options, patchSide.direction());
+        md.flags = NEED_VALUE|NEED_MEASURE;
 
-		const int dir = side.direction();
-        gsVector<int> numQuadNodes ( m_dim );
-        for (int i = 0; i < m_dim; ++i)
-            numQuadNodes[i] = basis.degree(i) + 1;
-        numQuadNodes[dir] = 1;
-
-        // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-
-        // Set Geometry evaluation flags
-        md.flags = NEED_VALUE|NEED_JACOBIAN;
+        dim = basis.dim();
+        timefactor = options.getReal("TimeFactor");
     }
 
-    // Evaluate on element.
     inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
                          gsGeometry<T> const & geo,
                          gsMatrix<T> const      & quNodes)
     {
+        // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
-        // Compute the active basis functions
-        // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0), actives);
-        numActive = actives.rows();
-
+        // find local indices which are active on the element
+        basis.active_into(quNodes.col(0), localIndices);
+        numActiveFunctions = localIndices.rows();
         // Evaluate basis functions on element
-        basis.eval_into(quNodes, basisData);
-
-        // Compute geometry related values
+        basis.eval_into(quNodes, basisValues);
+        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
-
-        // Evaluate the Neumann data
-        neudata_ptr->eval_into(md.values[0], neuData);
-
+        // Evaluate the Neumann functon on the images of the quadrature points
+        neumannFunction_ptr->eval_into(md.values[0], neumannValues);
         // Initialize local matrix/rhs
-        localRhs.setZero(m_dim*numActive, 1 );
+        localRhs.setZero(dim*numActiveFunctions,1);
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
     {
-        for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
+
+        for (index_t q = 0; q < quWeights.rows(); ++q) // loop over quadrature nodes
         {
 			// Compute the outer normal vector on the side
-            outerNormal(md, k, side, unormal);
+            // normal length equals to the local area measure
+            gsVector<T> unormal;
+            outerNormal(md, q, patchSide, unormal);
 
-            // Multiply quadrature weight by the measure of normal and time-dependent factor
-            const T weight = quWeights[k] * unormal.norm() * m_tfac;
+            // Coolect of the factors here: quadrature weight, geometry measure and time factor
+            const T weight = quWeights[q] * unormal.norm() * timefactor;
 
-            for (index_t j = 0; j < m_dim; ++j)
-                localRhs.middleRows(j*numActive,numActive).noalias() +=
-                    weight * neuData(j,k) * basisData.col(k) ;
+            for (index_t d = 0; d < dim; ++d)
+                localRhs.middleRows(d*numActiveFunctions,numActiveFunctions).noalias() +=
+                    weight * neumannValues(d,q) * basisValues.col(q) ;
         }
     }
 
@@ -93,38 +84,39 @@ public:
                               const std::vector<gsMatrix<T> >   & ,
                               gsSparseSystem<T>     & system)
     {
-        gsMatrix<unsigned> ci_actives;
-		for (index_t ci = 0; ci!= m_dim; ++ci)
-		{
-            system.mapColIndices(actives, patchIndex, ci_actives, ci);
-            system.pushToRhs(localRhs, actives, ci);
-		}
+        gsMatrix<unsigned> globalIndices;
+        system.mapColIndices(localIndices, patchIndex, globalIndices, 0);
+        std::vector<gsMatrix<unsigned> > allGlobalActives;
+        gsVector<size_t> blockNumbers(dim);
+        for (index_t d = 0; d < dim; ++d)
+        {
+            allGlobalActives.push_back(globalIndices);
+            blockNumbers.at(d) = d;
+        }
+
+        system.pushToRhs(localRhs,allGlobalActives,blockNumbers);
     }
 
-protected:
+protected:   
+    // general problem info
+    index_t dim;
+    const gsFunction<T> * neumannFunction_ptr;
+    boxSide patchSide;
+    // geometry mapping
+    gsMapData<T> md;
 
-    index_t numActive;
-	index_t m_dim;
+    // Time factor
+    T timefactor;
 
-    // Neumann function
-    const gsFunction<T> * neudata_ptr;
-    boxSide side;
-	T m_tfac;
-
-    // Basis values
-    gsMatrix<T>      basisData;
-    gsMatrix<unsigned> actives;
-
-    // Normal and Neumann values
-	gsVector<T> unormal;
-    gsMatrix<T> neuData;
-
-    // Local matrix and rhs
+    // local components of the global linear system
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
 
-    gsMapData<T> md;
+    // Stored evaluations
+    index_t numActiveFunctions;
+    gsMatrix<unsigned> localIndices;
+    gsMatrix<T> basisValues;
+    gsMatrix<T> neumannValues;
 };
-
 
 } // namespace gismo
