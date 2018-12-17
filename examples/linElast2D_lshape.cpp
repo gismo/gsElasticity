@@ -48,6 +48,7 @@ int main(int argc, char* argv[]){
     gsReadFile<>(filename, geometry);
     // creating basis
     gsMultiBasis<> basis(geometry);
+    basis.degreeElevate();
     for (int i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 
@@ -55,7 +56,7 @@ int main(int argc, char* argv[]){
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
+    assembler.options().setInt("DirichletValues",dirichlet::interpolation);
     gsInfo<<"Assembling...\n";
     assembler.assemble();
     gsInfo << "Assembled a system (matrix and load vector) with " << assembler.numDofs() << " dofs.\n";
@@ -77,11 +78,9 @@ int main(int argc, char* argv[]){
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
 
-    // constructing stresses
-    //gsMultiFunction<real_t> vonMisesStresses;
-    //assembler.constructStresses(solVector,vonMisesStresses,stress_type::von_mises);
-    //gsField<> vonMisesStressField(assembler.patches(),vonMisesStresses,true);
-
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
+    gsField<> stressField(assembler.patches(),stresses,true);
 
     //=============================================//
                   // Output //
@@ -94,7 +93,7 @@ int main(int argc, char* argv[]){
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
-    //fields["vonMises"] = &vonMisesStressField;
+    fields["Stresses"] = &stressField;
     gsWriteParaviewMultiPhysics(fields,"lshape",numPlotPoints);
     gsInfo << "Finished.\n";
     gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
