@@ -1,2 +1,3 @@
 # gsElasticity
 Elasticity solvers
+# Installing
