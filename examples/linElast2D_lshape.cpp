@@ -14,11 +14,13 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/lshape.xml";
     int numUniRef = 3; // number of h-refinements
+    int numDegElevate = 1; // number of p-refinements
     int numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
+    cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -48,7 +50,8 @@ int main(int argc, char* argv[]){
     gsReadFile<>(filename, geometry);
     // creating basis
     gsMultiBasis<> basis(geometry);
-    basis.degreeElevate();
+    for (int i = 0; i < numDegElevate; ++i)
+        basis.degreeElevate();
     for (int i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 
@@ -74,7 +77,6 @@ int main(int argc, char* argv[]){
     gsMultiPatch<> solution;
     assembler.constructSolution(solVector,solution,gsVector<index_t>::vec(0,1));
     gsInfo << "Constructed solution.\n";
-
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
 
@@ -85,9 +87,6 @@ int main(int argc, char* argv[]){
     //=============================================//
                   // Output //
     //=============================================//
-
-    gsInfo << "Internal energy: " << solVector.transpose() * assembler.matrix() * solVector << "\n";
-    gsInfo << "External energy: " << assembler.rhs().transpose() * solVector << "\n";
 
     gsInfo << "Plotting the output to Paraview...\n";
     // creating a container to plot all fields to one Paraview file

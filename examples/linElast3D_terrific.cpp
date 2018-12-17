@@ -1,4 +1,4 @@
-/// This is an example of using the linear elasticity solver on a 2D multi-patch geometry
+/// This is an example of using the linear elasticity solver on a 3D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 
@@ -6,38 +6,43 @@ using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Testing the linear elasticity solver in 2D.\n";
+    gsInfo << "Testing the linear elasticity solver in 3D.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/beam2D.xml";
-    int numUniRef = 3; // number of h-refinements
+    std::string filename = ELAST_DATA_DIR"terrific.xml";
+    int numUniRef = 0; // number of h-refinements
     int numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
+    gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
-    gsConstantFunction<> g(0.,0.,2);
-
-    // boundary displacement in y-direction, Neumann BC
-    gsConstantFunction<> f(1.,0.,2);
+    gsConstantFunction<> f(0.,0.,0.,3);
+    // surface load, neumann BC
+    gsConstantFunction<> g(20e6, -14e6, 0,3);
 
     // material parameters
-    real_t youngsModulus = 200.;//74e9;
+    real_t youngsModulus = 74e9;
     real_t poissonsRatio = 0.33;
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
-    bcInfo.addCondition(0,boundary::east,condition_type::neumann,&f);
-    //bcInfo.addCondition(0,boundary::north,condition_type::dirichlet,&g,1);
+    // Dirichlet BC are imposed separately for every component (coordinate)
+    for (int d = 0; d < 3; d++)
+    {
+        bcInfo.addCondition(0,boundary::back,condition_type::dirichlet,0,d);
+        bcInfo.addCondition(1,boundary::back,condition_type::dirichlet,0,d);
+        bcInfo.addCondition(2,boundary::south,condition_type::dirichlet,0,d);
+    }
+    // Neumann BC are imposed as one function
+    bcInfo.addCondition(13,boundary::front,condition_type::neumann,&g);
+    bcInfo.addCondition(14,boundary::north,condition_type::neumann,&g);
 
     //=============================================//
                   // Assembly //
@@ -52,7 +57,7 @@ int main(int argc, char* argv[]){
         basis.uniformRefine();
 
     // creating assembler
-    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);
+    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
@@ -65,37 +70,31 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     gsInfo << "Solving...\n";
-    gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
+    gsSparseSolver<>::LU solver(assembler.matrix());
     gsMatrix<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with LU solver.\n";
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution,gsVector<index_t>::vec(0,1));
-    gsInfo << "Constructed solution.\n";
-
+    assembler.constructSolution(solVector,solution,gsVector<index_t>::vec(0,1,2));
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
 
     // constructing stresses
-    //gsMultiFunction<real_t> vonMisesStresses;
-    //assembler.constructStresses(solVector,vonMisesStresses,stress_type::von_mises);
-    //gsField<> vonMisesStressField(assembler.patches(),vonMisesStresses,true);
-
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
+    gsField<> stressField(assembler.patches(),stresses,true);
 
     //=============================================//
                   // Output //
     //=============================================//
 
-    gsInfo << "Internal energy: " << solVector.transpose() * assembler.matrix() * solVector << "\n";
-    gsInfo << "External energy: " << assembler.rhs().transpose() * solVector << "\n";
-
     gsInfo << "Plotting the output to Paraview...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
-    //fields["vonMises"] = &vonMisesStressField;
-    gsWriteParaviewMultiPhysics(fields,"beam2D",numPlotPoints);
+    fields["Stresses"] = &stressField;
+    gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
     gsInfo << "Finished.\n";
     gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 

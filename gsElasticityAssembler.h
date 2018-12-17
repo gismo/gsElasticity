@@ -53,59 +53,6 @@ public:
                                  gsPiecewiseFunction<T>& result,
                                  stress_type::type type = stress_type::von_mises) const;
 
-    //=========================================//
-    //============ Old/to-do functions ========//
-    //=========================================//
-
-    /// @brief Changes the coefficient of an already existing multipatch
-    /// so that they correspond to a given solution vector
-    void setSolution(const gsMatrix<T>& solVector,
-                     gsMultiPatch<T>& result) const;
-
-    /// @brief Sum the coefficient of an already existing multipatch with
-    /// those corresponding to a given solution vector
-    void updateSolution(const gsMatrix<T>& solVector,
-                        gsMultiPatch<T>& result) const;
-
-    /// @brief (NonLin) Recompute Dirichlet DoFs for a deformed configuration
-	void reComputeDirichletDofs(gsMultiPatch<T> &deformed);
-
-
-    /// Add already computed Dirichlet boundary data to the specified sides.
-    /// Orientation check only for 2D.
-    void addDirichletData(const gsMultiPatch<> & sourceGeometry,
-                          const gsMultiPatch<> & sourceSolution,
-                          int sourcePatch, const boxSide & sourceSide,
-                          int targetPatch, const boxSide & targetSide);
-
-    void addDirichletData(const gsField<> & sourceField,
-                          int sourcePatch, const boxSide & sourceSide,
-                          int targetPatch, const boxSide & targetSide);
-
-    void setDirichletDoFs(const gsMatrix<> & ddofs,
-                          int targetPatch,
-                          const boxSide & targetSide);
-
-
-    const gsMatrix<T> & rhs();
-
-    void resetRhsExtra() { m_rhsExtra.clear(); }
-
-    void deformGeometry(const gsMatrix<T> & solVector,
-                        gsMultiPatch<T> & result);
-
-    /// @brief (NonLin) Assembles the stiffness matrix for a given deformed configuration
-    void assemble(const gsMultiPatch<T> & deformed);
-
-    /// @brief Assembles the mass matrix for the eigen-value analysis
-    void assembleMass();
-
-
-protected:
-
-    int checkMatchingBoundaries(const gsGeometry<> & sourceBoundary,
-                                const gsGeometry<> & targetBoundary);
-
 protected:
 
     /// Dimension of the problem
@@ -118,12 +65,6 @@ protected:
     using Base::m_options;
     using Base::m_system;
 
-    //=========================================//
-    //============ Old/to-do members ==========//
-    //=========================================//
-
-    gsMatrix<T> m_rhsExtra;
-    std::map<unsigned,T> externalDDofs;
 };
 
 } // namespace gismo ends
