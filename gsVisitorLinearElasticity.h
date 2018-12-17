@@ -1,6 +1,6 @@
 /** @file gsVisitorLinearElasticity.h
 
-    @brief Element visitor for linear elasticity for 2D plain strain and 3D continua.
+    @brief Visitor class for volumetric integration of the linear elasticity system.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,9 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): O. Weeger, A. Shamanskiy (TU Kaiserslautern)
+    Author(s):
+        O. Weeger    (2012 - 2015, TU Kaiserslautern),
+        A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
 #pragma once

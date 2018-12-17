@@ -1,6 +1,6 @@
 /** @file gsElasticityAssembler.hpp
 
-    @brief Provides nonlinear elasticity system matrices for 2D plain strain and 3D continua.
+    @brief Provides linear and nonlinear elasticity systems for 2D plain strain and 3D continua.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,9 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): O. Weeger, A. Shamanskiy (TU Kaiserslautern)
+    Author(s):
+        O. Weeger    (2012 - 2015, TU Kaiserslautern),
+        A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
 #pragma once
@@ -102,6 +104,26 @@ void gsElasticityAssembler<T>::assemble()
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
     m_system.matrix().makeCompressed();
+}
+
+template <class T>
+void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,
+                                                       gsPiecewiseFunction<T> & result,
+                                                       stress_type::type type) const
+{
+    result.clear();
+    if (type == stress_type::all_2D)
+        GISMO_ASSERT(m_dim == 2, "Invalid stress type for a 2D problem");
+    if (type == stress_type::normal_3D || type == stress_type::shear_3D)
+        GISMO_ASSERT(m_dim == 3, "Invalid stress type for a 3D problem");
+
+    T E = m_options.getReal("YoungsModulus");
+    T pr = m_options.getReal("PoissonsRatio");
+    T lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
+    T mu     = E / ( 2. * ( 1. + pr ) );
+
+    for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
+        result.addPiecePointer(new gsCauchyStressFunction<T>(displacement,p,type,lambda,mu));
 }
 
 template<class T>
@@ -283,125 +305,9 @@ void gsElasticityAssembler<T>::assembleMass()
 }
 
 
-template<class T>
-void gsElasticityAssembler<T>::computeStresses(
-        const gsMatrix<T>& solVector,
-        const gsMatrix<T>& u,
-        int patchIndex,
-        gsMatrix<T>& result,
-        bool computeVonMises ) const
-{
-    GISMO_NO_IMPLEMENTATION
-    /*
-    //m_dim = m_basis.dim();
-    size_t dimStrain = (m_dim*(m_dim+1))/2;
 
-    result.resize( dimStrain + unsigned( computeVonMises), u.cols() );
-    result.setZero();
 
-    unsigned evFlags = NEED_VALUE | NEED_JACOBIAN | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-    typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(evFlags, m_pde_ptr->domain()[patchIndex]));
 
-    // Evaluate basis functions on element
-    gsMatrix<T> basisGrad( m_dim, 1 );
-    gsMatrix<unsigned> actives;
-
-    gsMatrix<T> physGrad( m_dim, 1 );
-    gsMatrix<T> uPartDers( m_dim, m_dim );
-
-    // Do this pointwise, since we have no assumptions
-    // on the evaluation points.
-    for( size_t k=0; k < size_t( u.cols() ); k++ )
-    {
-        // active functions at the evaluation point
-        m_bases[0].basis(patchIndex).active_into( u.col(k), actives);
-        // for each component, make global DoFs out of these local DoFs
-        std::vector< gsMatrix<unsigned> > ci_actives(m_dim,actives);
-        for( index_t ci = 0; ci < m_dim; ++ci )
-            m_dofMappers[ci].localToGlobal(actives, patchIndex, ci_actives[ci]);
-
-        // compute the gradients of the basis functions at the eval.pt.
-        m_bases[0].basis(patchIndex).deriv_into( u.col(k), basisGrad);
-        // and transform them to the physical space
-        physGrad.resize(m_dim, actives.rows() );
-        physGrad.setZero();
-        geoEval->evaluateAt( u.col(k) );
-        geoEval->transformGradients( index_t(0) , basisGrad, physGrad);
-
-        // compute the partial derivatives of the
-        // displacement field
-        uPartDers.setZero();
-        for( index_t dc=0; dc < m_dim; dc++) // component
-            for( index_t dd=0; dd < m_dim; dd++) // derivative
-                for( size_t ai=0; ai < size_t( actives.rows() ); ai++ ) // active function
-                {
-                    unsigned tmpi = ci_actives[ dc ](ai,0);
-                    real_t tmpCoef;
-                    if( m_dofMappers[dc].is_free_index( tmpi) )
-                        tmpCoef = solVector( tmpi, 0);
-                    else // dirichlet boundary
-                        tmpCoef = m_ddof( m_dofMappers[dc].global_to_bindex(tmpi) );
-
-                    uPartDers( dc, dd ) += tmpCoef * physGrad( dd, ai );
-                }
-
-        if( m_dim == 2 )
-        {
-            // sigma_{11}:
-            result(0,k) = m_lambda * ( uPartDers(0,0)+uPartDers(1,1) ) + 2*m_mu*uPartDers(0,0);
-            // sigma_{22}:
-            result(1,k) = m_lambda * ( uPartDers(0,0)+uPartDers(1,1) ) + 2*m_mu*uPartDers(1,1);
-            // sigma_{12}:
-            result(2,k) = m_mu * ( uPartDers(0,1) + uPartDers(1,0) );
-
-            if( computeVonMises )
-            {
-                result(3,k) = math::sqrt(
-                            result(0,k)*result(0,k)
-                            - result(0,k)*result(1,k)
-                            + result(1,k)*result(1,k)
-                            + 3.0 * result(2,k)*result(2,k) );
-            }
-
-        }
-        else if( m_dim == 3 )
-        {
-            real_t tmp = m_lambda * ( uPartDers(0,0)+uPartDers(1,1)+uPartDers(2,2) );
-            result(0,k) = tmp + 2*m_mu * uPartDers(0,0); // sigma_{11}
-            result(1,k) = tmp + 2*m_mu * uPartDers(1,1); // sigma_{22}
-            result(2,k) = tmp + 2*m_mu * uPartDers(2,2); // sigma_{33}
-            result(3,k) = m_mu * ( uPartDers(0,1) + uPartDers(1,0) ); // sigma_{12}
-            result(4,k) = m_mu * ( uPartDers(0,2) + uPartDers(2,0) ); // sigma_{13}
-            result(5,k) = m_mu * ( uPartDers(2,1) + uPartDers(1,2) ); // sigma_{23}
-
-            if( computeVonMises )
-            {
-                T tmp2 =   (result(0,k)-result(1,k))*(result(0,k)-result(1,k))
-                        + (result(0,k)-result(2,k))*(result(0,k)-result(2,k))
-                        + (result(1,k)-result(2,k))*(result(1,k)-result(2,k))
-                        + 6.0 * ( result(3,k)*result(3,k) + result(4,k)*result(4,k) + result(5,k)*result(5,k) );
-
-                result(6,k) = math::sqrt( 0.5 * tmp2 );
-            }
-
-        }
-    }
-    */
-}
-
-template <class T>
-void gsElasticityAssembler<T>::constructStresses(const gsMatrix<T>& solVector,
-                                                 gsMultiFunction<T>& result,
-                                                 stress_type::type type) const
-{
-    result.clear();
-    for (index_t i = 0; i < m_pde_ptr->domain().nPatches(); ++i )
-    {
-        result.addFunction(typename gsFunction<T>::uPtr(new gsStressFunction<T>(solVector,*this,i,type)));
-        //gsFunction<T> * temp = new gsStressFunction<T>(solVector,*this,i,type);
-        //result.addFunction(temp);
-    }
-}
 
 template <class T>
 const gsMatrix<T> & gsElasticityAssembler<T>::rhs()
@@ -650,37 +556,4 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector,
     }*/
 }
 
-template <class T>
-void gsStressFunction<T>::eval_into(const gsMatrix< T > & u,gsMatrix< T > & result ) const
-{
-    gsMatrix<T> fullStress;
-    result.clear();
-    //gsInfo << m_displacement<<std::endl;
-    m_assembler.computeStresses(m_displacement,u,m_patch,fullStress,true);
-    result.resize(targetDim(),u.cols());
-
-    switch(m_type)
-    {
-    case stress_type::normal:
-    {
-        result.block(0,0,targetDim(),u.cols()) = fullStress.block(0,0,targetDim(),u.cols());
-        break;
-    }
-    case stress_type::shear:
-    {
-        result.block(0,0,targetDim(),u.cols()) = fullStress.block(domainDim(),0,targetDim(),u.cols());
-        break;
-    }
-    case stress_type::von_mises:
-    {
-        result.block(0,0,1,u.cols()) = fullStress.block(fullStress.rows()-1,0,1,u.cols());
-        break;
-    }
-    default:
-        gsInfo << "Bad stress type\n";
-        result.setZero();
-        break;
-    };
-}
-
-}// namespace gismo
+}// namespace gismo ends
