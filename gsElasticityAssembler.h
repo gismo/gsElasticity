@@ -53,6 +53,22 @@ public:
                                  gsPiecewiseFunction<T>& result,
                                  stress_type::type type = stress_type::von_mises) const;
 
+    /** @brief Deform geometric domain using computed displacement field.
+     *
+     * Domain must have the same level of refinement as the basis used for computing the displacement.
+     * Otherwise the number of control points will not match.
+     */
+    void deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain);
+
+    /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
+     *
+     * A usual source of degrees of freedom is another geometry where it is known that the corresponding
+     * bases match. The function is not safe in that it assumes a correct numbering of DoFs in a given
+     * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
+     * to gsBoundaryCondtions container that is passed to the assembler constructor.
+     */
+    void setDirichletDofs(index_t patch, index_t side, const gsMatrix<T> & ddofs);
+
 protected:
 
     /// Dimension of the problem
