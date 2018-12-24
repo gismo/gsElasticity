@@ -34,23 +34,21 @@ public:
     gsElasticityNewton(gsAssembler<T> & assembler)
         : gsNewtonIterator<T>(assembler),
           m_verbose(true),
+          m_doFirst(true),
           m_initResidueNorm(-1.),
           m_initUpdateNorm(-1.),
-          m_initDone(false)
+          m_firstDone(false)
     { }
 
     gsElasticityNewton(gsAssembler<T> & assembler, gsMatrix<T> & solVector)
         : gsNewtonIterator<T>(assembler),
           m_verbose(true),
+          m_doFirst(false),
           m_initResidueNorm(-1.),
-          m_initDone(true)
-    {
-        index_t numUnk = m_assembler.system().numUnknowns();
-        gsVector<index_t> unknowns(numUnk);
-        for (index_t d = 0; d < numUnk; ++d)
-            unknowns.at(d) = d;
-        m_assembler.constructSolution(solVector,m_curSolution,unknowns);
+          m_firstDone(false)
 
+    {
+        m_assembler.constructSolution(solVector,m_curSolution);
         m_updnorm = m_initUpdateNorm = solVector.norm();
     }
 
@@ -68,7 +66,11 @@ public:
     void nextIteration();
 
     /// \brief Returns the solution after the first iteration of Newton's method.
-    const gsMultiPatch<T> & linearSolution() const { return m_linSolution; }
+    const gsMultiPatch<T> & linearSolution() const
+    {
+        GISMO_ASSERT(m_firstDone,"Initial solution is not constructed\n");
+        return m_linSolution;
+    }
 
     /// \brief Sets verbosity of the solver
     void setVerbosity(bool verbose) { m_verbose = verbose; }
@@ -81,6 +83,8 @@ protected:
     using Base::m_assembler;
     /// \brief If true prints useful information to the console. Default: true
     bool m_verbose;
+    /// \brief If true, make firstIteration()
+    bool m_doFirst;
 
     // solution variables
     using Base::m_curSolution;
@@ -102,14 +106,14 @@ protected:
     //status variables
     using Base::m_numIterations;
     using Base::m_converged;
-    /// \brief If false make firstIteration()
-    bool m_initDone;
+    /// \brief Sets to true after firstIteration() is done
+    bool m_firstDone;
 };
 
 template <class T>
 void gsElasticityNewton<T>::solve()
 {
-    if (!m_initDone)
+    if (m_doFirst && !m_firstDone)
         firstIteration();
 
     // ----- Iterations start -----
@@ -138,17 +142,14 @@ template <class T>
 void gsElasticityNewton<T>::firstIteration()
 {
     m_converged = false;
+    m_numIterations = 0;
 
     m_assembler.assemble();
-     Base::m_solver.compute(m_assembler.matrix());
+    Base::m_solver.compute(m_assembler.matrix());
     m_updateVector = Base::m_solver.solve(m_assembler.rhs());
 
-    index_t numUnk = m_assembler.system().numUnknowns();
-    gsVector<index_t> unknowns(numUnk);
-    for (index_t d = 0; d < numUnk; ++d)
-        unknowns.at(d) = d;
-    m_assembler.constructSolution(m_updateVector,m_curSolution,unknowns);
-    m_assembler.constructSolution(m_updateVector,m_linSolution,unknowns);
+    m_assembler.constructSolution(m_updateVector,m_curSolution);
+    m_assembler.constructSolution(m_updateVector,m_linSolution);
 
     // Homogenize Dirichlet dofs (values are now copied in m_curSolution)
     m_assembler.homogenizeFixedDofs(-1);
@@ -159,7 +160,7 @@ void gsElasticityNewton<T>::firstIteration()
     if (m_verbose)
         printStatus();
 
-    m_initDone = true;
+    m_firstDone = true;
     m_numIterations++;
 }
 

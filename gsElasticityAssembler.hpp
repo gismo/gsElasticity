@@ -120,6 +120,14 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
     m_system.matrix().makeCompressed();
 }
 
+template <class T>
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk) const
+{
+    gsVector<index_t> unknowns(m_dim);
+    for (index_t d = 0; d < m_dim; ++d)
+        unknowns.at(d) = d;
+    Base::constructSolution(solVector,result,unknowns);
+}
 
 template <class T>
 void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,

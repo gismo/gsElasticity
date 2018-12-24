@@ -75,7 +75,7 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution,gsVector<index_t>::vec(0,1));
+    assembler.constructSolution(solVector,solution);
     gsInfo << "Constructed solution.\n";
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
