@@ -40,7 +40,7 @@ public:
 
         dim = basis.dim();
         rho = options.getReal("Density");
-        timefactor = options.getReal("TimeFactor");
+        timeFactor = options.getReal("TimeFactor");
 
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
@@ -48,9 +48,9 @@ public:
         mu     = E / ( 2. * ( 1. + pr ) );
     }
 
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometry<T> const & geo,
-                         gsMatrix<T> const      & quNodes)
+    inline void evaluate(const gsBasis<T> & basis,
+                         const gsGeometry<T> & geo,
+                         const gsMatrix<T> & quNodes)
     {
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
@@ -71,8 +71,10 @@ public:
     inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
     {
-        gsMatrix<T> & bVals  = basisValues[0];
-        gsMatrix<T> & bGrads = basisValues[1];
+        // values of basis functions, 1 x numActiveFunctions
+        gsMatrix<T> & basisVals  = basisValues[0];
+        // gradients of basis functions, dim x numActiveFunctions
+        gsMatrix<T> & basisGrads = basisValues[1];
 
         T lam2mu =  lambda + 2 * mu;
         index_t N = numActiveFunctions;
@@ -82,9 +84,9 @@ public:
         {
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
-            // Compute physical gradients at q as a dim x numActiveFunction matrix
+            // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             gsMatrix<T> physGrad;
-            transformGradients(md, q, bGrads, physGrad);
+            transformGradients(md, q, basisGrads, physGrad);
 
             if (dim == 2)
                 for (index_t i = 0; i < N; i++)
@@ -125,7 +127,7 @@ public:
                     }
 
             for (index_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N,N).noalias() += weight * rho * forceValues(d,q) * timefactor * bVals.col(q) ;
+                localRhs.middleRows(d*N,N).noalias() += weight * rho * forceValues(d,q) * timeFactor * basisVals.col(q) ;
         }
     }
 
@@ -134,10 +136,14 @@ public:
                               gsSparseSystem<T>     & system)
     {
         std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
+        gsVector<size_t> blockNumbers(dim);
         for (index_t d = 0; d < dim; ++d)
+        {
             system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
-
-        system.push(localMat, localRhs, globalIndices,eliminatedDofs);
+            blockNumbers.at(d) = d;
+        }
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:
@@ -148,7 +154,7 @@ protected:
     gsMapData<T> md;
 
     // Lame coefficients, density and time factor
-    T lambda, mu, rho, timefactor;
+    T lambda, mu, rho, timeFactor;
 
     // local components of the global linear system
     gsMatrix<T> localMat;

@@ -48,6 +48,9 @@ public:
     /// @brief Assembles the stiffness matrix
     virtual void assemble();
 
+    /// @ brief Assembles the stiffness matrix for a iteration of Newton's method on a deformed configuration
+    virtual void assemble(const gsMultiPatch<T> & deformed);
+
     /// @brief Construct patchwise stress-function for visualization.
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T>& result,
