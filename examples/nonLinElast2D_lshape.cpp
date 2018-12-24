@@ -76,16 +76,23 @@ int main(int argc, char* argv[]){
 
     newton.solve();
 
+    // solution to the nonlinear problem as an isogeometric displacement field
     const gsMultiPatch<> solution = newton.solution();
-    gsField<> solutionField(geometry,solution);
+    // solution to the linear problem as an isogeometric displacement field
+    const gsMultiPatch<> solutionLinear = newton.linearSolution();
+
     //=============================================//
                   // Output //
     //=============================================//
+
+    gsField<> solutionField(geometry,solution);
+    gsField<> linearSolutionField(geometry,solutionLinear);
 
     gsInfo << "Plotting the output to Paraview...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
+    fields["Deformation (linear)"] = &linearSolutionField;
     gsWriteParaviewMultiPhysics(fields,"lshape",numPlotPoints);
     gsInfo << "Finished.\n";
     gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";

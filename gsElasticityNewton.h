@@ -47,6 +47,9 @@ public:
     /// solution and computes residual
     void nextIteration();
 
+    /// \brief Returns the solution after the first iteration of Newton's method.
+    const gsMultiPatch<T> & linearSolution() { return m_linSolution; }
+
 protected:
 
     using Base::m_curSolution;
@@ -58,6 +61,10 @@ protected:
     using Base::m_converged;
     using Base::m_updateVector;
     using Base::m_assembler;
+
+    /// \brief Solution vector of the linear problem, a.k.a. first iteration of Newton's method.
+    /// Can be used for comparison.
+    gsMultiPatch<T> m_linSolution;
 
 };
 
@@ -96,7 +103,8 @@ void gsElasticityNewton<T>::firstIteration()
     gsVector<index_t> unknowns(numUnk);
     for (index_t d = 0; d < numUnk; ++d)
         unknowns.at(d) = d;
-    m_assembler.constructSolution(m_updateVector, m_curSolution,unknowns);
+    m_assembler.constructSolution(m_updateVector,m_curSolution,unknowns);
+    m_assembler.constructSolution(m_updateVector,m_linSolution,unknowns);
 
     // Homogenize Dirichlet dofs (values are now copied in m_curSolution)
     m_assembler.homogenizeFixedDofs(-1);

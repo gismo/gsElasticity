@@ -175,22 +175,18 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsM
 template <class T>
 void gsElasticityAssembler<T>::setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs)
 {
-
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
     while (!dirBcExists && it != m_pde_ptr->bc().dirichletEnd())
     {
         if (it->patch() == patch && it->side() == side)
             dirBcExists = true;
-
         ++it;
     }
-
     GISMO_ASSERT(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
                              + " does not belong to the Dirichlet boundary\n");
 
     gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
-
     GISMO_ASSERT(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
                  "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
                  " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
