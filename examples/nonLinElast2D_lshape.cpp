@@ -69,11 +69,13 @@ int main(int argc, char* argv[]){
     gsElasticityNewton<real_t> newton(assembler);
     newton.setMaxIterations(maxNumIteration);
     newton.setTolerance(tolerance);
+    newton.setVerbosity(true);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
+    gsInfo << "Solving...\n";
     newton.solve();
 
     // solution to the nonlinear problem as an isogeometric displacement field
@@ -88,14 +90,13 @@ int main(int argc, char* argv[]){
     gsField<> solutionField(geometry,solution);
     gsField<> linearSolutionField(geometry,solutionLinear);
 
-    gsInfo << "Plotting the output to Paraview...\n";
+    gsInfo << "Plotting the output to the Paraview file \"lshape.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
     fields["Deformation (linear)"] = &linearSolutionField;
     gsWriteParaviewMultiPhysics(fields,"lshape",numPlotPoints);
-    gsInfo << "Finished.\n";
-    gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
+    gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 
     return 0;
 }

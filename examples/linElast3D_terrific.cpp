@@ -70,9 +70,13 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     gsInfo << "Solving...\n";
+#ifdef GISMO_WITH_TRILINOS
+
+#else
     gsSparseSolver<>::LU solver(assembler.matrix());
-    gsMatrix<> solVector = solver.solve(assembler.rhs());
+    gsVector<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with LU solver.\n";
+#endif
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
@@ -89,14 +93,13 @@ int main(int argc, char* argv[]){
                   // Output //
     //=============================================//
 
-    gsInfo << "Plotting the output to Paraview...\n";
+    gsInfo << "Plotting the output to the Paraview file \"terrific.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
     fields["Stresses"] = &stressField;
     gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
-    gsInfo << "Finished.\n";
-    gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
+    gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 
     return 0;
 }

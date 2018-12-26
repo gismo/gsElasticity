@@ -88,7 +88,7 @@ protected:
 
     // solution variables
     using Base::m_curSolution;
-    using Base::m_updateVector;
+    gsVector<T> m_updateVector;
     /// \brief Solution vector of the linear problem, a.k.a. first iteration of Newton's method.
     /// Can be used for comparison.
     gsMultiPatch<T> m_linSolution;
@@ -130,10 +130,10 @@ void gsElasticityNewton<T>::solve()
     if (m_verbose)
     {
         if (m_converged)
-            gsInfo << "Newton's method converged after " << m_numIterations << " iterations\n";
+            gsInfo << "Newton's method converged after " << m_numIterations << " iterations.\n";
         else
             gsInfo << "Newton's method didn't converged after exceeding a maximum number of iterations: "
-                   << m_maxIterations << "\n";
+                   << m_maxIterations << ".\n";
     }
 
 }

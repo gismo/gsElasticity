@@ -69,14 +69,18 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     gsInfo << "Solving...\n";
-    gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
-    gsMatrix<> solVector = solver.solve(assembler.rhs());
+#ifdef GISMO_WITH_TRILINOS
+
+#else
+    gsSparseSolver<>::LU solver(assembler.matrix());
+    gsVector<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with LU solver.\n";
+#endif
+
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
     assembler.constructSolution(solVector,solution);
-    gsInfo << "Constructed solution.\n";
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
 
@@ -88,14 +92,13 @@ int main(int argc, char* argv[]){
                   // Output //
     //=============================================//
 
-    gsInfo << "Plotting the output to Paraview...\n";
+    gsInfo << "Plotting the output to the Paraview file \"lshape.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
     fields["Stresses"] = &stressField;
     gsWriteParaviewMultiPhysics(fields,"lshape",numPlotPoints);
-    gsInfo << "Finished.\n";
-    gsInfo << "Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
+    gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 
     return 0;
 }
