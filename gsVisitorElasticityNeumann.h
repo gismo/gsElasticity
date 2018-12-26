@@ -40,7 +40,7 @@ public:
         md.flags = NEED_VALUE|NEED_MEASURE;
 
         dim = basis.dim();
-        timefactor = options.getReal("TimeFactor");
+        timeFactor = options.getReal("TimeFactor");
     }
 
     inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
@@ -74,7 +74,7 @@ public:
             outerNormal(md, q, patchSide, unormal);
 
             // Coolect of the factors here: quadrature weight, geometry measure and time factor
-            const T weight = quWeights[q] * unormal.norm() * timefactor;
+            const T weight = quWeights[q] * unormal.norm() * timeFactor;
 
             for (index_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*numActiveFunctions,numActiveFunctions).noalias() +=
@@ -83,20 +83,17 @@ public:
     }
 
     inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> >   & ,
-                              gsSparseSystem<T>     & system)
+                              const std::vector<gsMatrix<T> > & ,
+                              gsSparseSystem<T> & system)
     {
-        gsMatrix<unsigned> globalIndices;
-        system.mapColIndices(localIndices, patchIndex, globalIndices, 0);
-        std::vector<gsMatrix<unsigned> > allGlobalActives;
+        std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
         gsVector<size_t> blockNumbers(dim);
         for (index_t d = 0; d < dim; ++d)
         {
-            allGlobalActives.push_back(globalIndices);
+            system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
             blockNumbers.at(d) = d;
         }
-
-        system.pushToRhs(localRhs,allGlobalActives,blockNumbers);
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
     }
 
 protected:   
@@ -108,7 +105,7 @@ protected:
     gsMapData<T> md;
 
     // Time factor
-    T timefactor;
+    T timeFactor;
 
     // local components of the global linear system
     gsMatrix<T> localMat;

@@ -1,12 +1,13 @@
-/// This is an example of using the linear elasticity solver on a 2D multi-patch geometry
+/// This is an example of using the nonlinear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsElasticityNewton.h>
 
 using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Testing the linear elasticity solver in 2D.\n";
+    gsInfo << "Testing the nonlinear elasticity solver in 2D.\n";
 
     //=====================================//
                 // Input //
@@ -15,12 +16,16 @@ int main(int argc, char* argv[]){
     std::string filename = ELAST_DATA_DIR"/lshape.xml";
     int numUniRef = 3; // number of h-refinements
     int numDegElevate = 1; // number of p-refinements
+    int maxNumIteration = 100;
+    real_t tolerance = 1e-12;
     int numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
+    gsCmdLine cmd("Testing the nonlinear elasticity solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
+    cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
+    cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -28,21 +33,20 @@ int main(int argc, char* argv[]){
     gsConstantFunction<> g(0.,0.,2);
 
     // boundary displacement in y-direction, dirichlet BC
-    gsFunctionExpr<> bdry_disp("0.1",2);
+    gsConstantFunction<> f(0.,1e9,2);
 
     // material parameters
-    real_t youngsModulus = 200.;//74e9;
+    real_t youngsModulus = 74e9;
     real_t poissonsRatio = 0.33;
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
-    bcInfo.addCondition(2,boundary::north,condition_type::dirichlet,0,0);
-    bcInfo.addCondition(2,boundary::north,condition_type::dirichlet,&bdry_disp,1);
+    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0); // Dirichlet BC are defined componentwise
+    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1); // Last number is a component (coordinate) index
+    bcInfo.addCondition(2,boundary::north,condition_type::neumann,&f);
 
     //=============================================//
-                  // Assembly //
+                  // Setting //
     //=============================================//
 
     // scanning geometry
@@ -59,44 +63,38 @@ int main(int argc, char* argv[]){
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    assembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    gsInfo<<"Assembling...\n";
-    assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with " << assembler.numDofs() << " dofs.\n";
+    assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
+
+    // setting Newton's method
+    gsElasticityNewton<real_t> newton(assembler);
+    newton.setMaxIterations(maxNumIteration);
+    newton.setTolerance(tolerance);
+    newton.setVerbosity(true);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
-#ifdef GISMO_WITH_TRILINOS
+    newton.solve();
 
-#else
-    gsSparseSolver<>::LU solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with LU solver.\n";
-#endif
-
-
-    // constructing solution as an IGA function
-    gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
-    // constructing an IGA field (geometry + solution)
-    gsField<> solutionField(assembler.patches(),solution);
-
-    gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
-    gsField<> stressField(assembler.patches(),stresses,true);
+    // solution to the nonlinear problem as an isogeometric displacement field
+    const gsMultiPatch<> solution = newton.solution();
+    // solution to the linear problem as an isogeometric displacement field
+    const gsMultiPatch<> solutionLinear = newton.linearSolution();
 
     //=============================================//
                   // Output //
     //=============================================//
 
+    gsField<> solutionField(geometry,solution);
+    gsField<> linearSolutionField(geometry,solutionLinear);
+
     gsInfo << "Plotting the output to the Paraview file \"lshape.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Deformation"] = &solutionField;
-    fields["Stresses"] = &stressField;
+    fields["Deformation (linear)"] = &linearSolutionField;
     gsWriteParaviewMultiPhysics(fields,"lshape",numPlotPoints);
     gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 

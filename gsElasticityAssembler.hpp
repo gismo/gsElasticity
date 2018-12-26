@@ -21,6 +21,7 @@
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
+#include <gsElasticity/gsVisitorNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
 
 namespace gismo
@@ -56,7 +57,7 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("YoungsModulus","Youngs modulus of the material",200e9);
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
-    opt.addReal("Density","Density of the material",8e3);
+    opt.addReal("Density","Density of the material",1.);
     opt.addReal("TimeFactor","Time factor for the time-dependent forces",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",0);
     return opt;
@@ -77,6 +78,7 @@ void gsElasticityAssembler<T>::refresh()
     dims.setOnes(m_dim);
     m_system = gsSparseSystem<T>(m_dofMappers, dims);
 
+    m_options.setReal("bdO",m_dim*(1+m_options.getReal("bdO"))-1);
     m_system.reserve(m_bases[0], m_options, 1);
 
     for (int d = 0; d < m_dim; ++d)
@@ -86,6 +88,10 @@ void gsElasticityAssembler<T>::refresh()
 template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
+    m_system.matrix().setZero();
+    m_system.reserve(m_bases[0], m_options, 1);
+    m_system.rhs().setZero(Base::numDofs(),1);
+
     if ( this->numDofs() == 0 )
     {
         gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n";
@@ -98,6 +104,32 @@ void gsElasticityAssembler<T>::assemble()
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
     m_system.matrix().makeCompressed();
+}
+
+template<class T>
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
+{
+    m_system.matrix().setZero();
+    m_system.reserve(m_bases[0], m_options, 1);
+    m_system.rhs().setZero(Base::numDofs(),1);
+
+    // Compute volumetric integrals and write to the global linear system
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed);
+    Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    // Compute surface integrals and write to the global rhs vector
+    // change to reuse rhs from linear system
+    Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
+
+    m_system.matrix().makeCompressed();
+}
+
+template <class T>
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk) const
+{
+    gsVector<index_t> unknowns(m_dim);
+    for (index_t d = 0; d < m_dim; ++d)
+        unknowns.at(d) = d;
+    Base::constructSolution(solVector,result,unknowns);
 }
 
 template <class T>
@@ -152,9 +184,24 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsM
 }
 
 template <class T>
-void gsElasticityAssembler<T>::setDirichletDofs(index_t patch, index_t side, const gsMatrix<T> & ddofs)
+void gsElasticityAssembler<T>::setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs)
 {
+    bool dirBcExists = false;
+    typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
+    while (!dirBcExists && it != m_pde_ptr->bc().dirichletEnd())
+    {
+        if (it->patch() == patch && it->side() == side)
+            dirBcExists = true;
+        ++it;
+    }
+    GISMO_ASSERT(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
+                             + " does not belong to the Dirichlet boundary\n");
+
     gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
+    GISMO_ASSERT(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
+                 "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
+                 " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
+                 " x " + util::to_string(m_dim) + ".\n");
 
     for (index_t d = 0; d < m_dim; ++d )
     {

@@ -48,6 +48,12 @@ public:
     /// @brief Assembles the stiffness matrix
     virtual void assemble();
 
+    /// @ brief Assembles the stiffness matrix for a iteration of Newton's method on a deformed configuration
+    virtual void assemble(const gsMultiPatch<T> & deformed);
+
+    /// @brief Construct solution from computed solution vector
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const override;
+
     /// @brief Construct patchwise stress-function for visualization.
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T>& result,
@@ -58,7 +64,7 @@ public:
      * Domain must have the same level of refinement as the basis used for computing the displacement.
      * Otherwise the number of control points will not match.
      */
-    void deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain);
+    virtual void deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain);
 
     /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
      *
@@ -67,7 +73,7 @@ public:
      * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
      * to gsBoundaryCondtions container that is passed to the assembler constructor.
      */
-    void setDirichletDofs(index_t patch, index_t side, const gsMatrix<T> & ddofs);
+    virtual void setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
 protected:
 
