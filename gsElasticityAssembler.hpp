@@ -78,6 +78,7 @@ void gsElasticityAssembler<T>::refresh()
     dims.setOnes(m_dim);
     m_system = gsSparseSystem<T>(m_dofMappers, dims);
 
+    m_options.setReal("bdO",m_dim*(1+m_options.getReal("bdO"))-1);
     m_system.reserve(m_bases[0], m_options, 1);
 
     for (int d = 0; d < m_dim; ++d)
@@ -88,7 +89,8 @@ template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
-    m_system.rhs().setZero();
+    m_system.reserve(m_bases[0], m_options, 1);
+    m_system.rhs().setZero(Base::numDofs(),1);
 
     if ( this->numDofs() == 0 )
     {
@@ -108,7 +110,8 @@ template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
 {
     m_system.matrix().setZero();
-    m_system.rhs().setZero();
+    m_system.reserve(m_bases[0], m_options, 1);
+    m_system.rhs().setZero(Base::numDofs(),1);
 
     // Compute volumetric integrals and write to the global linear system
     gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed);
