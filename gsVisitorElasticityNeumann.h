@@ -83,9 +83,9 @@ public:
     }
 
     inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> >   & ,
-                              gsSparseSystem<T>     & system)
-    {    
+                              const std::vector<gsMatrix<T> > & ,
+                              gsSparseSystem<T> & system)
+    {
         std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
         gsVector<size_t> blockNumbers(dim);
         for (index_t d = 0; d < dim; ++d)

@@ -139,8 +139,8 @@ public:
         gsVector<size_t> blockNumbers(dim);
         for (index_t d = 0; d < dim; ++d)
         {
-            system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
-            blockNumbers.at(d) = d;
+           system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
+           blockNumbers.at(d) = d;
         }
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
