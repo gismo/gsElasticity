@@ -62,21 +62,21 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
     gsInfo<<"Assembling...\n";
+    gsStopwatch clock;
+    clock.restart();
     assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with " << assembler.numDofs() << " dofs.\n";
+    gsInfo << "Assembled a system (matrix and load vector) with "
+           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
-#ifdef GISMO_WITH_TRILINOS
-
-#else
+    clock.restart();
     gsSparseSolver<>::LU solver(assembler.matrix());
     gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with LU solver.\n";
-#endif
+    gsInfo << "Solved the system with LU solver in " << clock.stop() << "s.\n";
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;

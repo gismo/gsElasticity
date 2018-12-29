@@ -23,6 +23,10 @@
 namespace gismo
 {
 
+// ToDo: add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
+//       add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
+//       in the reference configuration, dead-load problem)
+
 /** @brief Assembles stiffness and mass matrices and right-hand side vector for linear and nonlinear elasticity
            for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
@@ -52,11 +56,11 @@ public:
     virtual void assemble(const gsMultiPatch<T> & deformed);
 
     /// @brief Construct solution from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const override;
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const;
 
-    /// @brief Construct patchwise stress-function for visualization.
+    /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
-                                 gsPiecewiseFunction<T>& result,
+                                 gsPiecewiseFunction<T> & result,
                                  stress_type::type type = stress_type::von_mises) const;
 
     /** @brief Deform geometric domain using computed displacement field.
