@@ -1,7 +1,7 @@
 # gsElasticity
 The gsElasticity module provides tools for structural mechanics analysis of 2D and 3D solids. This currently includes solvers for the following systems of equations:
 - linear elasticity ~~(with eigenmode analysis)~~
-- ~~nonlinear elasticity (with St. Venant-Kirchhoff or neo-Hookean material models)~~
+- nonlinear elasticity (with St. Venant-Kirchhoff ~~or neo-Hookean material models~~)
 - ~~incompressible elasticity (with Taylor-Hood elements)~~
 - ~~thermal expansion~~
 - ~~elastic meshing algorithms~~
