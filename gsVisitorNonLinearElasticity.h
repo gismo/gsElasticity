@@ -20,7 +20,6 @@
 namespace gismo
 {
 
-
 template <class T>
 class gsVisitorNonLinearElasticity : public gsVisitorLinearElasticity<T>
 {
@@ -98,13 +97,19 @@ public:
             gsVector<T> Evec(dimTensor);
             // Second Piola-Kirchhoff stress tensor
             gsMatrix<T> S;
-            if (materialLaw == 0)
+            if (materialLaw == 0) // Saint Venant-Kirchhoff
                 S = lambda*E.trace()*gsMatrix<T>::Identity(dim,dim) + 2*mu*E;
-            if (materialLaw == 1)
+            if (materialLaw == 1) // neo-Hooke ln(J)
             {
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda*log(J)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
                 Base::setC(C,RCGinv,lambda,2*(mu-lambda*log(J)));
+            }
+            if (materialLaw == 2) // neo-Hooke J^2
+            {
+                gsMatrix<T> RCGinv = RCG.cramerInverse();
+                S = (lambda/2*(J*J-1)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
+                Base::setC(C,RCGinv,lambda*J*J,2*(mu-lambda*(J*J-1)));
             }
             // loop over active basis functions (u_i)
             for (index_t i = 0; i < N; i++)

@@ -23,9 +23,19 @@
 namespace gismo
 {
 
-// ToDo: add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
-//       add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
-//       in the reference configuration, dead-load problem)
+struct material_law
+{
+    enum type
+    {
+        saint_venant_kirchhoff = 0,  /// S = 2*mu*E + lambda*tr(E)*I
+        neo_hooke_ln           = 1,  /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
+        neo_hooke_2            = 2   /// S = lambda/2*(J^2-1)*C^-1 + mu*(I-C^-1)
+    };
+};
+
+// ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
+//       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
+//        in the reference configuration, dead-load problem)
 
 /** @brief Assembles stiffness and mass matrices and right-hand side vector for linear and nonlinear elasticity
            for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
