@@ -19,6 +19,7 @@ int main(int argc, char* argv[]){
     int maxNumIteration = 100;
     real_t tolerance = 1e-12;
     int numPlotPoints = 10000;
+    int materialLaw = 0;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
     cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke",materialLaw);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -68,6 +70,7 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
+    assembler.options().setInt("MaterialLaw",materialLaw);
 
     // setting Newton's method
     gsElasticityNewton<real_t> newton(assembler);
