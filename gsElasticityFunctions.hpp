@@ -20,8 +20,7 @@
 namespace gismo
 {
 template <class T>
-void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u,
-                                          gsMatrix<T> & result) const
+void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     result.setZero(targetDim(),u.cols());
 
@@ -73,6 +72,20 @@ void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u,
             }
         }
     }
+}
+
+template <class T>
+void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.resize(1,u.cols());
+
+    gsMapData<T> mappingData;
+    mappingData.points = u;
+    mappingData.flags = NEED_MEASURE;
+    m_geo.patch(m_patch).computeMap(mappingData);
+
+    for (int i = 0; i < u.cols(); ++i)
+        result(0,i) = mappingData.measure(i);
 }
 
 } // namespace gismo ends
