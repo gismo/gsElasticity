@@ -23,47 +23,51 @@ namespace gismo
 //--------- Mesh deformation --------//
 //-----------------------------------//
 
-/// @brief Deforms a given domain iteratively using linear elasticity so that its
-/// boundary coincides with with a given boundary; returns a set of deformation
-/// coefficients for every incremental steps for every patch
+/// @brief Computes a deformation of a given initial domain using linear elasticity with incremental Dirichlet BC
+/// such that the domain's boundary coincides with a given set of boundary curves;
+/// returns a set of displacement control points for every incremental steps and every patch
 template <class T>
-void computeDeformationInc(std::vector<std::vector<gsMatrix<T> > > & result,
-                           gsMultiPatch<T> const & domain, gsBoundaryConditions<T> const & bdry,
-                           int numSteps = 3, T poissonRatio = 0.49);
+void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
+                        gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
+                        index_t numSteps = 3, T poissonRatio = 0.49);
 
-/// @brief Deforms a given domain iteratively using linear elasticity so that its
-/// boundary coincides with with a given boundary; returns a set of deformation
-/// coefficients for every incremental steps for every patch
+/// @brief Plots steps of the computed incremental deformation; outputs a deformed mesh for every incremental step;
+/// set <numSamples> greater than 0 to plot the Jacobian of the geometry mapping using <numSamples> points
 template <class T>
-void deformNonLinearly(gsMultiPatch<T> & result, gsMultiPatch<T> const & domain,
-                       std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                       gsMatrix<T> const & sumSolutionVector,
-                       gsBoundaryConditions<T> const & bdry, T poissonRatio = 0.49,
-                       T tolerance = 1e-12, int maxNumIterations = 20);
+void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
+                     gsMultiPatch<T> const & intiDomain, std::string fileName,
+                     index_t numSamples = 0);
 
-/// @brief Visualizes the mesh deformation coeffs <result> computed using the <deform> function;
-/// set <plotJac> to plot the Jacobian of the mesh using <numSamples> points
-template <class T>
-void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & result,
-                     gsMultiPatch<T> const & domain, std::string fileName,
-                     bool plotJac = false, int numSamples = 1);
-
-/// @brief Deformes the initial domain using <deformation>
+/// @brief Deformes the initial domain using a previously computed incremental <deformation>
 template <class T>
 void applyDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
                       gsMultiPatch<T> const & initDomain, gsMultiPatch<T> & domain);
 
+/// @brief Construct an isogeometric displacement field
+template <class T>
+void constructDisplacement(std::vector<std::vector<gsMatrix<T> > > const & deformation,
+                           gsMultiPatch<T> const & initDomain, gsMultiPatch<T> & displacement);
+
+/// @brief Computes a deformation of a given initial domain using nonlinear elasticity and a given initial guess;
+/// such that the domain's boundary coincides with a given set of boundary curves;
+/// returns a deformed/parametrized domain
+template <class T>
+void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
+                              gsBoundaryConditions<T> const & bdryCurves, gsMultiPatch<T> const & initGuess,
+                              index_t materialLaw = 0, T poissonRatio = 0.49,
+                              T tolerance = 1e-12, index_t maxNumIterations = 50);
+
 /// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant)
 template <class T>
-T measureMinMaxJ(gsMultiPatch<T> const & domain, int numSamples = 10000);
+T measureMinMaxJ(gsMultiPatch<T> const & domain, index_t numSamples = 10000);
 
 /// @brief Constructs intermidiate configurations by scaling the deformation
 /// and estimates their quality based on the Jacobian measure;
 /// the results are written to a .txt file to be plotted in Matlab
 template <class T>
 void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                        gsMultiPatch<T> const & domain, int measPerStep,
-                        std::string fileName, int numSamples = 10000);
+                        gsMultiPatch<T> const & domain, index_t measPerStep,
+                        std::string fileName, index_t numSamples = 10000);
 
 //-----------------------------------//
 //----------- Modelling--------------//
@@ -75,7 +79,7 @@ void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformat
 /// <numSamples> is a number of sampling points for reparametrization
 template<class T>
 typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
-                                          int additionalPoints = 0, int numSamples = 1000);
+                                          index_t additionalPoints = 0, index_t numSamples = 1000);
 
 /// @brief fits a given parametrized point cloud with a curve using a given basis;
 /// the resulting curve interpolates the first and the last points
@@ -90,7 +94,7 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
 /// in 3D case, always interpolates in the third direction/front-back
 template<class T>
 typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGeometry<T> const & B,
-                                                   int deg, int num, bool xiDir = false);
+                                                   index_t deg, index_t num, bool xiDir = false);
 
 /// @brief generates a tensor product B-spline    bdry   south | front
 /// patch by scaling a given geometry object      \  /     |   |   |
@@ -98,22 +102,22 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
 /// oppositely lying bdry is generated by scaling the original boundary with <scaling> coeff
 template<class T>
 typename gsGeometry<T>::uPtr genPatchScaling(gsGeometry<T> const & boundary,
-                                             int deg, int num,
+                                             index_t deg, index_t num,
                                              T scaling, gsVector<T> const & center);
 
 /// @breif generates a uniformly parametrized straight line with a B-spline basis;
 /// end points are given as ROWS of matrices
 template<class T>
-typename gsGeometry<T>::uPtr genLine(int deg, int num,
+typename gsGeometry<T>::uPtr genLine(index_t deg, index_t num,
                                      gsMatrix<T> const & A, gsMatrix<T> const & B,
-                                     int iA = 0, int iB = 0);
+                                     index_t iA = 0, index_t iB = 0);
 
 /// @breif generates a uniformly parametrized circular arc with a B-spline basis;
 /// generates a closed circle if <arcAngle> is 2pi
 template<class T>
-typename gsGeometry<T>::uPtr genCircle(int deg, int num,
-                                      T radius = 1., T x0 = 0., T y0 = 0.,
-                                      T angle0 = 0., T arcAngle = 2*M_PI);
+typename gsGeometry<T>::uPtr genCircle(index_t deg, index_t num,
+                                       T radius = 1., T x0 = 0., T y0 = 0.,
+                                       T angle0 = 0., T arcAngle = 2*M_PI);
 
 /// @breif generates a uniformly parametrized circular arc with a given basis;
 /// generates a closed circle if <arcAngle> is 2pi
@@ -126,15 +130,15 @@ typename gsGeometry<T>::uPtr genCircle(gsBasis<T> & basis,
 /// corners with the following orientation;           |   |
 /// the points are given as ROWS of matrices          A---B
 template<class T>
-typename gsGeometry<T>::uPtr genQuad(int xiDeg, int xiNum, int etaDeg, int etaNum,
+typename gsGeometry<T>::uPtr genQuad(index_t xiDeg, index_t xiNum, index_t etaDeg, index_t etaNum,
                                      gsMatrix<T> const & A, gsMatrix<T> const & B,
                                      gsMatrix<T> const & C, gsMatrix<T> const & D,
-                                     int iA = 0, int iB = 0, int iC = 0, int iD = 0);
+                                     index_t iA = 0, index_t iB = 0, index_t iC = 0, index_t iD = 0);
 
 /// @brief generates a tensor product B-spline spherical patch with radius 1 and center at 0
 /// given the degrees and number of control points in two parametric dimensions
 template<class T>
-typename gsGeometry<T>::uPtr genSphere(int xiDeg, int xiNum, int etaDeg, int etaNum,
+typename gsGeometry<T>::uPtr genSphere(index_t xiDeg, index_t xiNum, index_t etaDeg, index_t etaNum,
                                        T xi0 = 0., T xi1 = 2*M_PI,
                                        T eta0 = -M_PI/2, T eta1 = M_PI/2);
 
@@ -148,12 +152,12 @@ typename gsGeometry<T>::uPtr genSphere(gsKnotVector<T> & xiKnots, gsKnotVector<T
 /// @brief generates a 3D tensor product B-spline cylindrical patch
 template<class T>
 typename gsGeometry<T>::uPtr genCylinder(gsGeometry<T> const & base,
-                                         int deg, int num, T height);
+                                         index_t deg, index_t num, T height);
 
 /// @brief generates a 3D tensor product B-spline screw-like patch
 template<class T>
 typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
-                                      int deg, int num,
+                                      index_t deg, index_t num,
                                       T height, T pitch, T x0 = 0., T y0 = 0.);
 
 //----------------------------------------//
@@ -169,7 +173,7 @@ inline T combine(T a, T b, T x) { return a*(1-x)+b*x; }
 /// set <cols> to <true> to give points as COLUMNS
 template<class T>
 gsMatrix<T> combine(gsMatrix<T> const & A, gsMatrix<T> const & B, T x,
-                    int iA = 0, int iB = 0, bool cols = false);
+                    index_t iA = 0, index_t iB = 0, bool cols = false);
 
 /// @brief compute a distance between the point number <i> in the set <A>
 /// and the point number <j> in the set <B>;

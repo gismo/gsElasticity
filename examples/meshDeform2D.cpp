@@ -6,7 +6,7 @@ using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Isogeometric mesh generation by mesh deformation in 2D.\n";
+    gsInfo << "Generating isogeometric parametrization by mesh deformation in 2D.\n";
 
     //=====================================//
                 // Input //
@@ -14,37 +14,39 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/puzzle4_bdry.xml";
     std::string filenameInit = "";
-    int numSteps = 3;
+    index_t numSteps = 3;
     real_t poissRatio = 0.45;
-    int numAdditionalPoints = 0;
-    int numUniRef = 0;
-    int numPlotPoints = 10000;
+    index_t numAdditionalPoints = 0;
+    index_t materialLaw = -1;
+    index_t numUniRef = 0;
+    index_t numPlotPoints = 0;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Isogeometric mesh generation by mesh deformation in 2D.");
+    gsCmdLine cmd("Generating isogeometric parametrization by mesh deformation in 2D.");
     cmd.addPlainString("name","File with boundary curves.",filename);
     cmd.addString("d","domain","File with an initial domain, if exists",filenameInit);
     cmd.addReal("p","poiss","Poisson's ratio for the elasticity model",poissRatio);
     cmd.addInt("i","ites","Number of incremental steps for deformation",numSteps);
     cmd.addInt("a","acc","Number of control points above minimum for curve simplification",numAdditionalPoints);
+    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln, 2 - NeoHooke_2; if not set, no nonlin solution",materialLaw);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // a set of 4 compatible boundary curves ordered "west-east-south-north"
     gsMultiPatch<> bdry;
     gsReadFile<>(filename,bdry);
 
-    //=====================================//
+    //=====================================//1000
                 // Algorithm //
     //=====================================//
 
-    for (int i = 0; i < numUniRef; ++i)
+    for (index_t i = 0; i < numUniRef; ++i)
         bdry.uniformRefine();
 
     // simplifying the boundary curves
     gsMultiPatch<> simpleBdry;
-    for (int p = 0; p < bdry.nPatches(); ++p)
+    for (index_t p = 0; p < bdry.nPatches(); ++p)
         simpleBdry.addPatch(simplifyCurve(bdry.patch(p),numAdditionalPoints,1000));
 
     // creating a coons patch out of simplified boundary curves to serve as an initial domain
@@ -55,12 +57,26 @@ int main(int argc, char* argv[]){
     initGeo.computeTopology();
 
     // boundary condition info
-    gsBoundaryConditions<> bcDeform;
-    for (int p = 0; p < bdry.nPatches(); ++p)
-        bcDeform.addCondition(0,p+1,condition_type::dirichlet,&(bdry.patch(p)));
+    gsBoundaryConditions<> bdryCurves;
+    for (index_t p = 0; p < bdry.nPatches(); ++p)
+        bdryCurves.addCondition(0,p+1,condition_type::dirichlet,&(bdry.patch(p)));
 
-    std::vector<std::vector<gsMatrix<> > > result;
-    computeDeformationInc(result,initGeo,bcDeform,numSteps,poissRatio);
+    // compute deformation using linear elasticity with incremental Dirichlet BC
+    std::vector<std::vector<gsMatrix<> > > deformation;
+    computeDeformation(deformation,initGeo,bdryCurves,numSteps,poissRatio);
+
+    // construct deformed geometry
+    gsMultiPatch<> geo;
+    applyDeformation(deformation,initGeo,geo);
+
+    // construct displacement field
+    gsMultiPatch<> displacement;
+    constructDisplacement(deformation,initGeo,displacement);
+
+    // compute deformation using nonlinear elasticity
+    gsMultiPatch<> nonlinGeo;
+    if (materialLaw >= 0)
+        computeDeformationNonlin(nonlinGeo,initGeo,bdryCurves,displacement,materialLaw,poissRatio);
 
     //=====================================//
                 // Output //
@@ -70,11 +86,17 @@ int main(int argc, char* argv[]){
     filename = filename.substr(0,filename.find_last_of(".\\"));
     filename = filename.substr(0,filename.find_last_of("_\\"));
 
-    plotDeformation(result,initGeo,filename + "_2D",true,numPlotPoints);
+    gsInfo << "Plotting the output to the Paraview file \"" << filename << "_2D.pvd\"...\n";
+    plotDeformation(deformation,initGeo,filename + "_2D",numPlotPoints);
 
-    gsMultiPatch<> geo;
-    applyDeformation(result,initGeo,geo);
+    gsInfo << "The resulting parametrization is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(geo,filename + "_2D");
+
+    if (materialLaw >= 0)
+    {
+        gsInfo << "The result of the nonlinear algorithm is saved to \"" << filename << "_2D_nl.xml\".\n";
+        gsWrite(nonlinGeo,filename + "_2D_nl");
+    }
 
     return 0;
 }

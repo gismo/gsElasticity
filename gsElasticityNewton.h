@@ -40,7 +40,7 @@ public:
           m_firstDone(false)
     { }
 
-    gsElasticityNewton(gsAssembler<T> & assembler, gsMatrix<T> & solVector)
+    gsElasticityNewton(gsAssembler<T> & assembler, const gsMatrix<T> & solVector)
         : gsNewtonIterator<T>(assembler),
           m_verbose(true),
           m_doFirst(false),
@@ -52,6 +52,20 @@ public:
         m_updnorm = m_initUpdateNorm = solVector.norm();
     }
 
+    gsElasticityNewton(gsAssembler<T> & assembler, const gsMultiPatch<T> & solution)
+        : gsNewtonIterator<T>(assembler),
+          m_verbose(true),
+          m_doFirst(false),
+          m_initResidueNorm(-1.),
+          m_initUpdateNorm(-1.),
+          m_firstDone(false)
+
+    {
+        m_curSolution.clear();
+
+        for (index_t p = 0; p < solution.nPatches(); ++p)
+            m_curSolution.addPatch(solution.patch(p).clone());
+    }
 
     /// \brief Applies Newton method and performs Newton iterations
     /// until convergence or maximum iterations.

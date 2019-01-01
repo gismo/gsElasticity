@@ -45,7 +45,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     // but always the first basis is used for the assembly;
     // TODO: change gsAssembler logic
     m_dim = body_force.targetDim();
-    for (int d = 0; d < m_dim; ++d)
+    for (index_t d = 0; d < m_dim; ++d)
         m_bases.push_back(basis);
 
     Base::initialize(pde, m_bases, defaultOptions());
@@ -81,7 +81,7 @@ void gsElasticityAssembler<T>::refresh()
     m_options.setReal("bdO",m_dim*(1+m_options.getReal("bdO"))-1);
     m_system.reserve(m_bases[0], m_options, 1);
 
-    for (int d = 0; d < m_dim; ++d)
+    for (index_t d = 0; d < m_dim; ++d)
         Base::computeDirichletDofs(d);
 }
 

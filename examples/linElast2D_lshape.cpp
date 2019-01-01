@@ -13,9 +13,9 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/lshape.xml";
-    int numUniRef = 3; // number of h-refinements
-    int numDegElevate = 1; // number of p-refinements
-    int numPlotPoints = 10000;
+    index_t numUniRef = 3; // number of h-refinements
+    index_t numDegElevate = 1; // number of p-refinements
+    index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
@@ -50,9 +50,9 @@ int main(int argc, char* argv[]){
     gsReadFile<>(filename, geometry);
     // creating basis
     gsMultiBasis<> basis(geometry);
-    for (int i = 0; i < numDegElevate; ++i)
+    for (index_t i = 0; i < numDegElevate; ++i)
         basis.degreeElevate();
-    for (int i = 0; i < numUniRef; ++i)
+    for (index_t i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 
     // creating assembler

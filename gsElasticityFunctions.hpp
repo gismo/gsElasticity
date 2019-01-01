@@ -29,7 +29,7 @@ void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & r
     gsMatrix<T> dispGrad;
     m_displacement.patch(m_patch).deriv_into(u,dispGrad);
 
-    for (int p = 0; p < u.cols(); ++p)
+    for (index_t p = 0; p < u.cols(); ++p)
     {
         if (domainDim() == 2)
         {
@@ -84,7 +84,7 @@ void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) co
     mappingData.flags = NEED_MEASURE;
     m_geo.patch(m_patch).computeMap(mappingData);
 
-    for (int i = 0; i < u.cols(); ++i)
+    for (index_t i = 0; i < u.cols(); ++i)
         result(0,i) = mappingData.measure(i);
 }
 

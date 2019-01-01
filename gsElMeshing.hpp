@@ -16,22 +16,14 @@
 
 #include <gsElasticity/gsElMeshing.h>
 
+#include <gsCore/gsField.h>
+#include <gsCore/gsFunctionExpr.h>
+#include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
-#include <gsModeling/gsFitting.h>
 
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewton.h>
-#include <gsIO/gsWriteParaview.h>
-#include <gsCore/gsFunctionExpr.h>
-
 #include <gsElasticity/gsElasticityFunctions.h>
-#include <gsCore/gsField.h>
-#include <gsNurbs/gsBSpline.h>
-
-#include <gsCore/gsLinearAlgebra.h>
-#include <iostream>
-#include <fstream>
-
+#include <gsElasticity/gsElasticityNewton.h>
 
 namespace gismo
 {
@@ -40,48 +32,45 @@ namespace gismo
 //--------- Mesh deformation --------//
 //-----------------------------------//
 
-
-
 template <class T>
-void computeDeformationInc(std::vector<std::vector<gsMatrix<T> > > & result,
-            gsMultiPatch<T> const & domain, gsBoundaryConditions<T> const & bdry,
-            int numSteps, T poissonRatio)
+void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
+                        gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
+                        index_t numSteps, T poissonRatio)
 {
-    int numP = domain.nPatches();
+    index_t numP = initDomain.nPatches();
     gsMultiPatch<T> geo;
-    for (int p = 0; p < numP; ++p)
-        geo.addPatch(domain.patch(p));
+    for (index_t p = 0; p < numP; ++p)
+        geo.addPatch(initDomain.patch(p));
 
-    result.resize(numSteps);
-    for (int s = 0; s < numSteps; ++s)
-        result[s].resize(numP);
+    deformation.resize(numSteps);
+    for (index_t s = 0; s < numSteps; ++s)
+        deformation[s].resize(numP);
 
-    int pDim = domain.parDim();
+    index_t pDim = initDomain.parDim();
 
     gsBoundaryConditions<T> bcInfo;
-    for (auto it = domain.bBegin(); it != domain.bEnd(); ++it)
-        for (int d = 0; d < pDim; ++d)
+    for (auto it = initDomain.bBegin(); it != initDomain.bEnd(); ++it)
+        for (index_t d = 0; d < pDim; ++d)
             bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
 
-    std::map<std::pair<int,int>,gsMatrix<T> > deformCoefs;
-    for (auto it = bdry.dirichletBegin(); it != bdry.dirichletEnd(); ++it)
-        deformCoefs[std::pair<int,int>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
-
-                                                                   domain.patch(it->patch()).boundary(it->side())->coefs()) / numSteps;
+    std::map<std::pair<index_t,index_t>,gsMatrix<T> > deformCoefs;
+    for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+        deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
+                                                                   initDomain.patch(it->patch()).boundary(it->side())->coefs()) / numSteps;
     std::vector<std::string> zeros;
-    for (int d = 0; d < pDim; ++d)
+    for (index_t d = 0; d < pDim; ++d)
         zeros.push_back("0.");
     gsFunctionExpr<T> g(zeros,pDim);
 
-    for (int s = 0; s < numSteps; ++s)
+    for (index_t s = 0; s < numSteps; ++s)
     {
         gsInfo << "Incremental step " << s+1 << "/" << numSteps << "..." << std::endl;
 
         gsMultiBasis<T> basis(geo);
         gsElasticityAssembler<T> assembler(geo,basis,bcInfo,g);
         assembler.options().setReal("PoissonsRatio",poissonRatio);
-        for (auto it = bdry.dirichletBegin(); it != bdry.dirichletEnd(); ++it)
-            assembler.setDirichletDofs(it->patch(),it->side(),deformCoefs.at(std::pair<int,int>(it->patch(),it->side())));
+        for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+            assembler.setDirichletDofs(it->patch(),it->side(),deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
 
         assembler.assemble();
         gsSparseSolver<>::LU solver(assembler.matrix());
@@ -93,41 +82,150 @@ void computeDeformationInc(std::vector<std::vector<gsMatrix<T> > > & result,
         gsMultiPatch<T> displacement;
         assembler.constructSolution(solVector,displacement);
 
-        for (int p = 0; p < numP; ++p)
-            result[s][p] = displacement.patch(p).coefs();
+        for (index_t p = 0; p < numP; ++p)
+            deformation[s][p] = displacement.patch(p).coefs();
     }
 }
 
+template <class T>
+void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
+                     gsMultiPatch<T> const & initDomain, std::string fileName,
+                     index_t numSamples)
+{
+    std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
+    gsParaviewCollection collectionMesh(fileName + "_mesh");
+    gsParaviewCollection collectionJac(fileName + "_jac");
+
+    gsMultiPatch<T> configuration;
+    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+        configuration.addPatch(initDomain.patch(p));
+
+    gsPiecewiseFunction<T> dets;
+    for (index_t p = 0; p < configuration.nPatches(); ++p)
+        dets.addPiecePointer(new gsDetFunction<T>(configuration,p));
+
+    bool plotJac = true;
+    if (numSamples == 0)
+        plotJac = false;
+
+    gsField<> detField(configuration,dets,true);
+    std::map<std::string,const gsField<> *> fields;
+    fields["Jacobian"] = &detField;
+    gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamples,true);
+
+    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+    {
+        collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
+        index_t res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
+        if (plotJac)
+            collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
+        else
+            res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
+        GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+        (void)res;
+    }
+
+    for (unsigned s = 0; s < deformation.size(); ++s)
+    {
+        for (index_t p = 0; p < initDomain.nPatches(); ++p)
+            configuration.patch(p).coefs() += deformation[s][p];
+
+        gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamples,true);
+        for (index_t p = 0; p < initDomain.nPatches(); ++p)
+        {
+            collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
+            index_t res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
+            if (plotJac)
+                collectionJac.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,".vts");
+            else
+                res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
+
+            GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+            (void)res;
+        }
+    }
+
+    collectionMesh.save();
+    if (plotJac)
+        collectionJac.save();
+}
+
+template <class T>
+void applyDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
+                      gsMultiPatch<T> const & initDomain, gsMultiPatch<T> & domain)
+{
+    domain.clear();
+    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+    {
+        domain.addPatch(initDomain.patch(p).clone());
+        for (unsigned s = 0; s < deformation.size(); ++s)
+            domain.patch(p).coefs() += deformation[s][p];
+    }
+}
+
+template <class T>
+void constructDisplacement(std::vector<std::vector<gsMatrix<T> > > const & deformation,
+                           gsMultiPatch<T> const & initDomain, gsMultiPatch<T> & displacement)
+{
+    displacement.clear();
+    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+    {
+        displacement.addPatch(initDomain.basis(p).makeGeometry(deformation[0][p]));
+        for (unsigned s = 1; s < deformation.size(); ++s)
+            displacement.patch(p).coefs() += deformation[s][p];
+    }
+}
+
+template <class T>
+void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
+                              gsBoundaryConditions<T> const & bdryCurves, gsMultiPatch<T> const & initGuess,
+                              index_t materialLaw, T poissonRatio, T tolerance, index_t maxNumIterations)
+{
+    index_t pDim = initDomain.parDim();
+    gsMultiBasis<T> basis(initDomain);
+
+    gsBoundaryConditions<T> bcInfo;
+    for (auto it = initDomain.bBegin(); it != initDomain.bEnd(); ++it)
+        for (index_t d = 0; d < pDim; ++d)
+            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+
+    std::map<std::pair<index_t,index_t>,gsMatrix<T> > deformCoefs;
+    for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+        deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
+                                                                   initDomain.patch(it->patch()).boundary(it->side())->coefs());
+
+    std::vector<std::string> zeros;
+    for (index_t d = 0; d < pDim; ++d)
+        zeros.push_back("0.");
+    gsFunctionExpr<T> g(zeros,pDim);
+
+    gsElasticityAssembler<T> assembler(initDomain,basis,bcInfo,g);
+    assembler.options().setReal("PoissonsRatio",poissonRatio);
+    assembler.options().setInt("MaterialLaw",materialLaw);
+
+    gsElasticityNewton<real_t> newton(assembler,initGuess);
+    newton.setMaxIterations(maxNumIterations);
+    newton.setTolerance(tolerance);
+    newton.setVerbosity(true);
+
+    newton.solve();
+
+    domain.clear();
+    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+    {
+        domain.addPatch(initDomain.patch(p).clone());
+        domain.patch(p).coefs() += newton.solution().patch(p).coefs();
+    }
+}
+
+/*
 template <class T>
 void deformNonLinearly(gsMultiPatch<T> & result, gsMultiPatch<T> const & domain,
                        std::vector<std::vector<gsMatrix<T> > > const & deformation,
                        gsMatrix<T> const & sumSolutionVector,
                        gsBoundaryConditions<T> const & bdry, T poissonRatio,
                        T tolerance, int maxNumIterations)
-{/*
-    result.clear();
-    for (int p = 0; p < domain.nPatches(); ++p)
-    {
-        result.addPatch(domain.patch(p).clone());
-        for (unsigned s = 0; s < deformation.size(); ++s)
-            result.patch(p).coefs() += deformation[s][p];
-    }
-
-    gsMultiBasis<T> basis(domain);
-
-    gsBoundaryConditions<T> bcInfo;
-    int pDim = domain.parDim();
-    for (auto it = domain.bBegin(); it != domain.bEnd(); ++it)
-        for (int d = 0; d < pDim; ++d)
-            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
-
-    std::map<std::pair<int,int>,gsMatrix<T> > deformCoefs;
-    for (auto it = bdry.dirichletBegin(); it != bdry.dirichletEnd(); ++it)
-        deformCoefs[std::pair<int,int>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
-                                                                   domain.patch(it->patch()).boundary(it->side())->coefs());
-
-
-    gsConstantFunction<T> g(0.,0.,2);
+{
     gsElasticityAssembler<T> assembler(domain,basis,200.,poissonRatio,1.,bcInfo,g);
     for (auto it = bdry.dirichletBegin(); it != bdry.dirichletEnd(); ++it)
         assembler.setDirichletDoFs(deformCoefs.at(std::pair<int,int>(it->patch(),it->side())),it->patch(),it->side());
@@ -142,89 +240,12 @@ void deformNonLinearly(gsMultiPatch<T> & result, gsMultiPatch<T> const & domain,
     newtonSolver.solveGiven();
     result.clear();
     for (int p = 0; p < domain.nPatches(); ++p)
-        result.addPatch(newtonSolver.solution().patch(p).clone());*/
+        result.addPatch(newtonSolver.solution().patch(p).clone());
 
-}
-
-template <class T>
-void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                     gsMultiPatch<T> const & domain, std::string fileName,
-                     bool plotJac, int numSamples)
-{
-    std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
-    gsParaviewCollection collectionMesh(fileName + "_mesh");
-    gsParaviewCollection collectionJac(fileName + "_jac");
-
-    gsMultiPatch<T> configuration;
-    for (int p = 0; p < domain.nPatches(); ++p)
-        configuration.addPatch(domain.patch(p));
-
-    gsPiecewiseFunction<T> dets;
-    for (int p = 0; p < configuration.nPatches(); ++p)
-        dets.addPiecePointer(new gsDetFunction<T>(configuration,p));
-
-    int samples = numSamples;
-    if (!plotJac)
-        samples = 1;
-
-    gsField<> detField(configuration,dets,true);
-    std::map<std::string,const gsField<> *> fields;
-    fields["Jacobian"] = &detField;
-    gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),samples,true);
-
-    gsInfo << "Plotting initial configuration...\n";
-    for (int p = 0; p < domain.nPatches(); ++p)
-    {
-        collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
-        int res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
-        if (plotJac)
-            collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
-        else
-            res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
-        GISMO_ASSERT(res == 0, "Problems with deleting files\n");
-    }
-
-    for (unsigned s = 0; s < deformation.size(); ++s)
-    {
-        gsInfo << "Plotting configuration " << s+1 << "/" << deformation.size() << "..." << std::endl;
-
-        for (int p = 0; p < domain.nPatches(); ++p)
-            configuration.patch(p).coefs() += deformation[s][p];
-
-        gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),samples,true);
-        for (int p = 0; p < domain.nPatches(); ++p)
-        {
-            collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
-            int res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
-            if (plotJac)
-                collectionJac.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,".vts");
-            else
-                res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
-
-            GISMO_ASSERT(res == 0, "Problems with deleting files\n");
-        }
-    }
-
-    collectionMesh.save();
-    if (plotJac)
-        collectionJac.save();
-}
+}*/
 
 template <class T>
-void applyDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                      gsMultiPatch<T> const & initDomain, gsMultiPatch<T> & domain)
-{
-    domain.clear();
-    for (int p = 0; p < initDomain.nPatches(); ++p)
-    {
-        domain.addPatch(initDomain.patch(p).clone());
-        for (unsigned s = 0; s < deformation.size(); ++s)
-            domain.patch(p).coefs() += deformation[s][p];
-    }
-}
-
-template <class T>
-T measureMinMaxJ(gsMultiPatch<T> const & domain, int numSamples)
+T measureMinMaxJ(gsMultiPatch<T> const & domain, index_t numSamples)
 {
     /*std::vector<T> maxs, mins;
 
@@ -258,8 +279,8 @@ T measureMinMaxJ(gsMultiPatch<T> const & domain, int numSamples)
 
 template <class T>
 void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                        gsMultiPatch<T> const & domain, int measPerStep,
-                        std::string fileName, int numSamples)
+                        gsMultiPatch<T> const & domain, index_t measPerStep,
+                        std::string fileName, index_t numSamples)
 {/*
     int steps = deformation.size();
     std::ofstream res;
@@ -300,11 +321,11 @@ void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformat
 
 template<class T>
 typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
-                                          int additionalPoints, int numSamples)
+                                          index_t additionalPoints, index_t numSamples)
 {
     GISMO_ASSERT(curve.domainDim() == 1 ,"That's not a curve.\n");
-    int deg = curve.degree(0);
-    int num = deg + 1 + additionalPoints;
+    index_t deg = curve.degree(0);
+    index_t num = deg + 1 + additionalPoints;
     GISMO_ASSERT(num >= deg+1 ,"Coarse basis size is too small.\n");
     GISMO_ASSERT(unsigned(num) <= curve.coefsSize() ,"Coarse basis if finer than the original.\n");
 
@@ -313,7 +334,7 @@ typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
     gsBSplineBasis<T> basis(knotVector);
 
     gsMatrix<T> params(1,numSamples);
-    for (int p = 0; p < numSamples; ++p)
+    for (index_t p = 0; p < numSamples; ++p)
         params.at(p) = 1.*p/(numSamples-1);
 
     gsMatrix<T> curveValues;
@@ -321,20 +342,20 @@ typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
 
     gsMatrix<T> lens(numSamples,1);
     lens.at(0) = 0.;
-    for (int p = 1; p < numSamples; ++p)
+    for (index_t p = 1; p < numSamples; ++p)
         lens.at(p) = lens.at(p-1) + distance(curveValues,p,curveValues,p-1,true);
 
     gsMatrix<T> lenParams(1,numSamples);
-    for (int p = 0; p < numSamples; ++p)
+    for (index_t p = 0; p < numSamples; ++p)
         lenParams.at(p) = lens.at(p)/lens.at(numSamples-1);
 
     typename gsGeometry<T>::uPtr simpleCurve = fittingDirichlet(lenParams,curveValues,basis);
 
     simpleCurve->eval_into(params,curveValues);
-    for (int p = 1; p < numSamples; ++p)
+    for (index_t p = 1; p < numSamples; ++p)
         lens.at(p) = lens.at(p-1) + distance(curveValues,p,curveValues,p-1,true);
 
-    for (int p = 0; p < numSamples; ++p)
+    for (index_t p = 0; p < numSamples; ++p)
         lenParams.at(p) = lens.at(p)/lens.at(numSamples-1);
 
     return fittingDirichlet(lenParams,curveValues,curve.basis());
@@ -345,9 +366,9 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
                                               gsMatrix<T> const & points,
                                               gsBasis<T> const & basis)
 {
-    int numSamples = params.cols();
+    index_t numSamples = params.cols();
     unsigned num = basis.size();
-    int dim = points.rows();
+    index_t dim = points.rows();
 
     gsSparseMatrix<T> A(num,num);
     gsMatrix<T> b(num,dim);
@@ -359,14 +380,14 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
     basis.eval_into(params,basisValues);
     basis.active_into(params,activeBasis);
 
-    for (int p = 1; p < numSamples; ++p)
+    for (index_t p = 1; p < numSamples; ++p)
     {
-        int numActive = activeBasis.rows();
-        for (int i = 0; i < numActive; ++i)
+        index_t numActive = activeBasis.rows();
+        for (index_t i = 0; i < numActive; ++i)
         {
             if (activeBasis(i,p) == 0)
             {
-                for (int j = 0; j < numActive; ++j)
+                for (index_t j = 0; j < numActive; ++j)
                 {
                     if (activeBasis(j,p) != 0 && activeBasis(j,p) != num-1 )
                         b.row(activeBasis(j,p)-1) -= basisValues(i,p) * basisValues(j,p) *
@@ -375,7 +396,7 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
             }
             else if (activeBasis(i,p) == num-1)
             {
-                for (int j = 0; j < numActive; ++j)
+                for (index_t j = 0; j < numActive; ++j)
                 {
                     if (activeBasis(j,p) != 0 && activeBasis(j,p) != num-1 )
                         b.row(activeBasis(j,p)-1) -= basisValues(i,p) * basisValues(j,p) *
@@ -385,7 +406,7 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
             else
             {
                 b.row(activeBasis(i,p)-1) += basisValues(i,p) * points.col(p).transpose() * (params.at(p)-params.at(p-1));
-                for (int j = 0; j < numActive; ++j)
+                for (index_t j = 0; j < numActive; ++j)
                     if (activeBasis(j,p) != 0 && activeBasis(j,p) != num-1 )
                         A(activeBasis(i,p)-1, activeBasis(j,p)-1) += basisValues(i,p) * basisValues(j,p) * (params.at(p)-params.at(p-1));
             }
@@ -406,24 +427,24 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
 
 template<class T>
 typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGeometry<T> const & B,
-                                                   int deg, int num, bool xiDir)
+                                                   index_t deg, index_t num, bool xiDir)
 {
     GISMO_ASSERT(A.parDim() == B.parDim(), "Geometries are incompatible: different parametric dimensions: " +
                                            std::to_string(A.parDim()) + " and " + std::to_string(B.parDim()) + "\n");
-    int pDim = A.parDim();
+    index_t pDim = A.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2, "Can only interpolate between curves or surfaces. Given geometries have parametric dimension " +
                                         std::to_string(pDim) + "\n");
-    for (int d = 0; d < pDim; ++d)
+    for (index_t d = 0; d < pDim; ++d)
         GISMO_ASSERT(A.degree(d) == B.degree(d), "Geometries are incompatible: different splines degrees in dimension" +
                                                  std::to_string(d) + ": " + std::to_string(A.degree(d)) +
                                                  " and " + std::to_string(B.degree(d)) + "\n");
 
     GISMO_ASSERT(A.targetDim() == B.targetDim(), "Geometries are incompatible: different physical dimensions: " +
                                                  std::to_string(A.targetDim()) + " and " + std::to_string(B.targetDim()) + "\n");
-    int tDim = A.targetDim();
+    index_t tDim = A.targetDim();
     GISMO_ASSERT(A.coefsSize() == B.coefsSize(), "Geometries are incompatible: different number of control points: " +
                                                  std::to_string(A.coefsSize()) + " and " + std::to_string(B.coefsSize()) + "\n");
-    int baseNum = A.coefsSize();
+    index_t baseNum = A.coefsSize();
 
     gsKnotVector<T> newKnots(0.0,1.0, num - deg - 1, deg + 1);
 
@@ -436,7 +457,7 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
         gsMatrix<T> coefs(baseNum*num,tDim);
         T part = 1./(num-deg);
         T pos = 0.;
-        for (int i = 0; i < num; ++i)
+        for (index_t i = 0; i < num; ++i)
         {
             if (i < deg)
                 pos += part/deg*i;
@@ -445,7 +466,7 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
             else
                 pos += part/deg*(num-i);
 
-            for (int j = 0; j < baseNum; ++j)
+            for (index_t j = 0; j < baseNum; ++j)
             {
                 if (xiDir)
                     coefs.row(j*num+i) = combine(A.coefs(),B.coefs(),pos,j,j).row(0);
@@ -476,7 +497,7 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
         gsMatrix<T> coefs(baseNum*num,tDim);
         T part = 1./(num-deg);
         T pos = 0.;
-        for (int i = 0; i < num; ++i)
+        for (index_t i = 0; i < num; ++i)
         {
             if (i < deg)
                 pos += part/deg*i;
@@ -485,7 +506,7 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
             else
                 pos += part/deg*(num-i);
 
-            for (int j = 0; j < baseNum; ++j)
+            for (index_t j = 0; j < baseNum; ++j)
                 coefs.row(i*baseNum+j) = combine(A.coefs(),B.coefs(),pos,j,j).row(0);
         }
 
@@ -495,7 +516,7 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
 
 template<class T>
 typename gsGeometry<T>::uPtr genPatchScaling(gsGeometry<T> const & boundary,
-                                             int deg, int num,
+                                             index_t deg, index_t num,
                                              T scaling, gsVector<T> const & center)
 {
     typename gsGeometry<T>::uPtr scaledBoundary = boundary.clone();
@@ -506,21 +527,21 @@ typename gsGeometry<T>::uPtr genPatchScaling(gsGeometry<T> const & boundary,
 }
 
 template<class T>
-typename gsGeometry<T>::uPtr genLine(int deg, int num,
+typename gsGeometry<T>::uPtr genLine(index_t deg, index_t num,
                                      gsMatrix<T> const & A, gsMatrix<T> const & B,
-                                     int iA, int iB)
+                                     index_t iA, index_t iB)
 {
     GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
     GISMO_ASSERT(A.cols() == B.cols(),"Points have different dimensions\n");
     gsKnotVector<T> knots(0.0,1.0, num - deg - 1, deg + 1);
     gsBSplineBasis<T> basis(knots);
 
-    int dim = A.cols();
+    index_t dim = A.cols();
     gsMatrix<T> coefs(num,dim);
 
     T part = 1./(num-deg);
     T pos = 0.;
-    for (int i = 0; i < num; ++i)
+    for (index_t i = 0; i < num; ++i)
     {
         if (i < deg)
             pos += part/deg*i;
@@ -536,7 +557,7 @@ typename gsGeometry<T>::uPtr genLine(int deg, int num,
 }
 
 template<class T>
-typename gsGeometry<T>::uPtr genCircle(int deg, int num,
+typename gsGeometry<T>::uPtr genCircle(index_t deg, index_t num,
                                        T radius, T x0, T y0,
                                        T angle0, T arcAngle)
 {
@@ -552,10 +573,10 @@ typename gsGeometry<T>::uPtr genCircle(gsBasis<T> & basis,
                                        T x0, T y0,
                                        T angle0, T arcAngle)
 {
-    int numPoints = 1000;
+    index_t numPoints = 1000;
     gsMatrix<> params(1,numPoints);
     gsMatrix<> points(2,numPoints);
-    for (int i = 0; i < numPoints; ++i)
+    for (index_t i = 0; i < numPoints; ++i)
     {
         params(0,i) = 1.*i/(numPoints-1);
         points(0,i) = x0 + radius*cos(angle0 + i*arcAngle/(numPoints-1));
@@ -566,10 +587,10 @@ typename gsGeometry<T>::uPtr genCircle(gsBasis<T> & basis,
 }
 
 template<class T>
-typename gsGeometry<T>::uPtr genQuad(int xiDeg, int xiNum, int etaDeg, int etaNum,
+typename gsGeometry<T>::uPtr genQuad(index_t xiDeg, index_t xiNum, index_t etaDeg, index_t etaNum,
                                      gsMatrix<T> const & A, gsMatrix<T> const & B,
                                      gsMatrix<T> const & C, gsMatrix<T> const & D,
-                                     int iA, int iB, int iC, int iD)
+                                     index_t iA, index_t iB, index_t iC, index_t iD)
 {
     typename gsGeometry<T>::uPtr sideAB = genLine(xiDeg,xiNum,A,B,iA,iB);
     typename gsGeometry<T>::uPtr sideCD = genLine(xiDeg,xiNum,C,D,iC,iD);
@@ -578,7 +599,7 @@ typename gsGeometry<T>::uPtr genQuad(int xiDeg, int xiNum, int etaDeg, int etaNu
 }
 
 template<class T>
-typename gsGeometry<T>::uPtr genSphere(int xiDeg, int xiNum, int etaDeg, int etaNum,
+typename gsGeometry<T>::uPtr genSphere(index_t xiDeg, index_t xiNum, index_t etaDeg, index_t etaNum,
                                        T xi0, T xi1, T eta0, T eta1)
 {
     GISMO_ASSERT(xiNum - xiDeg - 1 >= 0,"Too few DoFs\n");
@@ -601,12 +622,12 @@ typename gsGeometry<T>::uPtr genSphere(gsKnotVector<T> & xiKnots, gsKnotVector<T
 
     gsTensorBSplineBasis<2,T> basis(xiKnots,etaKnots);
 
-    int xiNum = xiCircle->coefsSize();
-    int etaNum = etaCircle->coefsSize();
+    index_t xiNum = xiCircle->coefsSize();
+    index_t etaNum = etaCircle->coefsSize();
     gsMatrix<T> coefs(xiNum*etaNum,3);
-    for (int i = 0; i < xiNum; ++i)
+    for (index_t i = 0; i < xiNum; ++i)
     {
-        for (int j = 0; j < etaNum; ++j)
+        for (index_t j = 0; j < etaNum; ++j)
         {
             coefs(j*xiNum+i,0) = xiCircle->coef(i,0)*etaCircle->coef(j,1);
             coefs(j*xiNum+i,1) = xiCircle->coef(i,1)*etaCircle->coef(j,1);
@@ -619,7 +640,7 @@ typename gsGeometry<T>::uPtr genSphere(gsKnotVector<T> & xiKnots, gsKnotVector<T
 
 template<class T>
 typename gsGeometry<T>::uPtr genCylinder(gsGeometry<T> const & base,
-                                         int deg, int num, T height)
+                                         index_t deg, index_t num, T height)
 {
     GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
 
@@ -637,23 +658,23 @@ typename gsGeometry<T>::uPtr genCylinder(gsGeometry<T> const & base,
 
 template<class T>
 typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
-                                      int deg, int num,
+                                      index_t deg, index_t num,
                                       T height, T pitch, T x0, T y0)
 {
     GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
 
-    int pDim = base.parDim();
+    index_t pDim = base.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2,"Wrong geometry type\n");
 
     gsKnotVector<> zKnots(0.0,1.0, num - deg - 1, deg + 1);
     gsBSplineBasis<> zBasis(zKnots);
 
-    int  numBase = base.coefsSize();
+    index_t numBase = base.coefsSize();
 
-    int numPoints = 10000;
+    index_t numPoints = 10000;
     gsMatrix<> params(1,numPoints);
     gsMatrix<> points(3,numPoints);
-    for (int i = 0; i < numPoints; ++i)
+    for (index_t i = 0; i < numPoints; ++i)
     {
         params(0,i) = 1.*i/(numPoints-1);
         points(0,i) = cos(params(0,i)*2*M_PI*pitch/360);
@@ -669,7 +690,7 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
 
     T oldAngle = 0.;
     T oldRadius = 1.;
-    for (int i = 0; i < num; ++i)
+    for (index_t i = 0; i < num; ++i)
     {
         T x = helix->coef(i,0);
         T y = helix->coef(i,1);
@@ -680,7 +701,7 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
         temp.patch(0).scale(radius/oldRadius);
         temp.patch(0).translate(gsVector<T,2>::vec(x0,y0));
 
-        for (int j = 0; j < numBase; j++)
+        for (index_t j = 0; j < numBase; j++)
         {
             coefs(i*numBase + j,0) = temp.patch(0).coef(j,0);
             coefs(i*numBase + j,1) = temp.patch(0).coef(j,1);
@@ -711,12 +732,12 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
 
 template<class T>
 gsMatrix<T> combine(gsMatrix<T> const & A, gsMatrix<T> const & B, T x,
-                    int iA, int iB, bool cols)
+                    index_t iA, index_t iB, bool cols)
 {
     if (cols)
     {
         GISMO_ASSERT(A.rows() == B.rows(),"Points have different dimensions\n");
-        int dim = A.rows();
+        index_t dim = A.rows();
         gsMatrix<T> combination(dim,1);
         combination.col(0) = (1-x)*A.col(iA) + x*B.col(iB);
         return combination;
@@ -724,7 +745,7 @@ gsMatrix<T> combine(gsMatrix<T> const & A, gsMatrix<T> const & B, T x,
     else
     {
         GISMO_ASSERT(A.cols() == B.cols(),"Points have different dimensions\n");
-        int dim = A.cols();
+        index_t dim = A.cols();
         gsMatrix<T> combination(1,dim);
         combination.row(0) = (1-x)*A.row(iA) + x*B.row(iB);
         return combination;
@@ -732,20 +753,20 @@ gsMatrix<T> combine(gsMatrix<T> const & A, gsMatrix<T> const & B, T x,
 }
 
 template <class T>
-T distance(gsMatrix<T> const & A, int i, gsMatrix<T> const & B, int j, bool cols)
+T distance(gsMatrix<T> const & A, index_t i, gsMatrix<T> const & B, index_t j, bool cols)
 {
     T dist = 0.;
 
     if (cols)
     {
         GISMO_ASSERT(A.rows() == B.rows(),"Wrong matrix size\n");
-        for (int d = 0; d < A.rows(); ++d)
+        for (index_t d = 0; d < A.rows(); ++d)
             dist = sqrt(pow(dist,2)+pow(A(d,i)-B(d,j),2));
     }
     else
     {
         GISMO_ASSERT(A.cols() == B.cols(),"Wrong matrix size\n");
-        for (int d = 0; d < A.cols(); ++d)
+        for (index_t d = 0; d < A.cols(); ++d)
             dist = sqrt(pow(dist,2)+pow(A(i,d)-B(j,d),2));
     }
 
