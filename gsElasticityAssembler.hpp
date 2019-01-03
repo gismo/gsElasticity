@@ -133,6 +133,12 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, g
 }
 
 template <class T>
+bool gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution)
+{
+    return true;
+}
+
+template <class T>
 void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                                        gsPiecewiseFunction<T> & result,
                                                        stress_type::type type) const

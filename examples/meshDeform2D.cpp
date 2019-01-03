@@ -12,7 +12,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/puzzle4_bdry.xml";
+    std::string filename = ELAST_DATA_DIR"/rotor_bdry.xml";
     std::string filenameInit = "";
     index_t numSteps = 3;
     real_t poissRatio = 0.45;

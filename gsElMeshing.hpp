@@ -218,32 +218,6 @@ void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & 
     }
 }
 
-/*
-template <class T>
-void deformNonLinearly(gsMultiPatch<T> & result, gsMultiPatch<T> const & domain,
-                       std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                       gsMatrix<T> const & sumSolutionVector,
-                       gsBoundaryConditions<T> const & bdry, T poissonRatio,
-                       T tolerance, int maxNumIterations)
-{
-    gsElasticityAssembler<T> assembler(domain,basis,200.,poissonRatio,1.,bcInfo,g);
-    for (auto it = bdry.dirichletBegin(); it != bdry.dirichletEnd(); ++it)
-        assembler.setDirichletDoFs(deformCoefs.at(std::pair<int,int>(it->patch(),it->side())),it->patch(),it->side());
-
-    assembler.set_MaterialLaw(0);
-
-    gsElasticityNewton<T> newtonSolver(assembler,result);
-    newtonSolver.setMaxIterations(maxNumIterations);
-    newtonSolver.setTolerance(tolerance);
-    newtonSolver.setSolution(sumSolutionVector);
-
-    newtonSolver.solveGiven();
-    result.clear();
-    for (int p = 0; p < domain.nPatches(); ++p)
-        result.addPatch(newtonSolver.solution().patch(p).clone());
-
-}*/
-
 template <class T>
 T measureMinMaxJ(gsMultiPatch<T> const & domain, index_t numSamples)
 {

@@ -87,8 +87,6 @@ public:
             gsMatrix<T> F = gsMatrix<T>::Identity(dim,dim) + physDispJac;
             // deformation jacobian J = det(F)
             T J = F.determinant();
-            if (J < 0)
-                gsInfo << "Negative deformation jacobian " << J << std::endl;
             // Right Cauchy Green strain, C = F'*F
             gsMatrix<T> RCG = F.transpose() * F;
             // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor

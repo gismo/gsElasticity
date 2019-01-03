@@ -68,6 +68,9 @@ public:
     /// @brief Construct solution from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const;
 
+    /// @brief Check whether the displacement field is valid, i.e. J = det(F) > 0
+    static bool checkSolution(const gsMultiPatch<T> & solution);
+
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T> & result,

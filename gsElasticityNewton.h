@@ -16,7 +16,7 @@
 #pragma once
 
 #include <gsPde/gsNewtonIterator.h>
-#include <gsTrilinos/gsTrilinos.h>
+#include <gsElasticity/gsElasticityAssembler.h>
 
 namespace gismo
 {
@@ -180,7 +180,9 @@ void gsElasticityNewton<T>::firstIteration()
 
 template <class T>
 void gsElasticityNewton<T>::nextIteration()
-{
+{   
+    if (!gsElasticityAssembler<T>::checkSolution(m_curSolution))
+        gsInfo << "Current displacement field is not valid (J<0)!\n";
     m_assembler.assemble(m_curSolution);
     Base::m_solver.compute(m_assembler.matrix());
     m_updateVector = Base::m_solver.solve(m_assembler.rhs());
