@@ -130,12 +130,10 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, g
     for (index_t d = 0; d < m_dim; ++d)
         unknowns.at(d) = d;
     Base::constructSolution(solVector,result,unknowns);
-}
 
-template <class T>
-bool gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution)
-{
-    return true;
+    index_t corruptedPatch = checkSolution(result);
+    if (corruptedPatch != -1)
+        gsInfo << "Computed displacement field is not valid: J < 0 on patch " << corruptedPatch << ".\n";
 }
 
 template <class T>
@@ -159,7 +157,7 @@ void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & d
 }
 
 template <class T>
-void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain)
+void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain) const
 {
     GISMO_ASSERT(domain.domainDim() == m_dim,
                  "Wrong parametric dimension of a given domain: " + util::to_string(domain.domainDim()) +
@@ -217,6 +215,45 @@ void gsElasticityAssembler<T>::setDirichletDofs(index_t patch, boxSide side, con
         for (index_t i = 0; i < globalIndices.rows(); ++i)
             m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
     }
+}
+
+template <class T>
+index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution) const
+{
+    index_t corruptedPatch = -1;
+    gsMatrix<T> points;
+    gsVector<T> weights;
+    gsMapData<T> mdG, mdU;
+    mdG.flags = NEED_DERIV;
+    mdU.flags = NEED_DERIV;
+
+    for (index_t p = 0; p < solution.nPatches(); ++p)
+    {
+        gsQuadRule<T> rule = gsQuadrature::get(solution.basis(p), m_options);
+        typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
+        for (; domIt->good(); domIt->next())
+        {
+            // weights are not used but are a necessary argument
+            rule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), points, weights);
+            mdG.points = points;
+            mdU.points = points;
+            m_pde_ptr->domain().patch(p).computeMap(mdG);
+            solution.patch(p).computeMap(mdU);
+            for (int q = 0; q < points.cols(); ++q)
+            {
+                gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
+                gsMatrix<T> F = gsMatrix<T>::Identity(m_dim,m_dim) + physDispJac;
+                if (F.determinant() <= 0)
+                {
+                    corruptedPatch = p;
+                    goto exitLabel;
+                }
+            }
+        }
+    }
+
+    exitLabel:;
+    return corruptedPatch;
 }
 
 }// namespace gismo ends

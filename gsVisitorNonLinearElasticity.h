@@ -79,10 +79,8 @@ public:
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             gsMatrix<T> physGrad;
             transformGradients(md, q, basisGrads, physGrad);
-            // parametric jacobian of displacement du/dxi
-            gsMatrix<T> parDispJac = mdDeformed.jacobian(q);
             // physical jacobian of displacemnt du/dx = du/dxi * dxi/dx
-            gsMatrix<T> physDispJac = parDispJac*(md.jacobian(q).cramerInverse());
+            gsMatrix<T> physDispJac = mdDeformed.jacobian(q)*(md.jacobian(q).cramerInverse());
             // deformation gradient F = I + du/dx
             gsMatrix<T> F = gsMatrix<T>::Identity(dim,dim) + physDispJac;
             // deformation jacobian J = det(F)

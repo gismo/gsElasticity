@@ -57,6 +57,11 @@ void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & 
                               index_t materialLaw = 0, T poissonRatio = 0.49,
                               T tolerance = 1e-12, index_t maxNumIterations = 50);
 
+/// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
+/// return -1 if yes or a number of the first invalid patch
+template <class T>
+index_t checkConfiguration(gsMultiPatch<T> const & domain);
+
 /// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant)
 template <class T>
 T measureMinMaxJ(gsMultiPatch<T> const & domain, index_t numSamples = 10000);

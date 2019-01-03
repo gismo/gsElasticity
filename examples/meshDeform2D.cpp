@@ -55,13 +55,14 @@ int main(int argc, char* argv[]){
     gsMultiPatch<> initGeo;
     initGeo.addPatch(coonsPatch.result());
     initGeo.computeTopology();
+    gsInfo << "Initialized a 2D problem with " << initGeo.patch(0).coefsSize() * 2 << " dofs.\n";
 
     // boundary condition info
     gsBoundaryConditions<> bdryCurves;
     for (index_t p = 0; p < bdry.nPatches(); ++p)
         bdryCurves.addCondition(0,p+1,condition_type::dirichlet,&(bdry.patch(p)));
 
-    // compute deformation using linear elasticity with incremental Dirichlet BC
+    gsInfo << "Computing deformation using linear elasticity with incremental Dirichelt BC...\n";
     std::vector<std::vector<gsMatrix<> > > deformation;
     computeDeformation(deformation,initGeo,bdryCurves,numSteps,poissRatio);
 
@@ -73,10 +74,12 @@ int main(int argc, char* argv[]){
     gsMultiPatch<> displacement;
     constructDisplacement(deformation,initGeo,displacement);
 
-    // compute deformation using nonlinear elasticity
     gsMultiPatch<> nonlinGeo;
     if (materialLaw >= 0)
+    {
+        gsInfo << "Solving a nonlinear problem using the incremental solution as an initial guess...\n";
         computeDeformationNonlin(nonlinGeo,initGeo,bdryCurves,displacement,materialLaw,poissRatio);
+    }
 
     //=====================================//
                 // Output //
@@ -86,10 +89,10 @@ int main(int argc, char* argv[]){
     filename = filename.substr(0,filename.find_last_of(".\\"));
     filename = filename.substr(0,filename.find_last_of("_\\"));
 
-    gsInfo << "Plotting the output to the Paraview file \"" << filename << "_2D.pvd\"...\n";
+    gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D.pvd\"...\n";
     plotDeformation(deformation,initGeo,filename + "_2D",numPlotPoints);
 
-    gsInfo << "The resulting parametrization is saved to \"" << filename << "_2D.xml\".\n";
+    gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(geo,filename + "_2D");
 
     if (materialLaw >= 0)

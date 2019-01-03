@@ -16,7 +16,9 @@
 
 #include <gsElasticity/gsElMeshing.h>
 
+#include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsField.h>
+#include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunctionExpr.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -64,8 +66,6 @@ void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
 
     for (index_t s = 0; s < numSteps; ++s)
     {
-        gsInfo << "Incremental step " << s+1 << "/" << numSteps << "..." << std::endl;
-
         gsMultiBasis<T> basis(geo);
         gsElasticityAssembler<T> assembler(geo,basis,bcInfo,g);
         assembler.options().setReal("PoissonsRatio",poissonRatio);
@@ -78,6 +78,10 @@ void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
 
         assembler.deformGeometry(solVector,geo);
         geo.computeTopology();
+
+        index_t corruptedPatch = checkConfiguration(geo);
+        gsInfo << "Step: " << s+1 << "/" << numSteps
+               << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << std::endl;
 
         gsMultiPatch<T> displacement;
         assembler.constructSolution(solVector,displacement);
@@ -216,6 +220,39 @@ void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & 
         domain.addPatch(initDomain.patch(p).clone());
         domain.patch(p).coefs() += newton.solution().patch(p).coefs();
     }
+}
+
+template <class T>
+index_t checkConfiguration(gsMultiPatch<T> const & domain)
+{
+    index_t corruptedPatch = -1;
+    gsMatrix<T> points;
+    gsVector<T> weights;
+    gsMapData<T> md;
+    md.flags = NEED_MEASURE;
+    for (index_t p = 0; p < domain.nPatches(); ++p)
+    {
+        gsQuadRule<T> rule = gsQuadrature::get(domain.basis(p), gsElasticityAssembler<T>::defaultOptions());
+        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
+        for (; domIt->good(); domIt->next())
+        {
+            // weights are not used but are a necessary argument
+            rule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), points, weights);
+            md.points = points;
+            domain.patch(p).computeMap(md);
+            for (int q = 0; q < points.cols(); ++q)
+            {
+                if (md.measure(q) <= 0)
+                {
+                    corruptedPatch = p;
+                    goto exitLabel;
+                }
+            }
+        }
+    }
+
+    exitLabel:;
+    return corruptedPatch;
 }
 
 template <class T>

@@ -68,9 +68,6 @@ public:
     /// @brief Construct solution from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const;
 
-    /// @brief Check whether the displacement field is valid, i.e. J = det(F) > 0
-    static bool checkSolution(const gsMultiPatch<T> & solution);
-
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T> & result,
@@ -81,7 +78,7 @@ public:
      * Domain must have the same level of refinement as the basis used for computing the displacement.
      * Otherwise the number of control points will not match.
      */
-    virtual void deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain);
+    virtual void deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain) const;
 
     /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
      *
@@ -91,6 +88,10 @@ public:
      * to gsBoundaryCondtions container that is passed to the assembler constructor.
      */
     virtual void setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs);
+
+    /// @brief Check whether the displacement field is valid, i.e. J = det(F) > 0;
+    /// return -1 if yes or a number of the first invalid patch
+    virtual index_t checkSolution(const gsMultiPatch<T> & solution) const;
 
 protected:
 

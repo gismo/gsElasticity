@@ -181,8 +181,6 @@ void gsElasticityNewton<T>::firstIteration()
 template <class T>
 void gsElasticityNewton<T>::nextIteration()
 {   
-    if (!gsElasticityAssembler<T>::checkSolution(m_curSolution))
-        gsInfo << "Current displacement field is not valid (J<0)!\n";
     m_assembler.assemble(m_curSolution);
     Base::m_solver.compute(m_assembler.matrix());
     m_updateVector = Base::m_solver.solve(m_assembler.rhs());
@@ -204,7 +202,10 @@ void gsElasticityNewton<T>::nextIteration()
 template <class T>
 void gsElasticityNewton<T>::printStatus() const
 {
+    index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
+
     gsInfo << "Iteration: " << m_numIterations
+           << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0")
            << ", residue: " << m_residue
            << ", update norm: " << m_updnorm <<"\n";
 }
