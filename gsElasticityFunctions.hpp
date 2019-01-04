@@ -20,8 +20,7 @@
 namespace gismo
 {
 template <class T>
-void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u,
-                                          gsMatrix<T> & result) const
+void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     result.setZero(targetDim(),u.cols());
 
@@ -30,7 +29,7 @@ void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u,
     gsMatrix<T> dispGrad;
     m_displacement.patch(m_patch).deriv_into(u,dispGrad);
 
-    for (int p = 0; p < u.cols(); ++p)
+    for (index_t p = 0; p < u.cols(); ++p)
     {
         if (domainDim() == 2)
         {
@@ -73,6 +72,20 @@ void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u,
             }
         }
     }
+}
+
+template <class T>
+void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.resize(1,u.cols());
+
+    gsMapData<T> mappingData;
+    mappingData.points = u;
+    mappingData.flags = NEED_DERIV;
+    m_geo.patch(m_patch).computeMap(mappingData);
+
+    for (index_t i = 0; i < u.cols(); ++i)
+        result(0,i) = mappingData.jacobian(i).determinant();
 }
 
 } // namespace gismo ends

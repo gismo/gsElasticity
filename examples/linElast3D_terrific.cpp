@@ -13,8 +13,8 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"terrific.xml";
-    int numUniRef = 0; // number of h-refinements
-    int numPlotPoints = 10000;
+    index_t numUniRef = 0; // number of h-refinements
+    index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
     // Dirichlet BC are imposed separately for every component (coordinate)
-    for (int d = 0; d < 3; d++)
+    for (index_t d = 0; d < 3; d++)
     {
         bcInfo.addCondition(0,boundary::back,condition_type::dirichlet,0,d);
         bcInfo.addCondition(1,boundary::back,condition_type::dirichlet,0,d);
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]){
     gsReadFile<>(filename, geometry);
     // creating basis
     gsMultiBasis<> basis(geometry);
-    for (int i = 0; i < numUniRef; ++i)
+    for (index_t i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 
     // creating assembler
@@ -81,6 +81,8 @@ int main(int argc, char* argv[]){
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
     assembler.constructSolution(solVector,solution);
+    if (assembler.checkSolution(solution) == -1)
+        gsInfo << "Computed displacement field is nto valid (J < 0)!\n";
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
 

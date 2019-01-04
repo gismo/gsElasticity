@@ -95,6 +95,35 @@ protected:
 
 }; // class definition ends
 
+/** @brief Compute jacobian determinant of the geometry mapping.
+ *         Can be pushed into gsPiecewiseFunction to construct gsField for visualization in Paraview.
+*/
+template <class T>
+class gsDetFunction : public gsFunction<T>
+{
+public:
+
+    gsDetFunction(const gsMultiPatch<T> & geo, index_t patch)
+        : m_geo(geo),
+          m_patch(patch)
+    {}
+
+    virtual int domainDim() const { return m_geo.domainDim(); }
+
+    virtual int targetDim() const { return 1; }
+
+    /** @brief Each column of the input matrix (u) corresponds to one evaluation point.
+     *         Each column of the output matrix is the jacobian determinant of the mapping at this point.
+     */
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
+
+protected:
+
+    gsMultiPatch<T> const & m_geo;
+    index_t m_patch;
+
+}; // class definition ends
+
 } // namespace ends
 
 

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 0.8.4-->
+<xml>
+ <Geometry type="BSpline" id="0">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.125 0.25 0.375 0.5 0.625 0.75 0.875 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">0 -36 
+-6.2 -35.8 
+-14.4 -29.1 
+-16.7 -19.5 
+-13.6 -15.2 
+-16.6 -12.5 
+-19.1 -7.7 
+-22.7 -9.199999999999999 
+-30.8 -6.2 
+-36 0 
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="1">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.125 0.25 0.375 0.5 0.625 0.75 0.875 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">36 0 
+30.8 6.2 
+22.7 9.199999999999999 
+19.1 7.7 
+16.6 12.5 
+13.6 15.2 
+16.7 19.5 
+14.4 29.1 
+6.2 35.8 
+0 36 
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="2">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.125 0.25 0.375 0.5 0.625 0.75 0.875 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">0 -36 
+6.2 -30.8 
+9.199999999999999 -22.7 
+7.7 -19.1 
+12.5 -16.6 
+15.2 -13.6 
+19.5 -16.7 
+29.1 -14.4 
+35.8 -6.2 
+36 0 
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="3">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.125 0.25 0.375 0.5 0.625 0.75 0.875 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">-36 0 
+-35.8 6.2 
+-29.1 14.4 
+-19.5 16.7 
+-15.2 13.6 
+-12.5 16.6 
+-7.7 19.1 
+-9.199999999999999 22.7 
+-6.2 30.8 
+0 36 
+</coefs>
+ </Geometry>
+ <MultiPatch parDim="1" id="4">
+  <patches type="id_range">0 3</patches>
+ </MultiPatch>
+</xml>
+

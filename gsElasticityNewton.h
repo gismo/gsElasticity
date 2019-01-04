@@ -16,7 +16,7 @@
 #pragma once
 
 #include <gsPde/gsNewtonIterator.h>
-#include <gsTrilinos/gsTrilinos.h>
+#include <gsElasticity/gsElasticityAssembler.h>
 
 namespace gismo
 {
@@ -40,7 +40,7 @@ public:
           m_firstDone(false)
     { }
 
-    gsElasticityNewton(gsAssembler<T> & assembler, gsMatrix<T> & solVector)
+    gsElasticityNewton(gsAssembler<T> & assembler, const gsMatrix<T> & solVector)
         : gsNewtonIterator<T>(assembler),
           m_verbose(true),
           m_doFirst(false),
@@ -52,6 +52,20 @@ public:
         m_updnorm = m_initUpdateNorm = solVector.norm();
     }
 
+    gsElasticityNewton(gsAssembler<T> & assembler, const gsMultiPatch<T> & solution)
+        : gsNewtonIterator<T>(assembler),
+          m_verbose(true),
+          m_doFirst(false),
+          m_initResidueNorm(-1.),
+          m_initUpdateNorm(-1.),
+          m_firstDone(false)
+
+    {
+        m_curSolution.clear();
+
+        for (index_t p = 0; p < solution.nPatches(); ++p)
+            m_curSolution.addPatch(solution.patch(p).clone());
+    }
 
     /// \brief Applies Newton method and performs Newton iterations
     /// until convergence or maximum iterations.
@@ -166,7 +180,7 @@ void gsElasticityNewton<T>::firstIteration()
 
 template <class T>
 void gsElasticityNewton<T>::nextIteration()
-{
+{   
     m_assembler.assemble(m_curSolution);
     Base::m_solver.compute(m_assembler.matrix());
     m_updateVector = Base::m_solver.solve(m_assembler.rhs());
@@ -188,7 +202,10 @@ void gsElasticityNewton<T>::nextIteration()
 template <class T>
 void gsElasticityNewton<T>::printStatus() const
 {
+    index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
+
     gsInfo << "Iteration: " << m_numIterations
+           << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0")
            << ", residue: " << m_residue
            << ", update norm: " << m_updnorm <<"\n";
 }
