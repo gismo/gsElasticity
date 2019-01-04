@@ -81,11 +81,11 @@ void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) co
 
     gsMapData<T> mappingData;
     mappingData.points = u;
-    mappingData.flags = NEED_MEASURE;
+    mappingData.flags = NEED_DERIV;
     m_geo.patch(m_patch).computeMap(mappingData);
 
     for (index_t i = 0; i < u.cols(); ++i)
-        result(0,i) = mappingData.measure(i);
+        result(0,i) = mappingData.jacobian(i).determinant();
 }
 
 } // namespace gismo ends

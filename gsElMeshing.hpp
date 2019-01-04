@@ -16,7 +16,6 @@
 
 #include <gsElasticity/gsElMeshing.h>
 
-#include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsField.h>
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunctionExpr.h>
@@ -79,7 +78,7 @@ void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
         assembler.deformGeometry(solVector,geo);
         geo.computeTopology();
 
-        index_t corruptedPatch = checkConfiguration(geo);
+        index_t corruptedPatch = checkGeometry(geo);
         gsInfo << "Step: " << s+1 << "/" << numSteps
                << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << std::endl;
 
@@ -112,12 +111,15 @@ void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation
     if (numSamples == 0)
         plotJac = false;
 
+    if (plotJac)
+        gsInfo << "Step: 0/" << deformation.size() << std::endl;
+
     gsField<> detField(configuration,dets,true);
     std::map<std::string,const gsField<> *> fields;
     fields["Jacobian"] = &detField;
     gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamples,true);
 
-    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+    for (index_t p = 0; p < configuration.nPatches(); ++p)
     {
         collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
         index_t res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
@@ -131,11 +133,14 @@ void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation
 
     for (unsigned s = 0; s < deformation.size(); ++s)
     {
-        for (index_t p = 0; p < initDomain.nPatches(); ++p)
+        if (plotJac)
+            gsInfo << "Step: " << s+1 << "/" << deformation.size() << std::endl;
+
+        for (index_t p = 0; p < configuration.nPatches(); ++p)
             configuration.patch(p).coefs() += deformation[s][p];
 
         gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamples,true);
-        for (index_t p = 0; p < initDomain.nPatches(); ++p)
+        for (index_t p = 0; p < configuration.nPatches(); ++p)
         {
             collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
             index_t res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
@@ -223,36 +228,69 @@ void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & 
 }
 
 template <class T>
-index_t checkConfiguration(gsMultiPatch<T> const & domain)
+index_t checkGeometry(gsMultiPatch<T> const & domain)
 {
     index_t corruptedPatch = -1;
-    gsMatrix<T> points;
-    gsVector<T> weights;
     gsMapData<T> md;
-    md.flags = NEED_MEASURE;
+    md.flags = NEED_DERIV;
+
+    gsVector<index_t> nPoints(domain.dim());
+    for (index_t d = 0; d < domain.dim(); ++d)
+        nPoints.at(d) = 10;
+
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
-        gsQuadRule<T> rule = gsQuadrature::get(domain.basis(p), gsElasticityAssembler<T>::defaultOptions());
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
         {
-            // weights are not used but are a necessary argument
-            rule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), points, weights);
+            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
             md.points = points;
             domain.patch(p).computeMap(md);
             for (int q = 0; q < points.cols(); ++q)
-            {
-                if (md.measure(q) <= 0)
+                if (md.jacobian(q).determinant() <= 0)
                 {
                     corruptedPatch = p;
                     goto exitLabel;
                 }
-            }
         }
     }
-
     exitLabel:;
     return corruptedPatch;
+}
+
+template <class T>
+void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples)
+{
+    std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
+    gsParaviewCollection collectionMesh(fileName + "_mesh");
+    gsParaviewCollection collectionJac(fileName + "_jac");
+
+    bool plotJac = true;
+    if (numSamples == 0)
+        plotJac = false;
+
+    gsPiecewiseFunction<T> dets;
+    for (index_t p = 0; p < domain.nPatches(); ++p)
+        dets.addPiecePointer(new gsDetFunction<T>(domain,p));
+    gsField<> detField(domain,dets,true);
+    std::map<std::string,const gsField<> *> fields;
+    fields["Jacobian"] = &detField;
+    gsWriteParaviewMultiPhysics(fields,fileName,numSamples,true);
+
+    for (index_t p = 0; p < domain.nPatches(); ++p)
+    {
+        collectionMesh.addPart(fileNameOnly,p,"_mesh.vtp");
+        index_t res = system(("rm " + fileName + ".pvd").c_str());
+        if (plotJac)
+            collectionJac.addPart(fileNameOnly,p,".vts");
+        else
+            res = system(("rm " + fileName + std::to_string(p) + ".vts").c_str());
+        GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+        (void)res;
+    }
+    collectionMesh.save();
+    if (plotJac)
+        collectionJac.save();
 }
 
 template <class T>

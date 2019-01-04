@@ -18,6 +18,7 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 
 #include <gsPde/gsPoissonPde.h>
+#include <gsUtils/gsPointGrid.h>
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
@@ -130,10 +131,6 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, g
     for (index_t d = 0; d < m_dim; ++d)
         unknowns.at(d) = d;
     Base::constructSolution(solVector,result,unknowns);
-
-    index_t corruptedPatch = checkSolution(result);
-    if (corruptedPatch != -1)
-        gsInfo << "Computed displacement field is not valid: J < 0 on patch " << corruptedPatch << ".\n";
 }
 
 template <class T>
@@ -221,20 +218,20 @@ template <class T>
 index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution) const
 {
     index_t corruptedPatch = -1;
-    gsMatrix<T> points;
-    gsVector<T> weights;
     gsMapData<T> mdG, mdU;
     mdG.flags = NEED_DERIV;
     mdU.flags = NEED_DERIV;
 
+    gsVector<index_t> nPoints(m_dim);
+    for (index_t d = 0; d < m_dim; ++d)
+        nPoints.at(d) = 10;
+
     for (index_t p = 0; p < solution.nPatches(); ++p)
     {
-        gsQuadRule<T> rule = gsQuadrature::get(solution.basis(p), m_options);
         typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
-        {
-            // weights are not used but are a necessary argument
-            rule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), points, weights);
+        {   
+            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
             mdG.points = points;
             mdU.points = points;
             m_pde_ptr->domain().patch(p).computeMap(mdG);

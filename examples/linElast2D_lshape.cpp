@@ -80,6 +80,9 @@ int main(int argc, char* argv[]){
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
     assembler.constructSolution(solVector,solution);
+    if (assembler.checkSolution(solution) == -1)
+        gsInfo << "Computed displacement field is nto valid (J < 0)!\n";
+
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
 

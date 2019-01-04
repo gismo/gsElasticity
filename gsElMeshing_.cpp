@@ -29,7 +29,9 @@ TEMPLATE_INST void computeDeformationNonlin(gsMultiPatch<real_t> & domain, gsMul
                                             index_t materialLaw = 0, real_t poissonRatio = 0.49,
                                             real_t tolerance = 1e-12, index_t maxNumIterations = 50);
 
-TEMPLATE_INST index_t checkConfiguration(gsMultiPatch<real_t> const & domain);
+TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
+
+TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
 
 TEMPLATE_INST real_t measureMinMaxJ(gsMultiPatch<real_t> const & domain, index_t numSamples = 10000);
 

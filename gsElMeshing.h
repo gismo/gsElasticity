@@ -60,7 +60,11 @@ void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & 
 /// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
 /// return -1 if yes or a number of the first invalid patch
 template <class T>
-index_t checkConfiguration(gsMultiPatch<T> const & domain);
+index_t checkGeometry(gsMultiPatch<T> const & domain);
+
+/// @brief Plots the mesh and the jacobian (if <numSamples> > 0) to Paraview
+template <class T>
+void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples);
 
 /// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant)
 template <class T>

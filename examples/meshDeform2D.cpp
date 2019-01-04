@@ -1,6 +1,7 @@
 /// This is an example of generating an isogeometric parametrization using mesh deformation technique
 #include <gismo.h>
 #include <gsElasticity/gsElMeshing.h>
+#include <gsElasticity/gsElasticityFunctions.h>
 
 using namespace gismo;
 
@@ -17,7 +18,7 @@ int main(int argc, char* argv[]){
     index_t numSteps = 3;
     real_t poissRatio = 0.45;
     index_t numAdditionalPoints = 0;
-    index_t materialLaw = -1;
+    index_t materialLaw = 1;
     index_t numUniRef = 0;
     index_t numPlotPoints = 0;
 
@@ -89,16 +90,20 @@ int main(int argc, char* argv[]){
     filename = filename.substr(0,filename.find_last_of(".\\"));
     filename = filename.substr(0,filename.find_last_of("_\\"));
 
+    gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
+    gsWrite(initGeo,filename + "_2D_init");
+
     gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D.pvd\"...\n";
     plotDeformation(deformation,initGeo,filename + "_2D",numPlotPoints);
-
     gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(geo,filename + "_2D");
 
     if (materialLaw >= 0)
     {
+        gsInfo << "Plotting the result of the nonlinear algorithm to the Paraview file \"" << filename << "_2D_nl.pvd\"...\n";
+        plotGeometry(nonlinGeo,filename + "_2D_nl",numPlotPoints);
         gsInfo << "The result of the nonlinear algorithm is saved to \"" << filename << "_2D_nl.xml\".\n";
-        gsWrite(nonlinGeo,filename + "_2D_nl");
+        gsWrite(nonlinGeo,filename + "_2D_nl");       
     }
 
     return 0;
