@@ -44,7 +44,8 @@ TEMPLATE_INST void analyzeDeformation(std::vector<std::vector<gsMatrix<real_t> >
 //-----------------------------------//
 
 TEMPLATE_INST gsGeometry<real_t>::uPtr simplifyCurve(gsGeometry<real_t> const & curve,
-                                                     index_t additionalPoints = 0, index_t numSamples = 1000);
+                                                     index_t additionalPoints = 0, index_t degree = 0,
+                                                     index_t numSamples = 1000);
 
 TEMPLATE_INST gsGeometry<real_t>::uPtr fittingDirichlet(gsMatrix<real_t> const & params,
                                                         gsMatrix<real_t> const & points,

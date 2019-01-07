@@ -88,7 +88,8 @@ void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformat
 /// <numSamples> is a number of sampling points for reparametrization
 template<class T>
 typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
-                                          index_t additionalPoints = 0, index_t numSamples = 1000);
+                                          index_t additionalPoints = 0, index_t degree = 0,
+                                          index_t numSamples = 1000);
 
 /// @brief fits a given parametrized point cloud with a curve using a given basis;
 /// the resulting curve interpolates the first and the last points

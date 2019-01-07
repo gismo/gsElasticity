@@ -20,6 +20,7 @@ int main(int argc, char* argv[]){
     index_t numAdditionalPoints = 0;
     index_t materialLaw = 1;
     index_t numUniRef = 0;
+    index_t numDegreeElev = 0;
     index_t numPlotPoints = 0;
 
     // minimalistic user interface for terminal
@@ -31,6 +32,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("a","acc","Number of control points above minimum for curve simplification",numAdditionalPoints);
     cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln, 2 - NeoHooke_2; if not set, no nonlin solution",materialLaw);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
+    cmd.addInt("e","elev","Number of degree elevetation application",numDegreeElev);
     cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -38,23 +40,32 @@ int main(int argc, char* argv[]){
     gsMultiPatch<> bdry;
     gsReadFile<>(filename,bdry);
 
-    //=====================================//1000
+    //=====================================//
                 // Algorithm //
     //=====================================//
+
+    for (index_t i = 0; i < numDegreeElev; ++i)
+        bdry.degreeElevate();
 
     for (index_t i = 0; i < numUniRef; ++i)
         bdry.uniformRefine();
 
-    // simplifying the boundary curves
-    gsMultiPatch<> simpleBdry;
-    for (index_t p = 0; p < bdry.nPatches(); ++p)
-        simpleBdry.addPatch(simplifyCurve(bdry.patch(p),numAdditionalPoints,1000));
-
-    // creating a coons patch out of simplified boundary curves to serve as an initial domain
-    gsCoonsPatch<real_t> coonsPatch(simpleBdry);
-    coonsPatch.compute();
     gsMultiPatch<> initGeo;
-    initGeo.addPatch(coonsPatch.result());
+    if (filenameInit.empty())
+    {
+        // simplifying the boundary curves
+        gsMultiPatch<> simpleBdry;
+        for (index_t p = 0; p < bdry.nPatches(); ++p)
+            simpleBdry.addPatch(simplifyCurve(bdry.patch(p),numAdditionalPoints,1000));
+
+        // creating a coons patch out of simplified boundary curves to serve as an initial domain
+        gsCoonsPatch<real_t> coonsPatch(simpleBdry);
+        coonsPatch.compute();
+        initGeo.addPatch(coonsPatch.result());
+    }
+    else
+        gsReadFile<>(filenameInit,initGeo);
+
     initGeo.computeTopology();
     gsInfo << "Initialized a 2D problem with " << initGeo.patch(0).coefsSize() * 2 << " dofs.\n";
 
@@ -93,10 +104,10 @@ int main(int argc, char* argv[]){
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
 
-    gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D.pvd\"...\n";
-    plotDeformation(deformation,initGeo,filename + "_2D",numPlotPoints);
-    gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D.xml\".\n";
-    gsWrite(geo,filename + "_2D");
+    gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D_lin.pvd\"...\n";
+    plotDeformation(deformation,initGeo,filename + "_2D_lin",numPlotPoints);
+    gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D_lin.xml\".\n";
+    gsWrite(geo,filename + "_2D_lin");
 
     if (materialLaw >= 0)
     {

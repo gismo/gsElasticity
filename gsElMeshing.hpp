@@ -370,13 +370,12 @@ void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformat
 
 template<class T>
 typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
-                                          index_t additionalPoints, index_t numSamples)
+                                          index_t additionalPoints, index_t degree,
+                                          index_t numSamples)
 {
     GISMO_ASSERT(curve.domainDim() == 1 ,"That's not a curve.\n");
-    index_t deg = curve.degree(0);
+    index_t deg = degree;
     index_t num = deg + 1 + additionalPoints;
-    GISMO_ASSERT(num >= deg+1 ,"Coarse basis size is too small.\n");
-    GISMO_ASSERT(unsigned(num) <= curve.coefsSize() ,"Coarse basis if finer than the original.\n");
 
     gsKnotVector<T> knots(0.0,1.0, num - deg - 1, deg + 1);
     gsKnotVector<T> knotVector(knots);
