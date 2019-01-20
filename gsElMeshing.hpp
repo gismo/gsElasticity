@@ -388,6 +388,26 @@ typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
     return fittingDirichlet(lenParams,curveValues,curve.basis());
 }
 
+template<class T>
+T curveDistance(gsGeometry<T> const & curveA,
+                gsGeometry<T> const & curveB,
+                index_t numSamples)
+{
+    gsMatrix<T> params(1,numSamples);
+    for (index_t p = 0; p < numSamples; ++p)
+        params.at(p) = 1.*p/(numSamples-1);
+
+    gsMatrix<T> pointsA, pointsB;
+    curveA.eval_into(params,pointsA);
+    curveB.eval_into(params,pointsB);
+
+    T dist = 0.;
+    for (int p = 0; p < numSamples; ++p)
+        dist += pow(distance(pointsA,p,pointsB,p,true),2);
+
+    return sqrt(dist/numSamples);
+}
+
 template <class T>
 typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
                                               gsMatrix<T> const & points,
