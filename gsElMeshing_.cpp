@@ -43,6 +43,10 @@ TEMPLATE_INST gsGeometry<real_t>::uPtr simplifyCurve(gsGeometry<real_t> const & 
                                                      index_t additionalPoints = 0, index_t degree = 0,
                                                      index_t numSamples = 1000);
 
+TEMPLATE_INST real_t curveDistance(gsGeometry<real_t> const & curveA,
+                                   gsGeometry<real_t> const & curveB,
+                                   index_t numSamples = 1000);
+
 TEMPLATE_INST gsGeometry<real_t>::uPtr fittingDirichlet(gsMatrix<real_t> const & params,
                                                         gsMatrix<real_t> const & points,
                                                         gsBasis<real_t> const & basis);

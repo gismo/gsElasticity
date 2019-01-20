@@ -83,6 +83,12 @@ typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
                                           index_t additionalPoints = 0, index_t degree = 0,
                                           index_t numSamples = 1000);
 
+/// @brief returns a distance in L2 sense between two curves parametrized from 0 to 1
+template<class T>
+T curveDistance(gsGeometry<T> const & curveA,
+                gsGeometry<T> const & curveB,
+                index_t numSamples = 1000);
+
 /// @brief fits a given parametrized point cloud with a curve using a given basis;
 /// the resulting curve interpolates the first and the last points
 template <class T>
