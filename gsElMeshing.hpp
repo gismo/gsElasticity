@@ -43,6 +43,8 @@ void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
     for (index_t p = 0; p < numP; ++p)
         geo.addPatch(initDomain.patch(p));
 
+    geo.computeTopology();
+
     deformation.resize(numSteps);
     for (index_t s = 0; s < numSteps; ++s)
         deformation[s].resize(numP);
@@ -98,6 +100,7 @@ void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation
     std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
     gsParaviewCollection collectionMesh(fileName + "_mesh");
     gsParaviewCollection collectionJac(fileName + "_jac");
+    index_t res;
 
     gsMultiPatch<T> configuration;
     for (index_t p = 0; p < initDomain.nPatches(); ++p)
@@ -119,17 +122,19 @@ void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation
     fields["Jacobian"] = &detField;
     gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamples,true);
 
+
     for (index_t p = 0; p < configuration.nPatches(); ++p)
     {
         collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
-        index_t res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
         if (plotJac)
             collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
         else
             res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
         GISMO_ASSERT(res == 0, "Problems with deleting files\n");
-        (void)res;
     }
+    res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
+    GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+
 
     for (unsigned s = 0; s < deformation.size(); ++s)
     {
@@ -143,20 +148,23 @@ void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation
         for (index_t p = 0; p < configuration.nPatches(); ++p)
         {
             collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
-            index_t res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
+
             if (plotJac)
                 collectionJac.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,".vts");
             else
                 res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
 
             GISMO_ASSERT(res == 0, "Problems with deleting files\n");
-            (void)res;
         }
+        res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
+        GISMO_ASSERT(res == 0, "Problems with deleting files\n");
     }
 
     collectionMesh.save();
     if (plotJac)
         collectionJac.save();
+
+    (void)res;
 }
 
 template <class T>
@@ -264,6 +272,7 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
     std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
     gsParaviewCollection collectionMesh(fileName + "_mesh");
     gsParaviewCollection collectionJac(fileName + "_jac");
+    index_t res;
 
     bool plotJac = true;
     if (numSamples == 0)
@@ -279,89 +288,59 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
 
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
-        collectionMesh.addPart(fileNameOnly,p,"_mesh.vtp");
-        index_t res = system(("rm " + fileName + ".pvd").c_str());
+        collectionMesh.addPart(fileNameOnly,p,"_mesh.vtp"); 
         if (plotJac)
             collectionJac.addPart(fileNameOnly,p,".vts");
         else
             res = system(("rm " + fileName + std::to_string(p) + ".vts").c_str());
         GISMO_ASSERT(res == 0, "Problems with deleting files\n");
-        (void)res;
     }
+    res = system(("rm " + fileName + ".pvd").c_str());
+    GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+    (void)res;
+
     collectionMesh.save();
     if (plotJac)
         collectionJac.save();
 }
 
 template <class T>
-T measureMinMaxJ(gsMultiPatch<T> const & domain, index_t numSamples)
+T measureMinMaxJ(gsMultiPatch<T> const & domain)
 {
-    /*std::vector<T> maxs, mins;
+    std::vector<T> maxs, mins;
+    gsMapData<T> md;
+    md.flags = NEED_DERIV;
 
-    for (int p = 0; p < domain.nPatches(); ++p)
+    gsVector<index_t> nPoints(domain.dim());
+    for (index_t d = 0; d < domain.dim(); ++d)
+        nPoints.at(d) = 10;
+
+    for (index_t p = 0; p < domain.nPatches(); ++p)
     {
-        gsMatrix<> ab = domain.patch(p).support();
-        gsVector<> a = ab.col(0);
-        gsVector<> b = ab.col(1);
-        gsVector<unsigned> np = uniformSampleCount(a,b,numSamples);
-        gsMatrix<> pts = gsPointGrid(a,b,np);
-
-        typename gsGeometryEvaluator<T>::uPtr geoEval(getEvaluator(NEED_MEASURE,domain.patch(p)));
-        geoEval->evaluateAt(pts);
-        T min = abs(geoEval->jacDet(0));
-        T max = geoEval->jacDet(0);
-        for (int i = 1; i < pts.cols(); ++i)
+        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
+        for (; domIt->good(); domIt->next())
         {
-            if (geoEval->jacDet(i) > max)
-                max = geoEval->jacDet(i);
-            if (abs(geoEval->jacDet(i)) < min)
-                min = abs(geoEval->jacDet(i));
-        }
+            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
+            md.points = points;
+            domain.patch(p).computeMap(md);
 
-        maxs.push_back(max);
-        mins.push_back(min);
+            T min = md.jacobian(0).determinant();
+            T max = min;
+            for (int q = 1; q < points.cols(); ++q)
+            {
+                T jac = md.jacobian(q).determinant();
+                if (jac > max)
+                    max = jac;
+                if (jac < min)
+                    min = jac;
+            }
+
+            maxs.push_back(max);
+            mins.push_back(min);
+        }
     }
 
-    return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));*/
-    return 0.;
-}
-
-template <class T>
-void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                        gsMultiPatch<T> const & domain, index_t measPerStep,
-                        std::string fileName, index_t numSamples)
-{/*
-    int steps = deformation.size();
-    std::ofstream res;
-    res.open(fileName + "_" + std::to_string(steps) + ".res");
-    std::ofstream resFine;
-    resFine.open(fileName + "_" + std::to_string(steps) + ".frs");
-
-    T initialMeasure = measure(domain);
-    res << 1. << std::endl;
-    resFine << 1. << std::endl;
-
-    gsMultiPatch<T> configuration;
-    for (int p = 0; p < domain.nPatches(); ++p)
-        configuration.addPatch(domain.patch(p));
-
-    T newMeasure = 1.;
-    for (int s = 0; s < steps; ++s)
-    {
-        gsInfo << "Analyzing configuration " << s+1 << "/" << deformation.size() << "..." << std::endl;
-        for (int i = 0; i < measPerStep; ++i)
-        {
-            for (int p = 0; p < domain.nPatches(); ++p)
-                configuration.patch(p).coefs() += deformation[s][p];
-
-            newMeasure = measure(configuration);
-            resFine << newMeasure/initialMeasure << std::endl;
-        }
-        res << newMeasure/initialMeasure << std::endl;
-    }
-
-    res.close();
-    resFine.close();*/
+    return *(std::max_element(maxs.begin(),maxs.end())) / *(std::min_element(mins.begin(),mins.end()));
 }
 
 //--------------------------------------------------------------------//
@@ -374,7 +353,7 @@ typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
                                           index_t numSamples)
 {
     GISMO_ASSERT(curve.domainDim() == 1 ,"That's not a curve.\n");
-    index_t deg = degree;
+    index_t deg = degree == 0 ? curve.degree(0) : degree;
     index_t num = deg + 1 + additionalPoints;
 
     gsKnotVector<T> knots(0.0,1.0, num - deg - 1, deg + 1);

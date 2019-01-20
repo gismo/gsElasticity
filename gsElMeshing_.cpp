@@ -33,11 +33,7 @@ TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
 
 TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
 
-TEMPLATE_INST real_t measureMinMaxJ(gsMultiPatch<real_t> const & domain, index_t numSamples = 10000);
-
-TEMPLATE_INST void analyzeDeformation(std::vector<std::vector<gsMatrix<real_t> > > const & deformation,
-                                      gsMultiPatch<real_t> const & domain, index_t measPerStep,
-                                      std::string fileName, index_t numSamples = 10000);
+TEMPLATE_INST real_t measureMinMaxJ(gsMultiPatch<real_t> const & domain);
 
 //-----------------------------------//
 //----------- Modelling -------------//

@@ -66,17 +66,9 @@ index_t checkGeometry(gsMultiPatch<T> const & domain);
 template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples);
 
-/// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant)
+/// @brief Returns max(Jacobian determinant) divided by min(Jacobian determinant)
 template <class T>
-T measureMinMaxJ(gsMultiPatch<T> const & domain, index_t numSamples = 10000);
-
-/// @brief Constructs intermidiate configurations by scaling the deformation
-/// and estimates their quality based on the Jacobian measure;
-/// the results are written to a .txt file to be plotted in Matlab
-template <class T>
-void analyzeDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                        gsMultiPatch<T> const & domain, index_t measPerStep,
-                        std::string fileName, index_t numSamples = 10000);
+T measureMinMaxJ(gsMultiPatch<T> const & domain);
 
 //-----------------------------------//
 //----------- Modelling--------------//
