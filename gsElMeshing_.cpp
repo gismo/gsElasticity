@@ -14,6 +14,10 @@ TEMPLATE_INST void computeDeformation(std::vector<std::vector<gsMatrix<real_t> >
                                       gsMultiPatch<real_t> const & initDomain, gsBoundaryConditions<real_t> const & bdryCurves,
                                       index_t numSteps = 3, real_t poissonRatio = 0.49);
 
+TEMPLATE_INST void computeDeformationPlus(std::vector<std::vector<gsMatrix<real_t> > > & deformation,
+                            gsMultiPatch<real_t> const & initDomain, gsBoundaryConditions<real_t> const & bdryCurves,
+                            index_t numSteps = 3, real_t poissonRatio = 0.49);
+
 TEMPLATE_INST void plotDeformation(std::vector<std::vector<gsMatrix<real_t> > > const & deformation,
                                    gsMultiPatch<real_t> const & initDomain, std::string fileName,
                                    index_t numSamples = 0);

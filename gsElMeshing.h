@@ -31,6 +31,11 @@ void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
                         gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
                         index_t numSteps = 3, T poissonRatio = 0.49);
 
+template <class T>
+void computeDeformationPlus(std::vector<std::vector<gsMatrix<T> > > & deformation,
+                            gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
+                            index_t numSteps = 3, T poissonRatio = 0.49);
+
 /// @brief Plots steps of the computed incremental deformation; outputs a deformed mesh for every incremental step;
 /// set <numSamples> greater than 0 to plot the Jacobian of the geometry mapping using <numSamples> points
 template <class T>
