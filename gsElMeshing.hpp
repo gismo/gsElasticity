@@ -93,6 +93,64 @@ void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
 }
 
 template <class T>
+void computeDeformationPlus(std::vector<std::vector<gsMatrix<T> > > & deformation,
+                            gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
+                            index_t numSteps, T poissonRatio)
+{
+    index_t numP = initDomain.nPatches();
+
+    deformation.resize(numSteps);
+    for (index_t s = 0; s < numSteps; ++s)
+        deformation[s].resize(numP);
+
+    index_t pDim = initDomain.parDim();
+
+    gsBoundaryConditions<T> bcInfo;
+    for (auto it = initDomain.bBegin(); it != initDomain.bEnd(); ++it)
+        for (index_t d = 0; d < pDim; ++d)
+            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+
+    std::map<std::pair<index_t,index_t>,gsMatrix<T> > deformCoefs;
+    for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+        deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
+                                                                   initDomain.patch(it->patch()).boundary(it->side())->coefs()) / numSteps;
+    std::vector<std::string> zeros;
+    for (index_t d = 0; d < pDim; ++d)
+        zeros.push_back("0.");
+    gsFunctionExpr<T> g(zeros,pDim);
+
+    gsMultiBasis<T> basis(initDomain);
+    gsElasticityAssembler<T> assembler(initDomain,basis,bcInfo,g);
+    assembler.options().setReal("PoissonsRatio",poissonRatio);
+    gsVector<T> solVector;
+    solVector.setZero(2*assembler.numDofs());
+    gsMultiPatch<T> displacement;
+    assembler.constructSolution(solVector,displacement);
+
+    for (index_t s = 0; s < numSteps; ++s)
+    {
+        for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+            assembler.setDirichletDofs(it->patch(),it->side(),(s+1.)/numSteps*deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
+
+        assembler.assemble(displacement);
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        solVector = solver.solve(assembler.rhs());
+        assembler.updateSolution(solVector,displacement);
+
+        index_t corruptedPatch = assembler.checkSolution(displacement);
+        gsInfo << "Step: " << s+1 << "/" << numSteps
+               << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << std::endl;
+
+        for (index_t p = 0; p < numP; ++p)
+        {
+            deformation[s][p] = displacement.patch(p).coefs();
+            for (index_t i = 0; i < s; ++i)
+                deformation[s][p] -= deformation[i][p];
+        }
+    }
+}
+
+template <class T>
 void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
                      gsMultiPatch<T> const & initDomain, std::string fileName,
                      index_t numSamples)

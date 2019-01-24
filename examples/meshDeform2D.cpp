@@ -78,7 +78,7 @@ int main(int argc, char* argv[]){
 
     gsInfo << "Computing deformation using linear elasticity with incremental Dirichelt BC...\n";
     std::vector<std::vector<gsMatrix<> > > deformation;
-    computeDeformation(deformation,initGeo,bdryCurves,numSteps,poissRatio);
+    computeDeformationPlus(deformation,initGeo,bdryCurves,numSteps,poissRatio);
 
     // construct deformed geometry
     gsMultiPatch<> geo;
