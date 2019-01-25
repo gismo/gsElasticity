@@ -222,7 +222,7 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
     mdG.flags = NEED_DERIV;
     mdU.flags = NEED_DERIV;
 
-    gsVector<index_t> nPoints(m_dim);
+    gsVector<unsigned> nPoints(m_dim);
     for (index_t d = 0; d < m_dim; ++d)
         nPoints.at(d) = 10;
 

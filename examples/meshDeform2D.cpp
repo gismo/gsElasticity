@@ -15,7 +15,7 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/rotor_bdry.xml";
     std::string filenameInit = "";
-    index_t numSteps = 3;
+    index_t numSteps = 0;
     real_t poissRatio = 0.45;
     index_t fittingDegree = 0;
     index_t numAdditionalPoints = 0;
@@ -23,6 +23,7 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 0;
     index_t numDegreeElev = 0;
     index_t numPlotPoints = 0;
+    bool nonLin = true;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Generating isogeometric parametrization by mesh deformation in 2D.");
@@ -36,6 +37,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("e","elev","Number of degree elevetation application",numDegreeElev);
     cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
+    cmd.addSwitch("lin","Do not finilize with full Newtow's method",nonLin);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // a set of 4 compatible boundary curves ordered "west-east-south-north"
@@ -76,20 +78,29 @@ int main(int argc, char* argv[]){
     for (index_t p = 0; p < bdry.nPatches(); ++p)
         bdryCurves.addCondition(0,p+1,condition_type::dirichlet,&(bdry.patch(p)));
 
-    gsInfo << "Computing deformation using linear elasticity with incremental Dirichelt BC...\n";
+
     std::vector<gsMultiPatch<> > displacements;
-    computeDeformation(displacements,initGeo,bdryCurves,numSteps,poissRatio);
+    if (numSteps > 0)
+    {
+        gsInfo << "Computing initial guess using incremental loading...\n";
+        computeDeformation(displacements,initGeo,bdryCurves,numSteps,materialLaw,poissRatio);
+    }
+    else
+    {
+        gsInfo << "Computing initial guess using incremental loading with adaptive step size...\n";
+        computeDeformation(displacements,initGeo,bdryCurves,poissRatio);
+    }
 
     // construct deformed geometry
     gsMultiPatch<> geo;
     geo.addPatch(initGeo.patch(0).clone());
-    geo.patch(0).coefs() += displacements[numSteps-1].patch(0).coefs();
+    geo.patch(0).coefs() += displacements.back().patch(0).coefs();
 
     gsMultiPatch<> nonlinGeo;
-    if (materialLaw >= 0)
+    if (nonLin)
     {
         gsInfo << "Solving a nonlinear problem using the incremental solution as an initial guess...\n";
-        computeDeformationNonlin(nonlinGeo,initGeo,displacements[numSteps-1],materialLaw,poissRatio);
+        computeDeformationNonlin(nonlinGeo,initGeo,displacements.back(),materialLaw,poissRatio);
     }
 
     //=====================================//
@@ -108,7 +119,7 @@ int main(int argc, char* argv[]){
     gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D_lin.xml\".\n";
     gsWrite(geo,filename + "_2D_lin");
 
-    if (materialLaw >= 0)
+    if (nonLin)
     {
         gsInfo << "Plotting the result of the nonlinear algorithm to the Paraview file \"" << filename << "_2D_nl.pvd\"...\n";
         plotGeometry(nonlinGeo,filename + "_2D_nl",numPlotPoints);
