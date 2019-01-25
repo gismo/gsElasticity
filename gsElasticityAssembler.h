@@ -93,6 +93,9 @@ public:
     /// return -1 if yes or a number of the first invalid patch
     virtual index_t checkSolution(const gsMultiPatch<T> & solution) const;
 
+    /// @brief Return minJ/maxJ
+    virtual T solutionJacRatio(const gsMultiPatch<T> & solution) const;
+
 protected:
 
     /// Dimension of the problem

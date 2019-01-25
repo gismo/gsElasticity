@@ -23,6 +23,7 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 0;
     index_t numDegreeElev = 0;
     index_t numPlotPoints = 0;
+    real_t threshold = 0.75;
     bool nonLin = true;
 
     // minimalistic user interface for terminal
@@ -38,6 +39,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("e","elev","Number of degree elevetation application",numDegreeElev);
     cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     cmd.addSwitch("lin","Do not finilize with full Newtow's method",nonLin);
+    cmd.addReal("t","threshold","Quality threshold for adaptive incremental loading",threshold);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // a set of 4 compatible boundary curves ordered "west-east-south-north"
@@ -88,7 +90,7 @@ int main(int argc, char* argv[]){
     else
     {
         gsInfo << "Computing initial guess using incremental loading with adaptive step size...\n";
-        computeDeformation(displacements,initGeo,bdryCurves,poissRatio);
+        computeDeformation(displacements,initGeo,bdryCurves,poissRatio,threshold);
     }
 
     // construct deformed geometry
@@ -114,10 +116,10 @@ int main(int argc, char* argv[]){
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
 
-    gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D_lin.pvd\"...\n";
-    plotDeformation(displacements,initGeo,filename + "_2D_lin",numPlotPoints);
-    gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D_lin.xml\".\n";
-    gsWrite(geo,filename + "_2D_lin");
+    gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D_inc.pvd\"...\n";
+    plotDeformation(displacements,initGeo,filename + "_2D_inc",numPlotPoints);
+    gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D_inc.xml\".\n";
+    gsWrite(geo,filename + "_2D_inc");
 
     if (nonLin)
     {

@@ -64,10 +64,6 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
     for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
         assembler.setDirichletDofs(it->patch(),it->side(),deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
 
-    index_t corruptedPatch = assembler.checkSolution(displacements[0]);
-    gsInfo << "Step: " << 1 << "/" << numSteps
-           << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << std::endl;
-
     for (index_t s = 0; s < numSteps; ++s)
     {
         if (s > 0)
@@ -86,12 +82,14 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
         index_t corruptedPatch = assembler.checkSolution(displacements[s]);
         gsInfo << "Step: " << s+1 << "/" << numSteps
                << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << std::endl;
+        if (materialLaw == 1)
+            GISMO_ENSURE(corruptedPatch == -1, "Invalid incremental deformation, J < 0");
     }
 }
 
 template <class T>
 void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                        gsBoundaryConditions<T> const & bdryCurves, T poissonRatio)
+                        gsBoundaryConditions<T> const & bdryCurves, T poissonRatio, T threshold)
 {
     index_t numP = initDomain.nPatches();
     index_t pDim = initDomain.parDim();
@@ -121,12 +119,11 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPa
 
     while (abs(done-1.) > 1e-10)
     {
-        gsInfo << "Step " << step + 1 << ": ";
+        gsInfo << "Step " << step + 1 << ": quality threshold " << threshold/(step+1) << std::endl;
 
         T scaling = 1. - done;
         bool bijective = false;
         displacements.push_back(gsMultiPatch<T>());
-        index_t iter = 0;
         while (!bijective)
         {
             for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
@@ -143,17 +140,13 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPa
                 for (int p = 0; p < numP; ++p)
                     displacements[step].patch(p).coefs() += displacements[step-1].patch(p).coefs();
 
-            index_t corruptedPatch = assembler.checkSolution(displacements[step]);
-            gsInfo << (iter == 0 ? "" : "        ") << done*100 <<
-                      "% -> " << (done + scaling)*100 << "%: J" <<
-                      (corruptedPatch == -1 ? " > 0" : " < 0") << std::endl;
+            T quality = assembler.solutionJacRatio(displacements[step]);
+            gsInfo << "       " << done*100 << "% -> " << (done + scaling)*100 << "%: quality " << quality << std::endl;
 
-            if (corruptedPatch == -1)
+            if (quality > threshold/(step+1))
                 bijective = true;
             else
                 scaling *= 0.5;
-
-            iter++;
         }
 
         done += scaling;
@@ -346,7 +339,7 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
 }
 
 template <class T>
-T measureMinMaxJ(gsMultiPatch<T> const & domain)
+T geometryJacRatio(gsMultiPatch<T> const & domain)
 {
     std::vector<T> maxs, mins;
     gsMapData<T> md;
@@ -381,7 +374,7 @@ T measureMinMaxJ(gsMultiPatch<T> const & domain)
         }
     }
 
-    return *(std::max_element(maxs.begin(),maxs.end())) / *(std::min_element(mins.begin(),mins.end()));
+    return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
 }
 
 //--------------------------------------------------------------------//

@@ -253,4 +253,46 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
     return corruptedPatch;
 }
 
+template <class T>
+T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) const
+{
+    std::vector<T> maxs, mins;
+    gsMapData<T> mdG, mdU;
+    mdG.flags = NEED_DERIV;
+    mdU.flags = NEED_DERIV;
+
+    gsVector<unsigned> nPoints(m_dim);
+    for (index_t d = 0; d < m_dim; ++d)
+        nPoints.at(d) = 10;
+
+    for (index_t p = 0; p < solution.nPatches(); ++p)
+    {
+        typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
+        for (; domIt->good(); domIt->next())
+        {
+            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
+            mdG.points = points;
+            mdU.points = points;
+            m_pde_ptr->domain().patch(p).computeMap(mdG);
+            solution.patch(p).computeMap(mdU);
+
+            T minJ = (gsMatrix<T>::Identity(m_dim,m_dim) + mdU.jacobian(0)*(mdG.jacobian(0).cramerInverse())).determinant();
+            T maxJ = minJ;
+            for (int q = 1; q < points.cols(); ++q)
+            {
+                T J = (gsMatrix<T>::Identity(m_dim,m_dim) + mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse())).determinant();
+                if (J > maxJ)
+                    maxJ = J;
+                if (J < minJ)
+                    minJ = J;
+            }
+
+            maxs.push_back(maxJ);
+            mins.push_back(minJ);
+        }
+    }
+
+    return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
+}
+
 }// namespace gismo ends

@@ -15,7 +15,7 @@ TEMPLATE_INST void computeDeformation(std::vector<gsMultiPatch<real_t> > & displ
                                       index_t numSteps = 3, index_t materialLaw = 1, real_t poissonRatio = 0.49);
 
 TEMPLATE_INST void computeDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
-                                      gsBoundaryConditions<real_t> const & bdryCurves, real_t poissonRatio = 0.49);
+                                      gsBoundaryConditions<real_t> const & bdryCurves, real_t poissonRatio = 0.49, real_t threshold = 0.3);
 
 TEMPLATE_INST void computeDeformationNonlin(gsMultiPatch<real_t> & domain, gsMultiPatch<real_t> const & initDomain,
                                             gsMultiPatch<real_t> const & initGuess,
@@ -30,7 +30,7 @@ TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
 
 TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
 
-TEMPLATE_INST real_t measureMinMaxJ(gsMultiPatch<real_t> const & domain);
+TEMPLATE_INST real_t geometryJacRatio(gsMultiPatch<real_t> const & domain);
 
 //-----------------------------------//
 //----------- Modelling -------------//
