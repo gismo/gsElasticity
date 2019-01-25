@@ -10,26 +10,16 @@ namespace gismo
 //--------- Mesh deformation --------//
 //-----------------------------------//
 
-TEMPLATE_INST void computeDeformation(std::vector<std::vector<gsMatrix<real_t> > > & deformation,
+TEMPLATE_INST void computeDeformation(std::vector<gsMultiPatch<real_t> > & displacements,
                                       gsMultiPatch<real_t> const & initDomain, gsBoundaryConditions<real_t> const & bdryCurves,
                                       index_t numSteps = 3, real_t poissonRatio = 0.49);
 
-TEMPLATE_INST void computeDeformationPlus(std::vector<std::vector<gsMatrix<real_t> > > & deformation,
-                            gsMultiPatch<real_t> const & initDomain, gsBoundaryConditions<real_t> const & bdryCurves,
-                            index_t numSteps = 3, real_t poissonRatio = 0.49);
-
-TEMPLATE_INST void plotDeformation(std::vector<std::vector<gsMatrix<real_t> > > const & deformation,
+TEMPLATE_INST void plotDeformation(std::vector<gsMultiPatch<real_t> > & displacements,
                                    gsMultiPatch<real_t> const & initDomain, std::string fileName,
                                    index_t numSamples = 0);
 
-TEMPLATE_INST void applyDeformation(std::vector<std::vector<gsMatrix<real_t> > > const & deformation,
-                                    gsMultiPatch<real_t> const & initDomain, gsMultiPatch<real_t> & domain);
-
-TEMPLATE_INST void constructDisplacement(std::vector<std::vector<gsMatrix<real_t> > > const & deformation,
-                                         gsMultiPatch<real_t> const & initDomain, gsMultiPatch<real_t> & displacement);
-
 TEMPLATE_INST void computeDeformationNonlin(gsMultiPatch<real_t> & domain, gsMultiPatch<real_t> const & initDomain,
-                                            gsBoundaryConditions<real_t> const & bdryCurves, gsMultiPatch<real_t> const & initGuess,
+                                            gsMultiPatch<real_t> const & initGuess,
                                             index_t materialLaw = 0, real_t poissonRatio = 0.49,
                                             real_t tolerance = 1e-12, index_t maxNumIterations = 50);
 
