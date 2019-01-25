@@ -49,6 +49,14 @@ public:
 
     {
         m_assembler.constructSolution(solVector,m_curSolution);
+        // bijectivity check for neo-Hookean material law
+        if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
+        {
+            index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
+            T J = (corruptedPatch == -1 ? 1 : -1);
+            GISMO_ENSURE(J > 0,"Initial guess is not bijecive");
+            (void)corruptedPatch;
+        }
         m_updnorm = m_initUpdateNorm = solVector.norm();
     }
 
@@ -65,6 +73,14 @@ public:
 
         for (index_t p = 0; p < solution.nPatches(); ++p)
             m_curSolution.addPatch(solution.patch(p).clone());
+        // bijectivity check for neo-Hookean material law
+        if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
+        {
+            index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
+            T J = (corruptedPatch == -1 ? 1 : -1);
+            GISMO_ENSURE(J > 0,"Initial guess is not bijecive");
+            (void)corruptedPatch;
+        }
     }
 
     /// \brief Applies Newton method and performs Newton iterations
@@ -82,7 +98,7 @@ public:
     /// \brief Returns the solution after the first iteration of Newton's method.
     const gsMultiPatch<T> & linearSolution() const
     {
-        GISMO_ASSERT(m_firstDone,"Initial solution is not constructed\n");
+        GISMO_ENSURE(m_firstDone,"Initial solution is not constructed\n");
         return m_linSolution;
     }
 
@@ -173,8 +189,11 @@ void gsElasticityNewton<T>::firstIteration()
     m_updnorm = m_initUpdateNorm = m_updateVector.norm();
 
     bool bijective = status();
-    if (!bijective && static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
-        gsInfo << "Failed to compute a valid initial guess. Reduce load or use incremental loading\n";
+    (void)bijective;
+    // bijectivity check for neo-Hookean material law
+    if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
+        GISMO_ENSURE(bijective,"Failed to compute a valid initial guess. Reduce load or use incremental loading");
+
 
     m_firstDone = true;
     m_numIterations++;
