@@ -30,7 +30,15 @@ namespace gismo
 template <class T>
 void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
                         gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
-                        index_t numSteps = 3, T poissonRatio = 0.49);
+                        index_t numSteps = 3, index_t materialLaw = 1, T poissonRatio = 0.49);
+
+/// @brief Computes a deformation of a given initial domain using incremental loading with adaptive step size
+/// such that the domain's boundary coincides with a given set of boundary curves;
+/// returns a set of displacement field for each incremental step;
+/// can be used on its own or as an initial guess for computeDeformationNonlin
+template <class T>
+void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                        gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49, T threshold = 0.3);
 
 /// @brief Computes a deformation of a given initial domain using nonlinear elasticity and a given initial guess
 /// such that the domain's boundary coincides with a given set of boundary curves;
@@ -38,7 +46,7 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
 template <class T>
 void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
                               gsMultiPatch<T> const & initGuess,
-                              index_t materialLaw = 0, T poissonRatio = 0.49,
+                              index_t materialLaw = 1, T poissonRatio = 0.49,
                               T tolerance = 1e-12, index_t maxNumIterations = 50);
 
 /// @brief Plots steps of the computed incremental deformation from computeDeformatuin;
@@ -58,9 +66,9 @@ index_t checkGeometry(gsMultiPatch<T> const & domain);
 template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples);
 
-/// @brief Returns max(Jacobian determinant) divided by min(Jacobian determinant)
+/// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant)
 template <class T>
-T measureMinMaxJ(gsMultiPatch<T> const & domain);
+T geometryJacRatio(gsMultiPatch<T> const & domain);
 
 //-----------------------------------//
 //----------- Modelling--------------//

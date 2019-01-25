@@ -12,22 +12,25 @@ namespace gismo
 
 TEMPLATE_INST void computeDeformation(std::vector<gsMultiPatch<real_t> > & displacements,
                                       gsMultiPatch<real_t> const & initDomain, gsBoundaryConditions<real_t> const & bdryCurves,
-                                      index_t numSteps = 3, real_t poissonRatio = 0.49);
+                                      index_t numSteps = 3, index_t materialLaw = 1, real_t poissonRatio = 0.49);
 
-TEMPLATE_INST void plotDeformation(std::vector<gsMultiPatch<real_t> > & displacements,
-                                   gsMultiPatch<real_t> const & initDomain, std::string fileName,
-                                   index_t numSamples = 0);
+TEMPLATE_INST void computeDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
+                                      gsBoundaryConditions<real_t> const & bdryCurves, real_t poissonRatio = 0.49, real_t threshold = 0.3);
 
 TEMPLATE_INST void computeDeformationNonlin(gsMultiPatch<real_t> & domain, gsMultiPatch<real_t> const & initDomain,
                                             gsMultiPatch<real_t> const & initGuess,
                                             index_t materialLaw = 0, real_t poissonRatio = 0.49,
                                             real_t tolerance = 1e-12, index_t maxNumIterations = 50);
 
+TEMPLATE_INST void plotDeformation(std::vector<gsMultiPatch<real_t> > & displacements,
+                                   gsMultiPatch<real_t> const & initDomain, std::string fileName,
+                                   index_t numSamples = 1);
+
 TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
 
 TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
 
-TEMPLATE_INST real_t measureMinMaxJ(gsMultiPatch<real_t> const & domain);
+TEMPLATE_INST real_t geometryJacRatio(gsMultiPatch<real_t> const & domain);
 
 //-----------------------------------//
 //----------- Modelling -------------//
