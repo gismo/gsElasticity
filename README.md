@@ -4,7 +4,7 @@ The gsElasticity module provides tools for structural mechanics analysis of 2D a
 - nonlinear elasticity (with St. Venant-Kirchhoff or neo-Hookean material models)
 - ~~incompressible elasticity (with Taylor-Hood elements)~~
 - ~~thermal expansion~~
-- ~~elastic meshing algorithms~~
+- isogeometric parametrization algorithms based on mesh deformation
 
 ## Installing
 To use the module, configure G+Smo with `GISMO_ELASTICITY=ON`. The module source code will be automatically downloaded from GitHub.com if an internet connection is available.
