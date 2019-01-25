@@ -23,39 +23,31 @@ namespace gismo
 //--------- Mesh deformation --------//
 //-----------------------------------//
 
-/// @brief Computes a deformation of a given initial domain using linear elasticity with incremental Dirichlet BC
+/// @brief Computes a deformation of a given initial domain using incremental loading
 /// such that the domain's boundary coincides with a given set of boundary curves;
-/// returns a set of displacement control points for every incremental steps and every patch
+/// returns a set of displacement field for each incremental step;
+/// can be used on its own or as an initial guess for computeDeformationNonlin
 template <class T>
-void computeDeformation(std::vector<std::vector<gsMatrix<T> > > & deformation,
+void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
                         gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
                         index_t numSteps = 3, T poissonRatio = 0.49);
 
-/// @brief Plots steps of the computed incremental deformation; outputs a deformed mesh for every incremental step;
-/// set <numSamples> greater than 0 to plot the Jacobian of the geometry mapping using <numSamples> points
-template <class T>
-void plotDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                     gsMultiPatch<T> const & intiDomain, std::string fileName,
-                     index_t numSamples = 0);
-
-/// @brief Deformes the initial domain using a previously computed incremental <deformation>
-template <class T>
-void applyDeformation(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                      gsMultiPatch<T> const & initDomain, gsMultiPatch<T> & domain);
-
-/// @brief Construct an isogeometric displacement field
-template <class T>
-void constructDisplacement(std::vector<std::vector<gsMatrix<T> > > const & deformation,
-                           gsMultiPatch<T> const & initDomain, gsMultiPatch<T> & displacement);
-
-/// @brief Computes a deformation of a given initial domain using nonlinear elasticity and a given initial guess;
+/// @brief Computes a deformation of a given initial domain using nonlinear elasticity and a given initial guess
 /// such that the domain's boundary coincides with a given set of boundary curves;
-/// returns a deformed/parametrized domain
+/// use computeDeformation as an initial guess
 template <class T>
 void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
-                              gsBoundaryConditions<T> const & bdryCurves, gsMultiPatch<T> const & initGuess,
+                              gsMultiPatch<T> const & initGuess,
                               index_t materialLaw = 0, T poissonRatio = 0.49,
                               T tolerance = 1e-12, index_t maxNumIterations = 50);
+
+/// @brief Plots steps of the computed incremental deformation from computeDeformatuin;
+/// outputs a deformed mesh for every incremental step;
+/// set <numSamples> greater than 0 to plot the Jacobian of the geometry mapping using <numSamples> points
+template <class T>
+void plotDeformation(std::vector<gsMultiPatch<T> > & displacements,
+                     gsMultiPatch<T> const & intiDomain, std::string fileName,
+                     index_t numSamples = 0);
 
 /// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
 /// return -1 if yes or a number of the first invalid patch
