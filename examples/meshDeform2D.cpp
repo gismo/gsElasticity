@@ -77,22 +77,19 @@ int main(int argc, char* argv[]){
         bdryCurves.addCondition(0,p+1,condition_type::dirichlet,&(bdry.patch(p)));
 
     gsInfo << "Computing deformation using linear elasticity with incremental Dirichelt BC...\n";
-    std::vector<std::vector<gsMatrix<> > > deformation;
-    computeDeformationPlus(deformation,initGeo,bdryCurves,numSteps,poissRatio);
+    std::vector<gsMultiPatch<> > displacements;
+    computeDeformation(displacements,initGeo,bdryCurves,numSteps,poissRatio);
 
     // construct deformed geometry
     gsMultiPatch<> geo;
-    applyDeformation(deformation,initGeo,geo);
-
-    // construct displacement field
-    gsMultiPatch<> displacement;
-    constructDisplacement(deformation,initGeo,displacement);
+    geo.addPatch(initGeo.patch(0).clone());
+    geo.patch(0).coefs() += displacements[numSteps-1].patch(0).coefs();
 
     gsMultiPatch<> nonlinGeo;
     if (materialLaw >= 0)
     {
         gsInfo << "Solving a nonlinear problem using the incremental solution as an initial guess...\n";
-        computeDeformationNonlin(nonlinGeo,initGeo,bdryCurves,displacement,materialLaw,poissRatio);
+        computeDeformationNonlin(nonlinGeo,initGeo,displacements[numSteps-1],materialLaw,poissRatio);
     }
 
     //=====================================//
@@ -107,7 +104,7 @@ int main(int argc, char* argv[]){
     gsWrite(initGeo,filename + "_2D_init");
 
     gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D_lin.pvd\"...\n";
-    plotDeformation(deformation,initGeo,filename + "_2D_lin",numPlotPoints);
+    plotDeformation(displacements,initGeo,filename + "_2D_lin",numPlotPoints);
     gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D_lin.xml\".\n";
     gsWrite(geo,filename + "_2D_lin");
 
