@@ -89,8 +89,9 @@ public:
     /// \brief Sets verbosity of the solver
     void setVerbosity(bool verbose) { m_verbose = verbose; }
 
-    /// brief Prints current status of the solver to the console
-    void printStatus() const;
+    /// brief Checks status of the solver; prints it if *m_verbose* is TRUE;
+    /// return true if the solution is bijective
+    bool status() const;
 
 protected:
     // main
@@ -171,8 +172,9 @@ void gsElasticityNewton<T>::firstIteration()
     m_residue = m_initResidueNorm = m_assembler.rhs().norm();
     m_updnorm = m_initUpdateNorm = m_updateVector.norm();
 
-    if (m_verbose)
-        printStatus();
+    bool bijective = status();
+    if (!bijective && static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
+        gsInfo << "Failed to compute a valid initial guess. Reduce load or use incremental loading\n";
 
     m_firstDone = true;
     m_numIterations++;
@@ -193,21 +195,36 @@ void gsElasticityNewton<T>::nextIteration()
     if (m_initUpdateNorm < 0)
         m_initUpdateNorm = m_updnorm;
 
-    if (m_verbose)
-        printStatus();
+    bool bijective = status();
+
+    // enforcing bijectivity for neo-Hookean material law
+    if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
+        while (!bijective)
+        {
+            m_assembler.updateSolution(-1*m_updateVector, m_curSolution);
+            m_updateVector *= 0.5;
+            m_assembler.updateSolution(m_updateVector, m_curSolution);
+            index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
+            bijective = (corruptedPatch == -1 ? true : false);
+            gsInfo << "          Displacement update halved"
+                   << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << "\n";
+        }
 
     m_numIterations++;
 }
 
 template <class T>
-void gsElasticityNewton<T>::printStatus() const
+bool gsElasticityNewton<T>::status() const
 {
     index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
 
-    gsInfo << "Iteration: " << m_numIterations
-           << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0")
-           << ", residue: " << m_residue
-           << ", update norm: " << m_updnorm <<"\n";
+    if (m_verbose)
+        gsInfo << "Iteration: " << m_numIterations
+               << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0")
+               << ", residue: " << m_residue
+               << ", update norm: " << m_updnorm <<"\n";
+
+    return (corruptedPatch == -1 ? true : false);
 }
 
 
