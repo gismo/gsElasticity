@@ -277,11 +277,12 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
     md.flags = NEED_DERIV;
 
     gsVector<unsigned> nPoints(domain.dim());
-    for (index_t d = 0; d < domain.dim(); ++d)
-        nPoints.at(d) = 10;
 
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
+        for (index_t d = 0; d < domain.dim(); ++d)
+            nPoints.at(d) = domain.basis(p).degree(d);
+
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
         {
@@ -346,11 +347,12 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
     md.flags = NEED_DERIV;
 
     gsVector<unsigned> nPoints(domain.dim());
-    for (index_t d = 0; d < domain.dim(); ++d)
-        nPoints.at(d) = 10;
 
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
+        for (index_t d = 0; d < domain.dim(); ++d)
+            nPoints.at(d) = domain.basis(p).degree(d);
+
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
         {

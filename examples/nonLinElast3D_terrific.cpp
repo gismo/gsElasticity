@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> f(0.,0.,0.,3);
     // surface load, neumann BC
-    gsConstantFunction<> g(20e7, -14e7, 0,3);
+    gsConstantFunction<> g(15e7, -10.5e7, 0,3);
 
     // material parameters
     real_t youngsModulus = 74e9;
