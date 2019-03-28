@@ -15,7 +15,7 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/rotor_bdry.xml";
     std::string filenameInit = "";
-    index_t numSteps = 0;
+    index_t numSteps = 5;
     real_t poissRatio = 0.45;
     index_t fittingDegree = 0;
     index_t numAdditionalPoints = 0;
