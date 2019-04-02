@@ -28,26 +28,33 @@ namespace gismo
 /// returns a set of displacement field for each incremental step;
 /// can be used on its own or as an initial guess for computeDeformationNonlin
 template <class T>
-void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
-                        gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
-                        index_t numSteps = 3, index_t materialLaw = 1, T poissonRatio = 0.49);
+void computeDeformationIter(std::vector<gsMultiPatch<T> > & displacements,
+                            gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
+                            index_t numSteps = 3, index_t materialLaw = 1, T poissonRatio = 0.49);
 
 /// @brief Computes a deformation of a given initial domain using incremental loading with adaptive step size
 /// such that the domain's boundary coincides with a given set of boundary curves;
 /// returns a set of displacement field for each incremental step;
 /// can be used on its own or as an initial guess for computeDeformationNonlin
 template <class T>
-void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                        gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49, T threshold = 0.3);
+void computeDeformationAdapt(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                             gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49,
+                             index_t numSteps = 3, T threshold = 0.3);
+
+template <class T>
+index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                            gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49,
+                            index_t numSteps = 3, bool finalize = true, index_t iterPerStep = 1,
+                            index_t maxAdapt = 5, T tolerance = 1e-12, index_t maxNumIterations = 25);
 
 /// @brief Computes a deformation of a given initial domain using nonlinear elasticity and a given initial guess
 /// such that the domain's boundary coincides with a given set of boundary curves;
 /// use computeDeformation as an initial guess
 template <class T>
-void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
-                              gsMultiPatch<T> const & initGuess,
-                              index_t materialLaw = 1, T poissonRatio = 0.49,
-                              T tolerance = 1e-12, index_t maxNumIterations = 50);
+void computeDeformationFinalize(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
+                                gsMultiPatch<T> const & initGuess,
+                                index_t materialLaw = 1, T poissonRatio = 0.49,
+                                T tolerance = 1e-12, index_t maxNumIterations = 50);
 
 /// @brief Plots steps of the computed incremental deformation from computeDeformatuin;
 /// outputs a deformed mesh for every incremental step;
@@ -58,7 +65,7 @@ void plotDeformation(std::vector<gsMultiPatch<T> > & displacements,
                      index_t numSamples = 0);
 
 /// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
-/// return -1 if yes or a number of the first invalid patch
+/// return -1 if yes or the number of the first invalid patch
 template <class T>
 index_t checkGeometry(gsMultiPatch<T> const & domain);
 

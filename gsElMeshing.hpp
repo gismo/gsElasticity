@@ -34,7 +34,7 @@ namespace gismo
 //-----------------------------------//
 
 template <class T>
-void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
+void computeDeformationIter(std::vector<gsMultiPatch<T> > & displacements,
                             gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
                             index_t numSteps, index_t materialLaw, T poissonRatio)
 {
@@ -88,8 +88,8 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
 }
 
 template <class T>
-void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                        gsBoundaryConditions<T> const & bdryCurves, T poissonRatio, T threshold)
+void computeDeformationAdapt(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                             gsBoundaryConditions<T> const & bdryCurves, T poissonRatio, index_t numSteps, T threshold)
 {
     index_t numP = initDomain.nPatches();
     index_t pDim = initDomain.parDim();
@@ -115,13 +115,19 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPa
     assembler.options().setInt("MaterialLaw",1);
 
     T done = 0.;
-    index_t step = 0;
+    index_t stepNum = 0;
+    T stepSize = 1./numSteps;
 
     while (abs(done-1.) > 1e-10)
     {
-        gsInfo << "Step " << step + 1 << ": quality threshold " << threshold/(step+1) << std::endl;
+        gsInfo << "Step " << stepNum + 1 << std::endl;//<< ": quality threshold " << threshold/(step+1) << std::endl;
 
-        T scaling = 1. - done;
+        T scaling;
+        if (1.-done >= stepSize)
+            scaling = stepSize;
+        else
+            scaling = 1. - done;
+
         bool bijective = false;
         displacements.push_back(gsMultiPatch<T>());
         while (!bijective)
@@ -129,35 +135,182 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPa
             for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
                 assembler.setDirichletDofs(it->patch(),it->side(),scaling*deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
 
-            if (step > 0)
-                assembler.assemble(displacements[step-1]);
+            if (stepNum > 0)
+                assembler.assemble(displacements[stepNum-1]);
             else
                 assembler.assemble();
             gsSparseSolver<>::LU solver(assembler.matrix());
             gsVector<T> solVector = solver.solve(assembler.rhs());
-            assembler.constructSolution(solVector,displacements[step]);
-            if (step > 0)
+            assembler.constructSolution(solVector,displacements[stepNum]);
+            if (stepNum > 0)
                 for (int p = 0; p < numP; ++p)
-                    displacements[step].patch(p).coefs() += displacements[step-1].patch(p).coefs();
+                    displacements[stepNum].patch(p).coefs() += displacements[stepNum-1].patch(p).coefs();
 
-            T quality = assembler.solutionJacRatio(displacements[step]);
-            gsInfo << "       " << done*100 << "% -> " << (done + scaling)*100 << "%: quality " << quality << std::endl;
+            T quality = assembler.solutionJacRatio(displacements[stepNum]);
+            gsInfo << "       " << done*100 << "% -> " << (done + scaling)*100 << std::endl;// << "%: quality " << quality << std::endl;
 
-            if (quality > threshold/(step+1))
+            if (quality > threshold/(stepNum+1))
                 bijective = true;
             else
                 scaling *= 0.5;
         }
 
         done += scaling;
-        step++;
+        stepNum++;
     }
 }
 
 template <class T>
-void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
-                              gsMultiPatch<T> const & initGuess,
-                              index_t materialLaw, T poissonRatio, T tolerance, index_t maxNumIterations)
+index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                            gsBoundaryConditions<T> const & bdryCurves, T poissonRatio,
+                            index_t numSteps, bool finalize, index_t iterPerStep,
+                            index_t maxAdapt, T tolerance, index_t maxNumIterations)
+{
+    index_t numP = initDomain.nPatches();
+    index_t pDim = initDomain.parDim();
+
+    gsMultiBasis<T> basis(initDomain);
+
+    gsBoundaryConditions<T> bcInfo;
+    for (auto it = initDomain.bBegin(); it != initDomain.bEnd(); ++it)
+        for (index_t d = 0; d < pDim; ++d)
+            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+
+    std::map<std::pair<index_t,index_t>,gsMatrix<T> > deformCoefs;
+    for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+        deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
+                                                                   initDomain.patch(it->patch()).boundary(it->side())->coefs());
+
+    std::vector<std::string> zeros;
+    for (index_t d = 0; d < pDim; ++d)
+        zeros.push_back("0.");
+    gsFunctionExpr<T> g(zeros,pDim);
+
+    gsElasticityAssembler<T> assembler(initDomain,basis,bcInfo,g);
+    assembler.options().setReal("PoissonsRatio",poissonRatio);
+    assembler.options().setInt("MaterialLaw",1);
+
+    index_t stepNum = 0;
+    gsVector<T> totalIncSolVector(assembler.numDofs());
+    // ------------ Incremental section --------------//
+    gsInfo << "Adaptive incremental loading...\n";
+
+    T done = 0.;
+    T maxStepSize = 1./numSteps;
+
+    while (abs(done - 1.) > 1e-10)
+    {
+        T stepSize;
+        if (1.-done >= maxStepSize)
+            stepSize = maxStepSize;
+        else
+            stepSize = 1. - done;
+
+        gsInfo << "Iteration " << stepNum + 1 << ": " << done*100 << "% -> " << (done+stepSize)*100 << "%\n";
+
+        bool bijective = false;
+        displacements.push_back(gsMultiPatch<T>());
+        while (!bijective)
+        {
+            for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+                assembler.setDirichletDofs(it->patch(),it->side(),stepSize*deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
+
+            if (stepNum > 0)
+                assembler.assemble(displacements[stepNum-1]);
+            else
+                assembler.assemble();
+            gsSparseSolver<>::LU solver(assembler.matrix());
+            gsVector<T> solVector = solver.solve(assembler.rhs());
+            assembler.constructSolution(solVector,displacements[stepNum]);
+            if (stepNum > 0)
+                for (int p = 0; p < numP; ++p)
+                    displacements[stepNum].patch(p).coefs() += displacements[stepNum-1].patch(p).coefs();
+
+            T quality = assembler.solutionJacRatio(displacements[stepNum]);
+            if (quality > 0.)
+            {
+                bijective = true;
+                totalIncSolVector += solVector;
+            }
+            else
+                return 1;
+        }
+        done += stepSize;
+        stepNum++;
+    }
+
+    // ------------- Finalizing section --------------//
+    if (finalize)
+    {
+        gsInfo << "Adaptive Newton's method for the final loading step...\n";
+        assembler.homogenizeFixedDofs(-1);
+        bool converged = false;
+        index_t numIter = 0;
+        T initUpdateNorm = totalIncSolVector.norm();
+
+        while (numIter < maxNumIterations && !converged)
+        {
+            bool bijective = false;
+            index_t numAdapt = 0;
+            assembler.assemble(displacements.back());
+            gsSparseSolver<>::LU solver(assembler.matrix());
+            gsVector<T> solVector = solver.solve(assembler.rhs());
+            displacements.push_back(gsMultiPatch<T>());
+            assembler.constructSolution(solVector,displacements.back());
+            for (int p = 0; p < numP; ++p)
+                displacements.back().patch(p).coefs() += displacements[stepNum + numIter-1].patch(p).coefs();
+
+            T updateNorm = solVector.norm();
+
+            while (!bijective)
+            {
+                T quality = assembler.solutionJacRatio(displacements.back());
+                if (numAdapt == 0)
+                    gsInfo << "Iteration: " << numIter + 1 << ", update norm: " << updateNorm << ", J " << (quality > 0. ? " > 0\n" : " < 0\n");
+                else
+                    gsInfo << "              displacement update halved, J " << (quality > 0. ? " > 0\n" : " < 0\n");
+
+                if (quality > 0.)
+                    bijective = true;
+                else if (numAdapt < maxAdapt)
+                {
+                    for (int p = 0; p < numP; ++p)
+                    {
+                        displacements.back().patch(p).coefs() -= displacements[stepNum + numIter-1].patch(p).coefs();
+                        displacements.back().patch(p).coefs() *= 0.5;
+                        displacements.back().patch(p).coefs() += displacements[stepNum + numIter-1].patch(p).coefs();
+                    }
+                    numAdapt++;
+                }
+                else
+                {
+                    gsInfo << "Adaptive algorithm stalled after " << numAdapt << " iterations.\n";
+                    return 1;
+                }
+            }
+
+            if ((updateNorm < tolerance || updateNorm/initUpdateNorm < tolerance) && numAdapt == 0)
+                converged = true;
+
+            numIter++;
+        }
+
+        if (!converged)
+        {
+            gsInfo << "Newton's method didn't converged after exceeding a maximum number of iterations: " << maxNumIterations << ".\n";
+            return 1;
+        }
+        else
+            gsInfo << "Newton's method converged after " << numIter << " iterations.\n";
+    }
+
+    return 0;
+}
+
+template <class T>
+void computeDeformationFinalize(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
+                                gsMultiPatch<T> const & initGuess,
+                                index_t materialLaw, T poissonRatio, T tolerance, index_t maxNumIterations)
 {
     index_t pDim = initDomain.parDim();
     gsMultiBasis<T> basis(initDomain);

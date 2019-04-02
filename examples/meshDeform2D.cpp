@@ -23,7 +23,9 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 0;
     index_t numDegreeElev = 0;
     index_t numPlotPoints = 0;
-    real_t threshold = 0.75;
+    real_t threshold = 0.25;
+    index_t maxAdapt = 1;
+    index_t maxNewtonIter = 10;
     bool nonLin = true;
 
     // minimalistic user interface for terminal
@@ -40,11 +42,18 @@ int main(int argc, char* argv[]){
     cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     cmd.addSwitch("lin","Do not finilize with full Newtow's method",nonLin);
     cmd.addReal("t","threshold","Quality threshold for adaptive incremental loading",threshold);
+    cmd.addInt("x","maxadapt","Max number of adaptive stepsize halving",maxAdapt);
+    cmd.addInt("m","maxiter","Max number of Newton's iterations",maxNewtonIter);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // a set of 4 compatible boundary curves ordered "west-east-south-north"
     gsMultiPatch<> bdry;
     gsReadFile<>(filename,bdry);
+
+    // file name for output
+    filename = filename.substr(filename.find_last_of("/\\")+1); // file name without a path
+    filename = filename.substr(0,filename.find_last_of(".\\"));
+    filename = filename.substr(0,filename.find_last_of("_\\"));
 
     //=====================================//
                 // Algorithm //
@@ -68,11 +77,15 @@ int main(int argc, char* argv[]){
         gsCoonsPatch<real_t> coonsPatch(simpleBdry);
         coonsPatch.compute();
         initGeo.addPatch(coonsPatch.result());
+
     }
     else
         gsReadFile<>(filenameInit,initGeo);
 
     initGeo.computeTopology();
+    gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
+    gsWrite(initGeo,filename + "_2D_init");
+
     gsInfo << "Initialized a 2D problem with " << initGeo.patch(0).coefsSize() * 2 << " dofs.\n";
 
     // boundary condition info
@@ -82,52 +95,32 @@ int main(int argc, char* argv[]){
 
 
     std::vector<gsMultiPatch<> > displacements;
-    if (numSteps > 0)
-    {
-        gsInfo << "Computing initial guess using incremental loading...\n";
-        computeDeformation(displacements,initGeo,bdryCurves,numSteps,materialLaw,poissRatio);
-    }
-    else
-    {
-        gsInfo << "Computing initial guess using incremental loading with adaptive step size...\n";
-        computeDeformation(displacements,initGeo,bdryCurves,poissRatio,threshold);
-    }
+    gsInfo << "Computing initial guess using incremental loading...\n";
+    //computeDeformationIter(displacements,initGeo,bdryCurves,numSteps,materialLaw,poissRatio);
+    //computeDeformationAdapt2(displacements,initGeo,bdryCurves,poissRatio,numSteps);
+    int res = computeMeshDeformation(displacements,initGeo,bdryCurves,poissRatio,numSteps,nonLin,1,maxAdapt,1e-12,maxNewtonIter);
+    (void)res;
+    gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D_inc.pvd\"...\n";
+    plotDeformation(displacements,initGeo,filename + "_2D_inc",numPlotPoints);
+
 
     // construct deformed geometry
     gsMultiPatch<> geo;
     geo.addPatch(initGeo.patch(0).clone());
     geo.patch(0).coefs() += displacements.back().patch(0).coefs();
-
-    gsMultiPatch<> nonlinGeo;
-    if (nonLin)
-    {
-        gsInfo << "Solving a nonlinear problem using the incremental solution as an initial guess...\n";
-        computeDeformationNonlin(nonlinGeo,initGeo,displacements.back(),materialLaw,poissRatio);
-    }
-
-    //=====================================//
-                // Output //
-    //=====================================//
-
-    filename = filename.substr(filename.find_last_of("/\\")+1); // file name without a path
-    filename = filename.substr(0,filename.find_last_of(".\\"));
-    filename = filename.substr(0,filename.find_last_of("_\\"));
-
-    gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
-    gsWrite(initGeo,filename + "_2D_init");
-
-    gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D_inc.pvd\"...\n";
-    plotDeformation(displacements,initGeo,filename + "_2D_inc",numPlotPoints);
     gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D_inc.xml\".\n";
     gsWrite(geo,filename + "_2D_inc");
 
+    /*gsMultiPatch<> nonlinGeo;
     if (nonLin)
     {
+        gsInfo << "Solving a nonlinear problem using the incremental solution as an initial guess...\n";
+        computeDeformationFinalize(nonlinGeo,initGeo,displacements.back(),materialLaw,poissRatio);
         gsInfo << "Plotting the result of the nonlinear algorithm to the Paraview file \"" << filename << "_2D_nl.pvd\"...\n";
         plotGeometry(nonlinGeo,filename + "_2D_nl",numPlotPoints);
         gsInfo << "The result of the nonlinear algorithm is saved to \"" << filename << "_2D_nl.xml\".\n";
-        gsWrite(nonlinGeo,filename + "_2D_nl");       
-    }
+        gsWrite(nonlinGeo,filename + "_2D_nl");
+    }*/
 
     return 0;
 }
