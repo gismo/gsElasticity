@@ -100,7 +100,7 @@ protected:
 
     /// Dimension of the problem
     /// parametric dim = physical dim = deformation dim
-	index_t m_dim;
+	short_t m_dim;
 
     using Base::m_pde_ptr;
     using Base::m_bases;

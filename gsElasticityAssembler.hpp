@@ -46,7 +46,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     // but always the first basis is used for the assembly;
     // TODO: change gsAssembler logic
     m_dim = body_force.targetDim();
-    for (index_t d = 0; d < m_dim; ++d)
+    for (short_t d = 0; d < m_dim; ++d)
         m_bases.push_back(basis);
 
     Base::initialize(pde, m_bases, defaultOptions());
@@ -71,7 +71,7 @@ void gsElasticityAssembler<T>::refresh()
     GISMO_ASSERT(m_dim == 2 || m_dim == 3, "Only two- and three-dimenstion domains are supported!");
 
     std::vector<gsDofMapper> m_dofMappers(m_dim);
-    for (index_t d = 0; d < m_dim; d++)
+    for (short_t d = 0; d < m_dim; d++)
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
@@ -82,7 +82,7 @@ void gsElasticityAssembler<T>::refresh()
     m_options.setReal("bdO",m_dim*(1+m_options.getReal("bdO"))-1);
     m_system.reserve(m_bases[0], m_options, 1);
 
-    for (index_t d = 0; d < m_dim; ++d)
+    for (short_t d = 0; d < m_dim; ++d)
         Base::computeDirichletDofs(d);
 }
 
@@ -128,7 +128,7 @@ template <class T>
 void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk) const
 {
     gsVector<index_t> unknowns(m_dim);
-    for (index_t d = 0; d < m_dim; ++d)
+    for (short_t d = 0; d < m_dim; ++d)
         unknowns.at(d) = d;
     Base::constructSolution(solVector,result,unknowns);
 }
@@ -204,7 +204,7 @@ void gsElasticityAssembler<T>::setDirichletDofs(index_t patch, boxSide side, con
                  " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
                  " x " + util::to_string(m_dim) + ".\n");
 
-    for (index_t d = 0; d < m_dim; ++d )
+    for (short_t d = 0; d < m_dim; ++d )
     {
         gsMatrix<unsigned> globalIndices;
         m_system.mapColIndices(localBIndices, patch, globalIndices, d);
@@ -226,7 +226,7 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
 
     for (index_t p = 0; p < solution.nPatches(); ++p)
     {
-        for (index_t d = 0; d < m_dim; ++d)
+        for (short_t d = 0; d < m_dim; ++d)
             nPoints.at(d) = m_bases[0][p].degree(d);
 
         typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
@@ -237,7 +237,7 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
             mdU.points = points;
             m_pde_ptr->domain().patch(p).computeMap(mdG);
             solution.patch(p).computeMap(mdU);
-            for (int q = 0; q < points.cols(); ++q)
+            for (index_t q = 0; q < points.cols(); ++q)
             {
                 gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
                 gsMatrix<T> F = gsMatrix<T>::Identity(m_dim,m_dim) + physDispJac;
@@ -266,7 +266,7 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
 
     for (index_t p = 0; p < solution.nPatches(); ++p)
     {
-        for (index_t d = 0; d < m_dim; ++d)
+        for (short_t d = 0; d < m_dim; ++d)
             nPoints.at(d) = m_bases[0][p].degree(d);
 
         typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);

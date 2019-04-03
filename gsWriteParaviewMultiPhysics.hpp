@@ -33,10 +33,10 @@ template<class T>
 void writeSingleControlNet(const gsGeometry<T> & Geo,
                            std::string const & fn)
 {
-    const int d = Geo.parDim();
+    const short_t d = Geo.parDim();
     gsMesh<T> msh;
     Geo.controlNet(msh);
-    const unsigned n = Geo.geoDim();
+    const short_t n = Geo.geoDim();
     if ( n == 1 )
     {
         gsMatrix<T> anch = Geo.basis().anchors();
@@ -125,8 +125,8 @@ void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T
                                 unsigned npts)
 {
     const gsFunction<> & geometry = fields.begin()->second->patches().patch(patchNum);
-    const unsigned n = geometry.targetDim();
-    const unsigned d = geometry.domainDim();
+    const short_t n = geometry.targetDim();
+    const short_t d = geometry.domainDim();
 
     gsMatrix<> ab = geometry.support();
     gsVector<> a = ab.col(0);

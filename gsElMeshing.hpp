@@ -39,7 +39,7 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
                             index_t numSteps, index_t materialLaw, T poissonRatio)
 {
     index_t numP = initDomain.nPatches();
-    index_t pDim = initDomain.parDim();
+    short_t pDim = initDomain.parDim();
     displacements.resize(numSteps);
 
     gsMultiBasis<T> basis(initDomain);
@@ -54,7 +54,7 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
         deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
                                                                    initDomain.patch(it->patch()).boundary(it->side())->coefs()) / numSteps;
     std::vector<std::string> zeros;
-    for (index_t d = 0; d < pDim; ++d)
+    for (short_t d = 0; d < pDim; ++d)
         zeros.push_back("0.");
     gsFunctionExpr<T> g(zeros,pDim);
 
@@ -92,7 +92,7 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPa
                         gsBoundaryConditions<T> const & bdryCurves, T poissonRatio, T threshold)
 {
     index_t numP = initDomain.nPatches();
-    index_t pDim = initDomain.parDim();
+    short_t pDim = initDomain.parDim();
 
     gsMultiBasis<T> basis(initDomain);
 
@@ -106,7 +106,7 @@ void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPa
         deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
                                                                    initDomain.patch(it->patch()).boundary(it->side())->coefs());
     std::vector<std::string> zeros;
-    for (index_t d = 0; d < pDim; ++d)
+    for (short_t d = 0; d < pDim; ++d)
         zeros.push_back("0.");
     gsFunctionExpr<T> g(zeros,pDim);
 
@@ -168,7 +168,7 @@ void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & 
             bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
 
     std::vector<std::string> zeros;
-    for (index_t d = 0; d < pDim; ++d)
+    for (short_t d = 0; d < pDim; ++d)
         zeros.push_back("0.");
     gsFunctionExpr<T> g(zeros,pDim);
 
@@ -289,7 +289,7 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
             gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
             md.points = points;
             domain.patch(p).computeMap(md);
-            for (int q = 0; q < points.cols(); ++q)
+            for (index_t q = 0; q < points.cols(); ++q)
                 if (md.jacobian(q).determinant() <= 0)
                 {
                     corruptedPatch = p;
@@ -350,7 +350,7 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
 
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
-        for (index_t d = 0; d < domain.dim(); ++d)
+        for (short_t d = 0; d < domain.dim(); ++d)
             nPoints.at(d) = domain.basis(p).degree(d);
 
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
