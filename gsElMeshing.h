@@ -45,7 +45,7 @@ template <class T>
 index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
                             gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49,
                             index_t numSteps = 3, bool finalize = true, index_t iterPerStep = 1,
-                            index_t maxAdapt = 5, T tolerance = 1e-12, index_t maxNumIterations = 25);
+                            index_t maxAdapt = 5, T qualityRatio = 0.2, T tolerance = 1e-12, index_t maxNumIterations = 25);
 
 /// @brief Computes a deformation of a given initial domain using nonlinear elasticity and a given initial guess
 /// such that the domain's boundary coincides with a given set of boundary curves;

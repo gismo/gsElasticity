@@ -15,7 +15,7 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/rotor_bdry.xml";
     std::string filenameInit = "";
-    index_t numSteps = 5;
+    index_t numSteps = 1;
     real_t poissRatio = 0.45;
     index_t fittingDegree = 0;
     index_t numAdditionalPoints = 0;
@@ -23,9 +23,9 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 0;
     index_t numDegreeElev = 0;
     index_t numPlotPoints = 0;
-    real_t threshold = 0.25;
-    index_t maxAdapt = 1;
-    index_t maxNewtonIter = 10;
+    real_t threshold = 0.75;
+    index_t maxAdapt = 10;
+    index_t maxNewtonIter = 50;
     bool nonLin = true;
 
     // minimalistic user interface for terminal
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]){
     gsInfo << "Computing initial guess using incremental loading...\n";
     //computeDeformationIter(displacements,initGeo,bdryCurves,numSteps,materialLaw,poissRatio);
     //computeDeformationAdapt2(displacements,initGeo,bdryCurves,poissRatio,numSteps);
-    int res = computeMeshDeformation(displacements,initGeo,bdryCurves,poissRatio,numSteps,nonLin,1,maxAdapt,1e-12,maxNewtonIter);
+    int res = computeMeshDeformation(displacements,initGeo,bdryCurves,poissRatio,numSteps,nonLin,1,maxAdapt,threshold,1e-12,maxNewtonIter);
     (void)res;
     gsInfo << "Plotting the result of the incremental algorithm to the Paraview file \"" << filename << "_2D_inc.pvd\"...\n";
     plotDeformation(displacements,initGeo,filename + "_2D_inc",numPlotPoints);

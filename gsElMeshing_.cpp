@@ -21,7 +21,7 @@ TEMPLATE_INST void computeDeformationAdapt(std::vector<gsMultiPatch<real_t> > & 
 TEMPLATE_INST index_t computeMeshDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
                                           gsBoundaryConditions<real_t> const & bdryCurves, real_t poissonRatio,
                                           index_t numSteps, bool finalize, index_t iterPerStep,
-                                          index_t maxAdapt, real_t tolerance, index_t maxNumIterations);
+                                          index_t maxAdapt, real_t qualityRatio, real_t tolerance, index_t maxNumIterations);
 
 TEMPLATE_INST void computeDeformationFinalize(gsMultiPatch<real_t> & domain, gsMultiPatch<real_t> const & initDomain,
                                               gsMultiPatch<real_t> const & initGuess,

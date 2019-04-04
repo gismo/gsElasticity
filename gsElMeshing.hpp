@@ -164,7 +164,7 @@ template <class T>
 index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
                             gsBoundaryConditions<T> const & bdryCurves, T poissonRatio,
                             index_t numSteps, bool finalize, index_t iterPerStep,
-                            index_t maxAdapt, T tolerance, index_t maxNumIterations)
+                            index_t maxAdapt, T qualityRatio, T tolerance, index_t maxNumIterations)
 {
     index_t numP = initDomain.nPatches();
     index_t pDim = initDomain.parDim();
@@ -206,34 +206,62 @@ index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gs
         else
             stepSize = 1. - done;
 
-        gsInfo << "Iteration " << stepNum + 1 << ": " << done*100 << "% -> " << (done+stepSize)*100 << "%\n";
-
         bool bijective = false;
+        index_t numAdapt = 0;
         displacements.push_back(gsMultiPatch<T>());
+
+        for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
+            assembler.setDirichletDofs(it->patch(),it->side(),stepSize*deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
+
+        if (stepNum > 0)
+            assembler.assemble(displacements[stepNum-1]);
+        else
+            assembler.assemble();
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        gsVector<T> solVector = solver.solve(assembler.rhs());
+        assembler.constructSolution(solVector,displacements[stepNum]);
+        if (stepNum > 0)
+            for (int p = 0; p < numP; ++p)
+                displacements[stepNum].patch(p).coefs() += displacements[stepNum-1].patch(p).coefs();
+
+        T oldQuality;
+        if (stepNum > 0)
+            oldQuality = assembler.solutionJacRatio(displacements[stepNum-1]);
+        else
+            oldQuality = 1.;
+
         while (!bijective)
         {
-            for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
-                assembler.setDirichletDofs(it->patch(),it->side(),stepSize*deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
-
-            if (stepNum > 0)
-                assembler.assemble(displacements[stepNum-1]);
+            T ratio = assembler.solutionJacRatio(displacements[stepNum])/oldQuality;
+            if (numAdapt == 0)
+                gsInfo << "Iteration " << stepNum + 1 << ": " << done*100 << "% -> " << (done+stepSize)*100
+                          << "%, QR " << ratio << (ratio > qualityRatio ? " > " : " < ") << qualityRatio << std::endl;
             else
-                assembler.assemble();
-            gsSparseSolver<>::LU solver(assembler.matrix());
-            gsVector<T> solVector = solver.solve(assembler.rhs());
-            assembler.constructSolution(solVector,displacements[stepNum]);
-            if (stepNum > 0)
-                for (int p = 0; p < numP; ++p)
-                    displacements[stepNum].patch(p).coefs() += displacements[stepNum-1].patch(p).coefs();
-
-            T quality = assembler.solutionJacRatio(displacements[stepNum]);
-            if (quality > 0.)
+                gsInfo << "             " << done*100 << "% -> " << (done+stepSize)*100
+                       << "%, QR " << ratio << (ratio > qualityRatio ? " > " : " < ") << qualityRatio << std::endl;
+            if (ratio > qualityRatio)
             {
                 bijective = true;
                 totalIncSolVector += solVector;
             }
+            else if (numAdapt < maxAdapt)
+            {
+                for (int p = 0; p < numP; ++p)
+                {
+                    if (stepNum > 0)
+                        displacements.back().patch(p).coefs() -= displacements[stepNum-1].patch(p).coefs();
+                    displacements.back().patch(p).coefs() *= 0.5;
+                    if (stepNum > 0)
+                        displacements.back().patch(p).coefs() += displacements[stepNum-1].patch(p).coefs();
+                }
+                numAdapt++;
+                stepSize *= 0.5;
+            }
             else
+            {
+                gsInfo << "Adaptive algorithm stalled after " << numAdapt << " iterations.\n";
                 return 1;
+            }
         }
         done += stepSize;
         stepNum++;
@@ -261,16 +289,19 @@ index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gs
                 displacements.back().patch(p).coefs() += displacements[stepNum + numIter-1].patch(p).coefs();
 
             T updateNorm = solVector.norm();
+            T oldQuality = assembler.solutionJacRatio(displacements[stepNum + numIter-1]);
 
             while (!bijective)
             {
-                T quality = assembler.solutionJacRatio(displacements.back());
+                T ratio = assembler.solutionJacRatio(displacements.back())/oldQuality;
                 if (numAdapt == 0)
-                    gsInfo << "Iteration: " << numIter + 1 << ", update norm: " << updateNorm << ", J " << (quality > 0. ? " > 0\n" : " < 0\n");
+                    gsInfo << "Iteration: " << numIter + 1 << ", update norm: " << updateNorm
+                           << ", QR " << ratio << (ratio > qualityRatio ? " > " : " < ") << qualityRatio << std::endl;
                 else
-                    gsInfo << "              displacement update halved, J " << (quality > 0. ? " > 0\n" : " < 0\n");
+                    gsInfo << "              displacement update halved, QR = " << ratio
+                           << (ratio > qualityRatio ? " > " : " < ") << qualityRatio << std::endl;
 
-                if (quality > 0.)
+                if (ratio > qualityRatio)
                     bijective = true;
                 else if (numAdapt < maxAdapt)
                 {

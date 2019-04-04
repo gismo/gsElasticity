@@ -242,15 +242,10 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
                 gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
                 gsMatrix<T> F = gsMatrix<T>::Identity(m_dim,m_dim) + physDispJac;
                 if (F.determinant() <= 0)
-                {
-                    corruptedPatch = p;
-                    goto exitLabel;
-                }
+                    return p;
             }
         }
     }
-
-    exitLabel:;
     return corruptedPatch;
 }
 
