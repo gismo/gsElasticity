@@ -96,6 +96,11 @@ public:
     /// @brief Return minJ/maxJ
     virtual T solutionJacRatio(const gsMultiPatch<T> & solution) const;
 
+    /// @brief Generates a matrix of sampling points for a given parametric element;
+    /// includes quadrature points for the element as well as the corner points
+    virtual void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
+                                   const gsQuadRule<T> & quRule, gsMatrix<T> & points) const;
+
 protected:
 
     /// Dimension of the problem
