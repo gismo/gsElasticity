@@ -1,0 +1,10 @@
+namespace gismo 
+{
+
+/** \defgroup ThermoElasticity Thermo-elasticity module
+
+    This module is about solving thermo-elasticity problems in 2D and 3D.
+
+*/
+
+}
