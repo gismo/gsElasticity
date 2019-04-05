@@ -221,18 +221,16 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
     gsMapData<T> mdG, mdU;
     mdG.flags = NEED_DERIV;
     mdU.flags = NEED_DERIV;
-
-    gsVector<unsigned> nPoints(m_dim);
+    gsMatrix<T> points;
 
     for (index_t p = 0; p < solution.nPatches(); ++p)
     {
-        for (index_t d = 0; d < m_dim; ++d)
-            nPoints.at(d) = m_bases[0][p].degree(d);
+        gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
 
-        typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
+        typename gsBasis<T>::domainIter domIt = m_bases[0][p].makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
-        {   
-            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
+        {
+            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
             mdG.points = points;
             mdU.points = points;
             m_pde_ptr->domain().patch(p).computeMap(mdG);
@@ -242,15 +240,10 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
                 gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
                 gsMatrix<T> F = gsMatrix<T>::Identity(m_dim,m_dim) + physDispJac;
                 if (F.determinant() <= 0)
-                {
-                    corruptedPatch = p;
-                    goto exitLabel;
-                }
+                    return p;
             }
         }
     }
-
-    exitLabel:;
     return corruptedPatch;
 }
 
@@ -261,18 +254,16 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
     gsMapData<T> mdG, mdU;
     mdG.flags = NEED_DERIV;
     mdU.flags = NEED_DERIV;
-
-    gsVector<unsigned> nPoints(m_dim);
+    gsMatrix<T> points;
 
     for (index_t p = 0; p < solution.nPatches(); ++p)
     {
-        for (index_t d = 0; d < m_dim; ++d)
-            nPoints.at(d) = m_bases[0][p].degree(d);
+        gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
 
-        typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
+        typename gsBasis<T>::domainIter domIt = m_bases[0][p].makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
         {
-            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
+            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
             mdG.points = points;
             mdU.points = points;
             m_pde_ptr->domain().patch(p).computeMap(mdG);
@@ -295,6 +286,23 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
     }
 
     return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
+}
+
+template <class T>
+void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
+                       const gsQuadRule<T> & quRule, gsMatrix<T> & points)
+{
+    gsMatrix<T> quadPoints;
+    gsVector<T> tempVector; // temporary argument for the gsQuadrule::mapTo function
+    quRule.mapTo(lower,upper,quadPoints,tempVector);
+
+    gsVector<unsigned> nPoints(quadPoints.rows());
+    for (index_t d = 0; d < quadPoints.rows(); ++d)
+        nPoints.at(d) = 2;
+    gsMatrix<T> corners = gsPointGrid(lower,upper,nPoints);
+
+    points.resize(quadPoints.rows(),quadPoints.cols()+corners.cols());
+    points << quadPoints,corners;
 }
 
 }// namespace gismo ends

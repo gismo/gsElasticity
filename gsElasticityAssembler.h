@@ -110,6 +110,12 @@ protected:
 
 };
 
+/// @brief Generates a matrix of sampling points for a given parametric element;
+/// includes quadrature points for the element as well as the corner points
+template <class T>
+void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
+                       const gsQuadRule<T> & quRule, gsMatrix<T> & points);
+
 } // namespace gismo ends
 
 #ifndef GISMO_BUILD_LIB
