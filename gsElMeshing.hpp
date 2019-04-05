@@ -21,6 +21,8 @@
 #include <gsCore/gsFunctionExpr.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsAssembler/gsQuadRule.h>
+#include <gsAssembler/gsQuadrature.h>
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
@@ -34,137 +36,10 @@ namespace gismo
 //-----------------------------------//
 
 template <class T>
-void computeDeformationIter(std::vector<gsMultiPatch<T> > & displacements,
-                            gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
-                            index_t numSteps, index_t materialLaw, T poissonRatio)
-{
-    index_t numP = initDomain.nPatches();
-    index_t pDim = initDomain.parDim();
-    displacements.resize(numSteps);
-
-    gsMultiBasis<T> basis(initDomain);
-
-    gsBoundaryConditions<T> bcInfo;
-    for (auto it = initDomain.bBegin(); it != initDomain.bEnd(); ++it)
-        for (index_t d = 0; d < pDim; ++d)
-            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
-
-    std::map<std::pair<index_t,index_t>,gsMatrix<T> > deformCoefs;
-    for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
-        deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
-                                                                   initDomain.patch(it->patch()).boundary(it->side())->coefs()) / numSteps;
-    std::vector<std::string> zeros;
-    for (index_t d = 0; d < pDim; ++d)
-        zeros.push_back("0.");
-    gsFunctionExpr<T> g(zeros,pDim);
-
-    gsElasticityAssembler<T> assembler(initDomain,basis,bcInfo,g);
-    assembler.options().setReal("PoissonsRatio",poissonRatio);
-    assembler.options().setInt("MaterialLaw",materialLaw);
-    for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
-        assembler.setDirichletDofs(it->patch(),it->side(),deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
-
-    for (index_t s = 0; s < numSteps; ++s)
-    {
-        if (s > 0)
-            assembler.assemble(displacements[s-1]);
-        else
-            assembler.assemble();
-
-        gsSparseSolver<>::LU solver(assembler.matrix());
-        gsVector<T> solVector = solver.solve(assembler.rhs());
-        assembler.constructSolution(solVector,displacements[s]);
-
-        if (s > 0)
-            for (index_t p = 0; p < numP; ++p)
-                displacements[s].patch(p).coefs() += displacements[s-1].patch(p).coefs();
-
-        index_t corruptedPatch = assembler.checkSolution(displacements[s]);
-        gsInfo << "Step: " << s+1 << "/" << numSteps
-               << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << std::endl;
-        if (materialLaw == 1)
-            GISMO_ENSURE(corruptedPatch == -1, "Invalid incremental deformation, J < 0");
-    }
-}
-
-template <class T>
-void computeDeformationAdapt(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                             gsBoundaryConditions<T> const & bdryCurves, T poissonRatio, index_t numSteps, T threshold)
-{
-    index_t numP = initDomain.nPatches();
-    index_t pDim = initDomain.parDim();
-
-    gsMultiBasis<T> basis(initDomain);
-
-    gsBoundaryConditions<T> bcInfo;
-    for (auto it = initDomain.bBegin(); it != initDomain.bEnd(); ++it)
-        for (index_t d = 0; d < pDim; ++d)
-            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
-
-    std::map<std::pair<index_t,index_t>,gsMatrix<T> > deformCoefs;
-    for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
-        deformCoefs[std::pair<index_t,index_t>(it->patch(),it->side())] = (static_cast<gsGeometry<T> &>(*(it->function())).coefs() -
-                                                                   initDomain.patch(it->patch()).boundary(it->side())->coefs());
-    std::vector<std::string> zeros;
-    for (index_t d = 0; d < pDim; ++d)
-        zeros.push_back("0.");
-    gsFunctionExpr<T> g(zeros,pDim);
-
-    gsElasticityAssembler<T> assembler(initDomain,basis,bcInfo,g);
-    assembler.options().setReal("PoissonsRatio",poissonRatio);
-    assembler.options().setInt("MaterialLaw",1);
-
-    T done = 0.;
-    index_t stepNum = 0;
-    T stepSize = 1./numSteps;
-
-    while (abs(done-1.) > 1e-10)
-    {
-        gsInfo << "Step " << stepNum + 1 << std::endl;//<< ": quality threshold " << threshold/(step+1) << std::endl;
-
-        T scaling;
-        if (1.-done >= stepSize)
-            scaling = stepSize;
-        else
-            scaling = 1. - done;
-
-        bool bijective = false;
-        displacements.push_back(gsMultiPatch<T>());
-        while (!bijective)
-        {
-            for (auto it = bdryCurves.dirichletBegin(); it != bdryCurves.dirichletEnd(); ++it)
-                assembler.setDirichletDofs(it->patch(),it->side(),scaling*deformCoefs.at(std::pair<index_t,index_t>(it->patch(),it->side())));
-
-            if (stepNum > 0)
-                assembler.assemble(displacements[stepNum-1]);
-            else
-                assembler.assemble();
-            gsSparseSolver<>::LU solver(assembler.matrix());
-            gsVector<T> solVector = solver.solve(assembler.rhs());
-            assembler.constructSolution(solVector,displacements[stepNum]);
-            if (stepNum > 0)
-                for (int p = 0; p < numP; ++p)
-                    displacements[stepNum].patch(p).coefs() += displacements[stepNum-1].patch(p).coefs();
-
-            T quality = assembler.solutionJacRatio(displacements[stepNum]);
-            gsInfo << "       " << done*100 << "% -> " << (done + scaling)*100 << std::endl;// << "%: quality " << quality << std::endl;
-
-            if (quality > threshold/(stepNum+1))
-                bijective = true;
-            else
-                scaling *= 0.5;
-        }
-
-        done += scaling;
-        stepNum++;
-    }
-}
-
-template <class T>
 index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                            gsBoundaryConditions<T> const & bdryCurves, T poissonRatio,
-                            index_t numSteps, bool finalize, index_t iterPerStep,
-                            index_t maxAdapt, T qualityRatio, T tolerance, index_t maxNumIterations)
+                               gsBoundaryConditions<T> const & bdryCurves, T poissonRatio,
+                               index_t numSteps, index_t maxAdapt, T qualityRatio,
+                               bool finalize, T tolerance, index_t maxNumIterations)
 {
     index_t numP = initDomain.nPatches();
     index_t pDim = initDomain.parDim();
@@ -339,46 +214,8 @@ index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gs
 }
 
 template <class T>
-void computeDeformationFinalize(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
-                                gsMultiPatch<T> const & initGuess,
-                                index_t materialLaw, T poissonRatio, T tolerance, index_t maxNumIterations)
-{
-    index_t pDim = initDomain.parDim();
-    gsMultiBasis<T> basis(initDomain);
-
-    gsBoundaryConditions<T> bcInfo;
-    for (auto it = initDomain.bBegin(); it != initDomain.bEnd(); ++it)
-        for (index_t d = 0; d < pDim; ++d)
-            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
-
-    std::vector<std::string> zeros;
-    for (index_t d = 0; d < pDim; ++d)
-        zeros.push_back("0.");
-    gsFunctionExpr<T> g(zeros,pDim);
-
-    gsElasticityAssembler<T> assembler(initDomain,basis,bcInfo,g);
-    assembler.options().setReal("PoissonsRatio",poissonRatio);
-    assembler.options().setInt("MaterialLaw",materialLaw);
-
-    gsElasticityNewton<real_t> newton(assembler,initGuess);
-    newton.setMaxIterations(maxNumIterations);
-    newton.setTolerance(tolerance);
-    newton.setVerbosity(true);
-
-    newton.solve();
-
-    domain.clear();
-    for (index_t p = 0; p < initDomain.nPatches(); ++p)
-    {
-        domain.addPatch(initDomain.patch(p).clone());
-        domain.patch(p).coefs() += newton.solution().patch(p).coefs();
-    }
-}
-
-template <class T>
-void plotDeformation(std::vector<gsMultiPatch<T> > & displacements,
-                     gsMultiPatch<T> const & initDomain, std::string fileName,
-                     index_t numSamples)
+void plotDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                     std::string fileName, index_t numSamples)
 {
     std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
     gsParaviewCollection collectionMesh(fileName + "_mesh");
@@ -453,37 +290,6 @@ void plotDeformation(std::vector<gsMultiPatch<T> > & displacements,
     (void)res;
 }
 
-template <class T>
-index_t checkGeometry(gsMultiPatch<T> const & domain)
-{
-    index_t corruptedPatch = -1;
-    gsMapData<T> md;
-    md.flags = NEED_DERIV;
-
-    gsVector<unsigned> nPoints(domain.dim());
-
-    for (index_t p = 0; p < domain.nPatches(); ++p)
-    {
-        for (index_t d = 0; d < domain.dim(); ++d)
-            nPoints.at(d) = domain.basis(p).degree(d);
-
-        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
-        for (; domIt->good(); domIt->next())
-        {
-            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
-            md.points = points;
-            domain.patch(p).computeMap(md);
-            for (int q = 0; q < points.cols(); ++q)
-                if (md.jacobian(q).determinant() <= 0)
-                {
-                    corruptedPatch = p;
-                    goto exitLabel;
-                }
-        }
-    }
-    exitLabel:;
-    return corruptedPatch;
-}
 
 template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples)
@@ -523,24 +329,55 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
         collectionJac.save();
 }
 
+
+template <class T>
+index_t checkGeometry(gsMultiPatch<T> const & domain)
+{
+    index_t corruptedPatch = -1;
+    gsMapData<T> md;
+    md.flags = NEED_DERIV;
+    gsMatrix<T> points;
+
+    for (index_t p = 0; p < domain.nPatches(); ++p)
+    {
+        gsVector<index_t> numNodes(domain.dim());
+        for (int i = 0; i < domain.dim(); ++i)
+            numNodes.at(i) = domain.basis(p).degree(i)+1;
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+
+        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
+        for (; domIt->good(); domIt->next())
+        {
+            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+            md.points = points;
+            domain.patch(p).computeMap(md);
+            for (int q = 0; q < points.cols(); ++q)
+                if (md.jacobian(q).determinant() <= 0)
+                    return p;
+        }
+    }
+    return corruptedPatch;
+}
+
 template <class T>
 T geometryJacRatio(gsMultiPatch<T> const & domain)
 {
     std::vector<T> maxs, mins;
     gsMapData<T> md;
     md.flags = NEED_DERIV;
-
-    gsVector<unsigned> nPoints(domain.dim());
+    gsMatrix<T> points;
 
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
-        for (index_t d = 0; d < domain.dim(); ++d)
-            nPoints.at(d) = domain.basis(p).degree(d);
+        gsVector<index_t> numNodes(domain.dim());
+        for (int i = 0; i < domain.dim(); ++i)
+            numNodes.at(i) = domain.basis(p).degree(i)+1;
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
 
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
         {
-            gsMatrix<> points = gsPointGrid(domIt->lowerCorner(), domIt->upperCorner(),nPoints);
+            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
             md.points = points;
             domain.patch(p).computeMap(md);
 

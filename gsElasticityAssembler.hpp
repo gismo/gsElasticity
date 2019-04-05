@@ -289,19 +289,19 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
 }
 
 template <class T>
-void gsElasticityAssembler<T>::genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
-                                                 const gsQuadRule<T> & quRule, gsMatrix<T> & points) const
+void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
+                       const gsQuadRule<T> & quRule, gsMatrix<T> & points)
 {
     gsMatrix<T> quadPoints;
     gsVector<T> tempVector; // temporary argument for the gsQuadrule::mapTo function
     quRule.mapTo(lower,upper,quadPoints,tempVector);
 
-    gsVector<unsigned> nPoints(m_dim);
-    for (index_t d = 0; d < m_dim; ++d)
+    gsVector<unsigned> nPoints(quadPoints.rows());
+    for (index_t d = 0; d < quadPoints.rows(); ++d)
         nPoints.at(d) = 2;
     gsMatrix<T> corners = gsPointGrid(lower,upper,nPoints);
 
-    points.resize(m_dim,quadPoints.cols()+corners.cols());
+    points.resize(quadPoints.rows(),quadPoints.cols()+corners.cols());
     points << quadPoints,corners;
 }
 
