@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include <gsThermoElasticity/gsElThermoAssembler.h>
+#include <gsElasticity/gsElThermoAssembler.h>
 
-#include <gsThermoElasticity/gsVisitorElThermo.h>
-#include <gsThermoElasticity/gsVisitorElThermoBoundary.h>
+#include <gsElasticity/gsVisitorElThermo.h>
+#include <gsElasticity/gsVisitorElThermoBoundary.h>
 
 namespace gismo
 {
@@ -24,20 +24,16 @@ namespace gismo
 template <class T>
 gsElThermoAssembler<T>::gsElThermoAssembler(const gsMultiPatch<T> & patches,
                                             const gsMultiBasis<T> & bases,
-                                            T youngModulus,
-                                            T poissonsRatio,
-                                            T thermalExpCoef,
-                                            T initTemp,
-                                            const gsBoundaryConditions<T> & bcInfo,
-                                            const gsFunction<T> & force,
-                                            //const gsMultiPatch<T> & heatSolution,
-                                            const gsFunctionSet<T> & heatSolution,
-                                            dirichlet::strategy enforceStrategy,
-                                            dirichlet::values computeStrategy)
-    :gsElasticityAssembler<T>(patches,bases,youngModulus,poissonsRatio,1.,bcInfo,force,computeStrategy,enforceStrategy),
-     m_thExpCoef(thermalExpCoef), m_initTemp(initTemp),
-     m_heatSolution(heatSolution)
+                                            const gsBoundaryConditions<T> & b_conditions,
+                                            const gsFunction<T> & body_force,
+                                            const gsFunctionSet<T> & heat_field)
+    :gsElasticityAssembler<T>(patches,bases,b_conditions,body_force),
+     m_heatField(heat_field),
+     assembledElasticity(false)
 {
+    m_options.addReal("InitTemp","Initial temperature of the object",20.);
+    m_options.addReal("ThExpCoef","Coefficient of thermal expansion of the material",20.);
+
     findNonDirichletSides();
 }
 
@@ -45,37 +41,33 @@ template <class T>
 void gsElThermoAssembler<T>::assemble()
 {
     gsElasticityAssembler<T>::assemble();
+    assembledElasticity = true;
 
-    assembleThermo(m_heatSolution);
+    assembleThermo(m_heatField);
 }
 
 template <class T>
 void gsElThermoAssembler<T>::findNonDirichletSides()
 {
-    for (std::vector< patchSide >::iterator side = m_patches.bBegin(); side != m_patches.bEnd(); ++side)
+    for (std::vector< patchSide >::iterator side = m_pde_ptr->domain().bBegin(); side != m_pde_ptr->domain().bEnd(); ++side)
     {
         std::pair<int,int> temp(side->patch,side->index());
 
-        for ( typename gsBoundaryConditions<T>::const_iterator it = m_bConditions.dirichletBegin();
-              it != m_bConditions.dirichletEnd(); ++it )
-        {
+        typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
+        for ( ; it != m_pde_ptr->bc().dirichletEnd(); ++it )
             if (temp.first == it->patch() && temp.second == it->side())
-            {
                 goto exitLabel;
-            }
-        }
+
         nonDirichletSides.push_back(temp);
         exitLabel:;
     }
 }
 
 template <class T>
-//void gsElThermoAssembler<T>::assembleThermo(const gsMultiPatch<T> & heatField)
 void gsElThermoAssembler<T>::assembleThermo(const gsFunctionSet<T> & heatField)
 {
-    GISMO_ASSERT(m_rhs.rows() != 0,
-                 "Assemble() hasn't been called!");
-    m_rhsExtra = m_rhs;
+    GISMO_ENSURE(assembledElasticity, "gsElThermoAssembler::assemble() hasn't been called!");
+    /*m_rhsExtra = m_rhs;
 
     for (index_t p = 0; p < m_patches.nPatches(); ++p)
     {
@@ -89,17 +81,7 @@ void gsElThermoAssembler<T>::assembleThermo(const gsFunctionSet<T> & heatField)
         gsVisitorElThermoBoundary<T> bVisitor(heatField.function(it->first),it->second,m_rhsExtra,m_initTemp,
                                               m_lambda,m_mu,m_thExpCoef);
         this->apply(bVisitor,it->first,it->second);
-    }
+    }*/
 }
-
-template <class T>
-//void gsElThermoAssembler<T>::setHeatSolution(const gsMultiPatch<T> & heatSolution)
-void gsElThermoAssembler<T>::setHeatSolution(const gsFunctionSet<T> & heatSolution)
-
-{
-    assembleThermo(heatSolution);
-}
-
-
 
 } // namespace ends

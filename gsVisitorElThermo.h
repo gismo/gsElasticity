@@ -10,7 +10,7 @@
 
     Author(s): A. Shamanskiy
 */
-
+/*
 #pragma once
 
 namespace gismo
@@ -128,3 +128,4 @@ protected:
 }; //class definition ends
 
 } // namespace ends
+*/

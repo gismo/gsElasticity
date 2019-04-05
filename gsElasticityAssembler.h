@@ -48,10 +48,10 @@ public:
     typedef gsAssembler<T> Base;
 
     /// @brief Constructor of the assembler object.
-    gsElasticityAssembler(  gsMultiPatch<T> const & patches,
-                            gsMultiBasis<T> const & bases,
-                            gsBoundaryConditions<T> const & bconditions,
-                            const gsFunction<T> & body_force);
+    gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                          const gsMultiBasis<T> & bases,
+                          const gsBoundaryConditions<T> & bconditions,
+                          const gsFunction<T> & body_force);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -59,10 +59,10 @@ public:
     /// @brief Refresh routine to set dof-mappers
     virtual void refresh();
 
-    /// @brief Assembles the stiffness matrix
+    /// @brief Assembles the stiffness matrix and the RHS
     virtual void assemble();
 
-    /// @ brief Assembles the stiffness matrix for a iteration of Newton's method on a deformed configuration
+    /// @ brief Assembles the stiffness matrix and the RHS for a iteration of Newton's method on a deformed configuration
     virtual void assemble(const gsMultiPatch<T> & deformed);
 
     /// @brief Construct solution from computed solution vector

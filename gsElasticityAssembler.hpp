@@ -67,8 +67,8 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
 template <class T>
 void gsElasticityAssembler<T>::refresh()
 {
-    GISMO_ASSERT(m_dim == m_pde_ptr->domain().parDim(), "The RHS dimension and the domain dimension don't match!");
-    GISMO_ASSERT(m_dim == 2 || m_dim == 3, "Only two- and three-dimenstion domains are supported!");
+    GISMO_ENSURE(m_dim == m_pde_ptr->domain().parDim(), "The RHS dimension and the domain dimension don't match!");
+    GISMO_ENSURE(m_dim == 2 || m_dim == 3, "Only two- and three-dimenstion domains are supported!");
 
     std::vector<gsDofMapper> m_dofMappers(m_dim);
     for (index_t d = 0; d < m_dim; d++)

@@ -97,8 +97,7 @@ public:
                 S = lambda*E.trace()*gsMatrix<T>::Identity(dim,dim) + 2*mu*E;
             if (materialLaw == 1) // neo-Hooke ln(J)
             {
-                if (J<0)
-                    gsInfo << "J < 0\n";
+                GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda*log(J)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
                 Base::setC(C,RCGinv,lambda,2*(mu-lambda*log(J)));

@@ -1,16 +1,15 @@
 /** @file gsElThermoAssembler.h
 
-   @brief Provides assembler for the thermo-elasticity equation.
+    @brief Provides a thermal expansion solver for 2D plain strain and 3D continua.
 
-   This file is part of the G+Smo library.
+    This file is part of the G+Smo library.
 
-   This Source Code Form is subject to the terms of the Mozilla Public
-   License, v. 2.0. If a copy of the MPL was not distributed with this
-   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-   Author(s): A. Shamanskiy
+    Author(s): A.Shamanskiy
 */
-
 #pragma once
 
 #include <gsElasticity/gsElasticityAssembler.h>
@@ -18,51 +17,43 @@
 namespace gismo
 {
 
+/** @brief Assembles stiffness and mass matrices and right-hand side vector for linear and nonlinear elasticity
+           for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
+           components of the displacement vector, each block corresponding to one component.
+*/
 template <class T>
 class gsElThermoAssembler : public gsElasticityAssembler<T>
 {
 public:
+    typedef gsElasticityAssembler<T> Base;
 
+    /// @brief Constructor of the assembler object.
     gsElThermoAssembler(const gsMultiPatch<T> & patches,
                         const gsMultiBasis<T> & bases,
-                        T youngModulus,
-                        T poissonsRatio,
-                        T thermalExpCoef,
-                        T initTemp,
-                        const gsBoundaryConditions<T> & bcInfo,
-                        const gsFunction<T> & force,
-                        //const gsMultiPatch<T> & heatSolution,
-                        const gsFunctionSet<T> & heatSolution,
-                        dirichlet::strategy enforceStrategy = dirichlet::elimination,
-                        dirichlet::values computeStrategy = dirichlet::l2Projection);
+                        const gsBoundaryConditions<T> & b_conditions,
+                        const gsFunction<T> & body_force,
+                        const gsFunctionSet<T> & heat_field);
 
-    /// Main assembling routine. Assemble elasticity contribution,
-    /// as well as thermo contribution. The latter can be recomputed
-    /// independently by "assembleThermo()",
-    /// useful for time-dependent themo-elasticity
+    /// @brief Assembles the stiffness matrix and the RHS
     void assemble();
-    //void setHeatSolution(const gsMultiPatch<T> & heatSolution);
-    void setHeatSolution(const gsFunctionSet<T> & heatSolution);
 
 protected:
-
+    /// @brief Marks all non-Dirichlet sides for assembly of the boundary thermal stresses
     void findNonDirichletSides();
-    //void assembleThermo(const gsMultiPatch<T> & heatField);
+
+    /// @brief Assembles the thermal expanstion contribution to the stiffness matrix and the RHS
     void assembleThermo(const gsFunctionSet<T> & heatField);
 
 protected:
-    T m_thExpCoef;
-    T m_initTemp;
-    //const gsMultiPatch<T> & m_heatSolution;
-    const gsFunctionSet<T> & m_heatSolution;
+    const gsFunctionSet<T> & m_heatField;
+    bool assembledElasticity;
     std::vector<std::pair<int,int> > nonDirichletSides;
 
-    using gsElasticityAssembler<T>::m_patches;
-    using gsElasticityAssembler<T>::m_bConditions;
-    using gsElasticityAssembler<T>::m_rhsExtra;
-    using gsElasticityAssembler<T>::m_rhs;
-    using gsElasticityAssembler<T>::m_lambda;
-    using gsElasticityAssembler<T>::m_mu;
+    using Base::m_pde_ptr;
+    using Base::m_bases;
+    using Base::m_ddof;
+    using Base::m_options;
+    using Base::m_system;
 
 }; // class definition ends
 } // namespace ends
