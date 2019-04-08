@@ -1,6 +1,6 @@
 /** @file gsVisitorElThermoBoundary.h
 
-    @brief Computes boundary thermal stress in the normal direction.
+    @brief Visitor class for surface integration of the thermal stress.
 
     This file is part of the G+Smo library.
 
@@ -10,8 +10,12 @@
 
     Author(s): A. Shamanskiy
 */
-/*
+
 #pragma once
+
+#include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsFuncData.h>
+#include <gsPde/gsPoissonPde.h>
 
 namespace gismo
 {
@@ -21,123 +25,119 @@ class gsVisitorElThermoBoundary
 {
 public:
 
-    gsVisitorElThermoBoundary(const gsFunction<T> & heatSol, boxSide s, gsMatrix<T> & rhsExtra, T initTemp,
-                              T lambda, T mu, T thExpCoef) :
-        thermoSol(heatSol),side(s),m_rhsExtra(rhsExtra),startTemp(initTemp),
-        m_lambda(lambda),m_mu(mu),m_thExpCoef(thExpCoef)
+    gsVisitorElThermoBoundary(const gsPde<T> & pde_,
+                              boxSide s,
+                              const gsFunctionSet<T> & temperatureField_) :
+        side(s),
+        temperatureField(temperatureField_)
     {
-
+        pde_ptr = static_cast<const gsPoissonPde<T>*>(&pde_);
     }
 
-    void initialize(const gsBasis<T> & basis,
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+    void initialize(const gsBasis<T>& basis,
+                    const index_t patchIndex,
+                    const gsOptionList & options,
+                    gsQuadRule<T> & rule)
     {
-        m_dim = basis.dim();
+        rule = gsQuadrature::get(basis, options, side.direction());
+        md.flags = NEED_VALUE | NEED_MEASURE;
+        patch = patchIndex;
+        dim = basis.dim();
 
-        const int dir = side.direction();
-        gsVector<int> numQuadNodes ( m_dim );
-        for (int i = 0; i < m_dim; ++i)
-            numQuadNodes[i] = basis.degree(i) + 1;
-        numQuadNodes[dir] = 1;
+        paramTemp = options.getSwitch("ParamTemp");
+        initTemp = options.getReal("InitTemp");
+        thermalExpCoef = options.getReal("ThExpCoef");
 
-        // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-
-        // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_JACOBIAN; // Jacobian?
+        T E = options.getReal("YoungsModulus");
+        T pr = options.getReal("PoissonsRatio");
+        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
+        mu     = E / ( 2. * ( 1. + pr ) );
     }
 
-    inline void evaluate(gsBasis<T> const       & basis,
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsMatrix<T>            & quNodes)
+    inline void evaluate(const gsBasis<T> & basis, // to do: more unknowns
+                         const gsGeometry<T> & geo,
+                         const gsMatrix<T> & quNodes)
     {
-        // Compute the active basis functions
-        // Assumes actives are the same for all quadrature points on the current element
-        basis.active_into(quNodes.col(0),localActiveIndices);
-        numActiveFunctions = localActiveIndices.rows();
-
+        // store quadrature points of the element for geometry evaluation
+        md.points = quNodes;
+        // find local indices which are active on the element
+        basis.active_into(quNodes.col(0), localIndices);
+        numActiveFunctions = localIndices.rows();
         // Evaluate basis functions on element
         basis.eval_into(quNodes, basisValues);
-
-        // Compute geometry related values
-        geoEval.evaluateAt(quNodes);
-
-        // Compute heat(thermo) values
-        thermoSol.eval_into(quNodes,thermoValues);
-
-        // Initialize local rhs
-        localRhs.setZero(m_dim*numActiveFunctions, 1 );
+        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
+        geo.computeMap(md);
+        // Evaluate temperature
+        if (paramTemp) // evaluate temperature in the parametric domain
+            temperatureField.piece(patch).eval_into(quNodes,tempValues);
+        else           // evaluate temperature in the physical domain
+            temperatureField.eval_into(md.values[0],tempValues);
+        // Initialize local matrix/rhs
+        localRhs.setZero(dim*numActiveFunctions,1);
     }
 
-    inline void assemble(gsDomainIterator<T>    & , // element,
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T> & quWeights)
     {
-        for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
+        index_t N = numActiveFunctions;
+
+        // loop over the quadrature nodes
+        for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Compute the outer normal vector on the side
-            geoEval.outerNormal(k, side, unormal);
+            // normal length equals to the local area measure
+            gsVector<T> unormal;
+            outerNormal(md, q, side, unormal);
 
-            // Multiply quadrature weight by the measure of normal and time-dependent factor
-            const T weight = m_thExpCoef*(2*m_mu+m_dim*m_lambda)*quWeights[k] * (thermoValues.at(k)-startTemp);
+            // Collect the factors here: quadrature weight, geometry measure and time factor
+            const T weight = thermalExpCoef*(2*mu+dim*lambda)*quWeights[q] * (tempValues.at(q) - initTemp);
 
-            for (index_t j = 0; j < m_dim; ++j)
-                localRhs.middleRows(j*numActiveFunctions,numActiveFunctions).noalias() +=
-                     weight * unormal(j,0) * basisValues.col(k) ;
+            for (index_t d = 0; d < dim; ++d)
+                localRhs.middleRows(d*N,N).noalias() += weight * unormal(d,0) * basisValues.col(q) ;
         }
     }
 
-    void localToGlobal(const gsStdVectorRef<gsDofMapper> & mappers,
-                       const gsMatrix<T>     & , // eliminatedDofs,
-                       const int               patchIndex,
-                       gsSparseMatrix<T>     & , // sysMatrix,
-                       gsMatrix<T>           & ) // rhsMatrix )
+    inline void localToGlobal(const int patchIndex,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
     {
-        for (index_t d = 0; d!= m_dim; ++d)
+        std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
+        gsVector<size_t> blockNumbers(dim);
+        for (index_t d = 0; d < dim; ++d)
         {
-            gsMatrix<unsigned> globalActiveIndices(localActiveIndices);
-            mappers[d].localToGlobal(localActiveIndices, patchIndex, globalActiveIndices);
-
-            for (index_t i = 0; i < numActiveFunctions; ++i)
-            {
-                const index_t gi = d * numActiveFunctions +  i; // row index
-                const index_t ii = globalActiveIndices(i);
-
-                if ( mappers[d].is_free_index(ii) )
-                    m_rhsExtra.row(ii) += localRhs.row(gi);
-            }
+           system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
+           blockNumbers.at(d) = d;
         }
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
     }
 
 protected:
-
-    // Thermo info
-    const gsFunction<T> & thermoSol;
+    // general problem info
+    index_t dim;
+    index_t patch;
     boxSide side;
-    gsMatrix<T> thermoValues;
+    const gsPoissonPde<T> * pde_ptr;
+    // geometry mapping
+    gsMapData<T> md;
 
-    index_t m_dim;
-    gsMatrix<T> localRhs; // Local rhs
-    gsMatrix <T> & m_rhsExtra; // Global rhs
+    // Lame coefficients
+    T lambda, mu;
 
-    T startTemp;
-    T m_lambda;
-    T m_mu;
-    T m_thExpCoef;
+    // temperature info
+    const gsFunctionSet<T> & temperatureField;
+    bool paramTemp;
+    T initTemp, thermalExpCoef;
 
+    // local components of the global linear system
+    gsMatrix<T> localRhs;
 
-    // Basis values
-    gsMatrix<T>      basisValues;
-    gsMatrix<unsigned> localActiveIndices;
+    // Stored evaluations
     index_t numActiveFunctions;
-
-    // Normal values
-    gsVector<T> unormal;
-
-
+    gsMatrix<unsigned> localIndices;
+    gsMatrix<T> basisValues;
+    gsMatrix<T> tempValues;
 
 }; //class definition ends
 
 } // namespace ends
-*/
+

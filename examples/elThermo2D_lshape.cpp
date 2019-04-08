@@ -25,9 +25,10 @@ int main(int argc, char* argv[]){
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
-    gsConstantFunction<> g(0.,0.,2);
+    gsConstantFunction<> gravity(0.,0.,2);
 
-    gsConstantFunction<> heat(100.,2);
+    gsConstantFunction<> temperature(200.,2);
+    //gsFunctionExpr<> temperature("(y+1)*100+20",2);
     // material parameters
     real_t youngsModulus = 74e9;
     real_t poissonsRatio = 0.33;
@@ -56,12 +57,14 @@ int main(int argc, char* argv[]){
         basis.uniformRefine();
 
     // creating assembler
-    gsElThermoAssembler<real_t> assembler(geometry,basis,bcInfo,g,heat);
+    gsElThermoAssembler<real_t> assembler(geometry,basis,bcInfo,gravity,temperature);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
     assembler.options().setReal("InitTemp",initTemp);
     assembler.options().setReal("ThExpCoef",thermalExpCoef);
+    assembler.options().setSwitch("ParamTemp",false); // tells assembler to evaluate the temperature field in the physical domain
+
     gsInfo<<"Assembling...\n";
     gsStopwatch clock;
     clock.restart();
@@ -86,7 +89,7 @@ int main(int argc, char* argv[]){
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
 
-    gsField<> heatField(assembler.patches(),heat);
+    gsField<> heatField(assembler.patches(),temperature);
 
     //=============================================//
                   // Output //

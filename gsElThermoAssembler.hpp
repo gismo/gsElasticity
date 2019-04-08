@@ -15,8 +15,10 @@
 
 #include <gsElasticity/gsElThermoAssembler.h>
 
+
 #include <gsElasticity/gsVisitorElThermo.h>
 #include <gsElasticity/gsVisitorElThermoBoundary.h>
+
 
 namespace gismo
 {
@@ -26,13 +28,14 @@ gsElThermoAssembler<T>::gsElThermoAssembler(const gsMultiPatch<T> & patches,
                                             const gsMultiBasis<T> & bases,
                                             const gsBoundaryConditions<T> & b_conditions,
                                             const gsFunction<T> & body_force,
-                                            const gsFunctionSet<T> & heat_field)
+                                            const gsFunctionSet<T> & temperature_field)
     :gsElasticityAssembler<T>(patches,bases,b_conditions,body_force),
-     m_heatField(heat_field),
+     m_temperatureField(temperature_field),
      assembledElasticity(false)
 {
     m_options.addReal("InitTemp","Initial temperature of the object",20.);
     m_options.addReal("ThExpCoef","Coefficient of thermal expansion of the material",20.);
+    m_options.addSwitch("ParamTemp","Yes if the temperature field is parametric",true);
 
     findNonDirichletSides();
 }
@@ -43,7 +46,7 @@ void gsElThermoAssembler<T>::assemble()
     gsElasticityAssembler<T>::assemble();
     assembledElasticity = true;
 
-    assembleThermo(m_heatField);
+    assembleThermo(m_temperatureField);
 }
 
 template <class T>
@@ -51,7 +54,7 @@ void gsElThermoAssembler<T>::findNonDirichletSides()
 {
     for (std::vector< patchSide >::iterator side = m_pde_ptr->domain().bBegin(); side != m_pde_ptr->domain().bEnd(); ++side)
     {
-        std::pair<int,int> temp(side->patch,side->index());
+        std::pair<int,boxSide> temp(side->patch,side->index());
 
         typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
         for ( ; it != m_pde_ptr->bc().dirichletEnd(); ++it )
@@ -67,21 +70,15 @@ template <class T>
 void gsElThermoAssembler<T>::assembleThermo(const gsFunctionSet<T> & heatField)
 {
     GISMO_ENSURE(assembledElasticity, "gsElThermoAssembler::assemble() hasn't been called!");
-    /*m_rhsExtra = m_rhs;
 
-    for (index_t p = 0; p < m_patches.nPatches(); ++p)
+    gsVisitorElThermo<T> visitor(*m_pde_ptr,m_temperatureField);
+    gsAssembler<T>::template push<gsVisitorElThermo<T> >(visitor);
+
+    for (auto const & it : nonDirichletSides)
     {
-        gsVisitorElThermo<T> visitor(heatField.function(p),m_rhsExtra,
-                                     m_lambda,m_mu,m_thExpCoef);
-        this->apply(visitor,p);
+        gsVisitorElThermoBoundary<T> bVisitor(*m_pde_ptr,it.second,m_temperatureField);
+        gsAssembler<T>::template apply<gsVisitorElThermoBoundary<T> >(bVisitor,it.first,it.second);
     }
-
-    for(std::vector<std::pair<int, int> >::iterator it = nonDirichletSides.begin(); it != nonDirichletSides.end(); ++it)
-    {
-        gsVisitorElThermoBoundary<T> bVisitor(heatField.function(it->first),it->second,m_rhsExtra,m_initTemp,
-                                              m_lambda,m_mu,m_thExpCoef);
-        this->apply(bVisitor,it->first,it->second);
-    }*/
 }
 
 } // namespace ends

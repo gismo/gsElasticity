@@ -58,8 +58,6 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("YoungsModulus","Youngs modulus of the material",200e9);
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
-    opt.addReal("Density","Density of the material",1.);
-    opt.addReal("TimeFactor","Time factor for the time-dependent forces",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
     return opt;
 }

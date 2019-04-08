@@ -21,6 +21,9 @@ namespace gismo
            for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
 */
+
+// TODO: efficient RHS reassembly
+
 template <class T>
 class gsElThermoAssembler : public gsElasticityAssembler<T>
 {
@@ -32,7 +35,7 @@ public:
                         const gsMultiBasis<T> & bases,
                         const gsBoundaryConditions<T> & b_conditions,
                         const gsFunction<T> & body_force,
-                        const gsFunctionSet<T> & heat_field);
+                        const gsFunctionSet<T> & temperature_field);
 
     /// @brief Assembles the stiffness matrix and the RHS
     void assemble();
@@ -42,18 +45,15 @@ protected:
     void findNonDirichletSides();
 
     /// @brief Assembles the thermal expanstion contribution to the stiffness matrix and the RHS
-    void assembleThermo(const gsFunctionSet<T> & heatField);
+    void assembleThermo(const gsFunctionSet<T> & temperatureField);
 
 protected:
-    const gsFunctionSet<T> & m_heatField;
+    const gsFunctionSet<T> & m_temperatureField;
     bool assembledElasticity;
-    std::vector<std::pair<int,int> > nonDirichletSides;
+    std::vector<std::pair<int,boxSide> > nonDirichletSides;
 
     using Base::m_pde_ptr;
-    using Base::m_bases;
-    using Base::m_ddof;
     using Base::m_options;
-    using Base::m_system;
 
 }; // class definition ends
 } // namespace ends

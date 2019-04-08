@@ -1,6 +1,6 @@
 /** @file gsVisitorElThermo.h
 
-    @brief Computes thermal stress in the interia.
+    @brief Visitor class for volumetric integration of the thermal stress.
 
     This file is part of the G+Smo library.
 
@@ -10,8 +10,12 @@
 
     Author(s): A. Shamanskiy
 */
-/*
+
 #pragma once
+
+#include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsFuncData.h>
+#include <gsPde/gsPoissonPde.h>
 
 namespace gismo
 {
@@ -21,111 +25,120 @@ class gsVisitorElThermo
 {
 public:
 
-    gsVisitorElThermo(const gsFunction<T> & heatSol, gsMatrix<T> & rhsExtra,
-                      T lambda, T mu, T thExpCoef) :
-        thermoSol(heatSol),m_rhsExtra(rhsExtra),
-        m_lambda(lambda),m_mu(mu),m_thExpCoef(thExpCoef)
+    gsVisitorElThermo(const gsPde<T> & pde_,
+                      const gsFunctionSet<T> & temperatureField_) :
+        temperatureField(temperatureField_)
     {
-
+        pde_ptr = static_cast<const gsPoissonPde<T>*>(&pde_);
     }
 
     void initialize(const gsBasis<T> & basis,
-                    gsQuadRule<T>    & rule,
-                    unsigned         & evFlags )
+                    const index_t patchIndex,
+                    const gsOptionList & options,
+                    gsQuadRule<T> & rule)
     {
-        m_dim = basis.dim();
-        gsVector<index_t> numQuadNodes(m_dim);
+        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here (?)
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        patch = patchIndex;
+        dim = basis.dim();
 
-        for (index_t i = 0; i < m_dim; ++i) // to do: improve
-            numQuadNodes[i] = basis.degree(i) + 1;
+        paramTemp = options.getSwitch("ParamTemp");
+        thermalExpCoef = options.getReal("ThExpCoef");
 
-        // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-        // Set Geometry evaluation flags
-        evFlags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-
+        T E = options.getReal("YoungsModulus");
+        T pr = options.getReal("PoissonsRatio");
+        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
+        mu     = E / ( 2. * ( 1. + pr ) );
     }
 
-    inline void evaluate(gsBasis<T> const       & basis,
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsMatrix<T>            & quNodes)
+    inline void evaluate(const gsBasis<T> & basis,
+                         const gsGeometry<T> & geo,
+                         const gsMatrix<T> & quNodes)
     {
-        basis.active_into(quNodes.col(0), localActiveIndices);
-        numActiveFunctions = localActiveIndices.rows();
-
+        // store quadrature points of the element for geometry evaluation
+        md.points = quNodes;
+        // find local indices which are active on the element
+        basis.active_into(quNodes.col(0), localIndices);
+        numActiveFunctions = localIndices.rows();
         // Evaluate basis functions on element
-        basis.evalAllDers_into(quNodes, 1, basisData);
-
-        // Compute image of Gauss nodes under geometry mapping as well as Jacobians
-        geoEval.evaluateAt(quNodes);
-
-        heatGrad.setZero(2,quNodes.cols());
-        localRhs.setZero(m_dim*numActiveFunctions,1);
-        thermoSol.deriv_into(quNodes,heatGrad);
+        basis.evalAllDers_into(quNodes, 1, basisValues);
+        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
+        geo.computeMap(md);
+        // Compute temperature gradients
+        if (paramTemp) // evaluate gradients in the parametric domain
+            temperatureField.piece(patch).deriv_into(quNodes,tempGrads);
+        else           // evaluate gradients in the physical domain
+            temperatureField.piece(patch).deriv_into(md.values[0],tempGrads);
+        // Initialize local matrix/rhs
+        localRhs.setZero(dim*numActiveFunctions, 1);
     }
 
-    inline void assemble(gsDomainIterator<T>    & , // element,
-                         gsGeometryEvaluator<T> & geoEval,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T> & quWeights)
     {
-        for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
+        // values of basis functions, 1 x numActiveFunctions
+        gsMatrix<T> & basisVals = basisValues[0];
+        index_t N = numActiveFunctions;
+
+        // Loop over the quadrature nodes
+        for (index_t q = 0; q < quWeights.rows(); ++q)
         {
-            geoEval.transformGradients(k,heatGrad,physGrad);
+            // Multiply quadrature weight by the geometry measure
+            const T weight = thermalExpCoef*(2*mu+dim*lambda)*quWeights[q]*md.measure(q);
 
-            const T weight = m_thExpCoef*(2*m_mu+m_dim*m_lambda)*quWeights[k]*geoEval.measure(k);
-
-            for (index_t d = 0; d < m_dim; ++d)
+            if (paramTemp) // transform temperature gradients to the physical domain
             {
-                localRhs.middleRows(d*numActiveFunctions,numActiveFunctions).noalias() -=
-                        weight * physGrad(d,0) * basisData[0].col(k);
+                // temperature gradient at one point in the physical domain, dim x 1
+                gsMatrix<T> physGrad;
+                transformGradients(md,q,tempGrads,physGrad);
+                for (index_t d = 0; d < dim; ++d)
+                    localRhs.middleRows(d*N,N).noalias() += weight * physGrad(d,0) * basisVals.col(q);
             }
+            else  // use temperature gradients as they are
+                for (index_t d = 0; d < dim; ++d)
+                    localRhs.middleRows(d*N,N).noalias() += weight * tempGrads(d,q) * basisVals.col(q);
         }
     }
 
-    void localToGlobal(const gsStdVectorRef<gsDofMapper> & mappers,
-                       const gsMatrix<T>     & , // eliminatedDofs,
-                       const int               patchIndex,
-                       gsSparseMatrix<T>     & , // sysMatrix,
-                       gsMatrix<T>           & ) // rhsMatrix )
+    inline void localToGlobal(const int patchIndex,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T> & system)
     {
-        for (index_t d = 0; d!= m_dim; ++d)
+        std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
+        gsVector<size_t> blockNumbers(dim);
+        for (index_t d = 0; d < dim; ++d)
         {
-            gsMatrix<unsigned> globalActiveIndices(localActiveIndices);
-            mappers[d].localToGlobal(localActiveIndices, patchIndex, globalActiveIndices);
-
-            for (index_t i = 0; i < numActiveFunctions; ++i)
-            {
-                const index_t gi = d * numActiveFunctions +  i; // row index
-                const index_t ii = globalActiveIndices(i);
-
-                if ( mappers[d].is_free_index(ii) )
-                    m_rhsExtra.row(ii) += localRhs.row(gi);
-            }
+           system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
+           blockNumbers.at(d) = d;
         }
-
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
     }
 
 protected:
+    // general problem info
+    index_t dim;
+    index_t patch;
+    const gsPoissonPde<T> * pde_ptr;
+    // geometry mapping
+    gsMapData<T> md;
 
-    const gsFunction<T> & thermoSol;
-    gsMatrix<T> heatGrad, physGrad;
+    // Lame coefficients
+    T lambda, mu;
 
-    index_t m_dim;
-    gsMatrix<T> localRhs; // Local rhs
-    gsMatrix <T> & m_rhsExtra; // Global rhs
+    // Temperature info
+    const gsFunctionSet<T> & temperatureField;
+    bool paramTemp;
+    T thermalExpCoef;
 
-    // Basis values
-    std::vector<gsMatrix<T> > basisData;
-    gsMatrix<unsigned> localActiveIndices;
+    // local components of the global linear system
+    gsMatrix<T> localRhs;
+
+    // Stored evaluations
     index_t numActiveFunctions;
-
-    T m_lambda;
-    T m_mu;
-    T m_thExpCoef;
-
-
+    gsMatrix<unsigned> localIndices;
+    std::vector<gsMatrix<T> > basisValues;
+    gsMatrix<T> tempGrads;
 
 }; //class definition ends
 
 } // namespace ends
-*/
