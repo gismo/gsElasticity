@@ -10,25 +10,17 @@ namespace gismo
 //--------- Mesh deformation --------//
 //-----------------------------------//
 
-TEMPLATE_INST void computeDeformation(std::vector<gsMultiPatch<real_t> > & displacements,
-                                      gsMultiPatch<real_t> const & initDomain, gsBoundaryConditions<real_t> const & bdryCurves,
-                                      index_t numSteps, index_t materialLaw, real_t poissonRatio);
+TEMPLATE_INST index_t computeMeshDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
+                                             gsBoundaryConditions<real_t> const & bdryCurves, real_t poissonRatio,
+                                             index_t numSteps, index_t maxAdapt, real_t qualityRatio,
+                                             bool finalize, real_t tolerance, index_t maxNumIterations);
 
-TEMPLATE_INST void computeDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
-                                      gsBoundaryConditions<real_t> const & bdryCurves, real_t poissonRatio, real_t threshold);
-
-TEMPLATE_INST void computeDeformationNonlin(gsMultiPatch<real_t> & domain, gsMultiPatch<real_t> const & initDomain,
-                                            gsMultiPatch<real_t> const & initGuess,
-                                            index_t materialLaw, real_t poissonRatio,
-                                            real_t tolerance, index_t maxNumIterations);
-
-TEMPLATE_INST void plotDeformation(std::vector<gsMultiPatch<real_t> > & displacements,
-                                   gsMultiPatch<real_t> const & initDomain, std::string fileName,
-                                   index_t numSamples);
-
-TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
+TEMPLATE_INST void plotDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
+                                   std::string fileName, index_t numSamples);
 
 TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
+
+TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
 
 TEMPLATE_INST real_t geometryJacRatio(gsMultiPatch<real_t> const & domain);
 

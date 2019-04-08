@@ -23,50 +23,40 @@ namespace gismo
 //--------- Mesh deformation --------//
 //-----------------------------------//
 
-/// @brief Computes a deformation of a given initial domain using incremental loading
-/// such that the domain's boundary coincides with a given set of boundary curves;
-/// returns a set of displacement field for each incremental step;
-/// can be used on its own or as an initial guess for computeDeformationNonlin
+/** @brief Computes a deformation of a given initial domain such that the domain's boundary coninsides with a given set of boundary curves;
+/// uses adaptive incremental Newton's method; returns a set of displacement fields for every iteration;
+/// returns 0 if successful or 1 if maximum number of iterations or refinements is exceeded;
+\param[in] numSteps Preferred number of incremental steps
+\param[in] maxAdapt Maximum number of adaptive stepsize halving
+\param[in] qualityRatio Minumun quality ratio to maintain from step to step
+\param[in] finalize Run full Newton's method at the last incremental step
+\param[in] tolerance Convergence tolerance for the final Newton's run
+\param[in] maxNumIterations Maximum number of iterations for the final Newton's run
+*/
 template <class T>
-void computeDeformation(std::vector<gsMultiPatch<T> > & displacements,
-                        gsMultiPatch<T> const & initDomain, gsBoundaryConditions<T> const & bdryCurves,
-                        index_t numSteps = 3, index_t materialLaw = 1, T poissonRatio = 0.49);
+index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                               gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49,
+                               index_t numSteps = 3, index_t maxAdapt = 5, T qualityRatio = 0.2,
+                               bool finalize = true, T tolerance = 1e-12, index_t maxNumIterations = 25);
 
-/// @brief Computes a deformation of a given initial domain using incremental loading with adaptive step size
-/// such that the domain's boundary coincides with a given set of boundary curves;
-/// returns a set of displacement field for each incremental step;
-/// can be used on its own or as an initial guess for computeDeformationNonlin
-template <class T>
-void computeDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                        gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49, T threshold = 0.3);
-
-/// @brief Computes a deformation of a given initial domain using nonlinear elasticity and a given initial guess
-/// such that the domain's boundary coincides with a given set of boundary curves;
-/// use computeDeformation as an initial guess
-template <class T>
-void computeDeformationNonlin(gsMultiPatch<T> & domain, gsMultiPatch<T> const & initDomain,
-                              gsMultiPatch<T> const & initGuess,
-                              index_t materialLaw = 1, T poissonRatio = 0.49,
-                              T tolerance = 1e-12, index_t maxNumIterations = 50);
-
-/// @brief Plots steps of the computed incremental deformation from computeDeformatuin;
-/// outputs a deformed mesh for every incremental step;
+/// @brief Plots every displacement computed by *computeMeshDeformation*;
 /// set <numSamples> greater than 0 to plot the Jacobian of the geometry mapping using <numSamples> points
 template <class T>
-void plotDeformation(std::vector<gsMultiPatch<T> > & displacements,
-                     gsMultiPatch<T> const & intiDomain, std::string fileName,
-                     index_t numSamples = 0);
-
-/// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
-/// return -1 if yes or a number of the first invalid patch
-template <class T>
-index_t checkGeometry(gsMultiPatch<T> const & domain);
+void plotDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
+                     std::string fileName, index_t numSamples = 0);
 
 /// @brief Plots the mesh and the jacobian (if <numSamples> > 0) to Paraview
 template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples);
 
-/// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant)
+/// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
+/// returns -1 if yes or the number of the first invalid patch;
+/// samples the Jacobian elementwise at the quadrature points and the corners
+template <class T>
+index_t checkGeometry(gsMultiPatch<T> const & domain);
+
+/// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant);
+/// samples the Jacobian elementwise at the quadrature points and the corners
 template <class T>
 T geometryJacRatio(gsMultiPatch<T> const & domain);
 
