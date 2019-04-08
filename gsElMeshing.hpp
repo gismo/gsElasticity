@@ -341,7 +341,7 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
         gsVector<index_t> numNodes(domain.dim());
-        for (int i = 0; i < domain.dim(); ++i)
+        for (short_t i = 0; i < domain.dim(); ++i)
             numNodes.at(i) = domain.basis(p).degree(i)+1;
         gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
 
@@ -351,7 +351,7 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
             genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
             md.points = points;
             domain.patch(p).computeMap(md);
-            for (int q = 0; q < points.cols(); ++q)
+            for (index_t q = 0; q < points.cols(); ++q)
                 if (md.jacobian(q).determinant() <= 0)
                     return p;
         }
@@ -370,7 +370,7 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
     for (index_t p = 0; p < domain.nPatches(); ++p)
     {
         gsVector<index_t> numNodes(domain.dim());
-        for (int i = 0; i < domain.dim(); ++i)
+        for (short_t i = 0; i < domain.dim(); ++i)
             numNodes.at(i) = domain.basis(p).degree(i)+1;
         gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
 
@@ -383,7 +383,7 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
 
             T min = md.jacobian(0).determinant();
             T max = min;
-            for (int q = 1; q < points.cols(); ++q)
+            for (index_t q = 1; q < points.cols(); ++q)
             {
                 T jac = md.jacobian(q).determinant();
                 if (jac > max)
@@ -535,7 +535,7 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
 {
     GISMO_ASSERT(A.parDim() == B.parDim(), "Geometries are incompatible: different parametric dimensions: " +
                                            std::to_string(A.parDim()) + " and " + std::to_string(B.parDim()) + "\n");
-    index_t pDim = A.parDim();
+    short_t pDim = A.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2, "Can only interpolate between curves or surfaces. Given geometries have parametric dimension " +
                                         std::to_string(pDim) + "\n");
     for (index_t d = 0; d < pDim; ++d)
@@ -545,7 +545,7 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
 
     GISMO_ASSERT(A.targetDim() == B.targetDim(), "Geometries are incompatible: different physical dimensions: " +
                                                  std::to_string(A.targetDim()) + " and " + std::to_string(B.targetDim()) + "\n");
-    index_t tDim = A.targetDim();
+    short_t tDim = A.targetDim();
     GISMO_ASSERT(A.coefsSize() == B.coefsSize(), "Geometries are incompatible: different number of control points: " +
                                                  std::to_string(A.coefsSize()) + " and " + std::to_string(B.coefsSize()) + "\n");
     index_t baseNum = A.coefsSize();
@@ -767,7 +767,7 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
 {
     GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
 
-    index_t pDim = base.parDim();
+    short_t pDim = base.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2,"Wrong geometry type\n");
 
     gsKnotVector<> zKnots(0.0,1.0, num - deg - 1, deg + 1);

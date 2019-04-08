@@ -76,7 +76,7 @@ public:
             // Coolect of the factors here: quadrature weight, geometry measure and time factor
             const T weight = quWeights[q] * unormal.norm() * timeFactor;
 
-            for (index_t d = 0; d < dim; ++d)
+            for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*numActiveFunctions,numActiveFunctions).noalias() +=
                     weight * neumannValues(d,q) * basisValues.col(q) ;
         }
@@ -88,7 +88,7 @@ public:
     {
         std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
         gsVector<size_t> blockNumbers(dim);
-        for (index_t d = 0; d < dim; ++d)
+        for (short_t d = 0; d < dim; ++d)
         {
             system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
             blockNumbers.at(d) = d;
@@ -98,7 +98,7 @@ public:
 
 protected:   
     // general problem info
-    index_t dim;
+    short_t dim;
     const gsFunction<T> * neumannFunction_ptr;
     boxSide patchSide;
     // geometry mapping

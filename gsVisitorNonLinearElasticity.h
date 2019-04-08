@@ -127,11 +127,11 @@ public:
                     gsMatrix<T> materialTangent = materialTangentTemp * B_j;
                     T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
                     // K_tg = K_tg_mat + I*K_tg_geo;
-                    for (index_t d = 0; d < dim; ++d)
+                    for (short_t d = 0; d < dim; ++d)
                         materialTangent(d,d) += geometricTangent;
 
-                    for (index_t di = 0; di < dim; ++di)
-                        for (index_t dj = 0; dj < dim; ++dj)
+                    for (short_t di = 0; di < dim; ++di)
+                        for (short_t dj = 0; dj < dim; ++dj)
                             localMat(di*N+i, dj*N+j) += weight * materialTangent(di,dj);
                 }
                 // Second Piola-Kirchhoff stress tensor as vector
@@ -139,11 +139,11 @@ public:
                 Base::voigtStress(Svec,S);
                 // rhs = -r = force - B*Svec,
                 gsVector<T> localResidual = B_i.transpose() * Svec;
-                for (index_t d = 0; d < dim; d++)
+                for (short_t d = 0; d < dim; d++)
                     localRhs(d*N+i) -= weight * localResidual(d);
             }
             // contribution of volumetric load function to residual/rhs
-            for (index_t d = 0; d < dim; ++d)
+            for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N,N).noalias() += weight * rho * forceValues(d,q) * timeFactor * basisVals.col(q) ;
         }
     }
