@@ -92,11 +92,11 @@ public:
                 gsMatrix<T> physGrad;
                 transformGradients(md,q,tempGrads,physGrad);
                 for (index_t d = 0; d < dim; ++d)
-                    localRhs.middleRows(d*N,N).noalias() += weight * physGrad(d,0) * basisVals.col(q);
+                    localRhs.middleRows(d*N,N).noalias() -= weight * physGrad(d,0) * basisVals.col(q);
             }
             else  // use temperature gradients as they are
                 for (index_t d = 0; d < dim; ++d)
-                    localRhs.middleRows(d*N,N).noalias() += weight * tempGrads(d,q) * basisVals.col(q);
+                    localRhs.middleRows(d*N,N).noalias() -= weight * tempGrads(d,q) * basisVals.col(q);
         }
     }
 
