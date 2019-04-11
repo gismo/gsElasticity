@@ -44,9 +44,10 @@ template <class T>
 void gsElThermoAssembler<T>::assemble()
 {
     gsElasticityAssembler<T>::assemble();
+    elastRhs = gsAssembler<T>::m_system.rhs();
     assembledElasticity = true;
 
-    assembleThermo(m_temperatureField);
+    assembleThermo();
 }
 
 template <class T>
@@ -67,9 +68,10 @@ void gsElThermoAssembler<T>::findNonDirichletSides()
 }
 
 template <class T>
-void gsElThermoAssembler<T>::assembleThermo(const gsFunctionSet<T> & heatField)
+void gsElThermoAssembler<T>::assembleThermo()
 {
     GISMO_ENSURE(assembledElasticity, "gsElThermoAssembler::assemble() hasn't been called!");
+    gsAssembler<T>::m_system.rhs().setZero();
 
     gsVisitorElThermo<T> visitor(*m_pde_ptr,m_temperatureField);
     gsAssembler<T>::template push<gsVisitorElThermo<T> >(visitor);
@@ -79,6 +81,7 @@ void gsElThermoAssembler<T>::assembleThermo(const gsFunctionSet<T> & heatField)
         gsVisitorElThermoBoundary<T> bVisitor(*m_pde_ptr,it.second,m_temperatureField);
         gsAssembler<T>::template apply<gsVisitorElThermoBoundary<T> >(bVisitor,it.first,it.second);
     }
+    gsAssembler<T>::m_system.rhs() += elastRhs;
 }
 
 } // namespace ends

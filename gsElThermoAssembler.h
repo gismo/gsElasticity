@@ -22,8 +22,6 @@ namespace gismo
            components of the displacement vector, each block corresponding to one component.
 */
 
-// TODO: efficient RHS reassembly
-
 template <class T>
 class gsElThermoAssembler : public gsElasticityAssembler<T>
 {
@@ -40,17 +38,19 @@ public:
     /// @brief Assembles the stiffness matrix and the RHS
     void assemble();
 
+    /// @brief Assembles the thermal expanstion contribution to the RHS
+    void assembleThermo();
+
 protected:
     /// @brief Marks all non-Dirichlet sides for assembly of the boundary thermal stresses
     void findNonDirichletSides();
-
-    /// @brief Assembles the thermal expanstion contribution to the stiffness matrix and the RHS
-    void assembleThermo(const gsFunctionSet<T> & temperatureField);
 
 protected:
     const gsFunctionSet<T> & m_temperatureField;
     bool assembledElasticity;
     std::vector<std::pair<int,boxSide> > nonDirichletSides;
+    //
+    gsMatrix<T> elastRhs;
 
     using Base::m_pde_ptr;
     using Base::m_options;

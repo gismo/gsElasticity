@@ -37,10 +37,10 @@ int main(int argc, char *argv[])
     cmd.addReal("f","flux","Heat flux at the boundary",fluxValue);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    // material parameters (stainless steel, more or less)
+    // material parameters
     real_t youngsModulus = 74e9; // doesn't matter for the simulation
     real_t poissonsRatio = 0.33; // doesn't matter for the simulation
-    real_t thExpCoef = 11.2e-6;
+    real_t thExpCoef = 2e-4;
     real_t initTemp = 20.;
 
     // heat source function, rhs for the heat equation
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     clock.restart();
     gsInfo<<"Assembling...\n";
     heatAssembler.assemble();
-    gsInfo << "Assembled a heat equation system (matrices and a load vector) with "
+    gsInfo << "Assembled the heat equation system (matrices and a load vector) with "
            << heatAssembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
     // setting initial conditions
@@ -101,13 +101,19 @@ int main(int argc, char *argv[])
     gsMultiPatch<> solutionTemp;
     heatAssembler.constructSolution(solVectorTemp,solutionTemp);
     gsField<> tempField(stationary.patches(),solutionTemp);
-/*
+
     // creating elasticity assembler
-    gsElThermoAssembler<real_t> elastAssembler(geometry,basis,youngsModulus,poissonsRatio,
-                                               thExpCoef,initTemp,bcElast,fElast,solutionHeat);
-    gsInfo<< "Assembling thermo-elasticity...\n";
+    gsElThermoAssembler<real_t> elastAssembler(geometry,basis,bcElast,gravity,solutionTemp);
+    elastAssembler.options().setReal("YoungsModulus",youngsModulus);
+    elastAssembler.options().setReal("PoissonsRatio",poissonsRatio);
+    elastAssembler.options().setReal("InitTemp",initTemp);
+    elastAssembler.options().setReal("ThExpCoef",thExpCoef);
+
+    clock.restart();
+    gsInfo<< "Assembling...\n";
     elastAssembler.assemble();
-    gsInfo << "Assembled elasticity system (matrix and load vector) with " << elastAssembler.numDofs() << " dofs.\n";
+    gsInfo << "Assembled the elasticity system (matrix and load vector) with "
+           << elastAssembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
     // setting initial conditions
     gsMatrix<> solVectorElast;
@@ -116,14 +122,14 @@ int main(int argc, char *argv[])
     // constructing solution as an IGA function
     gsMultiPatch<> solutionElast;
     elastAssembler.constructSolution(solVectorElast,solutionElast);
-    gsField<> initialElastField(elastAssembler.patches(),solutionElast);
-*/
+    gsField<> elastField(elastAssembler.patches(),solutionElast);
+
     // setting up Paraview output
     gsParaviewCollection collection("rotor");
     std::map<std::string,const gsField<> *> fields;
     // plotting initial conditions to Paraview
     fields["Temperature"] = &tempField;
-    //fields["Displacement"] = &initialElastField;
+    fields["Displacement"] = &elastField;
 
     gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,0,numPlotPoints);
 
@@ -133,6 +139,7 @@ int main(int argc, char *argv[])
 
     real_t Dt = endTime / numSteps ;
     gsInfo << "Solving...\n";
+    clock.restart();
     for ( int i = 1; i<=numSteps; ++i)
     {
         gsInfo<<"Time step " << i << "/" << numSteps << std::endl;
@@ -147,8 +154,8 @@ int main(int argc, char *argv[])
         // constructing solution as an IGA function
         stationary.constructSolution(solVectorTemp,solutionTemp);
 
-        // passing heat distribution to the elasticity solver
-        /*elastAssembler.setHeatSolution(solutionHeat);
+        // assembling the thermal contribution to the RHS
+        elastAssembler.assembleThermo();
 
         // solving elasticity system
         gsSparseSolver<>::LU solverElast(elastAssembler.matrix());
@@ -156,16 +163,16 @@ int main(int argc, char *argv[])
 
         // constructing solution as an IGA function
         elastAssembler.constructSolution(solVectorElast,solutionElast);
-        gsField<> elastField(elastAssembler.patches(),solutionElast);*/
+        gsField<> elastField(elastAssembler.patches(),solutionElast);
 
         // plotting to Paraview
         fields["Temperature"] = &tempField;
-        //fields["Displacement"] = &elastField;
+        fields["Displacement"] = &elastField;
 
         gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,i,numPlotPoints);
     }
 
-    //gsInfo << "Total time elapsed: " << totalClock.stop() << "s\n";*/
+    gsInfo << "Total time elapsed: " << clock.stop() << "s\n";
     collection.save();
 
     return 0;

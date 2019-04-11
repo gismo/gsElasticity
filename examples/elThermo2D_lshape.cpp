@@ -60,7 +60,6 @@ int main(int argc, char* argv[]){
     gsElThermoAssembler<real_t> assembler(geometry,basis,bcInfo,gravity,temperature);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    assembler.options().setInt("DirichletValues",dirichlet::interpolation);
     assembler.options().setReal("InitTemp",initTemp);
     assembler.options().setReal("ThExpCoef",thermalExpCoef);
     assembler.options().setSwitch("ParamTemp",false); // tells assembler to evaluate the temperature field in the physical domain
