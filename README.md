@@ -3,7 +3,7 @@ The gsElasticity module provides tools for structural mechanics analysis of 2D a
 - linear elasticity ~~(with eigenmode analysis)~~
 - nonlinear elasticity (with St. Venant-Kirchhoff or neo-Hookean material models)
 - ~~incompressible elasticity (with Taylor-Hood elements)~~
-- ~~thermal expansion~~
+- thermal expansion
 - isogeometric parametrization algorithms based on mesh deformation
 
 ## Installing
