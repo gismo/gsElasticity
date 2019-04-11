@@ -53,12 +53,12 @@ public:
           m_mu(mu)
     {}
 
-    virtual int domainDim() const
+    virtual short_t domainDim() const
     {
         return m_displacement.dim();
     }
 
-    virtual int targetDim() const
+    virtual short_t targetDim() const
     {
         switch(m_type)
         {
@@ -108,9 +108,9 @@ public:
           m_patch(patch)
     {}
 
-    virtual int domainDim() const { return m_geo.domainDim(); }
+    virtual short_t domainDim() const { return m_geo.domainDim(); }
 
-    virtual int targetDim() const { return 1; }
+    virtual short_t targetDim() const { return 1; }
 
     /** @brief Each column of the input matrix (u) corresponds to one evaluation point.
      *         Each column of the output matrix is the jacobian determinant of the mapping at this point.

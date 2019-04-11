@@ -101,13 +101,13 @@ public:
                     setB(B_j,gsMatrix<T>::Identity(dim,dim),physGrad.col(j));
                     gsMatrix<T> K = tempK * B_j;
 
-                    for (index_t di = 0; di < dim; ++di)
-                        for (index_t dj = 0; dj < dim; ++dj)
+                    for (short_t di = 0; di < dim; ++di)
+                        for (short_t dj = 0; dj < dim; ++dj)
                             localMat(di*N+i, dj*N+j) += weight * K(di,dj);
                 }
             }
 
-            for (index_t d = 0; d < dim; ++d)
+            for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N,N).noalias() += weight * forceValues(d,q) * basisVals.col(q) ;
         }
     }
@@ -118,7 +118,7 @@ public:
     {
         std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
         gsVector<size_t> blockNumbers(dim);
-        for (index_t d = 0; d < dim; ++d)
+        for (short_t d = 0; d < dim; ++d)
         {
            system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
            blockNumbers.at(d) = d;
@@ -187,18 +187,18 @@ protected:
         index_t dimTensor = dim*(dim+1)/2;
         B.resize(dimTensor,dim);
 
-        for (index_t j = 0; j < dim; ++j)
+        for (short_t j = 0; j < dim; ++j)
         {
-            for (index_t i = 0; i < dim; ++i)
+            for (short_t i = 0; i < dim; ++i)
                 B(i,j) = F(j,i) * bGrad(i);
 
             if (dim == 2)
                 B(2,j) = F(j,0) * bGrad(1) + F(j,1) * bGrad(0);
 
             if (dim == 3)
-                for (index_t i = 0; i < dim; ++i)
+                for (short_t i = 0; i < dim; ++i)
                 {
-                    index_t k = (i+1)%dim;
+                    short_t k = (i+1)%dim;
                     B(i+dim,j) = F(j,i) * bGrad(k) + F(j,k) * bGrad(i);
                 }
         }
@@ -206,7 +206,7 @@ protected:
 
 protected:
     // general problem info
-    index_t dim;
+    short_t dim;
     const gsPoissonPde<T> * pde_ptr;
     // geometry mapping
     gsMapData<T> md;
