@@ -249,10 +249,10 @@ void plotDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch
             collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
         else
             res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
-        GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+        GISMO_ENSURE(res == 0, "Problems with deleting files\n");
     }
     res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
-    GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+    GISMO_ENSURE(res == 0, "Problems with deleting files\n");
 
 
     for (unsigned s = 0; s < displacements.size(); ++s)
@@ -277,10 +277,10 @@ void plotDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch
             else
                 res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
 
-            GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+            GISMO_ENSURE(res == 0, "Problems with deleting files\n");
         }
         res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
-        GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+        GISMO_ENSURE(res == 0, "Problems with deleting files\n");
     }
 
     collectionMesh.save();
@@ -318,10 +318,10 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
             collectionJac.addPart(fileNameOnly,p,".vts");
         else
             res = system(("rm " + fileName + std::to_string(p) + ".vts").c_str());
-        GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+        GISMO_ENSURE(res == 0, "Problems with deleting files\n");
     }
     res = system(("rm " + fileName + ".pvd").c_str());
-    GISMO_ASSERT(res == 0, "Problems with deleting files\n");
+    GISMO_ENSURE(res == 0, "Problems with deleting files\n");
     (void)res;
 
     collectionMesh.save();
@@ -409,7 +409,7 @@ typename gsGeometry<T>::uPtr simplifyCurve(gsGeometry<T> const & curve,
                                           index_t additionalPoints, index_t degree,
                                           index_t numSamples)
 {
-    GISMO_ASSERT(curve.domainDim() == 1 ,"That's not a curve.\n");
+    GISMO_ENSURE(curve.domainDim() == 1 ,"That's not a curve.\n");
     index_t deg = degree == 0 ? curve.degree(0) : degree;
     index_t num = deg + 1 + additionalPoints;
 
@@ -533,17 +533,17 @@ template<class T>
 typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGeometry<T> const & B,
                                                    index_t deg, index_t num, bool xiDir)
 {
-    GISMO_ASSERT(A.parDim() == B.parDim(), "Geometries are incompatible: different parametric dimensions: " +
+    GISMO_ENSURE(A.parDim() == B.parDim(), "Geometries are incompatible: different parametric dimensions: " +
                                            std::to_string(A.parDim()) + " and " + std::to_string(B.parDim()) + "\n");
     short_t pDim = A.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2, "Can only interpolate between curves or surfaces. Given geometries have parametric dimension " +
                                         std::to_string(pDim) + "\n");
     for (index_t d = 0; d < pDim; ++d)
-        GISMO_ASSERT(A.degree(d) == B.degree(d), "Geometries are incompatible: different splines degrees in dimension" +
+        GISMO_ENSURE(A.degree(d) == B.degree(d), "Geometries are incompatible: different splines degrees in dimension" +
                                                  std::to_string(d) + ": " + std::to_string(A.degree(d)) +
                                                  " and " + std::to_string(B.degree(d)) + "\n");
 
-    GISMO_ASSERT(A.targetDim() == B.targetDim(), "Geometries are incompatible: different physical dimensions: " +
+    GISMO_ENSURE(A.targetDim() == B.targetDim(), "Geometries are incompatible: different physical dimensions: " +
                                                  std::to_string(A.targetDim()) + " and " + std::to_string(B.targetDim()) + "\n");
     short_t tDim = A.targetDim();
     GISMO_ASSERT(A.coefsSize() == B.coefsSize(), "Geometries are incompatible: different number of control points: " +
@@ -635,8 +635,8 @@ typename gsGeometry<T>::uPtr genLine(index_t deg, index_t num,
                                      gsMatrix<T> const & A, gsMatrix<T> const & B,
                                      index_t iA, index_t iB)
 {
-    GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
-    GISMO_ASSERT(A.cols() == B.cols(),"Points have different dimensions\n");
+    GISMO_ENSURE(num - deg - 1 >= 0,"Too few DoFs\n");
+    GISMO_ENSURE(A.cols() == B.cols(),"Points have different dimensions\n");
     gsKnotVector<T> knots(0.0,1.0, num - deg - 1, deg + 1);
     gsBSplineBasis<T> basis(knots);
 
@@ -665,7 +665,7 @@ typename gsGeometry<T>::uPtr genCircle(index_t deg, index_t num,
                                        T radius, T x0, T y0,
                                        T angle0, T arcAngle)
 {
-    GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
+    GISMO_ENSURE(num - deg - 1 >= 0,"Too few DoFs\n");
     gsKnotVector<T> knots(0.0,1.0, num - deg - 1, deg + 1);
     gsBSplineBasis<T> basis(knots);
     return genCircle(basis,radius,x0,y0,angle0,arcAngle);
@@ -706,8 +706,8 @@ template<class T>
 typename gsGeometry<T>::uPtr genSphere(index_t xiDeg, index_t xiNum, index_t etaDeg, index_t etaNum,
                                        T xi0, T xi1, T eta0, T eta1)
 {
-    GISMO_ASSERT(xiNum - xiDeg - 1 >= 0,"Too few DoFs\n");
-    GISMO_ASSERT(etaNum - etaDeg - 1 >= 0,"Too few DoFs\n");
+    GISMO_ENSURE(xiNum - xiDeg - 1 >= 0,"Too few DoFs\n");
+    GISMO_ENSURE(etaNum - etaDeg - 1 >= 0,"Too few DoFs\n");
 
     gsKnotVector<T> xiKnots(0.,1.,xiNum - xiDeg - 1, xiDeg + 1);
     gsKnotVector<T> etaKnots(0.,1.,etaNum - etaDeg - 1, etaDeg + 1);
@@ -746,7 +746,7 @@ template<class T>
 typename gsGeometry<T>::uPtr genCylinder(gsGeometry<T> const & base,
                                          index_t deg, index_t num, T height)
 {
-    GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
+    GISMO_ENSURE(num - deg - 1 >= 0,"Too few DoFs\n");
 
     typename gsGeometry<T>::uPtr botBoundary = base.clone();
     typename gsGeometry<T>::uPtr topBoundary = base.clone();
@@ -765,7 +765,7 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
                                       index_t deg, index_t num,
                                       T height, T pitch, T x0, T y0)
 {
-    GISMO_ASSERT(num - deg - 1 >= 0,"Too few DoFs\n");
+    GISMO_ENSURE(num - deg - 1 >= 0,"Too few DoFs\n");
 
     short_t pDim = base.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2,"Wrong geometry type\n");
@@ -840,7 +840,7 @@ gsMatrix<T> combine(gsMatrix<T> const & A, gsMatrix<T> const & B, T x,
 {
     if (cols)
     {
-        GISMO_ASSERT(A.rows() == B.rows(),"Points have different dimensions\n");
+        GISMO_ENSURE(A.rows() == B.rows(),"Points have different dimensions\n");
         index_t dim = A.rows();
         gsMatrix<T> combination(dim,1);
         combination.col(0) = (1-x)*A.col(iA) + x*B.col(iB);
@@ -848,7 +848,7 @@ gsMatrix<T> combine(gsMatrix<T> const & A, gsMatrix<T> const & B, T x,
     }
     else
     {
-        GISMO_ASSERT(A.cols() == B.cols(),"Points have different dimensions\n");
+        GISMO_ENSURE(A.cols() == B.cols(),"Points have different dimensions\n");
         index_t dim = A.cols();
         gsMatrix<T> combination(1,dim);
         combination.row(0) = (1-x)*A.row(iA) + x*B.row(iB);
@@ -863,13 +863,13 @@ T distance(gsMatrix<T> const & A, index_t i, gsMatrix<T> const & B, index_t j, b
 
     if (cols)
     {
-        GISMO_ASSERT(A.rows() == B.rows(),"Wrong matrix size\n");
+        GISMO_ENSURE(A.rows() == B.rows(),"Wrong matrix size\n");
         for (index_t d = 0; d < A.rows(); ++d)
             dist = sqrt(pow(dist,2)+pow(A(d,i)-B(d,j),2));
     }
     else
     {
-        GISMO_ASSERT(A.cols() == B.cols(),"Wrong matrix size\n");
+        GISMO_ENSURE(A.cols() == B.cols(),"Wrong matrix size\n");
         for (index_t d = 0; d < A.cols(); ++d)
             dist = sqrt(pow(dist,2)+pow(A(i,d)-B(j,d),2));
     }

@@ -39,8 +39,6 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
         dim = basis.dim();
-        rho = options.getReal("Density");
-        timeFactor = options.getReal("TimeFactor");
 
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
@@ -110,7 +108,7 @@ public:
             }
 
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N,N).noalias() += weight * rho * forceValues(d,q) * timeFactor * basisVals.col(q) ;
+                localRhs.middleRows(d*N,N).noalias() += weight * forceValues(d,q) * basisVals.col(q) ;
         }
     }
 
@@ -214,7 +212,7 @@ protected:
     gsMapData<T> md;
 
     // Lame coefficients, density and time factor
-    T lambda, mu, rho, timeFactor;
+    T lambda, mu;
 
     // local components of the global linear system
     gsMatrix<T> localMat;

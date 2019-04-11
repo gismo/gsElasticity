@@ -26,26 +26,26 @@ class gsVisitorElasticityNeumann
 {
 public:
 
-    gsVisitorElasticityNeumann(const gsPde<T> & , const boundary_condition<T> & s)
+    gsVisitorElasticityNeumann(const gsPde<T> & ,
+                               const boundary_condition<T> & s)
         : neumannFunction_ptr( s.function().get() ),
           patchSide( s.side() )
     {}
 
-    void initialize(const gsBasis<T>   & basis,
-                    const index_t ,
+    void initialize(const gsBasis<T> & basis,
+                    const index_t patchIndex,
                     const gsOptionList & options,
-                    gsQuadRule<T>      & rule)
+                    gsQuadRule<T> & rule)
     {
         rule = gsQuadrature::get(basis, options, patchSide.direction());
-        md.flags = NEED_VALUE|NEED_MEASURE;
+        md.flags = NEED_VALUE | NEED_MEASURE;
 
         dim = basis.dim();
-        timeFactor = options.getReal("TimeFactor");
     }
 
-    inline void evaluate(gsBasis<T> const       & basis, // to do: more unknowns
-                         gsGeometry<T> const & geo,
-                         gsMatrix<T> const      & quNodes)
+    inline void evaluate(const gsBasis<T> & basis, // to do: more unknowns
+                         const gsGeometry<T> & geo,
+                         const gsMatrix<T> & quNodes)
     {
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
@@ -62,23 +62,24 @@ public:
         localRhs.setZero(dim*numActiveFunctions,1);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T> & quWeights)
     {
+        index_t N = numActiveFunctions;
 
-        for (index_t q = 0; q < quWeights.rows(); ++q) // loop over quadrature nodes
+        // loop over the quadrature nodes
+        for (index_t q = 0; q < quWeights.rows(); ++q)
         {
 			// Compute the outer normal vector on the side
             // normal length equals to the local area measure
             gsVector<T> unormal;
             outerNormal(md, q, patchSide, unormal);
 
-            // Coolect of the factors here: quadrature weight, geometry measure and time factor
-            const T weight = quWeights[q] * unormal.norm() * timeFactor;
+            // Collect the factors here: quadrature weight and geometry measure
+            const T weight = quWeights[q] * unormal.norm();
 
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*numActiveFunctions,numActiveFunctions).noalias() +=
-                    weight * neumannValues(d,q) * basisValues.col(q) ;
+                localRhs.middleRows(d*N,N).noalias() += weight * neumannValues(d,q) * basisValues.col(q) ;
         }
     }
 
@@ -103,9 +104,6 @@ protected:
     boxSide patchSide;
     // geometry mapping
     gsMapData<T> md;
-
-    // Time factor
-    T timeFactor;
 
     // local components of the global linear system
     gsMatrix<T> localMat;
