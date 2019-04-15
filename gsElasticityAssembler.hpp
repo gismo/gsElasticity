@@ -93,7 +93,7 @@ void gsElasticityAssembler<T>::assemble()
 
     if ( this->numDofs() == 0 )
     {
-        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n";
+        gsWarn << "No internal DOFs. Computed Dirichlet boundary only.\n";
         return;
     }
 
@@ -106,14 +106,17 @@ void gsElasticityAssembler<T>::assemble()
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix)
 {
-    m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
     m_system.rhs().setZero(Base::numDofs(),1);
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed);
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
     Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system

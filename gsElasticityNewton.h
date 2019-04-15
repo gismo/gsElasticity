@@ -15,7 +15,6 @@
 
 #pragma once
 
-#include <gsPde/gsNewtonIterator.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 
 namespace gismo
@@ -25,14 +24,12 @@ namespace gismo
  *         a bit better than the parent class.
 */
 template <class T>
-class gsElasticityNewton : public gsNewtonIterator<T>
+class gsElasticityNewton
 {
 public:
 
-    typedef gsNewtonIterator<T> Base;
-
-    gsElasticityNewton(gsAssembler<T> & assembler)
-        : gsNewtonIterator<T>(assembler),
+    gsElasticityNewton(gsElasticityAssembler<T> & assembler)
+        : m_assembler(assembler),
           m_verbose(true),
           m_doFirst(true),
           m_initResidueNorm(-1.),
@@ -41,7 +38,7 @@ public:
     { }
 
     gsElasticityNewton(gsAssembler<T> & assembler, const gsMatrix<T> & solVector)
-        : gsNewtonIterator<T>(assembler),
+        : m_assembler(assembler),
           m_verbose(true),
           m_doFirst(false),
           m_initResidueNorm(-1.),
@@ -57,17 +54,16 @@ public:
             GISMO_ENSURE(J > 0,"Initial guess is not bijecive");
             (void)corruptedPatch;
         }
-        m_updnorm = m_initUpdateNorm = solVector.norm();
+        m_updateNorm = m_initUpdateNorm = solVector.norm();
     }
 
     gsElasticityNewton(gsAssembler<T> & assembler, const gsMultiPatch<T> & solution)
-        : gsNewtonIterator<T>(assembler),
+        : m_assembler(assembler),
           m_verbose(true),
           m_doFirst(false),
           m_initResidueNorm(-1.),
           m_initUpdateNorm(-1.),
           m_firstDone(false)
-
     {
         m_curSolution.clear();
 
@@ -102,6 +98,15 @@ public:
         return m_linSolution;
     }
 
+    /// \brief Returns the latest configuration
+    const gsMultiPatch<T> & solution() const { return m_curSolution; }
+
+    /// \brief Tells whether the Newton method converged
+    bool converged() const {return m_converged;}
+
+    /// \brief Returns the number of Newton iterations performed
+    index_t numIterations() const { return m_numIterations; }
+
     /// \brief Sets verbosity of the solver
     void setVerbosity(bool verbose) { m_verbose = verbose; }
 
@@ -109,34 +114,41 @@ public:
     /// return true if the solution is bijective
     bool status() const;
 
+    /// \brief Set the maximum number of Newton iterations allowed
+    void setMaxIterations(index_t nIter) {m_maxIterations = nIter;}
+
+    /// \brief Set the tolerance for convergence
+    void setTolerance(T tol) { m_tolerance = tol; }
+
 protected:
-    // main
-    using Base::m_assembler;
+    /// assembler object that generates the linear system for every Newton's step
+    gsElasticityAssembler<T> & m_assembler;
     /// \brief If true prints useful information to the console. Default: true
     bool m_verbose;
     /// \brief If true, make firstIteration()
     bool m_doFirst;
 
-    // solution variables
-    using Base::m_curSolution;
+    /// current displacement field
+    gsMultiPatch<T> m_curSolution;
+
     gsVector<T> m_updateVector;
     /// \brief Solution vector of the linear problem, a.k.a. first iteration of Newton's method.
     /// Can be used for comparison.
     gsMultiPatch<T> m_linSolution;
 
-    // stopping criterion variables
-    using Base::m_maxIterations;
-    using Base::m_tolerance;
-    using Base::m_residue;
-    using Base::m_updnorm;
+    /// stopping criterion variables
+    index_t m_maxIterations;
+    T m_tolerance;
+    T m_residueNorm;
+    T m_updateNorm;
     /// \brief Initial value for the residual norm. Used by the stopping criterion
     T m_initResidueNorm;
     /// \brief Initial value for the update norm. Used by the stopping criterion
     T m_initUpdateNorm;
 
-    //status variables
-    using Base::m_numIterations;
-    using Base::m_converged;
+    /// status variables
+    index_t m_numIterations;
+    bool m_converged;
     /// \brief Sets to true after firstIteration() is done
     bool m_firstDone;
 };
@@ -152,9 +164,9 @@ void gsElasticityNewton<T>::solve()
     {
         nextIteration();
 
-        if (m_updnorm/m_initUpdateNorm < m_tolerance ||
-            m_residue/m_initResidueNorm < m_tolerance ||
-            m_updnorm < m_tolerance || m_residue < m_tolerance)
+        if (m_updateNorm/m_initUpdateNorm < m_tolerance ||
+            m_residueNorm/m_initResidueNorm < m_tolerance ||
+            m_updateNorm < m_tolerance || m_residueNorm < m_tolerance)
             m_converged = true;
     }
 
@@ -176,8 +188,8 @@ void gsElasticityNewton<T>::firstIteration()
     m_numIterations = 0;
 
     m_assembler.assemble();
-    Base::m_solver.compute(m_assembler.matrix());
-    m_updateVector = Base::m_solver.solve(m_assembler.rhs());
+    gsSparseSolver<>::LU solver(m_assembler.matrix());
+    m_updateVector = solver.solve(m_assembler.rhs());
 
     m_assembler.constructSolution(m_updateVector,m_curSolution);
     m_assembler.constructSolution(m_updateVector,m_linSolution);
@@ -185,8 +197,8 @@ void gsElasticityNewton<T>::firstIteration()
     // Homogenize Dirichlet dofs (values are now copied in m_curSolution)
     m_assembler.homogenizeFixedDofs(-1);
 
-    m_residue = m_initResidueNorm = m_assembler.rhs().norm();
-    m_updnorm = m_initUpdateNorm = m_updateVector.norm();
+    m_residueNorm = m_initResidueNorm = m_assembler.rhs().norm();
+    m_updateNorm = m_initUpdateNorm = m_updateVector.norm();
 
     bool bijective = status();
     (void)bijective;
@@ -203,16 +215,16 @@ template <class T>
 void gsElasticityNewton<T>::nextIteration()
 {   
     m_assembler.assemble(m_curSolution);
-    Base::m_solver.compute(m_assembler.matrix());
-    m_updateVector = Base::m_solver.solve(m_assembler.rhs());
+    gsSparseSolver<>::LU solver(m_assembler.matrix());
+    m_updateVector = solver.solve(m_assembler.rhs());
     m_assembler.updateSolution(m_updateVector, m_curSolution);
 
-    m_residue = m_assembler.rhs().norm();
+    m_residueNorm = m_assembler.rhs().norm();
     if (m_initResidueNorm < 0)
-        m_initResidueNorm = m_residue;
-    m_updnorm = m_updateVector.norm();
+        m_initResidueNorm = m_residueNorm;
+    m_updateNorm = m_updateVector.norm();
     if (m_initUpdateNorm < 0)
-        m_initUpdateNorm = m_updnorm;
+        m_initUpdateNorm = m_updateNorm;
 
     bool bijective = status();
 
@@ -240,8 +252,8 @@ bool gsElasticityNewton<T>::status() const
     if (m_verbose)
         gsInfo << "Iteration: " << m_numIterations
                << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0")
-               << ", residue: " << m_residue
-               << ", update norm: " << m_updnorm <<"\n";
+               << ", residue: " << m_residueNorm
+               << ", update norm: " << m_updateNorm <<"\n";
 
     return (corruptedPatch == -1 ? true : false);
 }

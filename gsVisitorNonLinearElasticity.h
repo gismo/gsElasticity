@@ -27,9 +27,11 @@ public:
 
     typedef gsVisitorLinearElasticity<T> Base;
 
-    gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & deformed)
+    gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & deformed, bool assembleMatrix)
         : Base(pde_),
-          deformedConfiguration(deformed) { }
+          deformedConfiguration(deformed),
+          assembleM(assembleMatrix)
+    { }
 
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
@@ -62,12 +64,11 @@ public:
         // gradients of basis functions, dim x numActiveFunctions
         gsMatrix<T> & basisGrads = basisValues[1];
 
-        index_t dimTensor = dim*(dim+1)/2;
         index_t N = numActiveFunctions;
 
         // elasticity tensor
         gsMatrix<T> C;
-        if (materialLaw == 0)
+        if (materialLaw == 0 && assembleM)
             Base::setC(C,gsMatrix<T>::Identity(dim,dim),lambda,2*mu);
 
         // loop over quadrature nodes
@@ -89,8 +90,6 @@ public:
             gsMatrix<T> RCG = F.transpose() * F;
             // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
             gsMatrix<T> E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
-            // Green-Lagrange strain as vector
-            gsVector<T> Evec(dimTensor);
             // Second Piola-Kirchhoff stress tensor
             gsMatrix<T> S;
             if (materialLaw == 0) // Saint Venant-Kirchhoff
@@ -100,13 +99,15 @@ public:
                 GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda*log(J)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
-                Base::setC(C,RCGinv,lambda,2*(mu-lambda*log(J)));
+                if (assembleM)
+                    Base::setC(C,RCGinv,lambda,2*(mu-lambda*log(J)));
             }
             if (materialLaw == 2) // neo-Hooke J^2
             {
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda/2*(J*J-1)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
-                Base::setC(C,RCGinv,lambda*J*J,2*(mu-lambda*(J*J-1)));
+                if (assembleM)
+                    Base::setC(C,RCGinv,lambda*J*J,2*(mu-lambda*(J*J-1)));
             }
             // loop over active basis functions (u_i)
             for (index_t i = 0; i < N; i++)
@@ -114,24 +115,27 @@ public:
                 // Material tangent K_tg_mat = B_i^T * C * B_j;
                 gsMatrix<T> B_i;
                 Base::setB(B_i,F,physGrad.col(i));
-                gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
-                // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
-                gsVector<T> geometricTangentTemp = S * physGrad.col(i);
-                // loop over active basis functions (v_j)
-                for (index_t j = 0; j < N; j++)
+                if (assembleM)
                 {
-                    gsMatrix<T> B_j;
-                    Base::setB(B_j,F,physGrad.col(j));
+                    gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
+                    // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
+                    gsVector<T> geometricTangentTemp = S * physGrad.col(i);
+                    // loop over active basis functions (v_j)
+                    for (index_t j = 0; j < N; j++)
+                    {
+                        gsMatrix<T> B_j;
+                        Base::setB(B_j,F,physGrad.col(j));
 
-                    gsMatrix<T> materialTangent = materialTangentTemp * B_j;
-                    T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
-                    // K_tg = K_tg_mat + I*K_tg_geo;
-                    for (short_t d = 0; d < dim; ++d)
-                        materialTangent(d,d) += geometricTangent;
+                        gsMatrix<T> materialTangent = materialTangentTemp * B_j;
+                        T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
+                        // K_tg = K_tg_mat + I*K_tg_geo;
+                        for (short_t d = 0; d < dim; ++d)
+                            materialTangent(d,d) += geometricTangent;
 
-                    for (short_t di = 0; di < dim; ++di)
-                        for (short_t dj = 0; dj < dim; ++dj)
-                            localMat(di*N+i, dj*N+j) += weight * materialTangent(di,dj);
+                        for (short_t di = 0; di < dim; ++di)
+                            for (short_t dj = 0; dj < dim; ++dj)
+                                localMat(di*N+i, dj*N+j) += weight * materialTangent(di,dj);
+                    }
                 }
                 // Second Piola-Kirchhoff stress tensor as vector
                 gsVector<T> Svec;
@@ -147,12 +151,29 @@ public:
         }
     }
 
+    inline void localToGlobal(const int patchIndex,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T>     & system)
+    {
+        std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
+        gsVector<size_t> blockNumbers(dim);
+        for (short_t d = 0; d < dim; ++d)
+        {
+           system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
+           blockNumbers.at(d) = d;
+        }
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
+        if (assembleM)
+            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+    }
+
 protected:
     // general problem info
     using Base::dim;
     using Base::pde_ptr;
     const gsMultiPatch<T> & deformedConfiguration;
     index_t patch;
+    const bool assembleM;
     // geometry mappings
     using Base::md;
     gsMapData<T> mdDeformed;

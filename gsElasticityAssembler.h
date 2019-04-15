@@ -62,8 +62,10 @@ public:
     /// @brief Assembles the stiffness matrix and the RHS
     virtual void assemble();
 
-    /// @ brief Assembles the stiffness matrix and the RHS for a iteration of Newton's method on a deformed configuration
-    virtual void assemble(const gsMultiPatch<T> & deformed);
+    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
+    /// set *assembleMatrix* to false to only assemble the residual;
+    /// ATTENTION: rhs() returns a negative residual (-r) !!!
+    virtual void assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix = true);
 
     /// @brief Construct solution from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const;
