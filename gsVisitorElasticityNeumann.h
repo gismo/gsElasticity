@@ -41,6 +41,7 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE;
 
         dim = basis.dim();
+        forceScaling = options.getReal("ForceScaling");
     }
 
     inline void evaluate(const gsBasis<T> & basis, // to do: more unknowns
@@ -76,7 +77,7 @@ public:
             outerNormal(md, q, patchSide, unormal);
 
             // Collect the factors here: quadrature weight and geometry measure
-            const T weight = quWeights[q] * unormal.norm();
+            const T weight = quWeights[q] * unormal.norm() * forceScaling;
 
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N,N).noalias() += weight * neumannValues(d,q) * basisValues.col(q) ;
@@ -104,6 +105,8 @@ protected:
     boxSide patchSide;
     // geometry mapping
     gsMapData<T> md;
+
+    T forceScaling;
 
     // local components of the global linear system
     gsMatrix<T> localMat;

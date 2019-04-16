@@ -147,7 +147,7 @@ public:
             }
             // contribution of volumetric load function to residual/rhs
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N,N).noalias() += weight * forceValues(d,q) * basisVals.col(q) ;
+                localRhs.middleRows(d*N,N).noalias() += weight * forceScaling * forceValues(d,q) * basisVals.col(q) ;
         }
     }
 
@@ -178,10 +178,11 @@ protected:
     using Base::md;
     gsMapData<T> mdDeformed;
 
-    // Lame coefficients, material law, density and time factor
+    // Lame coefficients, material law and force scaling factor
     using Base::lambda;
     using Base::mu;
     index_t materialLaw; // (0: St. Venant-Kirchhoff, 1: Neo-Hooke)
+    using Base::forceScaling;
 
     // local components of the global linear system
     using Base::localMat;

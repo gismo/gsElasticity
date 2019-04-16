@@ -44,6 +44,7 @@ public:
         T pr = options.getReal("PoissonsRatio");
         lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
         mu     = E / ( 2. * ( 1. + pr ) );
+        forceScaling = options.getReal("ForceScaling");
     }
 
     inline void evaluate(const gsBasis<T> & basis,
@@ -108,7 +109,7 @@ public:
             }
 
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N,N).noalias() += weight * forceValues(d,q) * basisVals.col(q) ;
+                localRhs.middleRows(d*N,N).noalias() += weight * forceScaling * forceValues(d,q) * basisVals.col(q) ;
         }
     }
 
@@ -211,8 +212,8 @@ protected:
     // geometry mapping
     gsMapData<T> md;
 
-    // Lame coefficients, density and time factor
-    T lambda, mu;
+    // Lame coefficients, density and force scaling factor
+    T lambda, mu, forceScaling;
 
     // local components of the global linear system
     gsMatrix<T> localMat;
