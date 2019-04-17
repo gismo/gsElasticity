@@ -48,7 +48,7 @@ public:
     const std::vector<gsMultiPatch<T> > & allSolutions() & { return solutions; }
     /// use all saved displacement fields to plot the all intermediate deformed configurations of the computational domain;
     /// always plots the deformed isoparametric mesh; plots the Jacobian determinant of the deformed configuration if *numSamplingPoints* > 0
-    void plotDeformation(std::string fileName, index_t numSamplingPoints = 10000);
+    void plotDeformation(const gsMultiPatch<T> & initDomain, std::string fileName, index_t numSamplingPoints = 10000);
 
 protected:
 

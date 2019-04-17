@@ -23,6 +23,7 @@ int main(int argc, char* argv[]){
     index_t numIncSteps = 1;
     index_t save = newtonSave::onlyFinal;
     index_t verbosity = newtonVerbosity::all;
+    bool plotDeform = true;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the nonlinear elasticity solver in 2D.");
@@ -32,6 +33,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("n","num","Number incremental step",numIncSteps);
     cmd.addInt("s","save","Save",save);
     cmd.addInt("v","verbosity","Verbosity",verbosity);
+    cmd.addSwitch("p","plot","Plot",plotDeform);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -85,6 +87,14 @@ int main(int argc, char* argv[]){
 
     gsInfo << "Solving...\n";
     newton.solve();
+    if (plotDeform)
+    {
+        for (index_t i = 0; i < numDegElevate; ++i)
+            geometry.degreeElevate();
+        for (index_t i = 0; i < numUniRef; ++i)
+            geometry.uniformRefine();
+        newton.plotDeformation(geometry,"lshapeDeform",0);
+    }
 
     // solution to the nonlinear problem as an isogeometric displacement field
     const gsMultiPatch<> solutionNonlinear = newton.solution();

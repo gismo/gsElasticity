@@ -17,6 +17,7 @@
 
 #include <gsElasticity/gsElasticityNewton2.h>
 #include <gsElasticity/gsElasticityAssembler.h>
+#include <gsCore/gsField.h>
 
 namespace gismo
 {
@@ -179,9 +180,83 @@ void gsElasticityNewton2<T>::printStatus()
 }
 
 template <class T>
-void gsElasticityNewton2<T>::plotDeformation(std::string fileName, index_t numSamplingPoints)
+void gsElasticityNewton2<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
+                                             std::string fileName, index_t numSamplingPoints)
 {
+    if (m_options.getInt("Verbosity") != newtonVerbosity::none)
+        gsInfo << "Plotting deformed configurations...\n";
 
+    std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
+    gsParaviewCollection collectionMesh(fileName + "_mesh");
+    gsParaviewCollection collectionJac(fileName + "_jac");
+    index_t res;
+
+    gsMultiPatch<T> configuration;
+    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+        configuration.addPatch(initDomain.patch(p).clone());
+
+    gsPiecewiseFunction<T> dets;
+    for (index_t p = 0; p < configuration.nPatches(); ++p)
+        dets.addPiecePointer(new gsDetFunction<T>(configuration,p));
+
+    bool plotJac = true;
+    if (numSamplingPoints == 0)
+        plotJac = false;
+
+    if (m_options.getInt("Verbosity") == newtonVerbosity::all)
+        gsInfo << "Step: 0/" << solutions.size() << std::endl;
+
+    gsField<T> detField(configuration,dets,true);
+    std::map<std::string,const gsField<T> *> fields;
+    fields["Jacobian"] = &detField;
+    gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamplingPoints,true);
+
+    for (index_t p = 0; p < configuration.nPatches(); ++p)
+    {
+        collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
+        if (plotJac)
+            collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
+        else
+            res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
+        GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+    }
+    res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
+    GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+
+
+    for (unsigned s = 0; s < solutions.size(); ++s)
+    {
+        if (m_options.getInt("Verbosity") == newtonVerbosity::all)
+            gsInfo << "Step: " << s+1 << "/" << solutions.size() << std::endl;
+
+        for (index_t p = 0; p < configuration.nPatches(); ++p)
+        {
+            configuration.patch(p).coefs() += solutions[s].patch(p).coefs();
+            if (s > 0)
+               configuration.patch(p).coefs() -= solutions[s-1].patch(p).coefs();
+        }
+
+        gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamplingPoints,true);
+        for (index_t p = 0; p < configuration.nPatches(); ++p)
+        {
+            collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
+
+            if (plotJac)
+                collectionJac.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,".vts");
+            else
+                res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
+
+            GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+        }
+        res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
+        GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+    }
+
+    collectionMesh.save();
+    if (plotJac)
+        collectionJac.save();
+
+    (void)res;
 }
 
 } // namespace ends
