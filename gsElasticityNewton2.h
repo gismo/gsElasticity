@@ -70,6 +70,7 @@ protected:
     T initResidualNorm; /// residual norm at the beginning of the current ILS
     T updateNorm;
     T initUpdateNorm; /// update vector norm at the beginning of the current ILS
+    index_t numAdaptHalving; /// number of adaptive stepsize halvings
 
     gsOptionList m_options;
 };

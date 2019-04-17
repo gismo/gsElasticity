@@ -40,7 +40,7 @@ gsOptionList gsElasticityNewton2<T>::defaultOptions()
     opt.addReal("RelTol","Relative tolerance for the stopping criteria",1e-6);
     /// incremental loading
     opt.addInt("NumIncStep","Number of incremental loading steps",1);
-    opt.addInt("NumIterPerStep","Maximum number of Newton's iterations per incremental loading step (not last!); "
+    opt.addInt("MaxIterNotLast","Maximum number of Newton's iterations per incremental loading step (not last!); "
                                 "always full convergence at the last incremental loading step; "
                                 "full convergence at every incremental loading step if < 1",0);
     /// step size control
@@ -62,7 +62,6 @@ template <class T>
 void gsElasticityNewton2<T>::solve()
 {
     index_t numIncSteps = m_options.getInt("NumIncStep");
-    index_t maxNumIter = m_options.getInt("MaxIter");
     T absTol = m_options.getReal("AbsTol");
     T relTol = m_options.getReal("RelTol");
 
@@ -76,7 +75,19 @@ void gsElasticityNewton2<T>::solve()
     // incremental loop
     while (abs(progress-1.) > 1e-10)
     {
-        T stepSize = (1.-progress >= maxStepSize) ? maxStepSize : 1.-progress;
+        T stepSize;
+        bool final;
+        if (abs(1.-progress-maxStepSize) > 1e-10)
+        {
+            stepSize = maxStepSize;
+            final = false;
+        }
+        else
+        {
+            stepSize = 1. - progress;
+            final = true;
+        }
+
         if (m_options.getInt("Verbosity") != newtonVerbosity::none)
             gsInfo << "Load: " << progress*100 << "% -> " << (progress+stepSize)*100 << "%\n";
         assembler.options().setReal("ForceScaling",progress+stepSize);
@@ -89,8 +100,13 @@ void gsElasticityNewton2<T>::solve()
             assembler.setFixedDofVector(tempDDof,d);
         }
         computeDisplacementUpdate(true);
+        final = (numAdaptHalving == 0 && final) ? true : false;
 
         assembler.homogenizeFixedDofs(-1);
+
+        index_t maxNumIter = (!final && m_options.getInt("MaxIterNotLast") > 0) ?
+                             m_options.getInt("MaxIterNotLast") : m_options.getInt("MaxIter");
+
         while (!converged && numIterations < maxNumIter)
         {
             computeDisplacementUpdate(false);
@@ -100,6 +116,14 @@ void gsElasticityNewton2<T>::solve()
                 converged = true;
         }
 
+        if (m_options.getInt("Verbosity") != newtonVerbosity::none)
+        {
+            if (converged)
+                gsInfo << "Newton's method converged after " << numIterations << " iterations\n";
+            else
+                gsInfo << "Newton's method interrupted after " << maxNumIter << " iterations\n";
+        }
+
         progress += stepSize;
     }
 }
@@ -107,6 +131,8 @@ void gsElasticityNewton2<T>::solve()
 template <class T>
 void gsElasticityNewton2<T>::computeDisplacementUpdate(bool initUpdate)
 {
+    numAdaptHalving = 0;
+
     if (solutions.empty())
         assembler.assemble();
     else
