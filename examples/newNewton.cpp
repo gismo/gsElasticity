@@ -20,15 +20,19 @@ int main(int argc, char* argv[]){
     real_t tolerance = 1e-12;
     index_t numPlotPoints = 10000;
     index_t materialLaw = material_law::saint_venant_kirchhoff;
+    index_t numIncSteps = 1;
+    index_t save = newtonSave::onlyFinal;
+    index_t verbosity = newtonVerbosity::all;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the nonlinear elasticity solver in 2D.");
-    cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
     cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
     cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
-    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln, 2 - NeoHooke_2",materialLaw);
+    cmd.addInt("n","num","Number incremental step",numIncSteps);
+    cmd.addInt("s","save","Save",save);
+    cmd.addInt("v","verbosity","Verbosity",verbosity);
+
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -71,9 +75,9 @@ int main(int argc, char* argv[]){
 
     // setting Newton's method
     gsElasticityNewton2<real_t> newton(assembler);
-    //newton.setMaxIterations(maxNumIteration);
-    //newton.setTolerance(tolerance);
-    //newton.setVerbosity(true);
+    newton.options().setInt("NumIncStep",numIncSteps);
+    newton.options().setInt("Save",save);
+    newton.options().setInt("Verbosity",verbosity);
 
     //=============================================//
                   // Solving //

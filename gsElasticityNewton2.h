@@ -35,7 +35,7 @@ public:
     gsElasticityNewton2(gsElasticityAssembler<T> & elasticityAssembler);
 
     static gsOptionList defaultOptions();
-    gsOptionList & options();
+    gsOptionList & options() { return m_options; }
     void solve();
 
     /// return the last computed displacement field
@@ -53,6 +53,8 @@ public:
 protected:
 
     void computeDisplacementUpdate(bool initUpdate);
+
+    void printStatus();
 
 protected:
     /// assembler object that generates the linear system

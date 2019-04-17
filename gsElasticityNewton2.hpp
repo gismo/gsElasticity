@@ -65,7 +65,6 @@ void gsElasticityNewton2<T>::solve()
     T absTol = m_options.getReal("AbsTol");
     T relTol = m_options.getReal("RelTol");
 
-
     T maxStepSize = 1./numIncSteps;
     T progress = 0.;
 
@@ -76,24 +75,23 @@ void gsElasticityNewton2<T>::solve()
     // incremental loop
     while (abs(progress-1.) > 1e-10)
     {
-        gsInfo << "Inc\n";
         T stepSize = (1.-progress >= maxStepSize) ? maxStepSize : 1.-progress;
+        if (m_options.getInt("Verbosity") != newtonVerbosity::none)
+            gsInfo << "Load: " << progress*100 << "% -> " << (progress+stepSize)*100 << "%\n";
         assembler.options().setReal("ForceScaling",progress+stepSize);
+        numIterations = 0;
+        converged = false;
+
         for (index_t d = 0; d < assembler.patches().dim(); ++d)
         {
             gsMatrix<T> tempDDof = stepSize * ddof[d];
             assembler.setFixedDofVector(tempDDof,d);
         }
-        gsInfo << "Inc\n";
         computeDisplacementUpdate(true);
 
         assembler.homogenizeFixedDofs(-1);
-        converged = false;
-        numIterations = 0;
         while (!converged && numIterations < maxNumIter)
         {
-
-            gsInfo << "Iter\n";
             computeDisplacementUpdate(false);
 
             if (residualNorm < absTol || updateNorm < absTol ||
@@ -122,7 +120,39 @@ void gsElasticityNewton2<T>::computeDisplacementUpdate(bool initUpdate)
         assembler.constructSolution(solVector,solutions.back());
     }
     else
-        assembler.updateSolution(solVector,solutions.back());
+    {
+        if (m_options.getInt("Save") == newtonSave::onlyFinal)
+        {
+            if (initUpdate)
+            {
+                gsMultiPatch<T> temp;
+                assembler.constructSolution(solVector,temp);
+                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                    solutions.back().patch(p).coefs() += temp.patch(p).coefs();
+            }
+            else
+                assembler.updateSolution(solVector,solutions.back());
+        }
+        else if (m_options.getInt("Save") == newtonSave::firstAndLastPerIncStep)
+        {
+            if (numIterations == 0 || numIterations == 1)
+            {
+                solutions.push_back(gsMultiPatch<T>());
+                assembler.constructSolution(solVector,solutions.back());
+                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                    solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
+            }
+            else
+                assembler.updateSolution(solVector,solutions.back());
+        }
+        else if (m_options.getInt("Save") == newtonSave::all)
+        {
+            solutions.push_back(gsMultiPatch<T>());
+            assembler.constructSolution(solVector,solutions.back());
+            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
+        }
+    }
 
     updateNorm = solVector.norm();
     residualNorm = assembler.rhs().norm();
@@ -132,6 +162,20 @@ void gsElasticityNewton2<T>::computeDisplacementUpdate(bool initUpdate)
         initUpdateNorm = updateNorm;
         initResidualNorm = residualNorm;
     }
+
+    printStatus();
+    numIterations++;
+}
+
+template <class T>
+void gsElasticityNewton2<T>::printStatus()
+{
+    if (m_options.getInt("Verbosity") == newtonVerbosity::all)
+        gsInfo << "Iteration: " << numIterations
+               << ", resAbs: " << residualNorm
+               << ", resRel: " << residualNorm/initResidualNorm
+               << ", updAbs: " << updateNorm
+               << ", updRel: " << updateNorm/initUpdateNorm << std::endl;
 }
 
 template <class T>
