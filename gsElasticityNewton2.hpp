@@ -44,7 +44,7 @@ gsOptionList gsElasticityNewton2<T>::defaultOptions()
                                 "always full convergence at the last incremental loading step; "
                                 "full convergence at every incremental loading step if < 1",0);
     /// step size control
-    opt.addSwitch("Bijective","Check bijectivity; stop the solution process if unable to preserve bijectivity",false);
+    opt.addSwitch("BijectivityCheck","Check bijectivity; stop the solution process if unable to preserve bijectivity",false);
     opt.addInt("MaxHalving","Maximum number of increment halving in order to preserve bijectivity",0);
     opt.addReal("QualityRatio","Solution quality to preserve w.r.t. the last incremental step"
                                " (0 means to at least ensure bijectivity)",0.);
@@ -61,28 +61,34 @@ gsOptionList gsElasticityNewton2<T>::defaultOptions()
 template <class T>
 void gsElasticityNewton2<T>::solve()
 {
-    index_t numIncSteps = m_options.getInt("NumIncStep");
     T absTol = m_options.getReal("AbsTol");
     T relTol = m_options.getReal("RelTol");
-
+    bijective = true;
+    // preferred number of ILSs; may increase to preserve bijectivity
+    index_t numIncSteps = m_options.getInt("NumIncStep");
     T maxStepSize = 1./numIncSteps;
+    // computed portion of total loading
     T progress = 0.;
-
+    // save computed by the assembler Dirichet DoFs for further use
     std::vector<gsMatrix<T> > ddof(assembler.patches().dim());
     for (index_t d = 0; d < assembler.patches().dim(); ++d)
         ddof[d] = assembler.fixedDofs(d);
 
     // incremental loop
-    while (abs(progress-1.) > 1e-10)
+    while (abs(progress-1.) > 1e-10 && bijective)
     {
+        // reset the status of Newton's method
+        numIterations = 0;
+        converged = false;
+        // determine whether this is the last ILS
         T stepSize;
         bool final;
-        if (abs(1.-progress-maxStepSize) > 1e-10)
+        if (abs(1.-progress-maxStepSize) > 1e-10) // not last ILS
         {
             stepSize = maxStepSize;
             final = false;
         }
-        else
+        else // last ILS
         {
             stepSize = 1. - progress;
             final = true;
@@ -90,30 +96,41 @@ void gsElasticityNewton2<T>::solve()
 
         if (m_options.getInt("Verbosity") != newtonVerbosity::none)
             gsInfo << "Load: " << progress*100 << "% -> " << (progress+stepSize)*100 << "%\n";
+        // set load scaling for RHS and Neumann BC
         assembler.options().setReal("ForceScaling",progress+stepSize);
-        numIterations = 0;
-        converged = false;
-
+        // set load scaling for Dirichlet BC;
+        // a temporary variable is necessary because of the memory swap
         for (index_t d = 0; d < assembler.patches().dim(); ++d)
         {
             gsMatrix<T> tempDDof = stepSize * ddof[d];
             assembler.setFixedDofVector(tempDDof,d);
         }
         computeDisplacementUpdate(true);
+        if (!bijective)
+        {
+            gsInfo << "Interrupted due to bijectivity violation\n";
+            goto abort;
+        }
+        // if size of ILS was adaptively halved in an attempt to preserve bijectivity then the ILS is not the last one
         final = (numAdaptHalving == 0 && final) ? true : false;
-
+        // set Dirichlet BC to zero for further Newton's iterations at this ILS
         assembler.homogenizeFixedDofs(-1);
-
+        // if this it not the last ILS, it can be interrupted earlier (to save computation)
         index_t maxNumIter = (!final && m_options.getInt("MaxIterNotLast") > 0) ?
                              m_options.getInt("MaxIterNotLast") : m_options.getInt("MaxIter");
-
+        // Newton's loop
         while (!converged && numIterations < maxNumIter)
         {
             computeDisplacementUpdate(false);
+            if (!bijective)
+            {
+                gsInfo << "Interrupted due to bijectivity violation\n";
+                goto abort;
+            }
 
             if (residualNorm < absTol || updateNorm < absTol ||
                 residualNorm/initResidualNorm < relTol || updateNorm/initUpdateNorm < relTol)
-                converged = true;
+                converged = true;            
         }
 
         if (m_options.getInt("Verbosity") != newtonVerbosity::none)
@@ -123,73 +140,48 @@ void gsElasticityNewton2<T>::solve()
             else
                 gsInfo << "Newton's method interrupted after " << maxNumIter << " iterations\n";
         }
-
+        // advance the computed portion of total loading
         progress += stepSize;
     }
+    abort:;
 }
 
 template <class T>
 void gsElasticityNewton2<T>::computeDisplacementUpdate(bool initUpdate)
 {
+    // reset the counter of adaptive halving
     numAdaptHalving = 0;
 
-    if (solutions.empty())
+    if (solutions.empty()) // no previous displacement field
         assembler.assemble();
-    else
+    else // use previous displacement field to assemble the problem
         assembler.assemble(solutions.back());
 
     gsSparseSolver<>::LU solver(assembler.matrix());
     gsVector<T> solVector = solver.solve(assembler.rhs());
+    gsMultiPatch<T> incDisplacement;
+    assembler.constructSolution(solVector,incDisplacement);
 
-    if (solutions.empty())
-    {
-        solutions.push_back(gsMultiPatch<T>());
-        assembler.constructSolution(solVector,solutions.back());
-    }
-    else
-    {
-        if (m_options.getInt("Save") == newtonSave::onlyFinal)
-        {
-            if (initUpdate)
-            {
-                gsMultiPatch<T> temp;
-                assembler.constructSolution(solVector,temp);
-                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
-                    solutions.back().patch(p).coefs() += temp.patch(p).coefs();
-            }
-            else
-                assembler.updateSolution(solVector,solutions.back());
-        }
-        else if (m_options.getInt("Save") == newtonSave::firstAndLastPerIncStep)
-        {
-            if (numIterations == 0 || numIterations == 1)
-            {
-                solutions.push_back(gsMultiPatch<T>());
-                assembler.constructSolution(solVector,solutions.back());
-                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
-                    solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
-            }
-            else
-                assembler.updateSolution(solVector,solutions.back());
-        }
-        else if (m_options.getInt("Save") == newtonSave::all)
-        {
-            solutions.push_back(gsMultiPatch<T>());
-            assembler.constructSolution(solVector,solutions.back());
-            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
-                solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
-        }
-    }
+    if (m_options.getSwitch("DampedNewton"))
+        dampedNewton(incDisplacement);
 
+    if (m_options.getSwitch("BijectivityCheck") || assembler.options().getInt("MaterialLaw") == material_law::neo_hooke_ln)
+        bijective = bijectivityCheck(incDisplacement);
+
+    if (!bijective && m_options.getInt("MaxHalving") > 0)
+        adaptiveHalving(incDisplacement);
+
+    saveSolution(incDisplacement);
+
+    // compute norm for the stopping criteria
     updateNorm = solVector.norm();
     residualNorm = assembler.rhs().norm();
-
+    // for the first Newton's iteraion of this ILS, save the initial norm for relative error
     if (initUpdate)
     {
         initUpdateNorm = updateNorm;
         initResidualNorm = residualNorm;
     }
-
     printStatus();
     numIterations++;
 }
@@ -283,6 +275,51 @@ void gsElasticityNewton2<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
         collectionJac.save();
 
     (void)res;
+}
+
+template <class T>
+void gsElasticityNewton2<T>::saveSolution(const gsMultiPatch<T> & incDisplacement)
+{
+    if (solutions.empty())
+        solutions.push_back(incDisplacement);
+    else
+        if (m_options.getInt("Save") == newtonSave::onlyFinal)
+            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                solutions.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
+        else if (m_options.getInt("Save") == newtonSave::firstAndLastPerIncStep)
+            if (numIterations == 0 || numIterations == 1)
+            {
+                solutions.push_back(incDisplacement);
+                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                    solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
+            }
+            else
+                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                    solutions.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
+        else if (m_options.getInt("Save") == newtonSave::all)
+        {
+            solutions.push_back(incDisplacement);
+            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
+        }
+}
+
+template <class T>
+bool gsElasticityNewton2<T>::bijectivityCheck(const gsMultiPatch<T> & incDisplacement)
+{
+    return true;
+}
+
+template <class T>
+void gsElasticityNewton2<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
+{
+
+}
+
+template <class T>
+void gsElasticityNewton2<T>::dampedNewton(gsMultiPatch<T> & incDisplacement)
+{
+
 }
 
 } // namespace ends

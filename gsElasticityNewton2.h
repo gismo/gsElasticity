@@ -56,6 +56,14 @@ protected:
 
     void printStatus();
 
+    void saveSolution(const gsMultiPatch<T> & incDisplacement);
+
+    bool bijectivityCheck(const gsMultiPatch<T> & incDisplacement);
+
+    void adaptiveHalving(gsMultiPatch<T> & incDisplacement);
+
+    void dampedNewton(gsMultiPatch<T> & incDisplacement);
+
 protected:
     /// assembler object that generates the linear system
     gsElasticityAssembler<T> & assembler;
@@ -71,6 +79,7 @@ protected:
     T updateNorm;
     T initUpdateNorm; /// update vector norm at the beginning of the current ILS
     index_t numAdaptHalving; /// number of adaptive stepsize halvings
+    bool bijective;
 
     gsOptionList m_options;
 };
