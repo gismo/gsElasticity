@@ -1,4 +1,4 @@
-/** @file gsElasticityNewton2.hpp
+/** @file gsElasticityNewton.hpp
 
     @brief A class providing Newton's method for nonlinear elasticity.
 
@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsElasticityNewton2.h>
+#include <gsElasticity/gsElasticityNewton.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsCore/gsField.h>
 
@@ -23,7 +23,7 @@ namespace gismo
 {
 
 template <class T>
-gsElasticityNewton2<T>::gsElasticityNewton2(gsElasticityAssembler<T> & elasticityAssembler)
+gsElasticityNewton<T>::gsElasticityNewton(gsElasticityAssembler<T> & elasticityAssembler)
     : assembler(elasticityAssembler),
       m_options(defaultOptions())
 {
@@ -31,7 +31,7 @@ gsElasticityNewton2<T>::gsElasticityNewton2(gsElasticityAssembler<T> & elasticit
 }
 
 template <class T>
-gsOptionList gsElasticityNewton2<T>::defaultOptions()
+gsOptionList gsElasticityNewton<T>::defaultOptions()
 {
     gsOptionList opt;
     /// stopping creteria
@@ -59,7 +59,7 @@ gsOptionList gsElasticityNewton2<T>::defaultOptions()
 }
 
 template <class T>
-void gsElasticityNewton2<T>::solve()
+void gsElasticityNewton<T>::solve()
 {
     T absTol = m_options.getReal("AbsTol");
     T relTol = m_options.getReal("RelTol");
@@ -147,7 +147,7 @@ void gsElasticityNewton2<T>::solve()
 }
 
 template <class T>
-void gsElasticityNewton2<T>::computeDisplacementUpdate(bool initUpdate)
+void gsElasticityNewton<T>::computeDisplacementUpdate(bool initUpdate)
 {
     // reset the counter of adaptive halving
     numAdaptHalving = 0;
@@ -187,7 +187,7 @@ void gsElasticityNewton2<T>::computeDisplacementUpdate(bool initUpdate)
 }
 
 template <class T>
-void gsElasticityNewton2<T>::printStatus()
+void gsElasticityNewton<T>::printStatus()
 {
     if (m_options.getInt("Verbosity") == newtonVerbosity::all)
         gsInfo << "Iteration: " << numIterations
@@ -198,7 +198,7 @@ void gsElasticityNewton2<T>::printStatus()
 }
 
 template <class T>
-void gsElasticityNewton2<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
+void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
                                              std::string fileName, index_t numSamplingPoints)
 {
     if (m_options.getInt("Verbosity") != newtonVerbosity::none)
@@ -278,7 +278,7 @@ void gsElasticityNewton2<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
 }
 
 template <class T>
-void gsElasticityNewton2<T>::saveSolution(const gsMultiPatch<T> & incDisplacement)
+void gsElasticityNewton<T>::saveSolution(const gsMultiPatch<T> & incDisplacement)
 {
     if (solutions.empty())
         solutions.push_back(incDisplacement);
@@ -305,19 +305,19 @@ void gsElasticityNewton2<T>::saveSolution(const gsMultiPatch<T> & incDisplacemen
 }
 
 template <class T>
-bool gsElasticityNewton2<T>::bijectivityCheck(const gsMultiPatch<T> & incDisplacement)
+bool gsElasticityNewton<T>::bijectivityCheck(const gsMultiPatch<T> & incDisplacement)
 {
     return true;
 }
 
 template <class T>
-void gsElasticityNewton2<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
+void gsElasticityNewton<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
 {
 
 }
 
 template <class T>
-void gsElasticityNewton2<T>::dampedNewton(gsMultiPatch<T> & incDisplacement)
+void gsElasticityNewton<T>::dampedNewton(gsMultiPatch<T> & incDisplacement)
 {
 
 }

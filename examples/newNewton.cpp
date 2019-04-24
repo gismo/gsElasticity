@@ -1,7 +1,7 @@
 /// This is an example of using the nonlinear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewton2.h>
+#include <gsElasticity/gsElasticityNewton.h>
 
 using namespace gismo;
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElasticityNewton2<real_t> newton(assembler);
+    gsElasticityNewton<real_t> newton(assembler);
     newton.options().setInt("NumIncStep",numIncSteps);
     newton.options().setInt("Save",save);
     newton.options().setInt("Verbosity",verbosity);
