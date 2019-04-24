@@ -81,18 +81,8 @@ void gsElasticityNewton<T>::solve()
         numIterations = 0;
         converged = false;
         // determine whether this is the last ILS
-        T stepSize;
-        bool final;
-        if (abs(1.-progress-maxStepSize) > 1e-10) // not last ILS
-        {
-            stepSize = maxStepSize;
-            final = false;
-        }
-        else // last ILS
-        {
-            stepSize = 1. - progress;
-            final = true;
-        }
+        T stepSize = 1.-progress > maxStepSize ? maxStepSize : 1. - progress;
+        bool final = abs(1. - progress - stepSize) < 1e-10;
 
         if (m_options.getInt("Verbosity") != newtonVerbosity::none)
             gsInfo << "Load: " << progress*100 << "% -> " << (progress+stepSize)*100 << "%\n";
@@ -108,23 +98,29 @@ void gsElasticityNewton<T>::solve()
         computeDisplacementUpdate(true);
         if (!bijective)
         {
-            gsInfo << "Interrupted due to bijectivity violation\n";
+            if (m_options.getInt("Verbosity") != newtonVerbosity::none)
+                gsInfo << "Interrupted due to bijectivity violation!\n";
             goto abort;
         }
         // if size of ILS was adaptively halved in an attempt to preserve bijectivity then the ILS is not the last one
         final = (numAdaptHalving == 0 && final) ? true : false;
+        for (index_t i = 0; i < numAdaptHalving; ++i)
+            stepSize *= 0.5;
         // set Dirichlet BC to zero for further Newton's iterations at this ILS
         assembler.homogenizeFixedDofs(-1);
         // if this it not the last ILS, it can be interrupted earlier (to save computation)
         index_t maxNumIter = (!final && m_options.getInt("MaxIterNotLast") > 0) ?
                              m_options.getInt("MaxIterNotLast") : m_options.getInt("MaxIter");
+        if (m_options.getInt("Verbosity") != newtonVerbosity::none && final)
+            gsInfo << "Final loading step!\n";
         // Newton's loop
         while (!converged && numIterations < maxNumIter)
         {
             computeDisplacementUpdate(false);
             if (!bijective)
             {
-                gsInfo << "Interrupted due to bijectivity violation\n";
+                if (m_options.getInt("Verbosity") != newtonVerbosity::none)
+                    gsInfo << "Interrupted due to bijectivity violation!\n";
                 goto abort;
             }
 
@@ -166,7 +162,7 @@ void gsElasticityNewton<T>::computeDisplacementUpdate(bool initUpdate)
         dampedNewton(incDisplacement);
 
     if (m_options.getSwitch("BijectivityCheck") || assembler.options().getInt("MaterialLaw") == material_law::neo_hooke_ln)
-        bijective = bijectivityCheck(incDisplacement);
+        bijectivityCheck(incDisplacement);
 
     if (!bijective && m_options.getInt("MaxHalving") > 0)
         adaptiveHalving(incDisplacement);
@@ -194,7 +190,8 @@ void gsElasticityNewton<T>::printStatus()
                << ", resAbs: " << residualNorm
                << ", resRel: " << residualNorm/initResidualNorm
                << ", updAbs: " << updateNorm
-               << ", updRel: " << updateNorm/initUpdateNorm << std::endl;
+               << ", updRel: " << updateNorm/initUpdateNorm
+               << (numAdaptHalving == 0 ? "" : ", adaptHalv: " + std::to_string(numAdaptHalving)) <<  std::endl;
 }
 
 template <class T>
@@ -305,15 +302,43 @@ void gsElasticityNewton<T>::saveSolution(const gsMultiPatch<T> & incDisplacement
 }
 
 template <class T>
-bool gsElasticityNewton<T>::bijectivityCheck(const gsMultiPatch<T> & incDisplacement)
+void gsElasticityNewton<T>::bijectivityCheck(const gsMultiPatch<T> & incDisplacement)
 {
-    return true;
+    gsMultiPatch<T> tempDisplacement(incDisplacement);
+    if (!solutions.empty())
+        for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+            tempDisplacement.patch(p).coefs() += incDisplacement.patch(p).coefs();
+    index_t corruptedPatch = assembler.checkSolution(tempDisplacement);
+    if (corruptedPatch == -1)
+        bijective = true;
+    else
+        bijective = false;
 }
 
 template <class T>
 void gsElasticityNewton<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
 {
+    T qualityRatio = m_options.getReal("QualityRatio");
+    index_t maxAdaptHaling = m_options.getInt("MaxHalving");
+    T ratio = -1.;
+    T oldRatio = solutions.empty() ? 1. : assembler.solutionJacRatio(solutions.back());
+    while (ratio < qualityRatio && numAdaptHalving < maxAdaptHaling)
+    {
+        for (index_t p = 0; p < incDisplacement.nPatches(); ++p)
+            incDisplacement.patch(p).coefs() *= 0.5;
+        gsMultiPatch<T> tempDisplacement(incDisplacement);
+        if (!solutions.empty())
+            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                tempDisplacement.patch(p).coefs() += incDisplacement.patch(p).coefs();
 
+        ratio = assembler.solutionJacRatio(tempDisplacement) / oldRatio;
+        numAdaptHalving++;
+    }
+
+    if (ratio >= qualityRatio)
+        bijective = true;
+    else
+        bijectivityCheck(incDisplacement);
 }
 
 template <class T>

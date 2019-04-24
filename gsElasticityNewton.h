@@ -58,7 +58,7 @@ protected:
 
     void saveSolution(const gsMultiPatch<T> & incDisplacement);
 
-    bool bijectivityCheck(const gsMultiPatch<T> & incDisplacement);
+    void bijectivityCheck(const gsMultiPatch<T> & incDisplacement);
 
     void adaptiveHalving(gsMultiPatch<T> & incDisplacement);
 

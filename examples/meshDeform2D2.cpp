@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     index_t numIter = 1; // number of Newton's iterations at each non-final incremental loading step
     real_t poissRatio = 0.45;
     /// Bijectivity-preserving adaptivity settings
-    index_t maxAdapt = 10; // max number of adaptive stepsize halving applications
+    index_t maxAdapt = 5; // max number of adaptive stepsize halving applications
     real_t quality = 0.5; // quality ratio to preserve
     /// Output options
     index_t numPlotPoints = 0;
@@ -103,6 +103,8 @@ int main(int argc, char* argv[])
     gsElasticityNewton<real_t> newton(assembler);
     newton.options().setInt("NumIncStep",numSteps);
     newton.options().setInt("MaxIterNotLast",numIter);
+    newton.options().setInt("MaxHalving",maxAdapt);
+    newton.options().setReal("QualityRatio",quality);
     newton.options().setInt("Verbosity",newtonVerbosity::all);
     newton.options().setInt("Save",newtonSave::all);
 
