@@ -1,7 +1,7 @@
 /// This is an example of using the nonlinear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewton.h>
+#include <gsElasticity/gsElasticityNewton2.h>
 
 using namespace gismo;
 
@@ -70,10 +70,11 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElasticityNewton<real_t> newton(assembler);
-    newton.setMaxIterations(maxNumIteration);
-    newton.setTolerance(tolerance);
-    newton.setVerbosity(true);
+    gsElasticityNewton2<real_t> newton(assembler);
+    newton.options().setInt("MaxIter",maxNumIteration);
+    newton.options().setReal("AbsTol",tolerance);
+    newton.options().setInt("Verbosity",newtonVerbosity::all);
+    newton.options().setInt("Save",newtonSave::firstAndLastPerIncStep);
 
     //=============================================//
                   // Solving //
@@ -83,9 +84,9 @@ int main(int argc, char* argv[]){
     newton.solve();
 
     // solution to the nonlinear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionNonlinear = newton.solution();
+    const gsMultiPatch<> & solutionNonlinear = newton.solution();
     // solution to the linear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionLinear = newton.linearSolution();
+    const gsMultiPatch<> & solutionLinear = newton.allSolutions().front();
 
     //=============================================//
                   // Output //
