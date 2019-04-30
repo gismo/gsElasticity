@@ -106,6 +106,8 @@ void gsElasticityNewton<T>::solve()
         final = (numAdaptHalving == 0 && final) ? true : false;
         for (index_t i = 0; i < numAdaptHalving; ++i)
             stepSize *= 0.5;
+
+        stepSize *= alpha;
         // set Dirichlet BC to zero for further Newton's iterations at this ILS
         assembler.homogenizeFixedDofs(-1);
         // if this it not the last ILS, it can be interrupted earlier (to save computation)
@@ -147,6 +149,7 @@ void gsElasticityNewton<T>::computeDisplacementUpdate(bool initUpdate)
 {
     // reset the counter of adaptive halving
     numAdaptHalving = 0;
+    alpha = 1.;
 
     if (solutions.empty()) // no previous displacement field
         assembler.assemble();
@@ -158,14 +161,15 @@ void gsElasticityNewton<T>::computeDisplacementUpdate(bool initUpdate)
     gsMultiPatch<T> incDisplacement;
     assembler.constructSolution(solVector,incDisplacement);
 
-    if (m_options.getSwitch("DampedNewton"))
-        dampedNewton(incDisplacement);
 
     if (m_options.getSwitch("BijectivityCheck") || assembler.options().getInt("MaterialLaw") == material_law::neo_hooke_ln)
         bijectivityCheck(incDisplacement);
 
     if (!bijective && m_options.getInt("MaxHalving") > 0)
         adaptiveHalving(incDisplacement);
+
+    if (m_options.getSwitch("DampedNewton"))
+        dampedNewton(incDisplacement);
 
     saveSolution(incDisplacement);
 
@@ -307,7 +311,7 @@ void gsElasticityNewton<T>::bijectivityCheck(const gsMultiPatch<T> & incDisplace
     gsMultiPatch<T> tempDisplacement(incDisplacement);
     if (!solutions.empty())
         for (index_t p = 0; p < solutions.back().nPatches(); ++p)
-            tempDisplacement.patch(p).coefs() += incDisplacement.patch(p).coefs();
+            tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
     index_t corruptedPatch = assembler.checkSolution(tempDisplacement);
     if (corruptedPatch == -1)
         bijective = true;
@@ -329,7 +333,7 @@ void gsElasticityNewton<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
         gsMultiPatch<T> tempDisplacement(incDisplacement);
         if (!solutions.empty())
             for (index_t p = 0; p < solutions.back().nPatches(); ++p)
-                tempDisplacement.patch(p).coefs() += incDisplacement.patch(p).coefs();
+                tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
 
         ratio = assembler.solutionJacRatio(tempDisplacement) / oldRatio;
         numAdaptHalving++;
@@ -344,7 +348,58 @@ void gsElasticityNewton<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
 template <class T>
 void gsElasticityNewton<T>::dampedNewton(gsMultiPatch<T> & incDisplacement)
 {
+    gsInfo << "Damped Newton...\n";
+    const index_t maxIter = 100;
+    const T ratio = 0.8;
 
+    const T g0 = (assembler.rhs().transpose()*assembler.rhs())(0,0);
+    gsMatrix<T> G0 = assembler.rhs();
+    gsInfo << "g0 " << g0 << std::endl;
+    T alphaA, alphaB, gA, gB;
+    alphaA = 0.;
+    alphaB = 1.;
+    gA = g0;
+
+    gsMultiPatch<T> tempDisplacement(incDisplacement);
+    if (!solutions.empty())
+        for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+            tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
+    assembler.assemble(tempDisplacement,false);
+    gB = (G0.transpose()*assembler.rhs())(0,0);
+    gsInfo << "gB " << gB << std::endl;
+
+    if (gA*gB < 0)
+    {
+        gsInfo << "GO...\n";
+        for (int i = 0; i < maxIter; ++i)
+        {
+            alpha = (alphaA*gB-alphaB*gA)/(gB-gA);
+
+            gsMultiPatch<T> tempDisplacement(incDisplacement);
+            if (!solutions.empty())
+                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                {
+                    tempDisplacement.patch(p).coefs() *= alpha;
+                    tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
+                }
+            assembler.assemble(tempDisplacement,false);
+            T g = (G0.transpose()*assembler.rhs())(0,0);
+            gsInfo << "alpha " << alpha << " g " << g << std::endl;
+
+                if (gA*g < 0)
+                {
+                    alphaB = alpha;
+                    gB = g;
+                }
+                else
+                {
+                    alphaA = alpha;
+                    gA = g;
+                }
+        }
+        for (index_t p = 0; p < incDisplacement.nPieces(); ++p)
+            incDisplacement.patch(p).coefs() *= alpha;
+    }
 }
 
 } // namespace ends

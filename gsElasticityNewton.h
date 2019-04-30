@@ -81,6 +81,8 @@ protected:
     index_t numAdaptHalving; /// number of adaptive stepsize halvings
     bool bijective;
 
+    T alpha;
+
     gsOptionList m_options;
 };
 
