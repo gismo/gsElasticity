@@ -1,6 +1,9 @@
-/** @file gsNewtonIETI.h
+/** @file gsElasticityNewton.h
 
-    @brief A version of the Newton iterator taylored for nonlinear elasticity.
+    @brief A class providing Newton's method for nonlinear elasticity.
+    Supports incremental loading (ILS = incremental loading step),
+    adaptive step size for bijectivity control and step size damping.
+    Can save every intermediate displacement field for further visualization.
 
     This file is part of the G+Smo library.
 
@@ -15,236 +18,92 @@
 
 #pragma once
 
-#include <gsPde/gsNewtonIterator.h>
-#include <gsElasticity/gsElasticityAssembler.h>
+#include <gsCore/gsMultiPatch.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
 
-/** @brief Provides Newton's method taylored for nonlinear elasticity
- *         a bit better than the parent class.
-*/
 template <class T>
-class gsElasticityNewton : public gsNewtonIterator<T>
+class gsElasticityAssembler;
+
+template <class T>
+class gsElasticityNewton
 {
 public:
+    /// constructor without an initial guess
+    gsElasticityNewton(gsElasticityAssembler<T> & elasticityAssembler);
 
-    typedef gsNewtonIterator<T> Base;
-
-    gsElasticityNewton(gsAssembler<T> & assembler)
-        : gsNewtonIterator<T>(assembler),
-          m_verbose(true),
-          m_doFirst(true),
-          m_initResidueNorm(-1.),
-          m_initUpdateNorm(-1.),
-          m_firstDone(false)
-    { }
-
-    gsElasticityNewton(gsAssembler<T> & assembler, const gsMatrix<T> & solVector)
-        : gsNewtonIterator<T>(assembler),
-          m_verbose(true),
-          m_doFirst(false),
-          m_initResidueNorm(-1.),
-          m_firstDone(false)
-
-    {
-        m_assembler.constructSolution(solVector,m_curSolution);
-        // bijectivity check for neo-Hookean material law
-        if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
-        {
-            index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
-            T J = (corruptedPatch == -1 ? 1 : -1);
-            GISMO_ENSURE(J > 0,"Initial guess is not bijecive");
-            (void)corruptedPatch;
-        }
-        m_updnorm = m_initUpdateNorm = solVector.norm();
-    }
-
-    gsElasticityNewton(gsAssembler<T> & assembler, const gsMultiPatch<T> & solution)
-        : gsNewtonIterator<T>(assembler),
-          m_verbose(true),
-          m_doFirst(false),
-          m_initResidueNorm(-1.),
-          m_initUpdateNorm(-1.),
-          m_firstDone(false)
-
-    {
-        m_curSolution.clear();
-
-        for (index_t p = 0; p < solution.nPatches(); ++p)
-            m_curSolution.addPatch(solution.patch(p).clone());
-        // bijectivity check for neo-Hookean material law
-        if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
-        {
-            index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
-            T J = (corruptedPatch == -1 ? 1 : -1);
-            GISMO_ENSURE(J > 0,"Initial guess is not bijecive");
-            (void)corruptedPatch;
-        }
-    }
-
-    /// \brief Applies Newton method and performs Newton iterations
-    /// until convergence or maximum iterations.
+    static gsOptionList defaultOptions();
+    gsOptionList & options() { return m_options; }
     void solve();
 
-    /// \brief Solves linear system obtained using linear elasticity
-    /// in first step and computes residual
-    void firstIteration();
-
-    /// \brief Solves linear system in each iteration based on last
-    /// solution and computes residual
-    void nextIteration();
-
-    /// \brief Returns the solution after the first iteration of Newton's method.
-    const gsMultiPatch<T> & linearSolution() const
+    /// return the last computed displacement field
+    const gsMultiPatch<T> & solution() const
     {
-        GISMO_ENSURE(m_firstDone,"Initial solution is not constructed\n");
-        return m_linSolution;
+        GISMO_ENSURE(!solutions.empty(),"No solution computed!");
+        return solutions.back();
     }
-
-    /// \brief Sets verbosity of the solver
-    void setVerbosity(bool verbose) { m_verbose = verbose; }
-
-    /// brief Checks status of the solver; prints it if *m_verbose* is TRUE;
-    /// return true if the solution is bijective
-    bool status() const;
+    /// return all saved displacement fields
+    const std::vector<gsMultiPatch<T> > & allSolutions() & { return solutions; }
+    /// use all saved displacement fields to plot the all intermediate deformed configurations of the computational domain;
+    /// always plots the deformed isoparametric mesh; plots the Jacobian determinant of the deformed configuration if *numSamplingPoints* > 0
+    void plotDeformation(const gsMultiPatch<T> & initDomain, std::string fileName, index_t numSamplingPoints = 10000);
 
 protected:
-    // main
-    using Base::m_assembler;
-    /// \brief If true prints useful information to the console. Default: true
-    bool m_verbose;
-    /// \brief If true, make firstIteration()
-    bool m_doFirst;
 
-    // solution variables
-    using Base::m_curSolution;
-    gsVector<T> m_updateVector;
-    /// \brief Solution vector of the linear problem, a.k.a. first iteration of Newton's method.
-    /// Can be used for comparison.
-    gsMultiPatch<T> m_linSolution;
+    void computeDisplacementUpdate(bool initUpdate);
 
-    // stopping criterion variables
-    using Base::m_maxIterations;
-    using Base::m_tolerance;
-    using Base::m_residue;
-    using Base::m_updnorm;
-    /// \brief Initial value for the residual norm. Used by the stopping criterion
-    T m_initResidueNorm;
-    /// \brief Initial value for the update norm. Used by the stopping criterion
-    T m_initUpdateNorm;
+    void printStatus();
 
-    //status variables
-    using Base::m_numIterations;
-    using Base::m_converged;
-    /// \brief Sets to true after firstIteration() is done
-    bool m_firstDone;
+    void saveSolution(const gsMultiPatch<T> & incDisplacement);
+
+    void bijectivityCheck(const gsMultiPatch<T> & incDisplacement);
+
+    void adaptiveHalving(gsMultiPatch<T> & incDisplacement);
+
+    void dampedNewton(gsMultiPatch<T> & incDisplacement);
+
+protected:
+    /// assembler object that generates the linear system
+    gsElasticityAssembler<T> & assembler;
+    /// container with displacement fields; can store either only the final solution or all intermediate states as well
+    std::vector<gsMultiPatch<T> > solutions;
+
+    /// status variables
+    index_t numIterations; /// number of Newton's iterations performed at the current ILS
+    index_t incStep; /// current incremental loading step
+    bool converged;  /// convergence status at the current ILS
+    T residualNorm;
+    T initResidualNorm; /// residual norm at the beginning of the current ILS
+    T updateNorm;
+    T initUpdateNorm; /// update vector norm at the beginning of the current ILS
+    index_t numAdaptHalving; /// number of adaptive stepsize halvings
+    bool bijective;
+
+    T alpha;
+
+    gsOptionList m_options;
 };
 
-template <class T>
-void gsElasticityNewton<T>::solve()
+struct newtonVerbosity
 {
-    if (m_doFirst && !m_firstDone)
-        firstIteration();
-
-    // ----- Iterations start -----
-    while (m_numIterations < m_maxIterations && !m_converged)
+    enum verbosity
     {
-        nextIteration();
+        none = 0,  /// no output
+        some = 1,  /// only essential output
+        all = 2  /// output everything
+    };
+};
 
-        if (m_updnorm/m_initUpdateNorm < m_tolerance ||
-            m_residue/m_initResidueNorm < m_tolerance ||
-            m_updnorm < m_tolerance || m_residue < m_tolerance)
-            m_converged = true;
-    }
-
-    if (m_verbose)
+struct newtonSave
+{
+    enum save
     {
-        if (m_converged)
-            gsInfo << "Newton's method converged after " << m_numIterations << " iterations.\n";
-        else
-            gsInfo << "Newton's method didn't converged after exceeding a maximum number of iterations: "
-                   << m_maxIterations << ".\n";
-    }
-
-}
-
-template <class T>
-void gsElasticityNewton<T>::firstIteration()
-{
-    m_converged = false;
-    m_numIterations = 0;
-
-    m_assembler.assemble();
-    Base::m_solver.compute(m_assembler.matrix());
-    m_updateVector = Base::m_solver.solve(m_assembler.rhs());
-
-    m_assembler.constructSolution(m_updateVector,m_curSolution);
-    m_assembler.constructSolution(m_updateVector,m_linSolution);
-
-    // Homogenize Dirichlet dofs (values are now copied in m_curSolution)
-    m_assembler.homogenizeFixedDofs(-1);
-
-    m_residue = m_initResidueNorm = m_assembler.rhs().norm();
-    m_updnorm = m_initUpdateNorm = m_updateVector.norm();
-
-    bool bijective = status();
-    (void)bijective;
-    // bijectivity check for neo-Hookean material law
-    if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
-        GISMO_ENSURE(bijective,"Failed to compute a valid initial guess. Reduce load or use incremental loading");
-
-
-    m_firstDone = true;
-    m_numIterations++;
-}
-
-template <class T>
-void gsElasticityNewton<T>::nextIteration()
-{   
-    m_assembler.assemble(m_curSolution);
-    Base::m_solver.compute(m_assembler.matrix());
-    m_updateVector = Base::m_solver.solve(m_assembler.rhs());
-    m_assembler.updateSolution(m_updateVector, m_curSolution);
-
-    m_residue = m_assembler.rhs().norm();
-    if (m_initResidueNorm < 0)
-        m_initResidueNorm = m_residue;
-    m_updnorm = m_updateVector.norm();
-    if (m_initUpdateNorm < 0)
-        m_initUpdateNorm = m_updnorm;
-
-    bool bijective = status();
-
-    // enforcing bijectivity for neo-Hookean material law
-    if (static_cast<gsElasticityAssembler<T> &>(m_assembler).options().getInt("MaterialLaw") == 1)
-        while (!bijective)
-        {
-            m_assembler.updateSolution(-1*m_updateVector, m_curSolution);
-            m_updateVector *= 0.5;
-            m_assembler.updateSolution(m_updateVector, m_curSolution);
-            index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
-            bijective = (corruptedPatch == -1 ? true : false);
-            gsInfo << "          Displacement update halved"
-                   << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0") << "\n";
-        }
-
-    m_numIterations++;
-}
-
-template <class T>
-bool gsElasticityNewton<T>::status() const
-{
-    index_t corruptedPatch = static_cast<gsElasticityAssembler<T> &>(m_assembler).checkSolution(m_curSolution);
-
-    if (m_verbose)
-        gsInfo << "Iteration: " << m_numIterations
-               << ", J" << (corruptedPatch == -1 ? " > 0" : " < 0")
-               << ", residue: " << m_residue
-               << ", update norm: " << m_updnorm <<"\n";
-
-    return (corruptedPatch == -1 ? true : false);
-}
-
+        onlyFinal = 0,  /// save only the final solution
+        firstAndLastPerIncStep = 1,  /// save only the first and the last displacement fields at each incremental loading step
+        all = 2  /// save every intermediate displacement field
+    };
+};
 
 } // namespace gismo

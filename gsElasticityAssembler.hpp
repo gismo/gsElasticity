@@ -58,6 +58,7 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("YoungsModulus","Youngs modulus of the material",200e9);
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
+    opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
     return opt;
 }
@@ -93,7 +94,7 @@ void gsElasticityAssembler<T>::assemble()
 
     if ( this->numDofs() == 0 )
     {
-        gsWarn << " No internal DOFs. Computed Dirichlet boundary only.\n";
+        gsWarn << "No internal DOFs. Computed Dirichlet boundary only.\n";
         return;
     }
 
@@ -106,14 +107,17 @@ void gsElasticityAssembler<T>::assemble()
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed)
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix)
 {
-    m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
     m_system.rhs().setZero(Base::numDofs(),1);
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed);
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
     Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system

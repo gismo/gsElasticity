@@ -71,9 +71,10 @@ int main(int argc, char* argv[]){
 
     // setting Newton's method
     gsElasticityNewton<real_t> newton(assembler);
-    newton.setMaxIterations(maxNumIteration);
-    newton.setTolerance(tolerance);
-    newton.setVerbosity(true);
+    newton.options().setInt("MaxIter",maxNumIteration);
+    newton.options().setReal("AbsTol",tolerance);
+    newton.options().setInt("Verbosity",newtonVerbosity::all);
+    newton.options().setInt("Save",newtonSave::firstAndLastPerIncStep);
 
     //=============================================//
                   // Solving //
@@ -83,9 +84,9 @@ int main(int argc, char* argv[]){
     newton.solve();
 
     // solution to the nonlinear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionNonlinear = newton.solution();
+    const gsMultiPatch<> & solutionNonlinear = newton.solution();
     // solution to the linear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionLinear = newton.linearSolution();
+    const gsMultiPatch<> & solutionLinear = newton.allSolutions().front();
 
     //=============================================//
                   // Output //

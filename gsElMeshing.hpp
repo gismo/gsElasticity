@@ -26,7 +26,6 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
-#include <gsElasticity/gsElasticityNewton.h>
 
 namespace gismo
 {

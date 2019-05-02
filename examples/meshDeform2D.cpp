@@ -1,67 +1,76 @@
 /// This is an example of generating an isogeometric parametrization using mesh deformation technique
+
 #include <gismo.h>
 #include <gsElasticity/gsElMeshing.h>
-#include <gsElasticity/gsElasticityFunctions.h>
+#include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsElasticityNewton.h>
 
 using namespace gismo;
 
-int main(int argc, char* argv[]){
-
+int main(int argc, char* argv[])
+{
     gsInfo << "Generating isogeometric parametrization by mesh deformation in 2D.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
+    // input file with a set of 4 compatible boundary curves ordered "west-east-south-north"
     std::string filename = ELAST_DATA_DIR"/puzzle3_bdry.xml";
-    std::string filenameInit = "";
-    index_t numSteps = 5;
-    real_t poissRatio = 0.45;
-    index_t fittingDegree = 0;
-    index_t numAdditionalPoints = 0;
     index_t numUniRef = 0;
     index_t numDegreeElev = 0;
+    /// Initial domain options
+    index_t fittingDegree = 0; // polynomial degree of the coarse fitting curve
+    index_t numAdditionalPoints = 0; // number of additional control points above minimal for the coarse fitting curve
+    std::string filenameInit = ""; // optional input file with a previously prepaired initial domain
+    /// Deformation options
+    index_t numSteps = 5; // number of incremental loading steps used during deformation
+    index_t numIter = 1; // number of Newton's iterations at each non-final incremental loading step
+    real_t poissRatio = 0.45;
+    index_t law = 1; // material law used in the material model; 0 - St. Venant-Kirchhoff, 1 - ln-neo-Hooke, 2 - quad-neo-Hooke
+    /// Bijectivity-preserving adaptivity settings
+    bool bijectivity = true; // stop the simulation if the bijectivity violation is unavoidable"
+    index_t maxAdapt = 0; // max number of adaptive stepsize halving applications
+    real_t quality = 0.5; // quality ratio to preserve
+    bool damped = false; // use damped Newton's method
+    /// Output options
     index_t numPlotPoints = 0;
-    real_t quality = 0.5;
-    index_t maxAdapt = 10;
-    index_t maxNewtonIter = 50;
-    bool nonLin = true;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Generating isogeometric parametrization by mesh deformation in 2D.");
     cmd.addPlainString("name","File with boundary curves.",filename);
-    cmd.addString("d","domain","File with an initial domain, if exists",filenameInit);
-    cmd.addReal("p","poiss","Poisson's ratio for the elasticity model",poissRatio);
-    cmd.addInt("i","iter","Number of incremental steps for deformation",numSteps);
-    cmd.addInt("f","fitDeg","Degree of the fitting curve for simplification",fittingDegree);
-    cmd.addInt("a","acc","Number of control points above minimum for curve simplification",numAdditionalPoints);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("e","elev","Number of degree elevetation application",numDegreeElev);
-    cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
+    /// Initial domain options
+    cmd.addInt("f","fitDeg","Polynomial degree of the coarse fitting curve",fittingDegree);
+    cmd.addInt("c","acp","Number of additional control points above minimal for the coarse fitting curve",numAdditionalPoints);
+    cmd.addString("d","domain","Optional input file with a previously prepaired initial domain",filenameInit);
+    /// Deformation options
+    cmd.addInt("i","iter","Number of incremental loading steps used during deformation",numSteps);
+    cmd.addInt("n","numIter","Number of Newton's iterations at each non-final incremental loading step",numIter);
+    cmd.addReal("p","poiss","Poisson's ratio for the elasticity model",poissRatio);
+    cmd.addInt("l","law","Material law used in the material model; 0 - St. Venant-Kirchhoff, 1 - ln-neo-Hooke, 2 - quad-neo-Hooke",law);
+    /// Bijectivity-preserving adaptivity settings
+    cmd.addSwitch("b","bijective","Stop the simulation if the bijectivity violation is unavoidable",bijectivity);
+    cmd.addInt("a","adapt","Max number of adaptive stepsize halving",maxAdapt);
     cmd.addReal("q","quality","Quality threshold for adaptive incremental loading",quality);
-    cmd.addInt("x","maxadapt","Max number of adaptive stepsize halving",maxAdapt);
-    cmd.addInt("m","maxiter","Max number of Newton's iterations",maxNewtonIter);
+    cmd.addSwitch("x","damp","Use damped Newton's method",damped);
+    /// Output options
+    cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-
-    // a set of 4 compatible boundary curves ordered "west-east-south-north"
-    gsMultiPatch<> bdry;
-    gsReadFile<>(filename,bdry);
-
-    // file name for output
-    filename = filename.substr(filename.find_last_of("/\\")+1); // file name without a path
-    filename = filename.substr(0,filename.find_last_of(".\\"));
-    filename = filename.substr(0,filename.find_last_of("_\\"));
 
     //=====================================//
                 // Algorithm //
     //=====================================//
 
+    gsMultiPatch<> bdry;
+    gsReadFile<>(filename,bdry);
     for (index_t i = 0; i < numDegreeElev; ++i)
         bdry.degreeElevate();
-
     for (index_t i = 0; i < numUniRef; ++i)
         bdry.uniformRefine();
 
+    // Initial domain generation
     gsMultiPatch<> initGeo;
     if (filenameInit.empty())
     {
@@ -74,37 +83,57 @@ int main(int argc, char* argv[]){
         gsCoonsPatch<real_t> coonsPatch(simpleBdry);
         coonsPatch.compute();
         initGeo.addPatch(coonsPatch.result());
-
     }
     else
         gsReadFile<>(filenameInit,initGeo);
 
     initGeo.computeTopology();
+    gsInfo << "Initialized a 2D problem with " << initGeo.patch(0).coefsSize() * 2 << " dofs.\n";
+
+    gsMultiBasis<> basis(initGeo);
+    // first tell assembler to allocate space for Dirichlet DoFs; we specify the values later
+    gsBoundaryConditions<> bcInfo;
+    for (index_t s = 1; s < 5; ++s)
+    {
+        bcInfo.addCondition(0,s,condition_type::dirichlet,0,0);
+        bcInfo.addCondition(0,s,condition_type::dirichlet,0,1);
+    }
+    gsConstantFunction<> g(0.,0.,2);
+
+    gsElasticityAssembler<real_t> assembler(initGeo,basis,bcInfo,g);
+    assembler.options().setReal("PoissonsRatio",poissRatio);
+    assembler.options().setInt("MaterialLaw",law);
+    for (index_t s = 1; s < 5; ++s)
+        assembler.setDirichletDofs(0,s,bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs());
+
+    gsElasticityNewton<real_t> newton(assembler);
+    newton.options().setInt("NumIncStep",numSteps);
+    newton.options().setInt("MaxIterNotLast",numIter);
+    newton.options().setSwitch("BijectivityCheck",bijectivity);
+    newton.options().setInt("MaxHalving",maxAdapt);
+    newton.options().setReal("QualityRatio",quality);
+    newton.options().setSwitch("DampedNewton",damped);
+    newton.options().setInt("Verbosity",newtonVerbosity::all);
+    newton.options().setInt("Save",newtonSave::all);
+
+    newton.solve();
+
+    //=====================================//
+                // Output //
+    //=====================================//
+
+    filename = filename.substr(filename.find_last_of("/\\")+1); // file name without a path
+    filename = filename.substr(0,filename.find_last_of(".\\"));
+    filename = filename.substr(0,filename.find_last_of("_\\"));
+
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
 
-    gsInfo << "Initialized a 2D problem with " << initGeo.patch(0).coefsSize() * 2 << " dofs.\n";
+    newton.plotDeformation(initGeo,filename,numPlotPoints);
 
-    // boundary condition info
-    gsBoundaryConditions<> bdryCurves;
-    for (index_t p = 0; p < bdry.nPatches(); ++p)
-        bdryCurves.addCondition(0,p+1,condition_type::dirichlet,&(bdry.patch(p)));
-
-
-    std::vector<gsMultiPatch<> > displacements;
-    gsInfo << "Mesh deformation...\n";
-    int res = computeMeshDeformation(displacements,initGeo,bdryCurves,poissRatio,numSteps,maxAdapt,quality,nonLin,1e-12,maxNewtonIter);
-    (void)res;
-    gsInfo << "Plotting the result to the Paraview file \"" << filename << "_2D.pvd\"...\n";
-    plotDeformation(displacements,initGeo,filename + "_2D",numPlotPoints);
-
-    // construct deformed geometry
-    gsMultiPatch<> geo;
-    geo.addPatch(initGeo.patch(0).clone());
-    geo.patch(0).coefs() += displacements.back().patch(0).coefs();
-    geo.computeTopology();
-    gsInfo << "The result of the incremental algorithm is saved to \"" << filename << "_2D.xml\".\n";
-    gsWrite(geo,filename + "_2D");
+    initGeo.patch(0).coefs() += newton.solution().patch(0).coefs();
+    gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
+    gsWrite(initGeo,filename + "_2D");
 
     return 0;
 }
