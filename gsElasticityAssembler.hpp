@@ -29,9 +29,9 @@ namespace gismo
 {
 
 template<class T>
-gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
-                                                gsMultiBasis<T> const & basis,
-                                                gsBoundaryConditions<T> const & bconditions,
+gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                                                const gsMultiBasis<T> & basis,
+                                                const gsBoundaryConditions<T> & bconditions,
                                                 const gsFunction<T> & body_force)
 {
     // Always concieved as a meaningful class, now gsPde is just a container for

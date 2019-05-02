@@ -1,6 +1,6 @@
-/** @file gsVisitorLinearElasticity.h
+/** @file gsVisitorMixedLinearElasticity.h
 
-    @brief Visitor class for volumetric integration of the linear elasticity system.
+    @brief Visitor class for volumetric integration of the mixed linear elasticity system.
 
     This file is part of the G+Smo library.
 
@@ -21,89 +21,107 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorLinearElasticity
+class gsVisitorMixedLinearElasticity
 {
 public:
 
-    gsVisitorLinearElasticity(const gsPde<T> & pde_)
+    gsVisitorMixedLinearElasticity(const gsPde<T> & pde_)
     {
         pde_ptr = static_cast<const gsPoissonPde<T>*>(&pde_);
     }
 
-    void initialize(const gsBasis<T> & basis,
+    void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here (?)
+        rule = gsQuadrature::get(basisRefs.front(), options); // harmless slicing occurs here (?)
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
 
-        dim = basis.dim();
+        dim = basisRefs.front().dim();
 
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
-        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
+        lambda_inv = ( 1. + pr ) * ( 1. - 2. * pr ) / E / pr ;
         mu     = E / ( 2. * ( 1. + pr ) );
         forceScaling = options.getReal("ForceScaling");
     }
 
-    inline void evaluate(const gsBasis<T> & basis,
+    inline void evaluate(const gsBasisRefs<T> & basisRefs,
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
     {
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
         // find local indices which are active on the element
-        basis.active_into(quNodes.col(0), localIndices);
-        numActiveFunctions = localIndices.rows();
+        basisRefs.front().active_into(quNodes.col(0), localIndicesDisp);
+        basisRefs.back().active_into(quNodes.col(0), localIndicesPres);
+        numActiveFunctionsDisp = localIndicesDisp.rows();
+        numActiveFunctionsPres = localIndicesPres.rows();
         // Evaluate basis functions on element
-        basis.evalAllDers_into( quNodes, 1, basisValues);
+        basisRefs.front().evalAllDers_into( quNodes, 1, basisValuesDisp);
+        basisRefs.back().eval_into(quNodes,basisValuesPres);
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into( md.values[0], forceValues );
         // Initialize local matrix/rhs
-        localMat.setZero(dim*numActiveFunctions, dim*numActiveFunctions);
-        localRhs.setZero(dim*numActiveFunctions, 1);
+        localMat.setZero(dim*numActiveFunctionsDisp + numActiveFunctionsPres,
+                         dim*numActiveFunctionsDisp + numActiveFunctionsPres);
+        localRhs.setZero(dim*numActiveFunctionsDisp + numActiveFunctionsPres, 1);
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
-    {
-        index_t N = numActiveFunctions;
+    {                                             // A | B^T
+        index_t N_D = numActiveFunctionsDisp;     // --|--    matrix structure
+        index_t N_P = numActiveFunctionsPres;     // B | C
         // elasticity tensor
         gsMatrix<T> C;
-        setC(C,gsMatrix<T>::Identity(dim,dim),lambda,2*mu);
+        setC(C,gsMatrix<T>::Identity(dim,dim),0.,2*mu);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGrad;
-            transformGradients(md, q, basisValues[1], physGrad);
-            // loop over active basis functions (v_j)
-            for (index_t i = 0; i < N; i++)
+            gsMatrix<T> physGradDisp;
+            transformGradients(md, q, basisValuesDisp[1], physGradDisp);
+            // Loop over displacement basis functions
+            for (index_t i = 0; i < N_D; i++)
             {
-                // stiffness matrix K = B_i^T * C * B_j;
                 gsMatrix<T> B_i;
-                setB(B_i,gsMatrix<T>::Identity(dim,dim),physGrad.col(i));
+                setB(B_i,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(i));
                 gsMatrix<T> tempK = B_i.transpose() * C;
-                // loop over active basis functions (v_j)
-                for (index_t j = 0; j < N; j++)
+                // Loop for A-matrix
+                for (index_t j = 0; j < N_D; j++)
                 {
                     gsMatrix<T> B_j;
-                    setB(B_j,gsMatrix<T>::Identity(dim,dim),physGrad.col(j));
+                    setB(B_j,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(j));
                     gsMatrix<T> K = tempK * B_j;
 
                     for (short_t di = 0; di < dim; ++di)
                         for (short_t dj = 0; dj < dim; ++dj)
-                            localMat(di*N+i, dj*N+j) += weight * K(di,dj);
+                            localMat(di*N_D+i, dj*N_D+j) += weight * K(di,dj);
                 }
+
+                // Loop for B-matrix
+                for (index_t j = 0; j < N_P; j++)
+                    for (short_t d = 0; d < dim; ++d)
+                    {
+                        localMat(dim*N_D+j,d*N_D+i) += weight*physGradDisp(d,i)*basisValuesPres(j,q);
+                        localMat(d*N_D+i,dim*N_D+j) += weight*physGradDisp(d,i)*basisValuesPres(j,q);
+                    }
             }
 
+            // Loop over pressure basis functions for C-matrix
+            if (abs(lambda_inv) > 0)
+                for (index_t i = 0; i < N_P; ++i)
+                    for (index_t j = 0; j < N_P; ++j)
+                        localMat(dim*N_D+i,dim*N_D+j) -= weight*lambda_inv*basisValuesPres(i,q)*basisValuesPres(j,q);
+
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N,N).noalias() += weight * forceScaling * forceValues(d,q) * basisValues[0].col(q) ;
+                localRhs.middleRows(d*N_D,N_D).noalias() += weight * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q) ;
         }
     }
 
@@ -111,13 +129,15 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
-        std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndices);
-        gsVector<size_t> blockNumbers(dim);
+        std::vector< gsMatrix<unsigned> > globalIndices(dim+1,localIndicesDisp);
+        gsVector<size_t> blockNumbers(dim+1);
         for (short_t d = 0; d < dim; ++d)
         {
-           system.mapColIndices(localIndices, patchIndex, globalIndices[d], d);
+           system.mapColIndices(localIndicesDisp,patchIndex,globalIndices[d], d);
            blockNumbers.at(d) = d;
         }
+        system.mapColIndices(localIndicesPres,patchIndex,globalIndices[dim], dim);
+        blockNumbers.at(dim) = dim;
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
@@ -154,28 +174,6 @@ protected:
                                 R(v(i,0),v(j,1))*R(v(i,1),v(j,0)));
     }
 
-    // transform stress tensor S to a vector in Voigt notation
-    inline void voigtStress(gsVector<T> & Svec, const gsMatrix<T> & S)
-    {
-        index_t dimTensor = dim*(dim+1)/2;
-        Svec.resize(dimTensor);
-        if (dim == 2)
-        {
-            Svec(0) = S(0,0);
-            Svec(1) = S(1,1);
-            Svec(2) = S(0,1);
-        }
-        if (dim == 3)
-        {
-            Svec(0) = S(0,0);
-            Svec(1) = S(1,1);
-            Svec(2) = S(2,2);
-            Svec(3) = S(0,1);
-            Svec(4) = S(1,2);
-            Svec(5) = S(0,2);
-        }
-    }
-
     // auxiliary matrix B (see Bernal, Calo, Collier, et. at., "PetIGA", ICCS 2013, p. 1610)
     inline void setB( gsMatrix<T> & B, const gsMatrix<T> & F, const gsVector<T> & bGrad)
     {
@@ -199,6 +197,7 @@ protected:
         }
     }
 
+
 protected:
     // general problem info
     short_t dim;
@@ -207,16 +206,17 @@ protected:
     gsMapData<T> md;
 
     // Lame coefficients, density and force scaling factor
-    T lambda, mu, forceScaling;
+    T lambda_inv, mu, forceScaling;
 
     // local components of the global linear system
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
 
     // Stored evaluations
-    index_t numActiveFunctions;
-    gsMatrix<unsigned> localIndices;
-    std::vector<gsMatrix<T> > basisValues;
+    index_t numActiveFunctionsDisp, numActiveFunctionsPres;
+    gsMatrix<unsigned> localIndicesDisp, localIndicesPres;
+    std::vector<gsMatrix<T> > basisValuesDisp;
+    gsMatrix<T> basisValuesPres;
     gsMatrix<T> forceValues;
 };
 
