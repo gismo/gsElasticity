@@ -7,16 +7,8 @@ namespace gismo
 {
 
 //-----------------------------------//
-//--------- Mesh deformation --------//
+//--------- Mesh Analysis -----------//
 //-----------------------------------//
-
-TEMPLATE_INST index_t computeMeshDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
-                                             gsBoundaryConditions<real_t> const & bdryCurves, real_t poissonRatio,
-                                             index_t numSteps, index_t maxAdapt, real_t qualityRatio,
-                                             bool finalize, real_t tolerance, index_t maxNumIterations);
-
-TEMPLATE_INST void plotDeformation(std::vector<gsMultiPatch<real_t> > & displacements, gsMultiPatch<real_t> const & initDomain,
-                                   std::string fileName, index_t numSamples);
 
 TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
 

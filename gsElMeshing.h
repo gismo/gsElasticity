@@ -20,30 +20,8 @@ namespace gismo
 {
 
 //-----------------------------------//
-//--------- Mesh deformation --------//
+//--------- Mesh Analysis -----------//
 //-----------------------------------//
-
-/** @brief Computes a deformation of a given initial domain such that the domain's boundary coninsides with a given set of boundary curves;
-/// uses adaptive incremental Newton's method; returns a set of displacement fields for every iteration;
-/// returns 0 if successful or 1 if maximum number of iterations or refinements is exceeded;
-\param[in] numSteps Preferred number of incremental steps
-\param[in] maxAdapt Maximum number of adaptive stepsize halving
-\param[in] qualityRatio Minumun quality ratio to maintain from step to step
-\param[in] finalize Run full Newton's method at the last incremental step
-\param[in] tolerance Convergence tolerance for the final Newton's run
-\param[in] maxNumIterations Maximum number of iterations for the final Newton's run
-*/
-template <class T>
-index_t computeMeshDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                               gsBoundaryConditions<T> const & bdryCurves, T poissonRatio = 0.49,
-                               index_t numSteps = 3, index_t maxAdapt = 5, T qualityRatio = 0.2,
-                               bool finalize = true, T tolerance = 1e-12, index_t maxNumIterations = 25);
-
-/// @brief Plots every displacement computed by *computeMeshDeformation*;
-/// set <numSamples> greater than 0 to plot the Jacobian of the geometry mapping using <numSamples> points
-template <class T>
-void plotDeformation(std::vector<gsMultiPatch<T> > & displacements, gsMultiPatch<T> const & initDomain,
-                     std::string fileName, index_t numSamples = 0);
 
 /// @brief Plots the mesh and the jacobian (if <numSamples> > 0) to Paraview
 template <class T>
