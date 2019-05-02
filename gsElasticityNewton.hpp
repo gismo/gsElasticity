@@ -332,7 +332,7 @@ void gsElasticityNewton<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
             for (index_t p = 0; p < solutions.back().nPatches(); ++p)
                 tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
 
-        ratio = assembler.solutionJacRatio(tempDisplacement);
+        ratio = assembler.solutionJacRatio(tempDisplacement) / oldRatio;
         numAdaptHalving++;
     }
 
