@@ -78,7 +78,7 @@ public:
         index_t N_P = numActiveFunctionsPres;     // B | C
         // elasticity tensor
         gsMatrix<T> C;
-        setC(C,gsMatrix<T>::Identity(dim,dim),0.,2*mu);
+        setC(C,gsMatrix<T>::Identity(dim,dim),0.,mu);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
@@ -127,7 +127,7 @@ public:
 
     inline void localToGlobal(const int patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
+                              gsSparseSystem<T> & system)
     {
         std::vector< gsMatrix<unsigned> > globalIndices(dim+1,localIndicesDisp);
         gsVector<size_t> blockNumbers(dim+1);

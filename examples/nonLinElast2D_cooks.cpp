@@ -33,7 +33,7 @@ int main(int argc, char* argv[]){
     gsConstantFunction<> g(0.,0.,2);
 
     // neumann BC
-    gsConstantFunction<> f(0.,625e3,2);
+    gsConstantFunction<> f(0.,625e4,2);
 
     // material parameters
     real_t youngsModulus = 240.565e6;
@@ -86,9 +86,11 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     const gsMultiPatch<> & solutionNonlinear = newton.solution();
+    const gsMultiPatch<> & solutionLinear = newton.allSolutions().front();
 
     // constructing an IGA field (geometry + solution)
     gsField<> displacementField(assembler.patches(),solutionNonlinear);
+    gsField<> displacementLinField(assembler.patches(),solutionLinear);
 
     //=============================================//
                   // Output //
@@ -98,6 +100,7 @@ int main(int argc, char* argv[]){
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Displacement"] = &displacementField;
+    fields["DisplacementLin"] = &displacementLinField;
     gsWriteParaviewMultiPhysics(fields,"cooks",numPlotPoints);
     gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 

@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
     gsConstantFunction<> g(0.,0.,2);
 
     // neumann BC
-    gsConstantFunction<> f(0.,625e3,2);
+    gsConstantFunction<> f(0.,625e4,2);
 
     // material parameters
     real_t youngsModulus = 240.565e6;
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]){
 
     gsInfo << "Solving...\n";
     clock.restart();
-    gsSparseSolver<>::LU solver(assembler.matrix());
+    gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
     gsVector<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with LU solver in " << clock.stop() <<"s.\n";
 

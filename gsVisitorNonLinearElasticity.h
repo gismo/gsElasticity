@@ -69,7 +69,7 @@ public:
         // elasticity tensor
         gsMatrix<T> C;
         if (materialLaw == 0 && assembleM)
-            Base::setC(C,gsMatrix<T>::Identity(dim,dim),lambda,2*mu);
+            Base::setC(C,gsMatrix<T>::Identity(dim,dim),lambda,mu);
 
         // loop over quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -100,14 +100,14 @@ public:
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda*log(J)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
                 if (assembleM)
-                    Base::setC(C,RCGinv,lambda,2*(mu-lambda*log(J)));
+                    Base::setC(C,RCGinv,lambda,mu-lambda*log(J));
             }
             if (materialLaw == 2) // neo-Hooke J^2
             {
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda/2*(J*J-1)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
                 if (assembleM)
-                    Base::setC(C,RCGinv,lambda*J*J,2*(mu-lambda*(J*J-1)));
+                    Base::setC(C,RCGinv,lambda*J*J,mu-lambda*(J*J-1));
             }
             // loop over active basis functions (u_i)
             for (index_t i = 0; i < N; i++)

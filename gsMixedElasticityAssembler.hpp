@@ -116,7 +116,9 @@ void gsMixedElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVect
     for (short_t d = 0; d < m_dim; ++d)
         unknowns.at(d) = d;
     Base::constructSolution(solVector,displacement,unknowns);
-    Base::constructSolution(solVector,pressure,m_dim);
+    gsVector<index_t> unknowns2(1);
+    unknowns2[0] = m_dim;
+    Base::constructSolution(solVector,pressure,unknowns2);
 }
 
 }// namespace gismo ends
