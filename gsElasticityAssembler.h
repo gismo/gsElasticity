@@ -79,7 +79,7 @@ public:
      * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
      * to gsBoundaryCondtions container that is passed to the assembler constructor.
      */
-    virtual void setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs);
+    virtual void setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
     /// @brief Check whether the displacement field is valid, i.e. J = det(F) > 0;
     /// return -1 if yes or a number of the first invalid patch

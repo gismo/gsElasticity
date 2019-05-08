@@ -151,7 +151,7 @@ void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & d
     T lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
     T mu     = E / ( 2. * ( 1. + pr ) );
 
-    for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
         result.addPiecePointer(new gsCauchyStressFunction<T>(displacement,p,type,lambda,mu));
 }
 
@@ -175,7 +175,7 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsM
                  "Wrong number of patches of a given domain: " + util::to_string(domain.nPatches()) +
                  ". Must be: " + util::to_string(solution.nPatches()) + ".\n");
 
-    for (index_t p = 0; p < solution.nPatches(); ++p)
+    for (size_t p = 0; p < solution.nPatches(); ++p)
     {
         GISMO_ASSERT(domain.patch(p).coefsSize() == solution.patch(p).coefsSize(),
                      "Wrong number of control points in patch " + util::to_string(p) +
@@ -187,7 +187,7 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsM
 }
 
 template <class T>
-void gsElasticityAssembler<T>::setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs)
+void gsElasticityAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -225,7 +225,7 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
     mdU.flags = NEED_DERIV;
     gsMatrix<T> points;
 
-    for (index_t p = 0; p < solution.nPatches(); ++p)
+    for (size_t p = 0; p < solution.nPatches(); ++p)
     {
         gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
 
@@ -258,7 +258,7 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
     mdU.flags = NEED_DERIV;
     gsMatrix<T> points;
 
-    for (index_t p = 0; p < solution.nPatches(); ++p)
+    for (size_t p = 0; p < solution.nPatches(); ++p)
     {
         gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
 

@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
     {
         // simplifying the boundary curves
         gsMultiPatch<> simpleBdry;
-        for (index_t p = 0; p < bdry.nPatches(); ++p)
+        for (size_t p = 0; p < bdry.nPatches(); ++p)
             simpleBdry.addPatch(simplifyCurve(bdry.patch(p),numAdditionalPoints,fittingDegree,1000));
 
         // creating a coons patch out of simplified boundary curves to serve as an initial domain
