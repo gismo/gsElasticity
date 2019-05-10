@@ -211,11 +211,11 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
     index_t res;
 
     gsMultiPatch<T> configuration;
-    for (index_t p = 0; p < initDomain.nPatches(); ++p)
+    for (size_t p = 0; p < initDomain.nPatches(); ++p)
         configuration.addPatch(initDomain.patch(p).clone());
 
     gsPiecewiseFunction<T> dets;
-    for (index_t p = 0; p < configuration.nPatches(); ++p)
+    for (size_t p = 0; p < configuration.nPatches(); ++p)
         dets.addPiecePointer(new gsDetFunction<T>(configuration,p));
 
     bool plotJac = true;
@@ -230,7 +230,7 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
     fields["Jacobian"] = &detField;
     gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamplingPoints,true);
 
-    for (index_t p = 0; p < configuration.nPatches(); ++p)
+    for (size_t p = 0; p < configuration.nPatches(); ++p)
     {
         collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
         if (plotJac)
@@ -248,7 +248,7 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
         if (m_options.getInt("Verbosity") == newtonVerbosity::all)
             gsInfo << "Step: " << s+1 << "/" << solutions.size() << std::endl;
 
-        for (index_t p = 0; p < configuration.nPatches(); ++p)
+        for (size_t p = 0; p < configuration.nPatches(); ++p)
         {
             configuration.patch(p).coefs() += solutions[s].patch(p).coefs();
             if (s > 0)
@@ -256,7 +256,7 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
         }
 
         gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamplingPoints,true);
-        for (index_t p = 0; p < configuration.nPatches(); ++p)
+        for (size_t p = 0; p < configuration.nPatches(); ++p)
         {
             collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
 
@@ -285,22 +285,22 @@ void gsElasticityNewton<T>::saveSolution(const gsMultiPatch<T> & incDisplacement
         solutions.push_back(incDisplacement);
     else
         if (m_options.getInt("Save") == newtonSave::onlyFinal)
-            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+            for (size_t p = 0; p < solutions.back().nPatches(); ++p)
                 solutions.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
         else if (m_options.getInt("Save") == newtonSave::firstAndLastPerIncStep)
             if (numIterations == 0 || numIterations == 1)
             {
                 solutions.push_back(incDisplacement);
-                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                for (size_t p = 0; p < solutions.back().nPatches(); ++p)
                     solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
             }
             else
-                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                for (size_t p = 0; p < solutions.back().nPatches(); ++p)
                     solutions.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
         else if (m_options.getInt("Save") == newtonSave::all)
         {
             solutions.push_back(incDisplacement);
-            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+            for (size_t p = 0; p < solutions.back().nPatches(); ++p)
                 solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
         }
 }
@@ -310,7 +310,7 @@ void gsElasticityNewton<T>::bijectivityCheck(const gsMultiPatch<T> & incDisplace
 {
     gsMultiPatch<T> tempDisplacement(incDisplacement);
     if (!solutions.empty())
-        for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+        for (size_t p = 0; p < solutions.back().nPatches(); ++p)
             tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
     index_t corruptedPatch = assembler.checkSolution(tempDisplacement);
     bijective = corruptedPatch == -1 ? true : false;
@@ -325,11 +325,11 @@ void gsElasticityNewton<T>::adaptiveHalving(gsMultiPatch<T> & incDisplacement)
     T oldRatio = solutions.empty() ? 1. : assembler.solutionJacRatio(solutions.back());
     while (ratio < qualityRatio && numAdaptHalving < maxAdaptHaling)
     {
-        for (index_t p = 0; p < incDisplacement.nPatches(); ++p)
+        for (size_t p = 0; p < incDisplacement.nPatches(); ++p)
             incDisplacement.patch(p).coefs() *= 0.5;
         gsMultiPatch<T> tempDisplacement(incDisplacement);
         if (!solutions.empty())
-            for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+            for (size_t p = 0; p < solutions.back().nPatches(); ++p)
                 tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
 
         ratio = assembler.solutionJacRatio(tempDisplacement) / oldRatio;
@@ -364,7 +364,7 @@ void gsElasticityNewton<T>::dampedNewton(gsMultiPatch<T> & incDisplacement)
 
     gsMultiPatch<T> tempDisplacement(incDisplacement);
     if (!solutions.empty())
-        for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+        for (size_t p = 0; p < solutions.back().nPatches(); ++p)
             tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();
     assembler.assemble(tempDisplacement,false); // *false* to assemble only the rhs
     gB = (G0.transpose()*assembler.rhs())(0,0);
@@ -376,7 +376,7 @@ void gsElasticityNewton<T>::dampedNewton(gsMultiPatch<T> & incDisplacement)
             alpha = (alphaA*gB-alphaB*gA)/(gB-gA); // symmetric secant
             gsMultiPatch<T> tempDisplacement(incDisplacement);
             if (!solutions.empty())
-                for (index_t p = 0; p < solutions.back().nPatches(); ++p)
+                for (size_t p = 0; p < solutions.back().nPatches(); ++p)
                 {
                     tempDisplacement.patch(p).coefs() *= alpha;
                     tempDisplacement.patch(p).coefs() += solutions.back().patch(p).coefs();

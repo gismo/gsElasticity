@@ -47,14 +47,14 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
         plotJac = false;
 
     gsPiecewiseFunction<T> dets;
-    for (index_t p = 0; p < domain.nPatches(); ++p)
+    for (size_t p = 0; p < domain.nPatches(); ++p)
         dets.addPiecePointer(new gsDetFunction<T>(domain,p));
     gsField<> detField(domain,dets,true);
     std::map<std::string,const gsField<> *> fields;
     fields["Jacobian"] = &detField;
     gsWriteParaviewMultiPhysics(fields,fileName,numSamples,true);
 
-    for (index_t p = 0; p < domain.nPatches(); ++p)
+    for (size_t p = 0; p < domain.nPatches(); ++p)
     {
         collectionMesh.addPart(fileNameOnly,p,"_mesh.vtp"); 
         if (plotJac)
@@ -81,7 +81,7 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
     md.flags = NEED_DERIV;
     gsMatrix<T> points;
 
-    for (index_t p = 0; p < domain.nPatches(); ++p)
+    for (size_t p = 0; p < domain.nPatches(); ++p)
     {
         gsVector<index_t> numNodes(domain.dim());
         for (short_t i = 0; i < domain.dim(); ++i)
@@ -110,7 +110,7 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
     md.flags = NEED_DERIV;
     gsMatrix<T> points;
 
-    for (index_t p = 0; p < domain.nPatches(); ++p)
+    for (size_t p = 0; p < domain.nPatches(); ++p)
     {
         gsVector<index_t> numNodes(domain.dim());
         for (short_t i = 0; i < domain.dim(); ++i)

@@ -23,16 +23,6 @@
 namespace gismo
 {
 
-struct material_law
-{
-    enum type
-    {
-        saint_venant_kirchhoff = 0,  /// S = 2*mu*E + lambda*tr(E)*I
-        neo_hooke_ln           = 1,  /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
-        neo_hooke_2            = 2   /// S = lambda/2*(J^2-1)*C^-1 + mu*(I-C^-1)
-    };
-};
-
 // ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
 //       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
 //        in the reference configuration, dead-load problem)
@@ -40,6 +30,7 @@ struct material_law
 /** @brief Assembles stiffness and mass matrices and right-hand side vector for linear and nonlinear elasticity
            for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
+           Supports mixed displacement-pressure formulation.
 */
 template <class T>
 class gsElasticityAssembler : public gsAssembler<T>
@@ -47,11 +38,19 @@ class gsElasticityAssembler : public gsAssembler<T>
 public:
     typedef gsAssembler<T> Base;
 
-    /// @brief Constructor of the assembler object.
+    /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
-                          const gsMultiBasis<T> & bases,
+                          const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force);
+
+    /// @brief Constructor of mixed formulation (displacement + pressure)
+    gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                          const gsMultiBasis<T> & basisDisp,
+                          const gsMultiBasis<T> & basisPres,
+                          const gsBoundaryConditions<T> & bconditions,
+                          const gsFunction<T> & body_force);
+
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -60,15 +59,20 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the stiffness matrix and the RHS
-    virtual void assemble();
+    /// set *assembleMatrix* to false to only assemble the RHS;
+    virtual void assemble(bool assembleMatrix = true);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
     virtual void assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix = true);
 
-    /// @brief Construct solution from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const;
+    /// @brief Construct displacement from computed solution vector
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
+
+    /// @brief Construct displacement and pressure from computed solution vector
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
+
 
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
@@ -89,7 +93,7 @@ public:
      * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
      * to gsBoundaryCondtions container that is passed to the assembler constructor.
      */
-    virtual void setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs);
+    virtual void setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
     /// @brief Check whether the displacement field is valid, i.e. J = det(F) > 0;
     /// return -1 if yes or a number of the first invalid patch

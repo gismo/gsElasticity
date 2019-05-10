@@ -1,4 +1,4 @@
-/// This is an example of using the nonlinear elasticity solver on a 3D multi-patch geometry
+/// This is an example of using the mixed linear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElasticityNewton.h>
@@ -7,49 +7,42 @@ using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Testing the nonlinear elasticity solver in 3D.\n";
+    gsInfo << "Testing the linear elasticity solver in 2D.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"terrific.xml";
-    index_t numUniRef = 0; // number of h-refinements
-    index_t maxNumIteration = 100;
-    real_t tolerance = 1e-12;
+    std::string filename = ELAST_DATA_DIR"/cooks.xml";
+    index_t numUniRef = 3; // number of h-refinements
+    index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
-    index_t materialLaw = material_law::saint_venant_kirchhoff;
+    real_t poissonsRatio = 0.4;
+    index_t numSteps = 1;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
+    gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
-    cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
+    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln, 2 - NeoHooke_2",materialLaw);
+    cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
+    cmd.addInt("i","iter","Number of incremental loading steps",numSteps);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
-    gsConstantFunction<> f(0.,0.,0.,3);
-    // surface load, neumann BC
-    gsConstantFunction<> g(15e7, -10.5e7, 0,3);
+    gsConstantFunction<> g(0.,0.,2);
+
+    // neumann BC
+    gsConstantFunction<> f(0.,625e4,2);
 
     // material parameters
-    real_t youngsModulus = 74e9;
-    real_t poissonsRatio = 0.33;
+    real_t youngsModulus = 240.565e6;
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    // Dirichlet BC are imposed separately for every component (coordinate)
-    for (index_t d = 0; d < 3; d++)
-    {
-        bcInfo.addCondition(0,boundary::back,condition_type::dirichlet,0,d);
-        bcInfo.addCondition(1,boundary::back,condition_type::dirichlet,0,d);
-        bcInfo.addCondition(2,boundary::south,condition_type::dirichlet,0,d);
-    }
-    // Neumann BC are imposed as one function
-    bcInfo.addCondition(13,boundary::front,condition_type::neumann,&g);
-    bcInfo.addCondition(14,boundary::north,condition_type::neumann,&g);
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
+    bcInfo.addCondition(0,boundary::east,condition_type::neumann,&f);
 
     //=============================================//
                   // Assembly //
@@ -58,26 +51,32 @@ int main(int argc, char* argv[]){
     // scanning geometry
     gsMultiPatch<> geometry;
     gsReadFile<>(filename, geometry);
-    // creating basis
-    gsMultiBasis<> basis(geometry);
+    // creating bases
+    gsMultiBasis<> basisDisplacement(geometry);
+    for (index_t i = 0; i < numKRef; ++i)
+    {
+        basisDisplacement.degreeElevate();
+        basisDisplacement.uniformRefine();
+    }
     for (index_t i = 0; i < numUniRef; ++i)
-        basis.uniformRefine();
+    {
+        basisDisplacement.uniformRefine();
+    }
 
     // creating assembler
-    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
+    gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
-    assembler.options().setInt("MaterialLaw",materialLaw);
+    assembler.options().setInt("DirichletValues",dirichlet::interpolation);
+    assembler.options().setInt("MaterialLaw",1);
 
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
     gsElasticityNewton<real_t> newton(assembler);
-    newton.options().setInt("MaxIter",maxNumIteration);
-    newton.options().setReal("AbsTol",tolerance);
     newton.options().setInt("Verbosity",newtonVerbosity::all);
     newton.options().setInt("Save",newtonSave::firstAndLastPerIncStep);
+    newton.options().setInt("NumIncStep",numSteps);
 
     //=============================================//
                   // Solving //
@@ -95,15 +94,16 @@ int main(int argc, char* argv[]){
                   // Output //
     //=============================================//
 
-    gsField<> nonlinearSolutionField(geometry,solutionNonlinear);
-    gsField<> linearSolutionField(geometry,solutionLinear);
+    // constructing an IGA field (geometry + solution)
+    gsField<> displacementField(assembler.patches(),solutionNonlinear);
+    gsField<> displacementLinField(assembler.patches(),solutionLinear);
 
-    gsInfo << "Plotting the output to the Paraview file \"terrific.pvd\"...\n";
+    gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
-    fields["Deformation (nonlinElast)"] = &nonlinearSolutionField;
-    fields["Deformation (linElast)"] = &linearSolutionField;
-    gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
+    fields["Displacement"] = &displacementField;
+    fields["DisplacementLin"] = &displacementLinField;
+    gsWriteParaviewMultiPhysics(fields,"cooks",numPlotPoints);
     gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 
     return 0;

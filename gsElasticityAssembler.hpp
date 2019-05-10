@@ -22,6 +22,7 @@
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
+#include <gsElasticity/gsVisitorMixedLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
 
@@ -29,9 +30,9 @@ namespace gismo
 {
 
 template<class T>
-gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
-                                                gsMultiBasis<T> const & basis,
-                                                gsBoundaryConditions<T> const & bconditions,
+gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                                                const gsMultiBasis<T> & basis,
+                                                const gsBoundaryConditions<T> & bconditions,
                                                 const gsFunction<T> & body_force)
 {
     // Always concieved as a meaningful class, now gsPde is just a container for
@@ -48,6 +49,26 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     m_dim = body_force.targetDim();
     for (short_t d = 0; d < m_dim; ++d)
         m_bases.push_back(basis);
+
+    Base::initialize(pde, m_bases, defaultOptions());
+}
+
+template<class T>
+gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
+                                                gsMultiBasis<T> const & basisDisp,
+                                                gsMultiBasis<T> const & basisPres,
+                                                gsBoundaryConditions<T> const & bconditions,
+                                                const gsFunction<T> & body_force)
+{
+    // same as above
+    gsPiecewiseFunction<T> rightHandSides;
+    rightHandSides.addPiece(body_force);
+    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rightHandSides) );
+    // same as above
+    m_dim = body_force.targetDim();
+    for (short_t d = 0; d < m_dim; ++d)
+        m_bases.push_back(basisDisp);
+    m_bases.push_back(basisPres);
 
     Base::initialize(pde, m_bases, defaultOptions());
 }
@@ -69,27 +90,30 @@ void gsElasticityAssembler<T>::refresh()
     GISMO_ENSURE(m_dim == m_pde_ptr->domain().parDim(), "The RHS dimension and the domain dimension don't match!");
     GISMO_ENSURE(m_dim == 2 || m_dim == 3, "Only two- and three-dimenstion domains are supported!");
 
-    std::vector<gsDofMapper> m_dofMappers(m_dim);
-    for (short_t d = 0; d < m_dim; d++)
+    std::vector<gsDofMapper> m_dofMappers(m_bases.size());
+    for (unsigned d = 0; d < m_bases.size(); d++)
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
     gsVector<unsigned> dims;
-    dims.setOnes(m_dim);
+    dims.setOnes(m_bases.size());
     m_system = gsSparseSystem<T>(m_dofMappers, dims);
 
-    m_options.setReal("bdO",m_dim*(1+m_options.getReal("bdO"))-1);
+    m_options.setReal("bdO",m_bases.size()*(1+m_options.getReal("bdO"))-1);
     m_system.reserve(m_bases[0], m_options, 1);
 
-    for (short_t d = 0; d < m_dim; ++d)
+    for (unsigned d = 0; d < m_bases.size(); ++d)
         Base::computeDirichletDofs(d);
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble()
+void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
 {
-    m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
     m_system.rhs().setZero(Base::numDofs(),1);
 
     if ( this->numDofs() == 0 )
@@ -99,7 +123,16 @@ void gsElasticityAssembler<T>::assemble()
     }
 
     // Compute volumetric integrals and write to the global linear system
-    Base::template push<gsVisitorLinearElasticity<T> >();
+    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
+    {
+        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
+        Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+    }
+    else // mixed formulation (displacement + pressure)
+    {
+        gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
+        Base::template push<gsVisitorMixedLinearElasticity<T> >(visitor);
+    }
     // Compute surface integrals and write to the global rhs vector
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
@@ -117,8 +150,15 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
     m_system.rhs().setZero(Base::numDofs(),1);
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
-    Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
+    {
+        gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
+        Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    }
+    else // mixed formulation (displacement + pressure)
+    {
+        gsInfo << "Nonlinear mixed elasticity is not implemented yet!\n";
+    }
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
@@ -127,7 +167,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
 }
 
 template <class T>
-void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk) const
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const
 {
     gsVector<index_t> unknowns(m_dim);
     for (short_t d = 0; d < m_dim; ++d)
@@ -136,10 +176,24 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, g
 }
 
 template <class T>
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                                 gsMultiPatch<T>  & displacement, gsMultiPatch<T> & pressure) const
+{
+    GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
+    // construct displacement
+    constructSolution(solVector,displacement);
+    // construct pressure
+    gsVector<index_t> unknowns(1);
+    unknowns.at(0) = m_dim;
+    Base::constructSolution(solVector,pressure,unknowns);
+}
+
+template <class T>
 void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                                        gsPiecewiseFunction<T> & result,
                                                        stress_type::type type) const
 {
+    // TODO: construct stresses for nonlinear and mixed elasticity
     result.clear();
     if (type == stress_type::all_2D)
         GISMO_ASSERT(m_dim == 2, "Invalid stress type for a 2D problem");
@@ -151,7 +205,7 @@ void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & d
     T lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
     T mu     = E / ( 2. * ( 1. + pr ) );
 
-    for (index_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
         result.addPiecePointer(new gsCauchyStressFunction<T>(displacement,p,type,lambda,mu));
 }
 
@@ -166,16 +220,13 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsM
                  ". Must be: " + util::to_string(m_dim) + ".\n");
 
     gsMultiPatch<T> solution;
-    if (m_dim == 2)
-        Base::constructSolution(solVector,solution,gsVector<index_t>::vec(0,1));
-    else
-        Base::constructSolution(solVector,solution,gsVector<index_t>::vec(0,1,2));
+    constructSolution(solVector,solution);
 
     GISMO_ASSERT(domain.nPatches() == solution.nPatches(),
                  "Wrong number of patches of a given domain: " + util::to_string(domain.nPatches()) +
                  ". Must be: " + util::to_string(solution.nPatches()) + ".\n");
 
-    for (index_t p = 0; p < solution.nPatches(); ++p)
+    for (size_t p = 0; p < solution.nPatches(); ++p)
     {
         GISMO_ASSERT(domain.patch(p).coefsSize() == solution.patch(p).coefsSize(),
                      "Wrong number of control points in patch " + util::to_string(p) +
@@ -187,7 +238,7 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsM
 }
 
 template <class T>
-void gsElasticityAssembler<T>::setDirichletDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs)
+void gsElasticityAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -225,7 +276,7 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
     mdU.flags = NEED_DERIV;
     gsMatrix<T> points;
 
-    for (index_t p = 0; p < solution.nPatches(); ++p)
+    for (size_t p = 0; p < solution.nPatches(); ++p)
     {
         gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
 
@@ -258,7 +309,7 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
     mdU.flags = NEED_DERIV;
     gsMatrix<T> points;
 
-    for (index_t p = 0; p < solution.nPatches(); ++p)
+    for (size_t p = 0; p < solution.nPatches(); ++p)
     {
         gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
 
