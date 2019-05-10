@@ -106,6 +106,7 @@ public:
                     }
                 }
             }
+            // rhs contribution
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_D,N_D).noalias() += weight * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q) ;
         }
