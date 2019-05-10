@@ -30,6 +30,7 @@ namespace gismo
 /** @brief Assembles stiffness and mass matrices and right-hand side vector for linear and nonlinear elasticity
            for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
+           Supports mixed displacement-pressure formulation.
 */
 template <class T>
 class gsElasticityAssembler : public gsAssembler<T>
@@ -37,13 +38,13 @@ class gsElasticityAssembler : public gsAssembler<T>
 public:
     typedef gsAssembler<T> Base;
 
-    /// @brief Constructor of the assembler object.
+    /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force);
 
-    /// @brief Constructor of the assembler object.
+    /// @brief Constructor of mixed formulation (displacement + pressure)
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basisDisp,
                           const gsMultiBasis<T> & basisPres,
@@ -66,10 +67,10 @@ public:
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
     virtual void assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix = true);
 
-    /// @brief Construct solution from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const;
+    /// @brief Construct displacement from computed solution vector
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
 
-    /// @brief Construct solution from computed solution vector
+    /// @brief Construct displacement and pressure from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
 

@@ -157,7 +157,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
     }
     else // mixed formulation (displacement + pressure)
     {
-
+        gsInfo << "Nonlinear mixed elasticity is not implemented yet!\n";
     }
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
@@ -167,7 +167,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
 }
 
 template <class T>
-void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk) const
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const
 {
     gsVector<index_t> unknowns(m_dim);
     for (short_t d = 0; d < m_dim; ++d)
@@ -176,15 +176,16 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, g
 }
 
 template <class T>
-void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>  & displacement, gsMultiPatch<T> & pressure) const
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                                 gsMultiPatch<T>  & displacement, gsMultiPatch<T> & pressure) const
 {
-    gsVector<index_t> unknowns(m_dim);
-    for (short_t d = 0; d < m_dim; ++d)
-        unknowns.at(d) = d;
-    Base::constructSolution(solVector,displacement,unknowns);
-    gsVector<index_t> unknowns2(1);
-    unknowns2[0] = m_dim;
-    Base::constructSolution(solVector,pressure,unknowns2);
+    GISMO_ENSURE(m_bases.size() == m_dim + 1, "Not a mixed formulation: can't construct pressure.");
+    // construct displacement
+    constructSolution(solVector,displacement);
+    // construct pressure
+    gsVector<index_t> unknowns(1);
+    unknowns.at(0) = m_dim;
+    Base::constructSolution(solVector,pressure,unknowns);
 }
 
 template <class T>
@@ -192,6 +193,7 @@ void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & d
                                                        gsPiecewiseFunction<T> & result,
                                                        stress_type::type type) const
 {
+    // TODO: construct stresses for nonlinear and mixed elasticity
     result.clear();
     if (type == stress_type::all_2D)
         GISMO_ASSERT(m_dim == 2, "Invalid stress type for a 2D problem");
@@ -218,10 +220,7 @@ void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsM
                  ". Must be: " + util::to_string(m_dim) + ".\n");
 
     gsMultiPatch<T> solution;
-    if (m_dim == 2)
-        Base::constructSolution(solVector,solution,gsVector<index_t>::vec(0,1));
-    else
-        Base::constructSolution(solVector,solution,gsVector<index_t>::vec(0,1,2));
+    constructSolution(solVector,solution);
 
     GISMO_ASSERT(domain.nPatches() == solution.nPatches(),
                  "Wrong number of patches of a given domain: " + util::to_string(domain.nPatches()) +

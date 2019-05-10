@@ -15,7 +15,6 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"terrific.xml";
     index_t numUniRef = 0; // number of h-refinements
-    index_t numDegElevate = 0; // number of p-refinements
     index_t maxNumIteration = 100;
     real_t tolerance = 1e-12;
     index_t numPlotPoints = 10000;
@@ -24,7 +23,6 @@ int main(int argc, char* argv[]){
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
     cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
     cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);

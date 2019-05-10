@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 
     std::string filename = ELAST_DATA_DIR"/rotor_2D.xml";
     int numUniRef = 0; // number of h-refinements
-    int numDegElevate = 0; // number of p-refinements
+    int numKRef = 0; // number of k-refinements
     int numPlotPoints = 10000;
 
     real_t endTime = 1.;
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the thermo-elasticity solver in a time-dependent setting in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
+    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addInt("n","num","Number of time steps",numSteps);
     cmd.addReal("e","end","End of the integration period",endTime);
@@ -77,8 +77,11 @@ int main(int argc, char *argv[])
     gsReadFile<>(filename, geometry);
     // creating basis
     gsMultiBasis<> basis(geometry);
-    for (index_t i = 0; i < numDegElevate; ++i)
+    for (index_t i = 0; i < numKRef; ++i)
+    {
         basis.degreeElevate();
+        basis.uniformRefine();
+    }
     for (int i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 

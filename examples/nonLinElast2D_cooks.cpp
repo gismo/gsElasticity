@@ -15,7 +15,7 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/cooks.xml";
     index_t numUniRef = 3; // number of h-refinements
-    index_t numDegElevate = 1; // number of p-refinements
+    index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
     real_t poissonsRatio = 0.4;
     index_t numSteps = 1;
@@ -23,7 +23,7 @@ int main(int argc, char* argv[]){
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
+    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
     cmd.addInt("i","iter","Number of incremental loading steps",numSteps);
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]){
     gsReadFile<>(filename, geometry);
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
-    for (index_t i = 0; i < numDegElevate; ++i)
+    for (index_t i = 0; i < numKRef; ++i)
     {
         basisDisplacement.degreeElevate();
         basisDisplacement.uniformRefine();
@@ -62,7 +62,6 @@ int main(int argc, char* argv[]){
     {
         basisDisplacement.uniformRefine();
     }
-    //basisDisplacement.degreeElevate();
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,g);
@@ -86,17 +85,18 @@ int main(int argc, char* argv[]){
     gsInfo << "Solving...\n";
     newton.solve();
 
-    // constructing solution as an IGA function
-    const gsMultiPatch<> & solutionNonlinear = newton.solution();
-    const gsMultiPatch<> & solutionLinear = newton.allSolutions().front();
-
-    // constructing an IGA field (geometry + solution)
-    gsField<> displacementField(assembler.patches(),solutionNonlinear);
-    gsField<> displacementLinField(assembler.patches(),solutionLinear);
+    // solution to the nonlinear problem as an isogeometric displacement field
+    const gsMultiPatch<> solutionNonlinear = newton.solution();
+    // solution to the linear problem as an isogeometric displacement field
+    const gsMultiPatch<> solutionLinear = newton.allSolutions().front();
 
     //=============================================//
                   // Output //
     //=============================================//
+
+    // constructing an IGA field (geometry + solution)
+    gsField<> displacementField(assembler.patches(),solutionNonlinear);
+    gsField<> displacementLinField(assembler.patches(),solutionLinear);
 
     gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file

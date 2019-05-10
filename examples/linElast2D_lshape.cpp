@@ -14,13 +14,13 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/lshape.xml";
     index_t numUniRef = 3; // number of h-refinements
-    index_t numDegElevate = 1; // number of p-refinements
+    index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
+    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -50,8 +50,11 @@ int main(int argc, char* argv[]){
     gsReadFile<>(filename, geometry);
     // creating basis
     gsMultiBasis<> basis(geometry);
-    for (index_t i = 0; i < numDegElevate; ++i)
+    for (index_t i = 0; i < numKRef; ++i)
+    {
         basis.degreeElevate();
+        basis.uniformRefine();
+    }
     for (index_t i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 

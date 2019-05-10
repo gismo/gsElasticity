@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
     // input file with a set of 4 compatible boundary curves ordered "west-east-south-north"
     std::string filename = ELAST_DATA_DIR"/puzzle3_bdry.xml";
     index_t numUniRef = 0;
-    index_t numDegreeElev = 0;
+    index_t numKRef = 0;
     /// Initial domain options
     index_t fittingDegree = 0; // polynomial degree of the coarse fitting curve
     index_t numAdditionalPoints = 0; // number of additional control points above minimal for the coarse fitting curve
@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     gsCmdLine cmd("Generating isogeometric parametrization by mesh deformation in 2D.");
     cmd.addPlainString("name","File with boundary curves.",filename);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("e","elev","Number of degree elevetation application",numDegreeElev);
+    cmd.addInt("k","krefine","Number of degree elevetation application",numKRef);
     /// Initial domain options
     cmd.addInt("f","fitDeg","Polynomial degree of the coarse fitting curve",fittingDegree);
     cmd.addInt("c","acp","Number of additional control points above minimal for the coarse fitting curve",numAdditionalPoints);
@@ -65,8 +65,11 @@ int main(int argc, char* argv[])
 
     gsMultiPatch<> bdry;
     gsReadFile<>(filename,bdry);
-    for (index_t i = 0; i < numDegreeElev; ++i)
+    for (index_t i = 0; i < numKRef; ++i)
+    {
         bdry.degreeElevate();
+        bdry.uniformRefine();
+    }
     for (index_t i = 0; i < numUniRef; ++i)
         bdry.uniformRefine();
 

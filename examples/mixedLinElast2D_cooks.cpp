@@ -106,6 +106,11 @@ int main(int argc, char* argv[]){
                   // Output //
     //=============================================//
 
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(displacement,stresses,stress_type::von_mises);
+    gsField<> stressField(assembler.patches(),stresses,true);
+
+
     gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
