@@ -86,7 +86,7 @@ void gsElasticityAssembler<T>::refresh()
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble()
+void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
@@ -99,7 +99,8 @@ void gsElasticityAssembler<T>::assemble()
     }
 
     // Compute volumetric integrals and write to the global linear system
-    Base::template push<gsVisitorLinearElasticity<T> >();
+    gsVisitorLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
+    Base::template push<gsVisitorLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 

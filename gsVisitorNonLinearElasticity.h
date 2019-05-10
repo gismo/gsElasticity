@@ -28,8 +28,7 @@ public:
     typedef gsVisitorBaseElasticity<T> Base;
 
     gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_, bool assembleMatrix_)
-        : Base(pde_),
-          assembleMatrix(assembleMatrix_),
+        : Base(pde_,assembleMatrix_),
           displacement(displacement_) { }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -40,8 +39,6 @@ public:
         Base::initialize(basisRefs,patchIndex,options,rule);
 
         patch = patchIndex;
-        // NEED_DERIV to compute deformation gradient
-        mdDisplacement.flags = NEED_DERIV;
 
         materialLaw = options.getInt("MaterialLaw");
         T E = options.getReal("YoungsModulus");
@@ -55,9 +52,28 @@ public:
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
     {
-        Base::evaluate(basisRefs,geo,quNodes);
+        // store quadrature points of the element for geometry evaluation
+        md.points = quNodes;
+        // NEED_VALUE to get points in the physical domain for evaluation of the RHS
+        // NEED_MEASURE to get the Jacobian determinant values for integration
+        // NEED_GRAD_TRANSFORM to get the Jacobian matrix to transform gradient from the parametric to physical domain
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
+        geo.computeMap(md);
+        // find local indices of the displacement basis functions active on the element
+        localIndices.resize(1);
+        basisRefs.front().active_into(quNodes.col(0),localIndices[0]);
+        N_D = localIndices[0].rows();
+        // Evaluate displacement basis functions and their derivatives on the element
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
+        // Evaluate right-hand side at the image of the quadrature points
+        pde_ptr->rhs()->eval_into(md.values[0],forceValues);
 
+        // store quadrature points of the element for displacement evaluation
         mdDisplacement.points = quNodes;
+        // NEED_DERIV to compute deformation gradient
+        mdDisplacement.flags = NEED_DERIV;
+        // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
     }
 
@@ -151,37 +167,21 @@ public:
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
-                              const std::vector<gsMatrix<T> > & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
-    {
-        std::vector< gsMatrix<unsigned> > globalIndices(dim,localIndicesDisp);
-        gsVector<size_t> blockNumbers(dim);
-        for (short_t d = 0; d < dim; ++d)
-        {
-           system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
-           blockNumbers.at(d) = d;
-        }
-        system.pushToRhs(localRhs,globalIndices,blockNumbers);
-        if (assembleMatrix)
-            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
-    }
-
 protected:
     //------ inherited ------//
     using Base::dim;
     using Base::pde_ptr;
+    using Base::assembleMatrix;
     using Base::md;
     using Base::localMat;
     using Base::localRhs;
+    using Base::localIndices;
     using Base::N_D;
-    using Base::localIndicesDisp;
     using Base::basisValuesDisp;
     using Base::forceValues;
 
     //------ class specific ----//
     index_t patch; // current patch
-    const bool assembleMatrix; // true: assemble matrix and rhs; false: assemble only rhs
 
     // material law, Lame coefficients, density and force scaling factor
     T lambda, mu, forceScaling;

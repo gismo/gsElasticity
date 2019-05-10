@@ -24,54 +24,58 @@ class gsVisitorBaseElasticity
 {
 public:
 
-    gsVisitorBaseElasticity(const gsPde<T> & pde_)
-    {
-        pde_ptr = static_cast<const gsPoissonPde<T>*>(&pde_);
-    }
+    gsVisitorBaseElasticity(const gsPde<T> & pde_, bool assembleMatrix_)
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          assembleMatrix(assembleMatrix_) { }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+        // parametric dimension of the first displacement component
+        dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         // the same rule is used for every unknown.
         // for the displacement formulation this is not a probmlem (all displacement components have the same basis).
         // for a mixed formulation with pressure, the displacement basis is of higher polynomial order or finer than the pressure basis,
         // so the same quadrature rule is at least as accurate for pressure as well
         rule = gsQuadrature::get(basisRefs.front(), options);
-        // NEED_VALUE to get points in the physical domain for evaluation of the RHS
-        // NEED_MEASURE to get the Jacobian determinant values for integration
-        // NEED_GRAD_TRANSFORM to get the Jacobian matrix to transform gradient from the parametric to physical domain
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        // parametric dimension of the first displacement component
-        dim = basisRefs.front().dim();
     }
 
-    inline void evaluate(const gsBasisRefs<T> & basisRefs,
-                         const gsGeometry<T> & geo,
-                         const gsMatrix<T> & quNodes)
-    {
-        // store quadrature points of the element for geometry evaluation
-        md.points = quNodes;
-        // find local indices of the displacement basis functions active on the element
-        basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
-        N_D = localIndicesDisp.rows();
-        // Evaluate displacement basis functions and their derivatives on the element
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
-        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
-        geo.computeMap(md);
-        // Evaluate right-hand side at the image of the quadrature points
-        pde_ptr->rhs()->eval_into(md.values[0],forceValues);
-    }
+    virtual inline void evaluate(const gsBasisRefs<T> & basisRefs,
+                                 const gsGeometry<T> & geo,
+                                 const gsMatrix<T> & quNodes) = 0;
 
     virtual inline void assemble(gsDomainIterator<T> & element,
                                  const gsVector<T> & quWeights) = 0;
 
 
-    virtual inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const int patchIndex,
                                       const std::vector<gsMatrix<T> > & eliminatedDofs,
-                                      gsSparseSystem<T> & system) = 0;
+                                      gsSparseSystem<T> & system)
+    {
+        // dim displacement components plus any other variables
+        short_t numUnknows = dim + localIndices.size() - 1;
+        std::vector< gsMatrix<unsigned> > globalIndices(numUnknows);
+        gsVector<size_t> blockNumbers(numUnknows);
+        // computes global indices for displacement components
+        for (short_t d = 0; d < dim; ++d)
+        {
+           system.mapColIndices(localIndices[0], patchIndex, globalIndices[d], d);
+           blockNumbers.at(d) = d;
+        }
+        // computes global indices for other variables
+        for (short d = dim; d < numUnknows; ++d)
+        {
+            system.mapColIndices(localIndices[d-dim+1], patchIndex, globalIndices[d], d);
+            blockNumbers.at(d) = d;
+        }
+        // push to global system
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
+        if (assembleMatrix)
+            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+    }
 
 protected:
 
@@ -154,6 +158,7 @@ protected:
     // general problem info
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
+    const bool assembleMatrix; // true: assemble matrix and rhs; false: assemble only rhs
     // geometry mapping
     gsMapData<T> md;
 
@@ -161,10 +166,12 @@ protected:
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
 
+    // local indices (at the current patch) of basis functions active at the current element
+    // first matrix is always for the first displacement component (which is the same for all components)
+    // any subsequent is for any additional variable (for example, pressure in mixed formulation)
+    std::vector<gsMatrix<unsigned> > localIndices;
     // number of displacement basis functions active at the current element
     index_t N_D;
-    // local indices (at the current patch) of displacement basis functions active at the current element
-    gsMatrix<unsigned> localIndicesDisp;
     // values and derivatives of displacement basis functions at quadrature points at the current element
     // values are stored as a N_D x numQuadPoints matrix; not sure about derivatives, must be smth like N_D*dim x numQuadPoints
     std::vector<gsMatrix<T> > basisValuesDisp;

@@ -50,7 +50,8 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the stiffness matrix and the RHS
-    virtual void assemble();
+    /// set *assembleMatrix* to false to only assemble the RHS;
+    virtual void assemble(bool assembleMatrix = true);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
     /// set *assembleMatrix* to false to only assemble the residual;
