@@ -6,4 +6,3 @@ namespace gismo
 {
     CLASS_TEMPLATE_INST gsElThermoAssembler<real_t>;
 }
-
