@@ -1,6 +1,6 @@
 /// This is an example of using the mixed linear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
-#include <gsElasticity/gsMixedElasticityAssembler.h>
+#include <gsElasticity/gsElasticityAssembler.h>
 
 using namespace gismo;
 
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]){
         basisDisplacement.degreeElevate();
 
     // creating assembler
-    gsMixedElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
+    gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);

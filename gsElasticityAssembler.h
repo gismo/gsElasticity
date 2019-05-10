@@ -43,6 +43,14 @@ public:
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force);
 
+    /// @brief Constructor of the assembler object.
+    gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                          const gsMultiBasis<T> & basisDisp,
+                          const gsMultiBasis<T> & basisPres,
+                          const gsBoundaryConditions<T> & bconditions,
+                          const gsFunction<T> & body_force);
+
+
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
 
@@ -60,6 +68,10 @@ public:
 
     /// @brief Construct solution from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result, int unk = 0) const;
+
+    /// @brief Construct solution from computed solution vector
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
+
 
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
