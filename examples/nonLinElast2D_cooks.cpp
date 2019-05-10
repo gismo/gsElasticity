@@ -71,6 +71,8 @@ int main(int argc, char* argv[]){
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
     assembler.options().setInt("MaterialLaw",1);
 
+    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
+
     // setting Newton's method
     gsElasticityNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newtonVerbosity::all);

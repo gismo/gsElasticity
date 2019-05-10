@@ -170,7 +170,7 @@ protected:
         for (index_t i = 0; i < dimTensor; ++i)
             for (index_t j = 0; j < dimTensor; ++j)
                 C(i,j) = a*R(v(i,0),v(i,1))*R(v(j,0),v(j,1)) +
-                         b*0.5*(R(v(i,0),v(j,0))*R(v(i,1),v(j,1)) +
+                         b*(R(v(i,0),v(j,0))*R(v(i,1),v(j,1)) +
                                 R(v(i,0),v(j,1))*R(v(i,1),v(j,0)));
     }
 

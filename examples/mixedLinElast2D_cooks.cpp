@@ -15,16 +15,18 @@ int main(int argc, char* argv[]){
     //std::string filename = ELAST_DATA_DIR"/lshape.xml";
     std::string filename = ELAST_DATA_DIR"/cooks.xml";
     index_t numUniRef = 3; // number of h-refinements
-    index_t numDegElevate = 1; // number of p-refinements
+    index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
     real_t poissonsRatio = 0.4;
+    bool subgrid = false;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
-    cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("d","prefine","Number of degree elevation application",numDegElevate);
+    cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
+    cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
+    cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -49,10 +51,11 @@ int main(int argc, char* argv[]){
     // scanning geometry
     gsMultiPatch<> geometry;
     gsReadFile<>(filename, geometry);
+
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
     gsMultiBasis<> basisPressure(geometry);
-    for (index_t i = 0; i < numDegElevate-1; ++i)
+    for (index_t i = 0; i < numKRef; ++i)
     {
         basisDisplacement.degreeElevate();
         basisPressure.degreeElevate();
@@ -64,8 +67,10 @@ int main(int argc, char* argv[]){
         basisDisplacement.uniformRefine();
         basisPressure.uniformRefine();
     }
-    basisDisplacement.degreeElevate();
-    //basisDisplacement.uniformRefine();
+    if (subgrid)
+        basisDisplacement.uniformRefine();
+    else
+        basisDisplacement.degreeElevate();
 
     // creating assembler
     gsMixedElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
@@ -85,9 +90,9 @@ int main(int argc, char* argv[]){
 
     gsInfo << "Solving...\n";
     clock.restart();
-    gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
+    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
     gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with LU solver in " << clock.stop() <<"s.\n";
+    gsInfo << "Solved the system with SimplicialLDLT solver in " << clock.stop() <<"s.\n";
 
     // constructing solution as an IGA function
     gsMultiPatch<> displacement, pressure;
@@ -96,8 +101,6 @@ int main(int argc, char* argv[]){
     // constructing an IGA field (geometry + solution)
     gsField<> displacementField(assembler.patches(),displacement);
     gsField<> pressureField(assembler.patches(),pressure);
-    gsWriteParaview(pressureField,"pressure",numPlotPoints,true);
-    gsWriteParaview(displacementField,"disp",numPlotPoints,true);
 
     //=============================================//
                   // Output //
