@@ -101,7 +101,6 @@ public:
 protected:
     //------ inherited ------//
     using Base::dim;
-    using Base::assembleMatrix;
     using Base::md;
     using Base::localRhs;
     using Base::localIndices;

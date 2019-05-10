@@ -15,10 +15,9 @@
 
 #include <gsElasticity/gsElThermoAssembler.h>
 
-
+#include <gsPde/gsPoissonPde.h>
 #include <gsElasticity/gsVisitorElThermo.h>
 #include <gsElasticity/gsVisitorElThermoBoundary.h>
-
 
 namespace gismo
 {
