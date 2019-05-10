@@ -91,7 +91,7 @@ void gsElasticityAssembler<T>::refresh()
     GISMO_ENSURE(m_dim == 2 || m_dim == 3, "Only two- and three-dimenstion domains are supported!");
 
     std::vector<gsDofMapper> m_dofMappers(m_bases.size());
-    for (short_t d = 0; d < m_bases.size(); d++)
+    for (unsigned d = 0; d < m_bases.size(); d++)
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
@@ -102,7 +102,7 @@ void gsElasticityAssembler<T>::refresh()
     m_options.setReal("bdO",m_bases.size()*(1+m_options.getReal("bdO"))-1);
     m_system.reserve(m_bases[0], m_options, 1);
 
-    for (short_t d = 0; d < m_bases.size(); ++d)
+    for (unsigned d = 0; d < m_bases.size(); ++d)
         Base::computeDirichletDofs(d);
 }
 
@@ -123,7 +123,7 @@ void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
     }
 
     // Compute volumetric integrals and write to the global linear system
-    if (m_bases.size() == m_dim) // displacement formulation
+    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
         gsVisitorLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
         Base::template push<gsVisitorLinearElasticity<T> >(visitor);
@@ -150,7 +150,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
     m_system.rhs().setZero(Base::numDofs(),1);
 
     // Compute volumetric integrals and write to the global linear system
-    if (m_bases.size() == m_dim) // displacement formulation
+    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
         gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
         Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
@@ -179,7 +179,7 @@ template <class T>
 void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                                                  gsMultiPatch<T>  & displacement, gsMultiPatch<T> & pressure) const
 {
-    GISMO_ENSURE(m_bases.size() == m_dim + 1, "Not a mixed formulation: can't construct pressure.");
+    GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
     // construct displacement
     constructSolution(solVector,displacement);
     // construct pressure
