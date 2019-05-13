@@ -96,51 +96,95 @@ public:
         if (assembleMatrix)                                     // A | B^T
             localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
         localRhs.setZero(dim*N_D + N_P,1);                      // B | C
-        // elasticity tensor
-        gsMatrix<T> C;
-        if (assembleMatrix)
-            Base::setC(C,gsMatrix<T>::Identity(dim,dim),0.,mu);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
-
-            if (assembleMatrix)
+            // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
+            gsMatrix<T> physGradDisp;
+            transformGradients(md,q,basisValuesDisp[1],physGradDisp);
+            // physical jacobian of displacemnt du/dx = du/dxi * dxi/dx
+            gsMatrix<T> physDispJac = mdDisplacement.jacobian(q)*(md.jacobian(q).cramerInverse());
+            // deformation gradient F = I + du/dx
+            gsMatrix<T> F = gsMatrix<T>::Identity(dim,dim) + physDispJac;
+            // deformation jacobian J = det(F)
+            T J = F.determinant();
+            // Right Cauchy Green strain, C = F'*F
+            gsMatrix<T> RCG = F.transpose() * F;
+            // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
+            gsMatrix<T> E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
+            // Second Piola-Kirchhoff stress tensor and elasticity tensor
+            gsMatrix<T> S, C;
+            if (materialLaw == 0) // Saint Venant-Kirchhoff
             {
-                // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
-                gsMatrix<T> physGradDisp;
-                transformGradients(md, q, basisValuesDisp[1], physGradDisp);
-                // Loop over displacement basis functions
-                for (index_t i = 0; i < N_D; i++)
+
+            }
+            if (materialLaw == 1) // neo-Hooke ln(J)
+            {
+                GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
+                gsMatrix<T> RCGinv = RCG.cramerInverse();
+                S = (mdPressure.values[q].at(0)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
+                if (assembleMatrix)
+                    Base::setC(C,RCGinv,0.,mu-mdPressure.values[q].at(0));
+            }
+            if (materialLaw == 2) // neo-Hooke J^2
+            {
+
+            }
+
+
+            // Loop over displacement basis functions
+            for (index_t i = 0; i < N_D; i++)
+            {
+                gsMatrix<T> B_i;
+                Base::setB(B_i,F,physGradDisp.col(i));
+                if (assembleMatrix)
                 {
-                    gsMatrix<T> B_i;
-                    Base::setB(B_i,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(i));
-                    gsMatrix<T> tempK = B_i.transpose() * C;
+                    gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
+                    // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
+                    gsVector<T> geometricTangentTemp = S * physGrad.col(i);
                     // Loop for A-matrix
                     for (index_t j = 0; j < N_D; j++)
                     {
                         gsMatrix<T> B_j;
-                        Base::setB(B_j,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(j));
-                        gsMatrix<T> K = tempK * B_j;
+                        Base::setB(B_j,F,physGradDisp.col(j));
+                        gsMatrix<T> materialTangent = materialTangentTemp * B_j;
+                        T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
+                        // K_tg = K_tg_mat + I*K_tg_geo;
+                        for (short_t d = 0; d < dim; ++d)
+                            materialTangent(d,d) += geometricTangent;
 
                         for (short_t di = 0; di < dim; ++di)
                             for (short_t dj = 0; dj < dim; ++dj)
-                                localMat(di*N_D+i, dj*N_D+j) += weight * K(di,dj);
+                                localMat(di*N_D+i, dj*N_D+j) += weight * materialTangent(di,dj);
                     }
                     // Loop for B-matrix
                     for (index_t j = 0; j < N_P; j++)
+                    {
+                        gsMatrix<T> divV = physGradDisp.col(i).transpose()*F.cramerInverse();
                         for (short_t d = 0; d < dim; ++d)
                         {
-                            localMat(dim*N_D+j,d*N_D+i) += weight*physGradDisp(d,i)*basisValuesPres(j,q);
-                            localMat(d*N_D+i,dim*N_D+j) += weight*physGradDisp(d,i)*basisValuesPres(j,q);
+                            localMat(dim*N_D+j,d*N_D+i) += weight*divV.at(d)*basisValuesPres(j,q);
+                            localMat(d*N_D+i,dim*N_D+j) += weight*divV.at(d)*basisValuesPres(j,q);
                         }
+
+                    }
+                    // Loop over pressure basis functions for C-matrix
+                    if (abs(lambda_inv) > 0)
+                        for (index_t i = 0; i < N_P; ++i)
+                            for (index_t j = 0; j < N_P; ++j)
+                                localMat(dim*N_D+i,dim*N_D+j) -= weight*lambda_inv*basisValuesPres(i,q)*basisValuesPres(j,q);
+
                 }
-                // Loop over pressure basis functions for C-matrix
-                if (abs(lambda_inv) > 0)
-                    for (index_t i = 0; i < N_P; ++i)
-                        for (index_t j = 0; j < N_P; ++j)
-                            localMat(dim*N_D+i,dim*N_D+j) -= weight*lambda_inv*basisValuesPres(i,q)*basisValuesPres(j,q);
+                // Second Piola-Kirchhoff stress tensor as vector
+                gsVector<T> Svec;
+                Base::voigtStress(Svec,S);
+                // rhs = -r = force - B*Svec,
+                gsVector<T> localResidual = B_i.transpose() * Svec;
+                for (short_t d = 0; d < dim; d++)
+                    localRhs(d*N_D+i) -= weight * localResidual(d);
+
             }
             // rhs contribution
             for (short_t d = 0; d < dim; ++d)
