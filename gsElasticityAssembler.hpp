@@ -23,6 +23,7 @@
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
 #include <gsElasticity/gsVisitorMixedLinearElasticity.h>
+#include <gsElasticity/gsVisitorMixedNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
 
@@ -150,15 +151,29 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
     m_system.rhs().setZero(Base::numDofs(),1);
 
     // Compute volumetric integrals and write to the global linear system
-    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
+    Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    // Compute surface integrals and write to the global rhs vector
+    // change to reuse rhs from linear system
+    Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
+
+    m_system.matrix().makeCompressed();
+}
+
+template<class T>
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
+                                        bool assembleMatrix)
+{
+    if (assembleMatrix)
     {
-        gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
-        Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
     }
-    else // mixed formulation (displacement + pressure)
-    {
-        gsInfo << "Nonlinear mixed elasticity is not implemented yet!\n";
-    }
+    m_system.rhs().setZero(Base::numDofs(),1);
+
+    // Compute volumetric integrals and write to the global linear system
+    gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure,assembleMatrix);
+    Base::template push<gsVisitorMixedNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());

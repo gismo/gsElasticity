@@ -62,10 +62,16 @@ public:
     /// set *assembleMatrix* to false to only assemble the RHS;
     virtual void assemble(bool assembleMatrix = true);
 
-    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
+    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for displacement formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix = true);
+    virtual void assemble(const gsMultiPatch<T> & displacement, bool assembleMatrix = true);
+
+    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for mixed formulation;
+    /// set *assembleMatrix* to false to only assemble the residual;
+    /// ATTENTION: rhs() returns a negative residual (-r) !!!
+    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
+                          bool assembleMatrix = true);
 
     /// @brief Construct displacement from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
