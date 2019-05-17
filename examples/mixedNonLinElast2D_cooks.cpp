@@ -1,23 +1,24 @@
-/// This is an example of using the mixed linear elasticity solver on a 2D multi-patch geometry
+/// This is an example of using the mixed nonlinear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsElasticityNewtonDeLuxe.h>
 
 using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Testing the mixed linear elasticity solver in 2D.\n";
+    gsInfo << "Testing the mixed nonlinear elasticity solver in 2D.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
-    //std::string filename = ELAST_DATA_DIR"/lshape.xml";
     std::string filename = ELAST_DATA_DIR"/cooks.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
     real_t poissonsRatio = 0.4;
+    index_t numSteps = 1;
     bool subgrid = false;
 
     // minimalistic user interface for terminal
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
+    cmd.addInt("i","iter","Number of incremental loading steps",numSteps);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -77,39 +79,35 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    gsInfo<<"Assembling...\n";
-    gsStopwatch clock;
-    clock.restart();
-    assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
-           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+    assembler.options().setInt("MaterialLaw",1);
+
+    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
+
+    // setting Newton's method
+    gsElasticityNewtonDeLuxe<real_t> newton(assembler);
+    newton.options().setInt("Verbosity",newtonVerbosity2::all);
+    newton.options().setInt("Save",newtonSave2::firstAndLastPerIncStep);
+    newton.options().setInt("NumIncStep",numSteps);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
-    clock.restart();
-    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with SimplicialLDLT solver in " << clock.stop() <<"s.\n";
+    newton.solve();
 
-    // constructing solution as an IGA function
-    gsMultiPatch<> displacement, pressure;
-    assembler.constructSolution(solVector,displacement,pressure);
-
-    // constructing an IGA field (geometry + solution)
-    gsField<> displacementField(assembler.patches(),displacement);
-    gsField<> pressureField(assembler.patches(),pressure);
+    // displacement as an isogeometric displacement field
+    const gsMultiPatch<> & displacement = newton.displacement();
+    // pressure as an isogeometric displacement field
+    const gsMultiPatch<> & pressure = newton.pressure();
 
     //=============================================//
                   // Output //
     //=============================================//
 
-    gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(displacement,stresses,stress_type::von_mises);
-    gsField<> stressField(assembler.patches(),stresses,true);
-
+    // constructing an IGA field (geometry + solution)
+    gsField<> displacementField(assembler.patches(),displacement);
+    gsField<> pressureField(assembler.patches(),pressure);
 
     gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file

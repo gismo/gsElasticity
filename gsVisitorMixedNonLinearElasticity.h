@@ -81,12 +81,8 @@ public:
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
 
-        // store quadrature points of the element for pressure evaluation
-        mdPressure.points = quNodes;
-        // NEED_VALUE to compute pressure
-        mdPressure.flags = NEED_VALUE;
         // evaluate pressure
-        pressure.patch(patch).computeMap(mdPressure);
+        pressure.patch(patch).eval_into(quNodes,pressureValues);
     }
 
     inline void assemble(gsDomainIterator<T>    & element,
@@ -124,9 +120,9 @@ public:
             {
                 GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
-                S = (mdPressure.values[q].at(0)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
+                S = (pressureValues.at(q)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
                 if (assembleMatrix)
-                    Base::setC(C,RCGinv,0.,mu-mdPressure.values[q].at(0));
+                    Base::setC(C,RCGinv,0.,mu-pressureValues.at(q));
             }
             if (materialLaw == 2) // neo-Hooke J^2
             {
@@ -143,14 +139,14 @@ public:
                 {
                     gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
                     // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
-                    gsVector<T> geometricTangentTemp = S * physGrad.col(i);
+                    gsVector<T> geometricTangentTemp = S * physGradDisp.col(i);
                     // Loop for A-matrix
                     for (index_t j = 0; j < N_D; j++)
                     {
                         gsMatrix<T> B_j;
                         Base::setB(B_j,F,physGradDisp.col(j));
                         gsMatrix<T> materialTangent = materialTangentTemp * B_j;
-                        T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
+                        T geometricTangent =  geometricTangentTemp.transpose() * physGradDisp.col(j);
                         // K_tg = K_tg_mat + I*K_tg_geo;
                         for (short_t d = 0; d < dim; ++d)
                             materialTangent(d,d) += geometricTangent;
@@ -220,7 +216,7 @@ protected:
     // current pressure field
     const gsMultiPatch<T> & pressure;
     // evaluation data of the current pressure field
-    gsMapData<T> mdPressure;
+    gsMatrix<T> pressureValues;
     // number of pressure basis functions active at the current element
     index_t N_P;
     // values of pressure basis functions active at the current element;

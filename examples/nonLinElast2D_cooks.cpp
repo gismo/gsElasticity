@@ -86,9 +86,9 @@ int main(int argc, char* argv[]){
     newton.solve();
 
     // solution to the nonlinear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionNonlinear = newton.solution();
+    const gsMultiPatch<> & solutionNonlinear = newton.solution();
     // solution to the linear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionLinear = newton.allSolutions().front();
+    const gsMultiPatch<> & solutionLinear = newton.allSolutions().front();
 
     //=============================================//
                   // Output //
