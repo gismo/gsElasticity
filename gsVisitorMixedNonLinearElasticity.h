@@ -41,7 +41,6 @@ public:
 
         patch = patchIndex;
 
-        materialLaw = options.getInt("MaterialLaw");
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
         lambda_inv = ( 1. + pr ) * ( 1. - 2. * pr ) / E / pr ;
@@ -81,7 +80,8 @@ public:
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
 
-        // evaluate pressure
+        // evaluate pressure; we use eval_into instead of another gsMapData object
+        // because it easier for simple value evaluation
         pressure.patch(patch).eval_into(quNodes,pressureValues);
     }
 
@@ -110,25 +110,14 @@ public:
             gsMatrix<T> RCG = F.transpose() * F;
             // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
             gsMatrix<T> E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
-            // Second Piola-Kirchhoff stress tensor and elasticity tensor
-            gsMatrix<T> S, C;
-            if (materialLaw == 0) // Saint Venant-Kirchhoff
-            {
-
-            }
-            if (materialLaw == 1) // neo-Hooke ln(J)
-            {
-                GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
-                gsMatrix<T> RCGinv = RCG.cramerInverse();
-                S = (pressureValues.at(q)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
-                if (assembleMatrix)
-                    Base::setC(C,RCGinv,0.,mu-pressureValues.at(q));
-            }
-            if (materialLaw == 2) // neo-Hooke J^2
-            {
-
-            }
-
+            // logarithmic neo-Hooke
+            GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
+            gsMatrix<T> RCGinv = RCG.cramerInverse();
+            // Second Piola-Kirchhoff stress tensor
+            gsMatrix<T> S = (pressureValues.at(q)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
+            gsMatrix<T> C; // elasticity tensor
+            if (assembleMatrix)
+                Base::setC(C,RCGinv,0.,mu-pressureValues.at(q));
 
             // Loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
@@ -206,7 +195,6 @@ protected:
 
     // Lame coefficients, density and force scaling factor
     T lambda_inv, mu, forceScaling;
-    index_t materialLaw; // (0: St. Venant-Kirchhoff, 1: ln Neo-Hooke, 2: quadratic Neo-Hooke)
 
     // current displacement field
     const gsMultiPatch<T> & displacement;
@@ -215,7 +203,7 @@ protected:
 
     // current pressure field
     const gsMultiPatch<T> & pressure;
-    // evaluation data of the current pressure field
+    // evaluation data of the current pressure field stored as a 1 x numQuadPoints matrix
     gsMatrix<T> pressureValues;
     // number of pressure basis functions active at the current element
     index_t N_P;

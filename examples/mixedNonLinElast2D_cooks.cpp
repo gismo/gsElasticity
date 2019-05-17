@@ -1,7 +1,7 @@
 /// This is an example of using the mixed nonlinear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewtonDeLuxe.h>
+#include <gsElasticity/gsElasticityNewton.h>
 
 using namespace gismo;
 
@@ -79,14 +79,13 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    assembler.options().setInt("MaterialLaw",1);
 
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElasticityNewtonDeLuxe<real_t> newton(assembler);
-    newton.options().setInt("Verbosity",newtonVerbosity2::all);
-    newton.options().setInt("Save",newtonSave2::firstAndLastPerIncStep);
+    gsElasticityNewton<real_t> newton(assembler,elasticity_formulation::mixed_pressure);
+    newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("Save",newton_save::firstAndLastPerIncStep);
     newton.options().setInt("NumIncStep",numSteps);
 
     //=============================================//

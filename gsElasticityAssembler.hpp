@@ -72,6 +72,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     m_bases.push_back(basisPres);
 
     Base::initialize(pde, m_bases, defaultOptions());
+    m_options.setInt("MaterialLaw",material_law::neo_hooke_ln);
 }
 
 template <class T>
