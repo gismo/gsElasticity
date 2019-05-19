@@ -23,13 +23,12 @@ namespace gismo
 {
 
 template <class T>
-gsElasticityNewton<T>::gsElasticityNewton(gsElasticityAssembler<T> & elasticityAssembler,
-                                          elasticity_formulation form)
+gsElasticityNewton<T>::gsElasticityNewton(gsElasticityAssembler<T> & elasticityAssembler)
     : assembler(elasticityAssembler),
-      formulation(form),
       m_options(defaultOptions())
 {
-
+    alpha = 1.;
+    numAdaptHalving = 0;
 }
 
 template <class T>
@@ -58,6 +57,14 @@ gsOptionList gsElasticityNewton<T>::defaultOptions()
                       "the first and the last displacement fields at every incremental loading step, "
                       "all",newton_save::onlyFinal);
     return opt;
+}
+
+template <class T>
+const gsMultiPatch<T> & gsElasticityNewton<T>::pressure() const
+{
+    GISMO_ENSURE(assembler.formulation() == elasticity_formulation::mixed_pressure, "There is no pressure in this formulation!");
+    GISMO_ENSURE(!pressures.empty(),"No solution computed!");
+    return pressures.back();
 }
 
 template <class T>
@@ -130,7 +137,7 @@ void gsElasticityNewton<T>::solve()
 template <class T>
 void gsElasticityNewton<T>::solveAdaptive()
 {
-    GISMO_ENSURE(formulation == elasticity_formulation::displacement,
+    GISMO_ENSURE(assembler.formulation() == elasticity_formulation::displacement,
                  "Adaptive algorithm currently only available for displacement formulation");
 
     T absTol = m_options.getReal("AbsTol");
@@ -224,7 +231,7 @@ void gsElasticityNewton<T>::computeUpdate(bool initUpdate)
 
     if (displacements.empty()) // no previous displacement field
         assembler.assemble();
-    else if (formulation == elasticity_formulation::displacement)
+    else if (assembler.formulation() == elasticity_formulation::displacement)
         assembler.assemble(displacements.back());
     else // mixed dispalcement-pressure formulation
         assembler.assemble(displacements.back(),pressures.back());
@@ -233,7 +240,7 @@ void gsElasticityNewton<T>::computeUpdate(bool initUpdate)
     gsVector<T> solVector = solver.solve(assembler.rhs());
 
     gsMultiPatch<T> incDisplacement, incPressure;
-    if (formulation == elasticity_formulation::displacement)
+    if (assembler.formulation() == elasticity_formulation::displacement)
         assembler.constructSolution(solVector,incDisplacement);
     else // mixed dispalcement-pressure formulation
         assembler.constructSolution(solVector,incDisplacement,incPressure);
@@ -241,16 +248,15 @@ void gsElasticityNewton<T>::computeUpdate(bool initUpdate)
     if (m_options.getSwitch("BijectivityCheck") || assembler.options().getInt("MaterialLaw") == material_law::neo_hooke_ln)
         bijectivityCheck(incDisplacement);
 
-    if (!bijective && m_options.getInt("MaxHalving") > 0 && formulation == elasticity_formulation::displacement)
+    if (!bijective && m_options.getInt("MaxHalving") > 0 && assembler.formulation() == elasticity_formulation::displacement)
         adaptiveHalving(incDisplacement);
 
-    if (m_options.getSwitch("DampedNewton") && formulation == elasticity_formulation::displacement)
+    if (m_options.getSwitch("DampedNewton") && assembler.formulation() == elasticity_formulation::displacement)
         dampedNewton(incDisplacement);
 
-    if (formulation == elasticity_formulation::displacement)
-        saveSolution(incDisplacement);
-    else // mixed dispalcement-pressure formulation
-        saveSolution(incDisplacement,incPressure);
+    saveSolution(incDisplacement,displacements);
+    if (assembler.formulation() == elasticity_formulation::mixed_pressure)
+        saveSolution(incPressure,pressures);
 
     // compute norm for the stopping criteria
     updateNorm = solVector.norm();
@@ -275,7 +281,7 @@ void gsElasticityNewton<T>::printStatus()
                << ", updAbs: " << updateNorm
                << ", updRel: " << updateNorm/initUpdateNorm
                << (numAdaptHalving == 0 ? "" : ", adaptHalv: " + std::to_string(numAdaptHalving))
-               << (alpha == 1 ? "" : ", damping: " + std::to_string(alpha)) << std::endl;
+               << (abs(alpha - 1) < 1e-10 ? "" : ", damping: " + std::to_string(alpha)) << std::endl;
 }
 
 template <class T>
@@ -322,7 +328,6 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
     res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
     GISMO_ENSURE(res == 0, "Problems with deleting files\n");
 
-
     for (unsigned s = 0; s < displacements.size(); ++s)
     {
         if (m_options.getInt("Verbosity") == newton_verbosity::all)
@@ -358,75 +363,30 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
     (void)res;
 }
 
-template <class T>
-void gsElasticityNewton<T>::saveSolution(const gsMultiPatch<T> & incDisplacement)
+template<class T>
+void gsElasticityNewton<T>::saveSolution(const gsMultiPatch<T> & incSolution, std::vector<gsMultiPatch<T> > & solutions)
 {
-    if (displacements.empty())
-        displacements.push_back(incDisplacement);
+    if (solutions.empty())
+        solutions.push_back(incSolution);
     else
         if (m_options.getInt("Save") == newton_save::onlyFinal)
-            for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-                displacements.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
+            for (size_t p = 0; p < solutions.back().nPatches(); ++p)
+                solutions.back().patch(p).coefs() += incSolution.patch(p).coefs();
         else if (m_options.getInt("Save") == newton_save::firstAndLastPerIncStep)
             if (numIterations == 0 || numIterations == 1)
             {
-                displacements.push_back(incDisplacement);
-                for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-                    displacements.back().patch(p).coefs() += displacements[displacements.size()-2].patch(p).coefs();
+                solutions.push_back(incSolution);
+                for (size_t p = 0; p < solutions.back().nPatches(); ++p)
+                    solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
             }
             else
-                for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-                    displacements.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
+                for (size_t p = 0; p < solutions.back().nPatches(); ++p)
+                    solutions.back().patch(p).coefs() += incSolution.patch(p).coefs();
         else if (m_options.getInt("Save") == newton_save::all)
         {
-            displacements.push_back(incDisplacement);
-            for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-                displacements.back().patch(p).coefs() += displacements[displacements.size()-2].patch(p).coefs();
-        }
-}
-
-template <class T>
-void gsElasticityNewton<T>::saveSolution(const gsMultiPatch<T> & incDisplacement,
-                                         const gsMultiPatch<T> & incPressure)
-{
-    if (displacements.empty())
-    {
-        displacements.push_back(incDisplacement);
-        pressures.push_back(incPressure);
-    }
-    else
-        if (m_options.getInt("Save") == newton_save::onlyFinal)
-            for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-            {
-                displacements.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
-                pressures.back().patch(p).coefs() += incPressure.patch(p).coefs();
-            }
-        else if (m_options.getInt("Save") == newton_save::firstAndLastPerIncStep)
-            if (numIterations == 0 || numIterations == 1)
-            {
-                displacements.push_back(incDisplacement);
-                pressures.push_back(incPressure);
-                for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-                {
-                    displacements.back().patch(p).coefs() += displacements[displacements.size()-2].patch(p).coefs();
-                    pressures.back().patch(p).coefs() += pressures[pressures.size()-2].patch(p).coefs();
-                }
-            }
-            else
-                for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-                {
-                    displacements.back().patch(p).coefs() += incDisplacement.patch(p).coefs();
-                    pressures.back().patch(p).coefs() += incPressure.patch(p).coefs();
-                }
-        else if (m_options.getInt("Save") == newton_save::all)
-        {
-            displacements.push_back(incDisplacement);
-            pressures.push_back(incPressure);
-            for (size_t p = 0; p < displacements.back().nPatches(); ++p)
-            {
-                displacements.back().patch(p).coefs() += displacements[displacements.size()-2].patch(p).coefs();
-                pressures.back().patch(p).coefs() += pressures[pressures.size()-2].patch(p).coefs();
-            }
+            solutions.push_back(incSolution);
+            for (size_t p = 0; p < solutions.back().nPatches(); ++p)
+                solutions.back().patch(p).coefs() += solutions[solutions.size()-2].patch(p).coefs();
         }
 }
 

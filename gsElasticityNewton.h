@@ -27,9 +27,6 @@ namespace gismo
 template <class T>
 class gsElasticityAssembler;
 
-enum class elasticity_formulation { displacement, mixed_pressure };
-
-// use plain enums for compatability with options
 struct newton_verbosity
 {
     enum verbosity
@@ -55,8 +52,7 @@ class gsElasticityNewton
 {
 public:
     /// constructor without an initial guess
-    gsElasticityNewton(gsElasticityAssembler<T> & elasticityAssembler,
-                       elasticity_formulation form = elasticity_formulation::displacement);
+    gsElasticityNewton(gsElasticityAssembler<T> & elasticityAssembler);
 
     static gsOptionList defaultOptions();
     /// get options list to read or set parameters
@@ -75,12 +71,7 @@ public:
     /// return all saved displacement fields
     const std::vector<gsMultiPatch<T> > & allDisplacements() & { return displacements; }
     /// return the last computed pressure field
-    const gsMultiPatch<T> & pressure() const
-    {
-        GISMO_ENSURE(formulation == elasticity_formulation::mixed_pressure, "There is no pressure in this formulation!");
-        GISMO_ENSURE(!pressures.empty(),"No solution computed!");
-        return pressures.back();
-    }
+    const gsMultiPatch<T> & pressure() const;
     /// return all saved pressure fields
     const std::vector<gsMultiPatch<T> > & allPressures() & { return pressures; }
     /// use all saved displacement fields to plot the all intermediate deformed configurations of the computational domain;
@@ -91,11 +82,11 @@ protected:
 
     void computeUpdate(bool initUpdate);
 
+    void computeUpdateAdaptive(bool initUpdate);
+
     void printStatus();
 
-    void saveSolution(const gsMultiPatch<T> & incDisplacement);
-    void saveSolution(const gsMultiPatch<T> & incDisplacement,
-                      const gsMultiPatch<T> & incPressure);
+    void saveSolution(const gsMultiPatch<T> & incSolution, std::vector<gsMultiPatch<T> > & solutions);
 
     void bijectivityCheck(const gsMultiPatch<T> & incDisplacement);
 
@@ -106,8 +97,6 @@ protected:
 protected:
     /// assembler object that generates the linear system
     gsElasticityAssembler<T> & assembler;
-    /// formulation flag for internal logic
-    elasticity_formulation formulation;
     /// container with displacement fields; can store either only the final solution or all intermediate states as well
     std::vector<gsMultiPatch<T> > displacements;
     /// container with pressure fields; can store either only the final solution or all intermediate states as well

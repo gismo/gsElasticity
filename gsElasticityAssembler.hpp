@@ -75,6 +75,15 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     m_options.setInt("MaterialLaw",material_law::neo_hooke_ln);
 }
 
+template<class T>
+elasticity_formulation gsElasticityAssembler<T>::formulation()
+{
+    if (m_bases.size() == unsigned(m_dim))
+        return elasticity_formulation::displacement;
+    else
+        return elasticity_formulation::mixed_pressure;
+}
+
 template <class T>
 gsOptionList gsElasticityAssembler<T>::defaultOptions()
 {
@@ -199,6 +208,14 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     // construct displacement
     constructSolution(solVector,displacement);
     // construct pressure
+    gsVector<index_t> unknowns(1);
+    unknowns.at(0) = m_dim;
+    Base::constructSolution(solVector,pressure,unknowns);
+}
+
+template <class T>
+void gsElasticityAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPatch<T>& pressure) const
+{
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
     Base::constructSolution(solVector,pressure,unknowns);

@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElasticityNewton<real_t> newton(assembler,elasticity_formulation::mixed_pressure);
+    gsElasticityNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
     newton.options().setInt("Save",newton_save::firstAndLastPerIncStep);
     newton.options().setInt("NumIncStep",numSteps);

@@ -23,6 +23,8 @@
 namespace gismo
 {
 
+enum class elasticity_formulation { displacement, mixed_pressure };
+
 // ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
 //       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
 //        in the reference configuration, dead-load problem)
@@ -51,6 +53,8 @@ public:
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force);
 
+    /// @brief Return the formulation type
+    elasticity_formulation formulation();
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -78,6 +82,8 @@ public:
 
     /// @brief Construct displacement and pressure from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
+
+    virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
 
 
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
