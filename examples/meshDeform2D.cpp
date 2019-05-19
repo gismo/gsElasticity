@@ -116,8 +116,8 @@ int main(int argc, char* argv[])
     newton.options().setInt("MaxHalving",maxAdapt);
     newton.options().setReal("QualityRatio",quality);
     newton.options().setSwitch("DampedNewton",damped);
-    newton.options().setInt("Verbosity",newtonVerbosity::all);
-    newton.options().setInt("Save",newtonSave::all);
+    newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("Save",newton_save::all);
 
     newton.solve();
 
@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
 
     newton.plotDeformation(initGeo,filename,numPlotPoints);
 
-    initGeo.patch(0).coefs() += newton.solution().patch(0).coefs();
+    initGeo.patch(0).coefs() += newton.displacement().patch(0).coefs();
     gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(initGeo,filename + "_2D");
 

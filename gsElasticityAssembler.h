@@ -23,6 +23,8 @@
 namespace gismo
 {
 
+enum class elasticity_formulation { displacement, mixed_pressure };
+
 // ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
 //       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
 //        in the reference configuration, dead-load problem)
@@ -51,6 +53,8 @@ public:
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force);
 
+    /// @brief Return the formulation type
+    elasticity_formulation formulation();
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -62,16 +66,24 @@ public:
     /// set *assembleMatrix* to false to only assemble the RHS;
     virtual void assemble(bool assembleMatrix = true);
 
-    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
+    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for displacement formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix = true);
+    virtual void assemble(const gsMultiPatch<T> & displacement, bool assembleMatrix = true);
+
+    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for mixed formulation;
+    /// set *assembleMatrix* to false to only assemble the residual;
+    /// ATTENTION: rhs() returns a negative residual (-r) !!!
+    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
+                          bool assembleMatrix = true);
 
     /// @brief Construct displacement from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
 
     /// @brief Construct displacement and pressure from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
+
+    virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
 
 
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
