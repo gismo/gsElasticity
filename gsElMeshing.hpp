@@ -524,8 +524,8 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
     for (index_t i = 0; i < numPoints; ++i)
     {
         params(0,i) = 1.*i/(numPoints-1);
-        points(0,i) = cos(params(0,i)*2*M_PI*pitch/360);
-        points(1,i) = sin(params(0,i)*2*M_PI*pitch/360);
+        points(0,i) = cos(params(0,i)*2*EIGEN_PI*pitch/360);
+        points(1,i) = sin(params(0,i)*2*EIGEN_PI*pitch/360);
         points(2,i) = height*params(0,i);
     }
 
