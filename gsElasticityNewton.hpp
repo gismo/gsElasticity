@@ -314,7 +314,7 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
     gsField<T> detField(configuration,dets,true);
     std::map<std::string,const gsField<T> *> fields;
     fields["Jacobian"] = &detField;
-    gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamplingPoints,true);
+    gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
 
     for (size_t p = 0; p < configuration.nPatches(); ++p)
     {
@@ -322,8 +322,10 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
         if (plotJac)
             collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
         else
+        {
             res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
-        GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+            GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+        }
     }
     res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
     GISMO_ENSURE(res == 0, "Problems with deleting files\n");
@@ -340,7 +342,7 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
                configuration.patch(p).coefs() -= displacements[s-1].patch(p).coefs();
         }
 
-        gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamplingPoints,true);
+        gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
         for (size_t p = 0; p < configuration.nPatches(); ++p)
         {
             collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
@@ -348,9 +350,10 @@ void gsElasticityNewton<T>::plotDeformation(const gsMultiPatch<T> & initDomain,
             if (plotJac)
                 collectionJac.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,".vts");
             else
+            {
                 res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
-
-            GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+                GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+            }
         }
         res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
         GISMO_ENSURE(res == 0, "Problems with deleting files\n");
