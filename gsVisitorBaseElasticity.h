@@ -16,6 +16,8 @@
 
 #include <gsAssembler/gsQuadrature.h>
 
+#include <gsCore/gsFuncData.h>
+
 namespace gismo
 {
 
@@ -24,9 +26,10 @@ class gsVisitorBaseElasticity
 {
 public:
 
-    gsVisitorBaseElasticity(const gsPde<T> & pde_, bool assembleMatrix_)
+    gsVisitorBaseElasticity(const gsPde<T> & pde_, bool assembleMatrix_ = true, bool assembleRhs_ = true)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          assembleMatrix(assembleMatrix_) { }
+          assembleMatrix(assembleMatrix_),
+          assembleRhs(assembleRhs_) { }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -55,26 +58,30 @@ public:
                                       const std::vector<gsMatrix<T> > & eliminatedDofs,
                                       gsSparseSystem<T> & system)
     {
-        // dim displacement components plus any other variables
-        short_t numUnknows = dim + localIndices.size() - 1;
-        std::vector< gsMatrix<unsigned> > globalIndices(numUnknows);
-        gsVector<size_t> blockNumbers(numUnknows);
-        // computes global indices for displacement components
-        for (short_t d = 0; d < dim; ++d)
+        if (assembleRhs || assembleMatrix)
         {
-           system.mapColIndices(localIndices[0], patchIndex, globalIndices[d], d);
-           blockNumbers.at(d) = d;
+            // dim displacement components plus any other variables
+            short_t numUnknows = dim + localIndices.size() - 1;
+            std::vector< gsMatrix<unsigned> > globalIndices(numUnknows);
+            gsVector<size_t> blockNumbers(numUnknows);
+            // computes global indices for displacement components
+            for (short_t d = 0; d < dim; ++d)
+            {
+               system.mapColIndices(localIndices[0], patchIndex, globalIndices[d], d);
+               blockNumbers.at(d) = d;
+            }
+            // computes global indices for other variables
+            for (short d = dim; d < numUnknows; ++d)
+            {
+                system.mapColIndices(localIndices[d-dim+1], patchIndex, globalIndices[d], d);
+                blockNumbers.at(d) = d;
+            }
+            // push to global system
+            if (assembleRhs)
+                system.pushToRhs(localRhs,globalIndices,blockNumbers);
+            if (assembleMatrix)
+                system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
         }
-        // computes global indices for other variables
-        for (short d = dim; d < numUnknows; ++d)
-        {
-            system.mapColIndices(localIndices[d-dim+1], patchIndex, globalIndices[d], d);
-            blockNumbers.at(d) = d;
-        }
-        // push to global system
-        system.pushToRhs(localRhs,globalIndices,blockNumbers);
-        if (assembleMatrix)
-            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:
@@ -158,7 +165,8 @@ protected:
     // general problem info
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
-    const bool assembleMatrix; // true: assemble matrix and rhs; false: assemble only rhs
+    const bool assembleMatrix;
+    const bool assembleRhs;
     // geometry mapping
     gsMapData<T> md;
 

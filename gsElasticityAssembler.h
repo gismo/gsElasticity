@@ -29,8 +29,8 @@ enum class elasticity_formulation { displacement, mixed_pressure };
 //       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
 //        in the reference configuration, dead-load problem)
 
-/** @brief Assembles stiffness and mass matrices and right-hand side vector for linear and nonlinear elasticity
-           for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
+/** @brief Assembles the stiffness matrix and the right-hand side vector for linear and nonlinear elasticity
+           for 2D plain stress and 3D continua. The matrix and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
            Supports mixed displacement-pressure formulation.
 */

@@ -36,7 +36,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
                                                 const gsBoundaryConditions<T> & bconditions,
                                                 const gsFunction<T> & body_force)
 {
-    // Always concieved as a meaningful class, now gsPde is just a container for
+    // Originally concieved as a meaningful class, now gsPde is just a container for
     // the domain, boundary conditions and the right-hand side;
     // any derived class can surve this purpuse, for example gsPoissonPde;
     // TUDO: change/remove gsPde from gsAssembler logic
