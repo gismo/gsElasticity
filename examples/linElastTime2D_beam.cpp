@@ -2,6 +2,7 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElMassAssembler.h>
+#include <gsElasticity/gsElTimeIntegrator.h>
 
 using namespace gismo;
 
@@ -40,6 +41,9 @@ int main(int argc, char* argv[]){
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
 
+    index_t numTimeSteps = 10;
+    real_t timeSpan = 1.;
+
     //=============================================//
                   // Assembly //
     //=============================================//
@@ -66,19 +70,16 @@ int main(int argc, char* argv[]){
     gsElMassAssembler<real_t> massAssembler(geometry,basis,bcInfo,g);
     massAssembler.options().setReal("Density",density);
 
-    gsInfo<<"Assembling stiffness...\n";
-    gsStopwatch clock;
-    clock.restart();
-    stiffAssembler.assemble();
-    gsInfo << "Assembled the stiffness matrix and the rhs vector with "
-           << stiffAssembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+    gsElTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
 
-    gsInfo<<"Assembling mass...\n";
-    clock.restart();
-    massAssembler.assemble();
-    gsInfo << "Assembled the mass matrix with "
-           << massAssembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+    real_t timeStep = timeSpan/numTimeSteps;
+    for (index_t i = 0; i < numTimeSteps; ++i)
+    {
+        gsInfo << i+1 << "/" << numTimeSteps << std::endl;
+        timeSolver.makeTimeStep(timeStep);
+    }
 
-    gsInfo << massAssembler.matrix().toDense() << std::endl;
+
+
     return 0;
 }
