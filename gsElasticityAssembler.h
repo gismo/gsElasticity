@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsAssembler.h>
+#include <gsElasticity/gsElBaseAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
 
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
@@ -35,10 +35,10 @@ enum class elasticity_formulation { displacement, mixed_pressure };
            Supports mixed displacement-pressure formulation.
 */
 template <class T>
-class gsElasticityAssembler : public gsAssembler<T>
+class gsElasticityAssembler : public gsElBaseAssembler<T>
 {
 public:
-    typedef gsAssembler<T> Base;
+    typedef gsElBaseAssembler<T> Base;
 
     /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
@@ -76,6 +76,8 @@ public:
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
     virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
                           bool assembleMatrix = true);
+
+    virtual void assemble(const gsMatrix<T> & solutionVector);
 
     /// @brief Construct displacement from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
