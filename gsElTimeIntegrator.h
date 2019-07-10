@@ -33,11 +33,15 @@ public:
 
     void makeTimeStep(T timeStep);
 
+    void makeTimeStepNL(T timeStep);
+
     const gsSparseMatrix<T> & matrix() const {return m_matrix; }
 
     const gsMatrix<T> & rhs() const {return m_rhs; }
 
     void assemble();
+
+    const gsMatrix<T> & displacementVector() const {return dispVector;}
 
 
 

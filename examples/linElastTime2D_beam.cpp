@@ -14,7 +14,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/unitSquare.xml";
+    std::string filename = ELAST_DATA_DIR"/beam.xml";
     index_t numUniRef = 0; // number of h-refinements
     index_t numKRef = 0; // number of k-refinements
     index_t numPlotPoints = 10000;
@@ -36,13 +36,13 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
+    //bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
+    //bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
 
-    index_t numTimeSteps = 10;
-    real_t timeSpan = 1.;
+    index_t numTimeSteps = 100;
+    real_t timeSpan = 10.;
 
     //=============================================//
                   // Assembly //
@@ -72,13 +72,27 @@ int main(int argc, char* argv[]){
 
     gsElTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
 
+    gsMultiPatch<> displacement;
+    stiffAssembler.constructSolution(timeSolver.displacementVector(),displacement);
+
+    gsField<> dispField(geometry,displacement);
+    std::map<std::string,const gsField<> *> fields;
+    fields["Displacement"] = &dispField;
+
+    gsParaviewCollection collection("beam");
+    gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,0,numPlotPoints);
+
+
     real_t timeStep = timeSpan/numTimeSteps;
     for (index_t i = 0; i < numTimeSteps; ++i)
     {
         gsInfo << i+1 << "/" << numTimeSteps << std::endl;
         timeSolver.makeTimeStep(timeStep);
+        stiffAssembler.constructSolution(timeSolver.displacementVector(),displacement);
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,i+1,numPlotPoints);
     }
 
+    collection.save();
 
 
     return 0;

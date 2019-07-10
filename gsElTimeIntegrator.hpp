@@ -47,11 +47,34 @@ void gsElTimeIntegrator<T>::makeTimeStep(T timeStep)
     T alpha1 = 1./beta/pow(timeStep,2);
     T alpha2 = 1./beta/timeStep;
     T alpha3 = (1-2*beta)/2/beta;
+    T alpha4 = gamma/beta/timeStep;
+    T alpha5 = 1 - gamma/beta;
+    T alpha6 = (1 - gamma/beta/2)*timeStep;
 
     m_matrix = alpha1*massAssembler.matrix() + stiffAssembler.matrix();
     m_rhs = massAssembler.matrix()*(alpha1*dispVector + alpha2*velVector + alpha3*accVector) + stiffAssembler.rhs();
     gsSparseSolver<>::SimplicialLDLT solver(m_matrix);
-    dispVector = solver.solve(m_rhs);
+    gsMatrix<T> newDispVector = solver.solve(m_rhs);
+    gsMatrix<T> tempVelVector = velVector;
+    velVector = alpha4*(newDispVector - dispVector) + alpha5*tempVelVector + alpha6*accVector;
+    accVector = alpha1*(newDispVector - dispVector) - alpha2*tempVelVector - alpha3*accVector;
+    dispVector = newDispVector;
+}
+
+template <class T>
+void gsElTimeIntegrator<T>::makeTimeStepNL(T timeStep)
+{
+    T beta = 0.25;
+    T gamma = 0.5;
+
+    T alpha1 = 1./beta/pow(timeStep,2);
+    T alpha2 = 1./beta/timeStep;
+    T alpha3 = (1-2*beta)/2/beta;
+    T alpha4 = gamma/beta/timeStep;
+    T alpha5 = 1 - gamma/beta;
+    T alpha6 = (1 - gamma/beta/2)*timeStep;
+
+
 }
 
 template <class T>
