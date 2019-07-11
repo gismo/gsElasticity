@@ -37,6 +37,9 @@ public:
         return opt;
     }
 
+
+    virtual int numDofs() const { return gsAssembler<T>::numDofs(); }
+
 };
 
 } // namespace ends

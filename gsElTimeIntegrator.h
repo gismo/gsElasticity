@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsAssembler.h>
+#include <gsElasticity/gsElBaseAssembler.h>
 
 namespace gismo
 {
@@ -25,21 +25,25 @@ template <class T>
 class gsElMassAssembler;
 
 template <class T>
-class gsElTimeIntegrator
+class gsElTimeIntegrator : public gsElBaseAssembler<T>
 {
 public:
+    typedef gsElBaseAssembler<T> Base;
+
     gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssembler_,
                        gsElMassAssembler<T> & massAssembler_);
+
+    /// @brief Returns the list of default options for assembly
+    static gsOptionList defaultOptions();
 
     void makeTimeStep(T timeStep);
 
     void makeTimeStepNL(T timeStep);
 
-    const gsSparseMatrix<T> & matrix() const {return m_matrix; }
+    virtual void assemble(const gsMatrix<T> & solutionVector);
 
-    const gsMatrix<T> & rhs() const {return m_rhs; }
 
-    void assemble();
+    virtual int numDofs() const { return stiffAssembler.numDofs(); }
 
     const gsMatrix<T> & displacementVector() const {return dispVector;}
 
@@ -56,6 +60,7 @@ protected:
     gsMatrix<T> m_rhs;
 
     index_t timeStepNum;
+    T tStep;
 
     gsMatrix<T> dispVector;
     gsMatrix<T> velVector;

@@ -62,7 +62,7 @@ void gsElNewton<T>::solve()
 
     computeUpdate(true);
 
-    assembler.options().setReal("DirichletScaling",0.);
+    //assembler.options().setReal("DirichletScaling",0.);
 
     while (!converged && numIterations < m_options.getInt("MaxIter"))
     {

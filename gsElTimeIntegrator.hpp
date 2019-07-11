@@ -19,6 +19,7 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElMassAssembler.h>
+#include <gsElasticity/gsElNewton.h>
 
 namespace gismo
 {
@@ -36,6 +37,13 @@ gsElTimeIntegrator<T>::gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssemb
     velVector.setZero(stiffAssembler.numDofs(),1);
     gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
     accVector = solver.solve(-1*stiffAssembler.matrix()*dispVector+stiffAssembler.rhs());
+}
+
+template <class T>
+gsOptionList gsElTimeIntegrator<T>::defaultOptions()
+{
+    gsOptionList opt = Base::defaultOptions();
+    return opt;
 }
 
 template <class T>
@@ -64,23 +72,45 @@ void gsElTimeIntegrator<T>::makeTimeStep(T timeStep)
 template <class T>
 void gsElTimeIntegrator<T>::makeTimeStepNL(T timeStep)
 {
+    tStep = timeStep;
     T beta = 0.25;
     T gamma = 0.5;
 
-    T alpha1 = 1./beta/pow(timeStep,2);
-    T alpha2 = 1./beta/timeStep;
+    T alpha1 = 1./beta/pow(tStep,2);
+    T alpha2 = 1./beta/tStep;
     T alpha3 = (1-2*beta)/2/beta;
-    T alpha4 = gamma/beta/timeStep;
+    T alpha4 = gamma/beta/tStep;
     T alpha5 = 1 - gamma/beta;
-    T alpha6 = (1 - gamma/beta/2)*timeStep;
+    T alpha6 = (1 - gamma/beta/2)*tStep;
 
-
+    gsElNewton<T> solver(*this,dispVector);
+    solver.solve();
+    gsMatrix<T> tempVelVector = velVector;
+    velVector = alpha4*(solver.solution() - dispVector) + alpha5*tempVelVector + alpha6*accVector;
+    accVector = alpha1*(solver.solution() - dispVector) - alpha2*tempVelVector - alpha3*accVector;
+    dispVector = solver.solution();
 }
 
 template <class T>
-void gsElTimeIntegrator<T>::assemble()
+void gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector)
 {
+    T beta = 0.25;
+    T gamma = 0.5;
 
+    T alpha1 = 1./beta/pow(tStep,2);
+    T alpha2 = 1./beta/tStep;
+    T alpha3 = (1-2*beta)/2/beta;
+    T alpha4 = gamma/beta/tStep;
+    T alpha5 = 1 - gamma/beta;
+    T alpha6 = (1 - gamma/beta/2)*tStep;
+
+    stiffAssembler.assemble(solutionVector);
+    Base::m_system.matrix() = alpha1*massAssembler.matrix() + stiffAssembler.matrix();
+    Base::m_system.matrix().makeCompressed();
+
+    Base::m_system.rhs() = stiffAssembler.rhs() + massAssembler.matrix()*(alpha1*(dispVector-solutionVector) + alpha2*velVector + alpha3*accVector);
 }
+
+
 
 } // namespace ends
