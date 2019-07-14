@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 
 
     std::vector<gsMultiPatch<> > displacements;
-    newton.setProcessingFunction([&](const gsMatrix<> & matrix)
+    newton.setPreProcessingFunction([&](const gsMatrix<> & matrix)
     {
         displacements.push_back(gsMultiPatch<>());
         assembler.constructSolution(matrix,displacements.back());

@@ -63,9 +63,14 @@ public:
     /// reset the solver state
     void reset();
 
-    void setProcessingFunction(std::function<void(const gsMatrix<T> &)> f)
+    void setPreProcessingFunction(std::function<void(const gsMatrix<T> &)> f)
     {
-        processingFunction = f;
+        preProcessingFunction = f;
+    }
+
+    void setPostProcessingFunction(std::function<void(const gsMatrix<T> &)> f)
+    {
+        postProcessingFunction = f;
     }
 
 protected:
@@ -95,7 +100,8 @@ protected:
     /// option list
     gsOptionList m_options;
 
-    std::function<void(const gsMatrix<T> &)> processingFunction;
+    std::function<void(const gsMatrix<T> &)> preProcessingFunction;
+    std::function<void(const gsMatrix<T> &)> postProcessingFunction;
 };
 
 } // namespace ends

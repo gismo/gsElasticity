@@ -29,7 +29,8 @@ gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_)
     : assembler(assembler_),
       initialGuess(false),
       m_options(defaultOptions()),
-      processingFunction([](const gsMatrix<T> &){})
+      preProcessingFunction([](const gsMatrix<T> &){}),
+      postProcessingFunction([](const gsMatrix<T> &){})
 {
     solVector.setZero(assembler.numDofs(),1);
     reset();
@@ -42,7 +43,8 @@ gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_,
       solVector(initialSolVector),
       initialGuess(true),
       m_options(defaultOptions()),
-      processingFunction([](const gsMatrix<T> &){})
+      preProcessingFunction([](const gsMatrix<T> &){}),
+      postProcessingFunction([](const gsMatrix<T> &){})
 {
     reset();
 }
@@ -152,7 +154,7 @@ void gsElNewton<T>::solveWithGuess()
 template <class T>
 bool gsElNewton<T>::computeUpdate()
 {
-    processingFunction(solVector);
+    preProcessingFunction(solVector);
 
     if (!assembler.assemble(solVector))
     {
@@ -178,6 +180,8 @@ bool gsElNewton<T>::computeUpdate()
     numIterations++;
     if (m_options.getInt("Verbosity") == newton_verbosity::all)
         gsInfo << status() << std::endl;
+
+    postProcessingFunction(solVector);
     return true;
 }
 
