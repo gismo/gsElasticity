@@ -5,6 +5,7 @@
 
 #include <gismo.h>
 #include <gsElasticity/gsElThermoAssembler.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 
@@ -143,35 +144,29 @@ int main(int argc, char *argv[])
     real_t Dt = endTime / numSteps ;
     gsInfo << "Solving...\n";
     clock.restart();
+    gsProgressBar bar;
     for ( int i = 1; i<=numSteps; ++i)
     {
-        gsInfo<<"Time step " << i << "/" << numSteps << std::endl;
-
+        // display progress bar
+        bar.display(1.*i/numSteps);
         // prepairing the matrix for the next time step
         heatAssembler.nextTimeStep(solVectorTemp, Dt);
-
         // solving the heat system
         gsSparseSolver<>::LU solverHeat(heatAssembler.matrix());
         solVectorTemp = solverHeat.solve(heatAssembler.rhs());
-
         // constructing solution as an IGA function
         stationary.constructSolution(solVectorTemp,solutionTemp);
-
         // assembling the thermal contribution to the RHS
         elastAssembler.assembleThermo();
-
         // solving elasticity system
         gsSparseSolver<>::LU solverElast(elastAssembler.matrix());
         solVectorElast = solverElast.solve(elastAssembler.rhs());
-
         // constructing solution as an IGA function
         elastAssembler.constructSolution(solVectorElast,solutionElast);
         gsField<> elastField(elastAssembler.patches(),solutionElast);
-
         // plotting to Paraview
         fields["Temperature"] = &tempField;
         fields["Displacement"] = &elastField;
-
         gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,i,numPlotPoints);
     }
 

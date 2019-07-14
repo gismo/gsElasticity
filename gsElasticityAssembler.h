@@ -15,30 +15,29 @@
 
 #pragma once
 
-#include <gsAssembler/gsAssembler.h>
+#include <gsElasticity/gsElBaseAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
 
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsElUtils.h>
 
 namespace gismo
 {
 
-enum class elasticity_formulation { displacement, mixed_pressure };
 
 // ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
 //       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
 //        in the reference configuration, dead-load problem)
 
-/** @brief Assembles stiffness and mass matrices and right-hand side vector for linear and nonlinear elasticity
-           for 2D plain stress and 3D continua. Matrices and vector have a block structure associated with
+/** @brief Assembles the stiffness matrix and the right-hand side vector for linear and nonlinear elasticity
+           for 2D plain stress and 3D continua. The matrix and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
            Supports mixed displacement-pressure formulation.
 */
 template <class T>
-class gsElasticityAssembler : public gsAssembler<T>
+class gsElasticityAssembler : public gsElBaseAssembler<T>
 {
 public:
-    typedef gsAssembler<T> Base;
+    typedef gsElBaseAssembler<T> Base;
 
     /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
@@ -53,9 +52,6 @@ public:
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force);
 
-    /// @brief Return the formulation type
-    elasticity_formulation formulation();
-
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
 
@@ -65,6 +61,11 @@ public:
     /// @brief Assembles the stiffness matrix and the RHS
     /// set *assembleMatrix* to false to only assemble the RHS;
     virtual void assemble(bool assembleMatrix = true);
+
+    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
+    /// set *assembleMatrix* to false to only assemble the residual;
+    /// ATTENTION: rhs() returns a negative residual (-r) !!!
+    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for displacement formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
@@ -114,6 +115,19 @@ public:
     /// @brief Return minJ/maxJ
     virtual T solutionJacRatio(const gsMultiPatch<T> & solution) const;
 
+    /// sets scaling of Dirichlet BC used for linear system assembly
+    virtual void setDirichletAssemblyScaling(T factor);
+    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
+    virtual void setDirichletConstructionScaling(T factor);
+    /// set scaling of the force loading (volume and surface loading)
+    virtual void setForceScaling(T factor);
+
+protected:
+    /// scale Dirichlet degrees of freedom
+    void scaleDDoFs(T factor);
+    /// reset Dirichlet degrees of freedom to its original state
+    void resetDDoFs();
+
 protected:
 
     /// Dimension of the problem
@@ -125,7 +139,8 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
-
+    /// Dirichlet degrees of freedom saved to recover after modification
+    std::vector<gsMatrix<T> > saved_ddof;
 };
 
 /// @brief Generates a matrix of sampling points for a given parametric element;

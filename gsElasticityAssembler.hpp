@@ -36,7 +36,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
                                                 const gsBoundaryConditions<T> & bconditions,
                                                 const gsFunction<T> & body_force)
 {
-    // Always concieved as a meaningful class, now gsPde is just a container for
+    // Originally concieved as a meaningful class, now gsPde is just a container for
     // the domain, boundary conditions and the right-hand side;
     // any derived class can surve this purpuse, for example gsPoissonPde;
     // TUDO: change/remove gsPde from gsAssembler logic
@@ -75,15 +75,6 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     m_options.setInt("MaterialLaw",material_law::neo_hooke_ln);
 }
 
-template<class T>
-elasticity_formulation gsElasticityAssembler<T>::formulation()
-{
-    if (m_bases.size() == unsigned(m_dim))
-        return elasticity_formulation::displacement;
-    else
-        return elasticity_formulation::mixed_pressure;
-}
-
 template <class T>
 gsOptionList gsElasticityAssembler<T>::defaultOptions()
 {
@@ -91,6 +82,8 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("YoungsModulus","Youngs modulus of the material",200e9);
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
+    opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
+    opt.addReal("DirichletConstruction","Dirichlet BC scaling parameter for solution construction",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
     return opt;
 }
@@ -133,6 +126,8 @@ void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
         return;
     }
 
+    scaleDDoFs(m_options.getReal("DirichletAssembly"));
+
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
@@ -144,15 +139,40 @@ void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
         gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
         Base::template push<gsVisitorMixedLinearElasticity<T> >(visitor);
     }
+
     // Compute surface integrals and write to the global rhs vector
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
     m_system.matrix().makeCompressed();
+    resetDDoFs();
+}
+
+template <class T>
+bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix)
+{
+    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
+    {
+        gsMultiPatch<T> displacement;
+        constructSolution(solutionVector,displacement);
+        if (checkSolution(displacement) != -1)
+            return false;
+        assemble(displacement,assembleMatrix);
+    }
+    else // mixed formulation (displacement + pressure)
+    {
+        gsMultiPatch<T> displacement, pressure;
+        constructSolution(solutionVector,displacement,pressure);
+        if (checkSolution(displacement) != -1)
+            return false;
+        assemble(displacement,pressure,assembleMatrix);
+    }
+    return true;
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix)
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, bool assembleMatrix)
 {
+
     if (assembleMatrix)
     {
         m_system.matrix().setZero();
@@ -160,13 +180,16 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
     }
     m_system.rhs().setZero(Base::numDofs(),1);
 
+    scaleDDoFs(m_options.getReal("DirichletAssembly"));
+
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,assembleMatrix);
     Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
+    resetDDoFs();
     m_system.matrix().makeCompressed();
 }
 
@@ -181,6 +204,8 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, co
     }
     m_system.rhs().setZero(Base::numDofs(),1);
 
+    scaleDDoFs(m_options.getReal("DirichletAssembly"));
+
     // Compute volumetric integrals and write to the global linear system
     gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure,assembleMatrix);
     Base::template push<gsVisitorMixedNonLinearElasticity<T> >(visitor);
@@ -188,6 +213,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, co
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
+    resetDDoFs();
     m_system.matrix().makeCompressed();
 }
 
@@ -372,6 +398,40 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
     }
 
     return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
+}
+
+template <class T>
+void gsElasticityAssembler<T>::setDirichletAssemblyScaling(T factor)
+{
+    m_options.setReal("DirichletAssembly",factor);
+}
+
+template <class T>
+void gsElasticityAssembler<T>::setDirichletConstructionScaling(T factor)
+{
+    m_options.setReal("DirichletConstruction",factor);
+}
+
+template <class T>
+void gsElasticityAssembler<T>::setForceScaling(T factor)
+{
+    m_options.setReal("ForceScaling",factor);
+}
+
+template <class T>
+void gsElasticityAssembler<T>::scaleDDoFs(T factor)
+{
+    if (saved_ddof.empty())
+        saved_ddof = m_ddof;
+    for (unsigned d = 0; d < m_ddof.size(); ++d)
+        m_ddof[d] = saved_ddof[d]*factor;
+}
+
+template <class T>
+void gsElasticityAssembler<T>::resetDDoFs()
+{
+    if (!saved_ddof.empty())
+        m_ddof = saved_ddof;
 }
 
 template <class T>

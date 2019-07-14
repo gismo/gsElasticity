@@ -1,7 +1,8 @@
 /// This is an example of using the mixed nonlinear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewton.h>
+#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 
@@ -83,22 +84,23 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElasticityNewton<real_t> newton(assembler);
+    gsElNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("Save",newton_save::firstAndLastPerIncStep);
-    newton.options().setInt("NumIncStep",numSteps);
+    newton.options().setInt("NumIncSteps",numSteps);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
+    gsStopwatch clock;
+    clock.restart();
     newton.solve();
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // displacement as an isogeometric displacement field
-    const gsMultiPatch<> & displacement = newton.displacement();
-    // pressure as an isogeometric displacement field
-    const gsMultiPatch<> & pressure = newton.pressure();
+    gsMultiPatch<> displacement,pressure;
+    assembler.constructSolution(newton.solution(),displacement,pressure);
 
     //=============================================//
                   // Output //

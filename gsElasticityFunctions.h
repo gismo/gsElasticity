@@ -16,35 +16,11 @@
 #pragma once
 
 #include <gsCore/gsFunction.h>
+#include <gsElasticity/gsElUtils.h>
 
 namespace gismo
 {
-/** @brief Specifies the type of stresses to compute
- *
- *         Currently, gsWriteParaview can only plot vector-valued functions with an output dimension up to three.
- *         Therefore it not possible to plot all stress components as components of a single vector-valued function.
-*/
-struct stress_type
-{
-    enum type
-    {
-        von_mises = 0,  /// compute only von Mises stress
-        all_2D    = 1,  /// compute normal and shear stresses in 2D case (s11 s22 s12)
-        normal_3D = 2,  /// compute normal stresses in 3D case (s11 s22 s33)
-        shear_3D  = 3   /// compute shear stresses in 3D case (s12 s13 s23)
-    };
-};
 
-/// @brief Specifies the material law to use
-struct material_law
-{
-    enum type
-    {
-        saint_venant_kirchhoff = 0,  /// S = 2*mu*E + lambda*tr(E)*I
-        neo_hooke_ln           = 1,  /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
-        neo_hooke_2            = 2   /// S = lambda/2*(J^2-1)*C^-1 + mu*(I-C^-1)
-    };
-};
 
 /** @brief Compute Cauchy stresses for a previously computed/defined displacement field.
  *         Can be pushed into gsPiecewiseFunction to construct gsField for visualization in Paraview.

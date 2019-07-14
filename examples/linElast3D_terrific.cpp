@@ -1,6 +1,7 @@
 /// This is an example of using the linear elasticity solver on a 3D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

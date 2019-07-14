@@ -1,7 +1,8 @@
 /// This is an example of using the nonlinear elasticity solver on a 3D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewton.h>
+#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 
@@ -73,23 +74,33 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElasticityNewton<real_t> newton(assembler);
-    newton.options().setInt("MaxIter",maxNumIteration);
+    gsElNewton<real_t> newton(assembler);
+    newton.options().setInt("MaxIters",maxNumIteration);
     newton.options().setReal("AbsTol",tolerance);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("Save",newton_save::firstAndLastPerIncStep);
+
+    // a small trick to get the solution of the linear elastiity problem from the nonlinear solver
+    gsMultiPatch<> solutionLinear;
+    index_t iterationNumber = 0;
+    newton.setPostProcessingFunction([&](const gsMatrix<> & matrix) {
+        if (iterationNumber == 0)
+            assembler.constructSolution(matrix,solutionLinear);
+        iterationNumber++;
+    });
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
+    gsStopwatch clock;
+    clock.restart();
     newton.solve();
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // solution to the nonlinear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionNonlinear = newton.displacement();
-    // solution to the linear problem as an isogeometric displacement field
-    const gsMultiPatch<> solutionLinear = newton.allDisplacements().front();
+    gsMultiPatch<> solutionNonlinear;
+    assembler.constructSolution(newton.solution(),solutionNonlinear);
 
     //=============================================//
                   // Output //

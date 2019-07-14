@@ -1,7 +1,10 @@
 /// This is an example of using the mixed linear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewton.h>
+#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+
+#include <sstream>
 
 using namespace gismo;
 
@@ -73,36 +76,35 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElasticityNewton<real_t> newton(assembler);
+    gsElNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("Save",newton_save::firstAndLastPerIncStep);
-    newton.options().setInt("NumIncStep",numSteps);
+    newton.options().setInt("NumIncSteps",numSteps);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
+    gsStopwatch clock;
+    clock.restart();
     newton.solve();
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // solution to the nonlinear problem as an isogeometric displacement field
-    const gsMultiPatch<> & solutionNonlinear = newton.displacement();
-    // solution to the linear problem as an isogeometric displacement field
-    const gsMultiPatch<> & solutionLinear = newton.allDisplacements().front();
+    gsMultiPatch<> solution;
+    assembler.constructSolution(newton.solution(),solution);
 
     //=============================================//
                   // Output //
     //=============================================//
 
     // constructing an IGA field (geometry + solution)
-    gsField<> displacementField(assembler.patches(),solutionNonlinear);
-    gsField<> displacementLinField(assembler.patches(),solutionLinear);
+    gsField<> displacementField(assembler.patches(),solution);
 
     gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Displacement"] = &displacementField;
-    fields["DisplacementLin"] = &displacementLinField;
     gsWriteParaviewMultiPhysics(fields,"cooks",numPlotPoints);
     gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
 
