@@ -18,12 +18,11 @@
 #include <gsElasticity/gsElBaseAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
 
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsElUtils.h>
 
 namespace gismo
 {
 
-enum class elasticity_formulation { displacement, mixed_pressure };
 
 // ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
 //       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
@@ -77,7 +76,7 @@ public:
     virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
                           bool assembleMatrix = true);
 
-    virtual void assemble(const gsMatrix<T> & solutionVector);
+    virtual bool assemble(const gsMatrix<T> & solutionVector);
 
     /// @brief Construct displacement from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
@@ -116,6 +115,18 @@ public:
     /// @brief Return minJ/maxJ
     virtual T solutionJacRatio(const gsMultiPatch<T> & solution) const;
 
+
+    virtual void setDirichletAssemblyScaling(T factor);
+
+
+    virtual void setDirichletConstructionScaling(T factor);
+
+    virtual void setForceScaling(T factor);
+
+protected:
+    void scaleDDoFs(T factor);
+    void resetDDoFs();
+
 protected:
 
     /// Dimension of the problem
@@ -127,6 +138,10 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
+
+    std::vector<gsMatrix<T> > saved_ddof;
+
+
 
 };
 

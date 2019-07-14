@@ -5,6 +5,7 @@
 
 #include <gismo.h>
 #include <gsElasticity/gsElThermoAssembler.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

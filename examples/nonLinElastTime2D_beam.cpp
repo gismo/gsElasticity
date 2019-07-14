@@ -3,6 +3,10 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElMassAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+
+
+#include <boost/progress.hpp>
 
 using namespace gismo;
 
@@ -15,7 +19,7 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/beam.xml";
-    index_t numUniRef = 0; // number of h-refinements
+    index_t numUniRef = 2; // number of h-refinements
     index_t numKRef = 0; // number of k-refinements
     index_t numPlotPoints = 10000;
 
@@ -82,15 +86,16 @@ int main(int argc, char* argv[]){
     gsParaviewCollection collection("beam");
     gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,0,numPlotPoints);
 
-
+    gsProgressBar bar;
     real_t timeStep = timeSpan/numTimeSteps;
     for (index_t i = 0; i < numTimeSteps; ++i)
     {
-        gsInfo << i+1 << "/" << numTimeSteps << std::endl;
+        bar.display(1.*(i+1)/numTimeSteps);
         timeSolver.makeTimeStepNL(timeStep);
         stiffAssembler.constructSolution(timeSolver.displacementVector(),displacement);
         gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,i+1,numPlotPoints);
     }
+
 
     collection.save();
 

@@ -1,6 +1,7 @@
 /// This is an example of using the mixed linear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

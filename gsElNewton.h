@@ -18,6 +18,7 @@
 #pragma once
 
 #include <gsIO/gsOptionList.h>
+#include <gsElasticity/gsElUtils.h>
 
 namespace gismo
 {
@@ -25,54 +26,67 @@ namespace gismo
 template <class T>
 class gsElBaseAssembler;
 
-struct newton_verbosity
-{
-    enum verbosity
-    {
-        none = 0,  /// no output
-        some = 1,  /// only essential output
-        all = 2  /// output everything
-    };
-};
-
+/** @brief A general nonlinear solver based on Newton's method.
+ * An equation to solve is specified by an assembler class which
+ * provides the following interfaces:
+ *
+ * int numDofs() const;
+ * const gsSparseMatrix<T> & matrix() const;
+ * const gsMatrix<T> & rhs() const;
+ * void assembler(const gsMatrix<T> & solutionVector);
+ * options().setReal("DirichletScaling",T);
+ * options().setReal("ForceScaling",T);
+ * .
+ * Currently uses gsElBaseAssembler as a parent interface class. Potentially, can operate on gsAssembler.
+*/
 template <class T>
 class gsElNewton
 {
 public:
-    /// constructor without an initial guess
+    /// constructor without an initial guess. Assumes a zero initial guess which probably does not
+    /// satisfy Dirichlet BC. Uses incremental loading.
     gsElNewton(gsElBaseAssembler<T> & assembler_);
-
-
+    /// constructor with an initial guess. Assumes that the initial guess satisfies DBC
+    /// and further updates are 0 at the Dirichlet boundary. Does not use incremental loading.
     gsElNewton(gsElBaseAssembler<T> & assembler_, const gsMatrix<T> & initialSolVector);
-
+    /// default option list. used for initialization
     static gsOptionList defaultOptions();
     /// get options list to read or set parameters
     gsOptionList & options() { return m_options; }
-    /// standard solution procedure; supports incremental loading
+    /// solution procedure
     void solve();
     /// returns the solution vector
     const gsMatrix<T> & solution() const { return solVector; }
+    /// return solver status as a string
+    std::string status();
+    /// reset the solver state
+    void reset();
 
 protected:
-    void computeUpdate(bool initUpdate);
-
-    void printStatus();
+    /// computes update of the solution
+    bool computeUpdate();
+    /// solution procedure without an initial guess. Assumes 0 initial guess
+    /// that does not satisfy Dirichlet BC. Uses incremental loading
+    void solveNoGuess();
+    /// solution procedure with an initial guess. Assumes that the initial guess
+    /// satisfies Dirichlet BC. Does not use incremental loading.
+    void solveWithGuess();
 
 protected:
     /// assembler object that generates the linear system
     gsElBaseAssembler<T> & assembler;
     /// solution vector
     gsMatrix<T> solVector;
-
-    /// status variables
+    bool initialGuess;
+    /// ---- status variables ----- ///
     index_t numIterations; /// number of Newton's iterations performed at the current ILS
     index_t incStep; /// current incremental loading step
-    bool converged;  /// convergence status at the current ILS
-    T residualNorm;
-    T initResidualNorm; /// residual norm at the beginning of the current ILS
-    T updateNorm;
-    T initUpdateNorm; /// update vector norm at the beginning of the current ILS
-
+    newton_status m_status;  /// status of the solver (converged, interrupted, working)
+    T residualNorm; /// norm of the residual vector
+    T initResidualNorm; /// norm of the residual vector at the beginning of the loop
+    T updateNorm; /// norm of the update vector
+    T initUpdateNorm; /// norm of the update vector at the beginning of the loop
+    /// option list
     gsOptionList m_options;
 };
 

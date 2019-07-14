@@ -1,6 +1,6 @@
 /** @file gsElNewton.hpp
 
-    @brief Implementation of gsElNeton.
+    @brief Implementation of gsElNewton.
 
     This file is part of the G+Smo library.
 
@@ -19,25 +19,30 @@
 
 #include <gsElasticity/gsElBaseAssembler.h>
 
+#include <sstream>
+
 namespace gismo
 {
 
 template <class T>
 gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_)
     : assembler(assembler_),
+      initialGuess(false),
       m_options(defaultOptions())
 {
     solVector.setZero(assembler.numDofs(),1);
+    reset();
 }
 
 template <class T>
 gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_,
                           const gsMatrix<T> & initialSolVector)
     : assembler(assembler_),
-      m_options(defaultOptions()),
-      solVector(initialSolVector)
+      solVector(initialSolVector),
+      initialGuess(true),
+      m_options(defaultOptions())
 {
-
+    reset();
 }
 
 template <class T>
@@ -45,40 +50,112 @@ gsOptionList gsElNewton<T>::defaultOptions()
 {
     gsOptionList opt;
     /// stopping creteria
-    opt.addInt("MaxIter","Maximum number of iterations per loading step",50);
+    opt.addInt("MaxIters","Maximum number of iterations per loop",50);
     opt.addReal("AbsTol","Absolute tolerance for the convergence cretiria",1e-12);
     opt.addReal("RelTol","Relative tolerance for the stopping criteria",1e-9);
+    /// incremental loading
+    opt.addInt("NumIncSteps","Number of incremental loading steps",1);
+    opt.addInt("MaxItersInter","Maximum number of Newton's iterations at intermediate loading steps. Same as MaxIter if < 1.",0);
     /// additional setting
-    opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",newton_verbosity::all);
+    opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",newton_verbosity::none);
     return opt;
 }
 
 template <class T>
 void gsElNewton<T>::solve()
 {
-    // reset the status of Newton's method
-    numIterations = 0;
-    converged = false;
+    if (initialGuess)
+        solveWithGuess();
+    else
+        solveNoGuess();
+}
 
-    computeUpdate(true);
-
-    //assembler.options().setReal("DirichletScaling",0.);
-
-    while (!converged && numIterations < m_options.getInt("MaxIter"))
+template <class T>
+void gsElNewton<T>::solveNoGuess()
+{
+    T stepSize = 1./m_options.getInt("NumIncSteps");
+    for (index_t s = 0; s < m_options.getInt("NumIncSteps"); ++s)
     {
-        computeUpdate(false);
+        if (m_options.getInt("Verbosity") != newton_verbosity::none)
+            gsInfo << "Load: " << s*stepSize*100 << "% -> " << (s+1)*stepSize*100 << "%\n";
+        reset();
+
+        //scale load
+        assembler.setForceScaling((s+1)*stepSize);
+        // current solution satisfies a fraction s/numIncSteps of the Dirichlet BC
+        assembler.setDirichletConstructionScaling(s*stepSize);
+        // next update should advance the solution at the Dirichlet boundary by 1/numIncSteps of the Dirichlet BC
+        assembler.setDirichletAssemblyScaling(stepSize);
+        if (!computeUpdate())
+        {
+            m_status = newton_status::bad_solution;
+            if (m_options.getInt("Verbosity") != newton_verbosity::none)
+                gsInfo << status() << std::endl;
+            goto abort;
+        }
+
+        // current solution satisfies a fraction (s+1)/numIncSteps of the Dirichlet BC
+        assembler.setDirichletConstructionScaling((s+1)*stepSize);
+        // further updates should be 0 at the Dirichelt boundary
+        assembler.setDirichletAssemblyScaling(0.);
+        while (m_status == newton_status::working)
+        {
+            if (!computeUpdate())
+            {
+                m_status = newton_status::bad_solution;
+                if (m_options.getInt("Verbosity") != newton_verbosity::none)
+                    gsInfo << status() << std::endl;
+                goto abort;
+            }
+            if (residualNorm < m_options.getReal("AbsTol") ||
+                updateNorm < m_options.getReal("AbsTol") ||
+                residualNorm/initResidualNorm < m_options.getReal("RelTol") ||
+                updateNorm/initUpdateNorm < m_options.getReal("RelTol"))
+                m_status = newton_status::converged;
+            else if (numIterations == m_options.getInt("MaxIters"))
+                m_status = newton_status::interrupted;
+        }
+
+        if (m_options.getInt("Verbosity") != newton_verbosity::none)
+            gsInfo << status() << std::endl;
+    }
+    abort:;
+}
+
+template <class T>
+void gsElNewton<T>::solveWithGuess()
+{
+    // assuming that the initial guess satisfies Dirichlet BC,
+    assembler.setDirichletConstructionScaling(1.);
+    // further updates should be 0 at the Dirichelt boundary
+    assembler.setDirichletAssemblyScaling(0.);
+
+    while (m_status == newton_status::working)
+    {
+        if (!computeUpdate())
+        {
+            m_status = newton_status::bad_solution;
+            goto abort;
+        }
         if (residualNorm < m_options.getReal("AbsTol") ||
             updateNorm < m_options.getReal("AbsTol") ||
             residualNorm/initResidualNorm < m_options.getReal("RelTol") ||
             updateNorm/initUpdateNorm < m_options.getReal("RelTol"))
-            converged = true;
+            m_status = newton_status::converged;
+        else if (numIterations == m_options.getInt("MaxIters"))
+            m_status = newton_status::interrupted;
     }
+
+    abort:;
+    if (m_options.getInt("Verbosity") != newton_verbosity::none)
+        gsInfo << status() << std::endl;
 }
 
 template <class T>
-void gsElNewton<T>::computeUpdate(bool initUpdate)
+bool gsElNewton<T>::computeUpdate()
 {
-    assembler.assemble(solVector);
+    if (!assembler.assemble(solVector))
+        return false;
     gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
     gsVector<T> updateVector = solver.solve(assembler.rhs());
 
@@ -87,25 +164,49 @@ void gsElNewton<T>::computeUpdate(bool initUpdate)
 
     solVector += updateVector;
 
-    if (initUpdate)
+    if (numIterations == 0)
     {
         initUpdateNorm = updateNorm;
         initResidualNorm = residualNorm;
     }
 
     numIterations++;
-    printStatus();
+    if (m_options.getInt("Verbosity") == newton_verbosity::all)
+        gsInfo << status() << std::endl;
+    return true;
 }
 
 template <class T>
-void gsElNewton<T>::printStatus()
+std::string gsElNewton<T>::status()
 {
-    if (m_options.getInt("Verbosity") == newton_verbosity::all)
-        gsInfo << "Iteration: " << numIterations
-               << ", resAbs: " << residualNorm
-               << ", resRel: " << residualNorm/initResidualNorm
-               << ", updAbs: " << updateNorm
-               << ", updRel: " << updateNorm/initUpdateNorm << std::endl;
+    std::string statusString;
+    if (m_status == newton_status::converged)
+        statusString = "Newton's method converged after " +
+                 util::to_string(numIterations) + " iterations.";
+    else if (m_status == newton_status::interrupted)
+        statusString = "Newton's method was interrupted after " +
+                util::to_string(numIterations) + " iterations.";
+    else if (m_status == newton_status::working)
+        statusString = "It: " + util::to_string(numIterations) +
+                 ", resAbs: " + util::to_string(residualNorm) +
+                 ", resRel: " + util::to_string(residualNorm/initResidualNorm) +
+                 ", updAbs: " + util::to_string(updateNorm) +
+                 ", updRel: " + util::to_string(updateNorm/initUpdateNorm);
+    else
+        statusString = "Newton's method was interrupted due to an invalid solution.";
+    return statusString;
+}
+
+template <class T>
+void gsElNewton<T>::reset()
+{
+    m_status = newton_status::working;
+    numIterations = 0;
+    residualNorm = 0.;
+    initResidualNorm = 1.;
+    updateNorm = 0.;
+    initUpdateNorm = 1.;
+
 }
 
 } // namespace ends

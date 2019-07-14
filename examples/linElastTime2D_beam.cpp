@@ -3,6 +3,7 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElMassAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

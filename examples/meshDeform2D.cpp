@@ -3,7 +3,8 @@
 #include <gismo.h>
 #include <gsElasticity/gsElMeshing.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityNewton.h>
+#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 
@@ -28,11 +29,6 @@ int main(int argc, char* argv[])
     index_t numIter = 1; // number of Newton's iterations at each non-final incremental loading step
     real_t poissRatio = 0.45;
     index_t law = 1; // material law used in the material model; 0 - St. Venant-Kirchhoff, 1 - ln-neo-Hooke, 2 - quad-neo-Hooke
-    /// Bijectivity-preserving adaptivity settings
-    bool bijectivity = true; // stop the simulation if the bijectivity violation is unavoidable"
-    index_t maxAdapt = 0; // max number of adaptive stepsize halving applications
-    real_t quality = 0.5; // quality ratio to preserve
-    bool damped = false; // use damped Newton's method
     /// Output options
     index_t numPlotPoints = 0;
 
@@ -50,11 +46,6 @@ int main(int argc, char* argv[])
     cmd.addInt("n","numIter","Number of Newton's iterations at each non-final incremental loading step",numIter);
     cmd.addReal("p","poiss","Poisson's ratio for the elasticity model",poissRatio);
     cmd.addInt("l","law","Material law used in the material model; 0 - St. Venant-Kirchhoff, 1 - ln-neo-Hooke, 2 - quad-neo-Hooke",law);
-    /// Bijectivity-preserving adaptivity settings
-    cmd.addSwitch("b","bijective","Stop the simulation if the bijectivity violation is unavoidable",bijectivity);
-    cmd.addInt("a","adapt","Max number of adaptive stepsize halving",maxAdapt);
-    cmd.addReal("q","quality","Quality threshold for adaptive incremental loading",quality);
-    cmd.addSwitch("x","damp","Use damped Newton's method",damped);
     /// Output options
     cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -109,15 +100,10 @@ int main(int argc, char* argv[])
     for (index_t s = 1; s < 5; ++s)
         assembler.setDirichletDofs(0,s,bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs());
 
-    gsElasticityNewton<real_t> newton(assembler);
-    newton.options().setInt("NumIncStep",numSteps);
-    newton.options().setInt("MaxIterNotLast",numIter);
-    newton.options().setSwitch("BijectivityCheck",bijectivity);
-    newton.options().setInt("MaxHalving",maxAdapt);
-    newton.options().setReal("QualityRatio",quality);
-    newton.options().setSwitch("DampedNewton",damped);
+    gsElNewton<real_t> newton(assembler);
+    newton.options().setInt("NumIncSteps",numSteps);
+    newton.options().setInt("MaxItersInter",numIter);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("Save",newton_save::all);
 
     newton.solve();
 
@@ -132,9 +118,11 @@ int main(int argc, char* argv[])
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
 
-    newton.plotDeformation(initGeo,filename,numPlotPoints);
+    //newton.plotDeformation(initGeo,filename,numPlotPoints);
 
-    initGeo.patch(0).coefs() += newton.displacement().patch(0).coefs();
+    gsMultiPatch<> displacement;
+    assembler.constructSolution(newton.solution(),displacement);
+    initGeo.patch(0).coefs() += displacement.patch(0).coefs();
     gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(initGeo,filename + "_2D");
 

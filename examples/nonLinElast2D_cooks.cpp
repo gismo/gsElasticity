@@ -2,6 +2,9 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+
+#include <sstream>
 
 using namespace gismo;
 
@@ -75,6 +78,7 @@ int main(int argc, char* argv[]){
     // setting Newton's method
     gsElNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("NumIncSteps",numSteps);
 
     //=============================================//
                   // Solving //

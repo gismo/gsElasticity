@@ -20,6 +20,7 @@
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsIO/gsOptionList.h>
+#include <gsElasticity/gsElUtils.h>
 
 namespace gismo
 {
@@ -27,25 +28,7 @@ namespace gismo
 template <class T>
 class gsElasticityAssembler;
 
-struct newton_verbosity
-{
-    enum verbosity
-    {
-        none = 0,  /// no output
-        some = 1,  /// only essential output
-        all = 2  /// output everything
-    };
-};
 
-struct newton_save
-{
-    enum save
-    {
-        onlyFinal = 0,  /// save only the final solution
-        firstAndLastPerIncStep = 1,  /// save only the first and the last displacement fields at each incremental loading step
-        all = 2  /// save every intermediate displacement field
-    };
-};
 
 template <class T>
 class gsElasticityNewton

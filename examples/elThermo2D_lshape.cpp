@@ -1,6 +1,7 @@
 /// This is an example of using the thermal expansion solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElThermoAssembler.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

@@ -2,6 +2,8 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+
 using namespace gismo;
 
 int main(int argc, char* argv[]){

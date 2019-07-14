@@ -18,6 +18,7 @@
 #include <gsElasticity/gsElasticityNewton.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsCore/gsField.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 namespace gismo
 {

@@ -16,6 +16,8 @@
 
 #include <gsElasticity/gsElBaseAssembler.h>
 
+#include <gsElasticity/gsElUtils.h>
+
 namespace gismo
 {
 
@@ -40,7 +42,7 @@ public:
 
     void makeTimeStepNL(T timeStep);
 
-    virtual void assemble(const gsMatrix<T> & solutionVector);
+    virtual bool assemble(const gsMatrix<T> & solutionVector);
 
 
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
@@ -48,6 +50,20 @@ public:
     const gsMatrix<T> & displacementVector() const {return dispVector;}
 
 
+    virtual void setDirichletAssemblyScaling(T factor)
+    {
+        stiffAssembler.setDirichletAssemblyScaling(factor);
+    }
+
+    virtual void setDirichletConstructionScaling(T factor)
+    {
+        stiffAssembler.setDirichletConstructionScaling(factor);
+    }
+
+    virtual void setForceScaling(T factor)
+    {
+        stiffAssembler.setForceScaling(factor);
+    }
 
 protected:
     /// assembler object that generates the static system
@@ -65,6 +81,8 @@ protected:
     gsMatrix<T> dispVector;
     gsMatrix<T> velVector;
     gsMatrix<T> accVector;
+
+    using Base::m_options;
 
 };
 

@@ -26,6 +26,7 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 namespace gismo
 {
