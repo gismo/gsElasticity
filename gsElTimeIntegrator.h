@@ -26,12 +26,16 @@ class gsElasticityAssembler;
 template <class T>
 class gsElMassAssembler;
 
+/** @brief Time integation for equations of dynamic elasticity. Can perform explicit (with or without mass lamping)
+ *         and implicit (linear and nonlinear) time steps.
+*/
 template <class T>
 class gsElTimeIntegrator : public gsElBaseAssembler<T>
 {
 public:
     typedef gsElBaseAssembler<T> Base;
-
+    /// constructor method. requires a gsElasticityAssembler for construction of the static linear system
+    /// and a gsMassAssembler for the mass matrix
     gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssembler_,
                        gsElMassAssembler<T> & massAssembler_);
 
@@ -75,6 +79,7 @@ protected:
     /// RHS vector of the linear system to solve
     gsMatrix<T> m_rhs;
 
+
     index_t timeStepNum;
     T tStep;
 
@@ -83,7 +88,6 @@ protected:
     gsMatrix<T> accVector;
 
     using Base::m_options;
-
 };
 
 }

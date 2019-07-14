@@ -1,6 +1,6 @@
 /** @file gsElUtils.h
 
-    @brief Provides several simple utility classes.
+    @brief Provides several simple utility and naming classes.
 
     This file is part of the G+Smo library.
 
@@ -20,6 +20,7 @@
 namespace gismo
 {
 
+/// @brief Specifies the verbosity of the Newton's solver
 struct newton_verbosity
 {
     enum verbosity
@@ -30,15 +31,11 @@ struct newton_verbosity
     };
 };
 
-struct newton_save
-{
-    enum save
-    {
-        onlyFinal = 0,  /// save only the final solution
-        firstAndLastPerIncStep = 1,  /// save only the first and the last displacement fields at each incremental loading step
-        all = 2  /// save every intermediate displacement field
-    };
-};
+/// @brief Specifies the status of the Newton's solver
+enum class newton_status { converged, /// method successfully converged
+                           interrupted, /// solver was interrupted after exceeding the limit of iterations
+                           working, /// solver working
+                           bad_solution }; /// method was interrupted because the current solution is invalid
 
 /** @brief Specifies the type of stresses to compute
  *
@@ -67,16 +64,22 @@ struct material_law
     };
 };
 
+/// @brief Specifies the elasticity formulation: pure displacement or mixed displacement-pressure
 enum class elasticity_formulation { displacement, mixed_pressure };
 
-
-enum class newton_status { converged, interrupted, working, bad_solution };
-
+/** @brief Simple progress bar class
+ *
+ *         Prints the progress bar on a single console line, avoids clattering the console window and looks cool.
+ *         Useful for programms with duration known in advance, e.g. transient simulations with a fixed number of time steps.
+ *         Other console output will mess up the progress bar.
+*/
 class gsProgressBar
 {
 public:
+    /// Constructor. Width is a number of symbols the progress bar spans
     gsProgressBar(index_t width = 25) : m_width(width) {}
 
+    /// display the progress from 0 to 1
     void display(double progress)
     {
         GISMO_ENSURE(progress >= 0. && progress <= 1.,"Invalid progress value! Must be between 0 and 1.");

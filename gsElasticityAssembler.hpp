@@ -75,15 +75,6 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     m_options.setInt("MaterialLaw",material_law::neo_hooke_ln);
 }
 
-template<class T>
-elasticity_formulation gsElasticityAssembler<T>::formulation()
-{
-    if (m_bases.size() == unsigned(m_dim))
-        return elasticity_formulation::displacement;
-    else
-        return elasticity_formulation::mixed_pressure;
-}
-
 template <class T>
 gsOptionList gsElasticityAssembler<T>::defaultOptions()
 {
@@ -157,7 +148,7 @@ void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
 }
 
 template <class T>
-bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector)
+bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix)
 {
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
@@ -165,7 +156,7 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector)
         constructSolution(solutionVector,displacement);
         if (checkSolution(displacement) != -1)
             return false;
-        assemble(displacement,true);
+        assemble(displacement,assembleMatrix);
     }
     else // mixed formulation (displacement + pressure)
     {
@@ -173,13 +164,13 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector)
         constructSolution(solutionVector,displacement,pressure);
         if (checkSolution(displacement) != -1)
             return false;
-        assemble(displacement,pressure,true);
+        assemble(displacement,pressure,assembleMatrix);
     }
     return true;
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool assembleMatrix)
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, bool assembleMatrix)
 {
 
     if (assembleMatrix)
@@ -192,7 +183,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & deformed, bool a
     scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,deformed,assembleMatrix);
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,assembleMatrix);
     Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system

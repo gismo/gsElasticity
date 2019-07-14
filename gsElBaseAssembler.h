@@ -27,16 +27,21 @@ template <class T>
 class gsElBaseAssembler : public gsAssembler<T>
 {
 public:
-    virtual bool assemble(const gsMatrix<T> & solutionVector) = 0;
-
+    /// assembles the linear system given the current solution vector.
+    /// checks if the current solution is valid (Newton's solver can exit safely if invalid).
+    /// assembles only the RHS vector if \a assembleMatrix is set to false
+    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true) = 0;
+    /// sets scaling of Dirichlet BC used for linear system assembly
     virtual void setDirichletAssemblyScaling(T factor) = 0;
-
+    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
     virtual void setDirichletConstructionScaling(T factor) = 0;
-
+    /// set scaling of the force loading (volume and surface loading)
     virtual void setForceScaling(T factor) = 0;
 
     virtual int numDofs() const { return gsAssembler<T>::numDofs(); }
 
+    /// constructs solution as a gsMultiPatch object from the solution vector.
+    /// exactly the same as the gsAssembler<>::constructSolution, but allows to control the scaling of Dirichlet BC
     virtual void constructSolution(const gsMatrix<T>& solVector,
                                    gsMultiPatch<T>& result,
                                    const gsVector<index_t> & unknowns) const

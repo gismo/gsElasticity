@@ -62,16 +62,12 @@ public:
     std::string status();
     /// reset the solver state
     void reset();
-
-    void setPreProcessingFunction(std::function<void(const gsMatrix<T> &)> f)
-    {
-        preProcessingFunction = f;
-    }
-
-    void setPostProcessingFunction(std::function<void(const gsMatrix<T> &)> f)
-    {
-        postProcessingFunction = f;
-    }
+    /// sets a pre-processing function that is executed at the BEGINNING of each iteration.
+    /// can be used to get some information out of the solver without modifying the solver's code
+    void setPreProcessingFunction(std::function<void(const gsMatrix<T> &)> f) { preProcessingFunction = f; }
+    /// sets a post-processing function that is executed at the END of each iteration.
+    /// can be used to get some information out of the solver without modifying the solver's code
+    void setPostProcessingFunction(std::function<void(const gsMatrix<T> &)> f) { postProcessingFunction = f; }
 
 protected:
     /// computes update of the solution
@@ -99,7 +95,7 @@ protected:
     T initUpdateNorm; /// norm of the update vector at the beginning of the loop
     /// option list
     gsOptionList m_options;
-
+    /// pre- and post-processing function to get some information out of the solver
     std::function<void(const gsMatrix<T> &)> preProcessingFunction;
     std::function<void(const gsMatrix<T> &)> postProcessingFunction;
 };
