@@ -46,28 +46,29 @@ public:
 
     void makeTimeStepNL(T timeStep);
 
-    virtual bool assemble(const gsMatrix<T> & solutionVector);
-
+    /// assemble the linear system for
+    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
 
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
 
+    /// returns  vector of displacement DoFs
     const gsMatrix<T> & displacementVector() const {return dispVector;}
 
+    /// sets scaling of Dirichlet BC used for linear system assembly
+    virtual void setDirichletAssemblyScaling(T factor) { stiffAssembler.setDirichletAssemblyScaling(factor); }
+    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
+    virtual void setDirichletConstructionScaling(T factor) { stiffAssembler.setDirichletConstructionScaling(factor); }
+    /// set scaling of the force loading (volume and surface loading)
+    virtual void setForceScaling(T factor) { stiffAssembler.setForceScaling(factor); }
 
-    virtual void setDirichletAssemblyScaling(T factor)
-    {
-        stiffAssembler.setDirichletAssemblyScaling(factor);
-    }
-
-    virtual void setDirichletConstructionScaling(T factor)
-    {
-        stiffAssembler.setDirichletConstructionScaling(factor);
-    }
-
-    virtual void setForceScaling(T factor)
-    {
-        stiffAssembler.setForceScaling(factor);
-    }
+protected:
+    /// time integration scheme coefficients
+    T alpha1() {return 1./m_options.getReal("Beta")/pow(tStep,2); }
+    T alpha2() {return 1./m_options.getReal("Beta")/tStep; }
+    T alpha3() {return (1-2*m_options.getReal("Beta"))/2/m_options.getReal("Beta"); }
+    T alpha4() {return m_options.getReal("Gamma")/m_options.getReal("Beta")/tStep; }
+    T alpha5() {return 1 - m_options.getReal("Gamma")/m_options.getReal("Beta"); }
+    T alpha6() {return (1-m_options.getReal("Gamma")/m_options.getReal("Beta")/2)*tStep; }
 
 protected:
     /// assembler object that generates the static system
@@ -79,12 +80,13 @@ protected:
     /// RHS vector of the linear system to solve
     gsMatrix<T> m_rhs;
 
-
-    index_t timeStepNum;
+    /// time step length
     T tStep;
-
+    /// vector of displacement DoFs
     gsMatrix<T> dispVector;
+    /// vector of velocity DoFs
     gsMatrix<T> velVector;
+    /// vector of acceleration DoFs
     gsMatrix<T> accVector;
 
     using Base::m_options;

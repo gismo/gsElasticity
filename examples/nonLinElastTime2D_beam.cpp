@@ -5,9 +5,6 @@
 #include <gsElasticity/gsElTimeIntegrator.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
-
-#include <boost/progress.hpp>
-
 using namespace gismo;
 
 int main(int argc, char* argv[]){
@@ -22,12 +19,16 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 2; // number of h-refinements
     index_t numKRef = 0; // number of k-refinements
     index_t numPlotPoints = 10000;
+    index_t numTimeSteps = 100;
+    real_t timeSpan = 10.;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addReal("t","time","Time span, sec",timeSpan);
+    cmd.addInt("i","iter","Number of time steps",numTimeSteps);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -44,9 +45,6 @@ int main(int argc, char* argv[]){
     //bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
-
-    index_t numTimeSteps = 100;
-    real_t timeSpan = 10.;
 
     //=============================================//
                   // Assembly //
@@ -70,6 +68,7 @@ int main(int argc, char* argv[]){
     stiffAssembler.options().setReal("YoungsModulus",youngsModulus);
     stiffAssembler.options().setReal("PoissonsRatio",poissonsRatio);
     stiffAssembler.options().setInt("DirichletValues",dirichlet::interpolation);
+    gsInfo << "Initialized a system with " << stiffAssembler.numDofs() << " Dofs\n";
 
     gsElMassAssembler<real_t> massAssembler(geometry,basis,bcInfo,g);
     massAssembler.options().setReal("Density",density);
@@ -88,6 +87,8 @@ int main(int argc, char* argv[]){
 
     gsProgressBar bar;
     real_t timeStep = timeSpan/numTimeSteps;
+    gsStopwatch clock;
+    clock.restart();
     for (index_t i = 0; i < numTimeSteps; ++i)
     {
         bar.display(1.*(i+1)/numTimeSteps);
@@ -95,8 +96,7 @@ int main(int argc, char* argv[]){
         stiffAssembler.constructSolution(timeSolver.displacementVector(),displacement);
         gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,i+1,numPlotPoints);
     }
-
-
+    gsInfo << "Done. " << numTimeSteps << " time steps in " << clock.stop() << " sec.\n";
     collection.save();
 
     return 0;

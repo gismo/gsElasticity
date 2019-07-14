@@ -93,7 +93,10 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     gsInfo << "Solving...\n";
+    gsStopwatch clock;
+    clock.restart();
     newton.solve();
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // displacement as an isogeometric displacement field
     gsMultiPatch<> displacement,pressure;

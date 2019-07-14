@@ -79,13 +79,12 @@ int main(int argc, char* argv[]){
     newton.options().setReal("AbsTol",tolerance);
     newton.options().setInt("Verbosity",newton_verbosity::all);
 
-
+    // a small trick to get the solution of the linear elastiity problem from the nonlinear solver
     gsMultiPatch<> solutionLinear;
     index_t iterationNumber = 0;
     newton.setPostProcessingFunction([&](const gsMatrix<> & matrix) {
         if (iterationNumber == 0)
             assembler.constructSolution(matrix,solutionLinear);
-
         iterationNumber++;
     });
 
@@ -94,7 +93,10 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     gsInfo << "Solving...\n";
+    gsStopwatch clock;
+    clock.restart();
     newton.solve();
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // solution to the nonlinear problem as an isogeometric displacement field
     gsMultiPatch<> solutionNonlinear;

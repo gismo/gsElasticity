@@ -98,18 +98,17 @@ int main(int argc, char* argv[])
     gsElasticityAssembler<real_t> assembler(initGeo,basis,bcInfo,g);
     assembler.options().setReal("PoissonsRatio",poissRatio);
     assembler.options().setInt("MaterialLaw",law);
+    // setting Dirichlet DoFs
     for (index_t s = 1; s < 5; ++s)
         assembler.setDirichletDofs(0,s,bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs());
 
+    // creating the nonlinear solver
     gsElNewton<real_t> newton(assembler);
     newton.options().setInt("NumIncSteps",numSteps);
     newton.options().setInt("MaxItersInter",numIter);
     newton.options().setInt("Verbosity",newton_verbosity::all);
 
-    gsParaviewCollection collectionMesh(filename + "_mesh");
-    gsParaviewCollection collectionJac(filename + "_jac");
-
-
+    // a small trick to get the intermediate displacements from the nonlinear solver
     std::vector<gsMultiPatch<> > displacements;
     newton.setPreProcessingFunction([&](const gsMatrix<> & matrix)
     {
@@ -117,8 +116,9 @@ int main(int argc, char* argv[])
         assembler.constructSolution(matrix,displacements.back());
     });
 
+    gsInfo << "Solving...\n";
     newton.solve();
-
+    // get the final displacement as well
     displacements.push_back(gsMultiPatch<>());
     assembler.constructSolution(newton.solution(),displacements.back());
 
@@ -126,15 +126,14 @@ int main(int argc, char* argv[])
                 // Output //
     //=====================================//
 
-
     filename = filename.substr(filename.find_last_of("/\\")+1); // file name without a path
     filename = filename.substr(0,filename.find_last_of(".\\"));
     filename = filename.substr(0,filename.find_last_of("_\\"));
 
-
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
 
+    // plotting all intermediate deformed meshes
     plotDeformation(initGeo,displacements,filename,numPlotPoints);
 
     gsMultiPatch<> displacement;
@@ -142,7 +141,6 @@ int main(int argc, char* argv[])
     initGeo.patch(0).coefs() += displacement.patch(0).coefs();
     gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(initGeo,filename + "_2D");
-
 
     return 0;
 }

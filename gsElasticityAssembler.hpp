@@ -423,7 +423,7 @@ void gsElasticityAssembler<T>::scaleDDoFs(T factor)
 {
     if (saved_ddof.empty())
         saved_ddof = m_ddof;
-    for (short_t d = 0; d < m_ddof.size(); ++d)
+    for (unsigned d = 0; d < m_ddof.size(); ++d)
         m_ddof[d] = saved_ddof[d]*factor;
 }
 

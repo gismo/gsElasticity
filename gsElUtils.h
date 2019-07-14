@@ -20,6 +20,19 @@
 namespace gismo
 {
 
+/// @brief Specifies the time integration scheme, see Wriggers, Nonlinear FEM, p. 205
+struct time_integration
+{
+    enum scheme
+    {
+        explicit_ = 0,  /// explicit scheme
+        explicit_lumped = 1,  /// explicit scheme with lumped mass matrix
+        implicit_linear = 2,  /// implicit scheme with linear problem
+        implicit_nonlinear = 3 /// implicit scheme with nonlinear problem
+    };
+};
+
+
 /// @brief Specifies the verbosity of the Newton's solver
 struct newton_verbosity
 {
