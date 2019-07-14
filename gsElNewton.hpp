@@ -28,7 +28,8 @@ template <class T>
 gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_)
     : assembler(assembler_),
       initialGuess(false),
-      m_options(defaultOptions())
+      m_options(defaultOptions()),
+      processingFunction([](const gsMatrix<T> &){})
 {
     solVector.setZero(assembler.numDofs(),1);
     reset();
@@ -40,7 +41,8 @@ gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_,
     : assembler(assembler_),
       solVector(initialSolVector),
       initialGuess(true),
-      m_options(defaultOptions())
+      m_options(defaultOptions()),
+      processingFunction([](const gsMatrix<T> &){})
 {
     reset();
 }
@@ -87,33 +89,32 @@ void gsElNewton<T>::solveNoGuess()
         // next update should advance the solution at the Dirichlet boundary by 1/numIncSteps of the Dirichlet BC
         assembler.setDirichletAssemblyScaling(stepSize);
         if (!computeUpdate())
-        {
-            m_status = newton_status::bad_solution;
-            if (m_options.getInt("Verbosity") != newton_verbosity::none)
-                gsInfo << status() << std::endl;
             goto abort;
-        }
 
         // current solution satisfies a fraction (s+1)/numIncSteps of the Dirichlet BC
         assembler.setDirichletConstructionScaling((s+1)*stepSize);
         // further updates should be 0 at the Dirichelt boundary
         assembler.setDirichletAssemblyScaling(0.);
+
+        index_t maxIter = (s == m_options.getInt("NumIncSteps") - 1 ?
+                               m_options.getInt("MaxIters") : m_options.getInt("MaxItersInter"));
+        if (maxIter < 1)
+            maxIter = m_options.getInt("MaxIters");
         while (m_status == newton_status::working)
         {
-            if (!computeUpdate())
+            if (numIterations >= maxIter)
             {
-                m_status = newton_status::bad_solution;
-                if (m_options.getInt("Verbosity") != newton_verbosity::none)
-                    gsInfo << status() << std::endl;
-                goto abort;
+                m_status = newton_status::interrupted;
+                break;
             }
+            if (!computeUpdate())
+                goto abort;
+
             if (residualNorm < m_options.getReal("AbsTol") ||
                 updateNorm < m_options.getReal("AbsTol") ||
                 residualNorm/initResidualNorm < m_options.getReal("RelTol") ||
                 updateNorm/initUpdateNorm < m_options.getReal("RelTol"))
                 m_status = newton_status::converged;
-            else if (numIterations == m_options.getInt("MaxIters"))
-                m_status = newton_status::interrupted;
         }
 
         if (m_options.getInt("Verbosity") != newton_verbosity::none)
@@ -133,10 +134,7 @@ void gsElNewton<T>::solveWithGuess()
     while (m_status == newton_status::working)
     {
         if (!computeUpdate())
-        {
-            m_status = newton_status::bad_solution;
             goto abort;
-        }
         if (residualNorm < m_options.getReal("AbsTol") ||
             updateNorm < m_options.getReal("AbsTol") ||
             residualNorm/initResidualNorm < m_options.getReal("RelTol") ||
@@ -146,16 +144,23 @@ void gsElNewton<T>::solveWithGuess()
             m_status = newton_status::interrupted;
     }
 
-    abort:;
     if (m_options.getInt("Verbosity") != newton_verbosity::none)
         gsInfo << status() << std::endl;
+    abort:;
 }
 
 template <class T>
 bool gsElNewton<T>::computeUpdate()
 {
+    processingFunction(solVector);
+
     if (!assembler.assemble(solVector))
+    {
+        m_status = newton_status::bad_solution;
+        if (m_options.getInt("Verbosity") != newton_verbosity::none)
+            gsInfo << status() << std::endl;
         return false;
+    }
     gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
     gsVector<T> updateVector = solver.solve(assembler.rhs());
 
@@ -182,10 +187,10 @@ std::string gsElNewton<T>::status()
     std::string statusString;
     if (m_status == newton_status::converged)
         statusString = "Newton's method converged after " +
-                 util::to_string(numIterations) + " iterations.";
+                 util::to_string(numIterations) + " iteration(s).";
     else if (m_status == newton_status::interrupted)
         statusString = "Newton's method was interrupted after " +
-                util::to_string(numIterations) + " iterations.";
+                util::to_string(numIterations) + " iteration(s).";
     else if (m_status == newton_status::working)
         statusString = "It: " + util::to_string(numIterations) +
                  ", resAbs: " + util::to_string(residualNorm) +

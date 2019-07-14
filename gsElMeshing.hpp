@@ -73,6 +73,85 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
         collectionJac.save();
 }
 
+template <class T>
+void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMultiPatch<T> > & displacements,
+                                             std::string fileName, index_t numSamplingPoints)
+{
+    gsInfo << "Plotting deformed configurations...\n";
+
+    std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
+    gsParaviewCollection collectionMesh(fileName + "_mesh");
+    gsParaviewCollection collectionJac(fileName + "_jac");
+    index_t res;
+
+    gsMultiPatch<T> configuration;
+    for (size_t p = 0; p < initDomain.nPatches(); ++p)
+        configuration.addPatch(initDomain.patch(p).clone());
+
+    gsPiecewiseFunction<T> dets;
+    for (size_t p = 0; p < configuration.nPatches(); ++p)
+        dets.addPiecePointer(new gsDetFunction<T>(configuration,p));
+
+    bool plotJac = true;
+    if (numSamplingPoints == 0)
+        plotJac = false;
+
+    gsInfo << "Step: 0/" << displacements.size() << std::endl;
+
+    gsField<T> detField(configuration,dets,true);
+    std::map<std::string,const gsField<T> *> fields;
+    fields["Jacobian"] = &detField;
+    gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
+
+    for (size_t p = 0; p < configuration.nPatches(); ++p)
+    {
+        collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
+        if (plotJac)
+            collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
+        else
+        {
+            res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
+            GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+        }
+    }
+    res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
+    GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+
+    for (unsigned s = 0; s < displacements.size(); ++s)
+    {
+        gsInfo << "Step: " << s+1 << "/" << displacements.size() << std::endl;
+
+        for (size_t p = 0; p < configuration.nPatches(); ++p)
+        {
+            configuration.patch(p).coefs() += displacements[s].patch(p).coefs();
+            if (s > 0)
+               configuration.patch(p).coefs() -= displacements[s-1].patch(p).coefs();
+        }
+
+        gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
+        for (size_t p = 0; p < configuration.nPatches(); ++p)
+        {
+            collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
+
+            if (plotJac)
+                collectionJac.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,".vts");
+            else
+            {
+                res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
+                GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+            }
+        }
+        res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
+        GISMO_ENSURE(res == 0, "Problems with deleting files\n");
+    }
+
+    collectionMesh.save();
+    if (plotJac)
+        collectionJac.save();
+
+    (void)res;
+}
+
 
 template <class T>
 index_t checkGeometry(gsMultiPatch<T> const & domain)

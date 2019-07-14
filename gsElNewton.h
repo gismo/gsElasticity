@@ -19,6 +19,7 @@
 
 #include <gsIO/gsOptionList.h>
 #include <gsElasticity/gsElUtils.h>
+#include <functional>
 
 namespace gismo
 {
@@ -62,6 +63,11 @@ public:
     /// reset the solver state
     void reset();
 
+    void setProcessingFunction(std::function<void(const gsMatrix<T> &)> f)
+    {
+        processingFunction = f;
+    }
+
 protected:
     /// computes update of the solution
     bool computeUpdate();
@@ -88,6 +94,8 @@ protected:
     T initUpdateNorm; /// norm of the update vector at the beginning of the loop
     /// option list
     gsOptionList m_options;
+
+    std::function<void(const gsMatrix<T> &)> processingFunction;
 };
 
 } // namespace ends

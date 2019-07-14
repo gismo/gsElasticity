@@ -27,6 +27,12 @@ namespace gismo
 template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples);
 
+/// use all saved displacement fields to plot the all intermediate deformed configurations of the computational domain;
+/// always plots the deformed isoparametric mesh; plots the Jacobian determinant of the deformed configuration if *numSamplingPoints* > 0
+template <class T>
+void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMultiPatch<T> > & displacements,
+                     std::string fileName, index_t numSamplingPoints = 10000);
+
 /// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
 /// returns -1 if yes or the number of the first invalid patch;
 /// samples the Jacobian elementwise at the quadrature points and the corners

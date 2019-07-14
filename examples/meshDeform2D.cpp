@@ -56,6 +56,7 @@ int main(int argc, char* argv[])
 
     gsMultiPatch<> bdry;
     gsReadFile<>(filename,bdry);
+
     for (index_t i = 0; i < numKRef; ++i)
     {
         bdry.degreeElevate();
@@ -105,26 +106,43 @@ int main(int argc, char* argv[])
     newton.options().setInt("MaxItersInter",numIter);
     newton.options().setInt("Verbosity",newton_verbosity::all);
 
+    gsParaviewCollection collectionMesh(filename + "_mesh");
+    gsParaviewCollection collectionJac(filename + "_jac");
+
+
+    std::vector<gsMultiPatch<> > displacements;
+    newton.setProcessingFunction([&](const gsMatrix<> & matrix)
+    {
+        displacements.push_back(gsMultiPatch<>());
+        assembler.constructSolution(matrix,displacements.back());
+    });
+
     newton.solve();
+
+    displacements.push_back(gsMultiPatch<>());
+    assembler.constructSolution(newton.solution(),displacements.back());
 
     //=====================================//
                 // Output //
     //=====================================//
 
+
     filename = filename.substr(filename.find_last_of("/\\")+1); // file name without a path
     filename = filename.substr(0,filename.find_last_of(".\\"));
     filename = filename.substr(0,filename.find_last_of("_\\"));
 
+
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
 
-    //newton.plotDeformation(initGeo,filename,numPlotPoints);
+    plotDeformation(initGeo,displacements,filename,numPlotPoints);
 
     gsMultiPatch<> displacement;
     assembler.constructSolution(newton.solution(),displacement);
     initGeo.patch(0).coefs() += displacement.patch(0).coefs();
     gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(initGeo,filename + "_2D");
+
 
     return 0;
 }
