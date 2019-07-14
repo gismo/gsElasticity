@@ -31,13 +31,6 @@ gsElTimeIntegrator<T>::gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssemb
     : stiffAssembler(stiffAssembler_),
       massAssembler(massAssembler_)
 {
-    massAssembler.assemble();
-    stiffAssembler.assemble();
-    dispVector.setZero(stiffAssembler.numDofs(),1);
-    velVector.setZero(stiffAssembler.numDofs(),1);
-    gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
-    accVector = solver.solve(-1*stiffAssembler.matrix()*dispVector+stiffAssembler.rhs());
-
     m_options = defaultOptions();
 }
 
@@ -53,14 +46,30 @@ gsOptionList gsElTimeIntegrator<T>::defaultOptions()
 }
 
 template <class T>
+void gsElTimeIntegrator<T>::initialize()
+{
+    massAssembler.assemble();
+    stiffAssembler.assemble();
+
+    if (dispVector.rows() != stiffAssembler.numDofs())
+        dispVector.setZero(stiffAssembler.numDofs(),1);
+    if (velVector.rows() != stiffAssembler.numDofs())
+        velVector.setZero(stiffAssembler.numDofs(),1);
+
+    gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
+    accVector = solver.solve(-1*stiffAssembler.matrix()*dispVector+stiffAssembler.rhs());
+}
+
+template <class T>
 void gsElTimeIntegrator<T>::makeTimeStep(T timeStep)
 {
     tStep = timeStep;
+    gsMatrix<T> newDispVector;
+    if (m_options.getInt("Scheme") == time_integration::implicit_linear)
+        newDispVector = implicitLinear();
+    if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
+        newDispVector = implicitNonlinear();
 
-    m_matrix = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
-    m_rhs = massAssembler.matrix()*(alpha1()*dispVector + alpha2()*velVector + alpha3()*accVector) + stiffAssembler.rhs();
-    gsSparseSolver<>::SimplicialLDLT solver(m_matrix);
-    gsMatrix<T> newDispVector = solver.solve(m_rhs);
     gsMatrix<T> tempVelVector = velVector;
     velVector = alpha4()*(newDispVector - dispVector) + alpha5()*tempVelVector + alpha6()*accVector;
     accVector = alpha1()*(newDispVector - dispVector) - alpha2()*tempVelVector - alpha3()*accVector;
@@ -68,17 +77,23 @@ void gsElTimeIntegrator<T>::makeTimeStep(T timeStep)
 }
 
 template <class T>
-void gsElTimeIntegrator<T>::makeTimeStepNL(T timeStep)
+gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
 {
-    tStep = timeStep;
+    m_matrix = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
+    m_matrix.makeCompressed();
+    m_rhs = massAssembler.matrix()*(alpha1()*dispVector + alpha2()*velVector + alpha3()*accVector) + stiffAssembler.rhs();
+    gsSparseSolver<>::SimplicialLDLT solver(m_matrix);
+    return solver.solve(m_rhs);
+}
 
+
+template <class T>
+gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
+{
     gsElNewton<T> solver(*this,dispVector);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
     solver.solve();
-    gsMatrix<T> tempVelVector = velVector;
-    velVector = alpha4()*(solver.solution() - dispVector) + alpha5()*tempVelVector + alpha6()*accVector;
-    accVector = alpha1()*(solver.solution() - dispVector) - alpha2()*tempVelVector - alpha3()*accVector;
-    dispVector = solver.solution();
+    return solver.solution();
 }
 
 template <class T>

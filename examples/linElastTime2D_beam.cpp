@@ -20,7 +20,9 @@ int main(int argc, char* argv[]){
     index_t numKRef = 0; // number of k-refinements
     index_t numPlotPoints = 10000;
     index_t numTimeSteps = 100;
-    real_t timeSpan = 10.;
+    real_t timeSpan = 0.0003;
+    real_t youngsModulus = 200.;//74e9;
+    real_t density = 1.;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
@@ -29,15 +31,16 @@ int main(int argc, char* argv[]){
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addInt("i","iter","Number of time steps",numTimeSteps);
+    cmd.addReal("y","young","Young's modulus of the material",youngsModulus);
+    cmd.addReal("d","density","Density of the material",density);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
     gsConstantFunction<> g(0.,0.1,2);
+    gsConstantFunction<> g0(0.,0.,2);
 
     // material parameters
-    real_t youngsModulus = 200.;//74e9;
     real_t poissonsRatio = 0.33;
-    real_t density = 1.;
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
@@ -63,20 +66,30 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 
-    // creating assemblers
-    gsElasticityAssembler<real_t> stiffAssembler(geometry,basis,bcInfo,g);
-    stiffAssembler.options().setReal("YoungsModulus",youngsModulus);
-    stiffAssembler.options().setReal("PoissonsRatio",poissonsRatio);
-    stiffAssembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    gsInfo << "Initialized system with " << stiffAssembler.numDofs() << " DoFs\n";
+    //=============================================//
+         // Solving for initial configuration //
+    //=============================================//
 
-    gsElMassAssembler<real_t> massAssembler(geometry,basis,bcInfo,g);
-    massAssembler.options().setReal("Density",density);
+    gsElasticityAssembler<real_t> stiffAssemblerInit(geometry,basis,bcInfo,g);
+    stiffAssemblerInit.options().setReal("YoungsModulus",youngsModulus);
+    stiffAssemblerInit.options().setReal("PoissonsRatio",poissonsRatio);
+    stiffAssemblerInit.options().setInt("DirichletValues",dirichlet::interpolation);
 
-    gsElTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
+    gsInfo<<"Assembling...\n";
+    gsStopwatch clock;
+    clock.restart();
+    stiffAssemblerInit.assemble();
+    gsInfo << "Assembled a system (matrix and load vector) with "
+           << stiffAssemblerInit.numDofs() << " dofs in " << clock.stop() << "s.\n";
+
+    gsInfo << "Solving for the initial configuration...\n";
+    clock.restart();
+    gsSparseSolver<>::SimplicialLDLT solver(stiffAssemblerInit.matrix());
+    gsVector<> solVector = solver.solve(stiffAssemblerInit.rhs());
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     gsMultiPatch<> displacement;
-    stiffAssembler.constructSolution(timeSolver.displacementVector(),displacement);
+    stiffAssemblerInit.constructSolution(solVector,displacement);
 
     gsField<> dispField(geometry,displacement);
     std::map<std::string,const gsField<> *> fields;
@@ -85,10 +98,28 @@ int main(int argc, char* argv[]){
     gsParaviewCollection collection("beam");
     gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,0,numPlotPoints);
 
+    //=============================================//
+                  // Transient simulation //
+    //=============================================//
+
+    gsElasticityAssembler<real_t> stiffAssembler(geometry,basis,bcInfo,g0);
+    stiffAssemblerInit.options().setReal("YoungsModulus",youngsModulus);
+    stiffAssemblerInit.options().setReal("PoissonsRatio",poissonsRatio);
+    stiffAssemblerInit.options().setInt("DirichletValues",dirichlet::interpolation);
+
+    gsElMassAssembler<real_t> massAssembler(geometry,basis,bcInfo,g);
+    massAssembler.options().setReal("Density",density);
+
+    gsElTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
+    timeSolver.options().setInt("Scheme",time_integration::implicit_linear);
+    // set initial conditions
+    timeSolver.setInitialDisplacement(solVector);
+    timeSolver.setInitialVeclocity(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));
+    timeSolver.initialize();
+
     gsProgressBar bar;
     real_t timeStep = timeSpan/numTimeSteps;
-    gsInfo << "Solving...\n";
-    gsStopwatch clock;
+    gsInfo << "Running the transient simulation...\n";
     clock.restart();
     for (index_t i = 0; i < numTimeSteps; ++i)
     {

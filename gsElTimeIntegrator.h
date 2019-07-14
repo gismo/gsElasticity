@@ -41,16 +41,17 @@ public:
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
-
+    /// set intial conditions
+    void setInitialDisplacement(const gsMatrix<T> & initialDisplacement) { dispVector = initialDisplacement; }
+    void setInitialVeclocity(const gsMatrix<T> & initialVelocity) { velVector = initialVelocity; }
+    /// @brief Initialize the solver; execute before computing any time steps
+    void initialize();
+    /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
-
-    void makeTimeStepNL(T timeStep);
-
-    /// assemble the linear system for
+    /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
 
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
-
     /// returns  vector of displacement DoFs
     const gsMatrix<T> & displacementVector() const {return dispVector;}
 
@@ -62,6 +63,10 @@ public:
     virtual void setForceScaling(T factor) { stiffAssembler.setForceScaling(factor); }
 
 protected:
+    /// time integraton schemes
+    gsMatrix<T> implicitLinear();
+    gsMatrix<T> implicitNonlinear();
+
     /// time integration scheme coefficients
     T alpha1() {return 1./m_options.getReal("Beta")/pow(tStep,2); }
     T alpha2() {return 1./m_options.getReal("Beta")/tStep; }
