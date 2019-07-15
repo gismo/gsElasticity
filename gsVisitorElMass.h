@@ -64,7 +64,7 @@ public:
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Multiply quadrature weight by the geometry measure
-            const T weight = quWeights[q] * md.measure(q);
+            const T weight = density * quWeights[q] * md.measure(q);
             for (index_t i = 0; i < N_D; ++i)
                 for (index_t j = 0; j < N_D; ++j)
                     for (short_t d = 0; d < dim; ++d)

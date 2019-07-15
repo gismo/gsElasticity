@@ -20,9 +20,11 @@ int main(int argc, char* argv[]){
     index_t numKRef = 0; // number of k-refinements
     index_t numPlotPoints = 10000;
     index_t numTimeSteps = 100;
-    real_t timeSpan = 0.0003;
     real_t youngsModulus = 200.;//74e9;
     real_t density = 1.;
+    real_t force = 0.5;
+    // roughly, period = 2 * pi * sqrt(density)/length/sqrt(YoungsModulus) = 2.22
+    real_t timeSpan = 6.66;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
@@ -33,10 +35,11 @@ int main(int argc, char* argv[]){
     cmd.addInt("i","iter","Number of time steps",numTimeSteps);
     cmd.addReal("y","young","Young's modulus of the material",youngsModulus);
     cmd.addReal("d","density","Density of the material",density);
+    cmd.addReal("f","force","Deflecting force for the initial displacement",force);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
-    gsConstantFunction<> g(0.,0.5,2);
+    gsConstantFunction<> g(0.,force,2);
     gsConstantFunction<> g0(0.,0.,2);
 
     // material parameters
@@ -44,8 +47,6 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    //bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
-    //bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
 
@@ -103,9 +104,9 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     gsElasticityAssembler<real_t> stiffAssembler(geometry,basis,bcInfo,g0);
-    stiffAssemblerInit.options().setReal("YoungsModulus",youngsModulus);
-    stiffAssemblerInit.options().setReal("PoissonsRatio",poissonsRatio);
-    stiffAssemblerInit.options().setInt("DirichletValues",dirichlet::interpolation);
+    stiffAssembler.options().setReal("YoungsModulus",youngsModulus);
+    stiffAssembler.options().setReal("PoissonsRatio",poissonsRatio);
+    stiffAssembler.options().setInt("DirichletValues",dirichlet::interpolation);
 
     gsElMassAssembler<real_t> massAssembler(geometry,basis,bcInfo,g);
     massAssembler.options().setReal("Density",density);
@@ -127,8 +128,8 @@ int main(int argc, char* argv[]){
         stiffAssembler.constructSolution(timeSolver.displacementVector(),displacement);
         gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,i+1,numPlotPoints);
     }
-    gsInfo << "Done. " << numTimeSteps << " time steps in " << clock.stop() << " sec.\n";
+    gsInfo << "Complete in " << clock.stop() << "s.\n";
     collection.save();
-
+    gsInfo << "The results are saved to the Paraview file \"beam.pvd\"\n";
     return 0;
 }
