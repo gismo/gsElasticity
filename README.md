@@ -5,6 +5,7 @@ The gsElasticity module provides tools for structural mechanics analysis of 2D a
 - time-dependent problems (with ~~explicit~~ and implicit time integration) 
 - mixed displacement-pressure formulation for (nearly) incompressible elasticity
 - thermal expansion
+
 Among additional features:
 - incremental loading 
 - isogeometric parametrization algorithms based on mesh deformation
