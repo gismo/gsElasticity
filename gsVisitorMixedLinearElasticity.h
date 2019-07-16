@@ -113,8 +113,8 @@ public:
             for (short_t d = 0; d < dim; ++d)
             {
                 gsMatrix<> block = weight*basisValuesPres.col(q)*physGradDisp.row(d);
-                localMat.block(dim*N_D,d*N_D,N_P,N_D) -= block.block(0,0,N_P,N_D);
-                localMat.block(d*N_D,dim*N_D,N_D,N_P) -= block.transpose().block(0,0,N_D,N_P);
+                localMat.block(dim*N_D,d*N_D,N_P,N_D) += block.block(0,0,N_P,N_D);
+                localMat.block(d*N_D,dim*N_D,N_D,N_P) += block.transpose().block(0,0,N_D,N_P);
             }
 
             // C-matrix
