@@ -111,13 +111,11 @@ void gsElasticityAssembler<T>::refresh()
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
+void gsElasticityAssembler<T>::assemble()
 {
-    if (assembleMatrix)
-    {
-        m_system.matrix().setZero();
-        m_system.reserve(m_bases[0], m_options, 1);
-    }
+
+    m_system.matrix().setZero();
+    m_system.reserve(m_bases[0], m_options, 1);
     m_system.rhs().setZero(Base::numDofs(),1);
 
     scaleDDoFs(m_options.getReal("DirichletAssembly"));
@@ -130,7 +128,7 @@ void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
     }
     else // mixed formulation (displacement + pressure)
     {
-        gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
+        gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr);
         Base::template push<gsVisitorMixedLinearElasticity<T> >(visitor);
     }
 

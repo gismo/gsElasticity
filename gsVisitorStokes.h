@@ -60,7 +60,7 @@ public:
         N_V = localIndicesVel.rows();
         basisRefs.back().active_into(quNodes.col(0), localIndicesPres);
         N_P = localIndicesPres.rows();
-        // Evaluate displacement basis functions and their derivatives on the element
+        // Evaluate velocity basis functions and their derivatives on the element
         basisRefs.front().evalAllDers_into(quNodes,1,basisValuesVel);
         // Evaluate pressure basis functions on the element
         basisRefs.back().eval_into(quNodes,basisValuesPres);
@@ -81,15 +81,16 @@ public:
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGradDisp;
-            transformGradients(md, q, basisValuesVel[1], physGradDisp);
+            gsMatrix<T> physGradVel;
+            transformGradients(md, q, basisValuesVel[1], physGradVel);
             // matrix A
+            gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += (weight*viscosity * physGradDisp.transpose()*physGradDisp).block(0,0,N_V,N_V);
+                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrix B
             for (short_t d = 0; d < dim; ++d)
             {
-                gsMatrix<> block = weight*basisValuesPres.col(q)*physGradDisp.row(d);
+                block = weight*basisValuesPres.col(q)*physGradVel.row(d);
                 localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V);
                 localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P);
             }
