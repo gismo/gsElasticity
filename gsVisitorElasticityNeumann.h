@@ -15,21 +15,20 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorBaseElasticity.h>
+#include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsFuncData.h>
 
 namespace gismo
 {
 
 template <class T>
-class gsVisitorElasticityNeumann : public gsVisitorBaseElasticity<T>
+class gsVisitorElasticityNeumann
 {
 public:
-    typedef gsVisitorBaseElasticity<T> Base;
 
     gsVisitorElasticityNeumann(const gsPde<T> & pde_,
                                const boundary_condition<T> & s)
-        : Base(pde_,false), // false = no matrix assembly
-          neumannFunction_ptr(s.function().get()),
+        : neumannFunction_ptr(s.function().get()),
           patchSide(s.side()) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -37,8 +36,10 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        Base::initialize(basisRefs,patchIndex,options,rule);
-        // storing necessary info
+        // parametric dimension of the first displacement component
+        dim = basisRefs.front().dim();
+        // a quadrature rule is defined by the basis for the first displacement component.
+        rule = gsQuadrature::get(basisRefs.front(), options);
         forceScaling = options.getReal("ForceScaling");
     }
 
@@ -56,11 +57,10 @@ public:
         // Evaluate the Neumann functon on the images of the quadrature points
         neumannFunction_ptr->eval_into(md.values[0], neumannValues);
         // find local indices of the displacement basis functions active on the element
-        localIndices.resize(1);
-        basisRefs.front().active_into(quNodes.col(0),localIndices[0]);
-        N_D = localIndices[0].rows();
+        basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
+        N_D = localIndicesDisp.rows();
         // Evaluate basis functions on element
-        basisRefs.front().evalAllDers_into(quNodes,0,basisValuesDisp);
+        basisRefs.front().eval_into(quNodes,basisValuesDisp);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -79,25 +79,44 @@ public:
             const T weight = quWeights[q] * unormal.norm() * forceScaling;
 
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_D,N_D).noalias() += weight * neumannValues(d,q) * basisValuesDisp[0].col(q);
+                localRhs.middleRows(d*N_D,N_D).noalias() += weight * neumannValues(d,q) * basisValuesDisp.col(q);
         }
     }
 
+    inline void localToGlobal(const int patchIndex,
+                                  const std::vector<gsMatrix<T> > & eliminatedDofs,
+                                  gsSparseSystem<T> & system)
+        {
+            // number of unknowns: dim of displacement
+            std::vector< gsMatrix<unsigned> > globalIndices(dim);
+            gsVector<size_t> blockNumbers(dim);
+            // computes global indices for displacement components
+            for (short_t d = 0; d < dim; ++d)
+            {
+                system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
+                blockNumbers.at(d) = d;
+            }
+            // push to global system
+            system.pushToRhs(localRhs,globalIndices,blockNumbers);
+        }
+
 protected:   
-    //------ inherited ------//
-    using Base::dim;
-    using Base::md;
-    using Base::localRhs;
-    using Base::localIndices;
-    using Base::N_D;
-    using Base::basisValuesDisp;
-
-    //------ class specific ----//
-    T forceScaling;
-
-    // Neumann BC info
+    // problem info
+    short_t dim;
     const gsFunction<T> * neumannFunction_ptr;
+    T forceScaling;
     boxSide patchSide;
+    // geometry mapping
+    gsMapData<T> md;
+    // local components of the global linear system
+    gsMatrix<T> localRhs;
+    // local indices (at the current patch) of the displacement basis functions active at the current element
+    gsMatrix<unsigned> localIndicesDisp;
+    // number of displacement basis functions active at the current element
+    index_t N_D;
+    // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
+    gsMatrix<T> basisValuesDisp;
+    // values of the boundary loading function stored as a dim x numQuadPoints matrix;
     gsMatrix<T> neumannValues;
 };
 
