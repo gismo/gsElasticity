@@ -79,13 +79,13 @@ public:
                           bool assembleMatrix = true);
 
     /// @brief Construct displacement from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& displacement) const;
 
     /// @brief Construct displacement and pressure from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
+    /// @ brief Construct pressure from computed solution vector
     virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
-
 
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,

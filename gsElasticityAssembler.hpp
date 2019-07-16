@@ -120,12 +120,6 @@ void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
     }
     m_system.rhs().setZero(Base::numDofs(),1);
 
-    if ( this->numDofs() == 0 )
-    {
-        gsWarn << "No internal DOFs. Computed Dirichlet boundary only.\n";
-        return;
-    }
-
     scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
@@ -234,14 +228,13 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     // construct displacement
     constructSolution(solVector,displacement);
     // construct pressure
-    gsVector<index_t> unknowns(1);
-    unknowns.at(0) = m_dim;
-    Base::constructSolution(solVector,pressure,unknowns);
+    constructPressure(solVector,pressure);
 }
 
 template <class T>
 void gsElasticityAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPatch<T>& pressure) const
 {
+    GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
     Base::constructSolution(solVector,pressure,unknowns);
