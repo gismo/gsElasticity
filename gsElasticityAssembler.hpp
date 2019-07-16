@@ -125,7 +125,7 @@ void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
-        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
+        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr);
         Base::template push<gsVisitorLinearElasticity<T> >(visitor);
     }
     else // mixed formulation (displacement + pressure)

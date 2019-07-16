@@ -80,15 +80,12 @@ public:
         {
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
-
             // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
             gsMatrix<T> physGradDisp;
             transformGradients(md, q, basisValuesVel[1], physGradDisp);
-
             // matrix A
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += (weight*viscosity * physGradDisp.transpose()*physGradDisp).block(0,0,N_V,N_V);
-
             // matrix B
             for (short_t d = 0; d < dim; ++d)
             {
@@ -96,7 +93,6 @@ public:
                 localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V);
                 localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P);
             }
-
             // rhs contribution
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceValues(d,q) * basisValuesVel[0].col(q) ;
