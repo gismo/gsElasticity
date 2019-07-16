@@ -41,7 +41,7 @@ public:
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
-
+        // saving necessary info
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
         lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );

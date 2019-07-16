@@ -40,6 +40,7 @@ public:
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
+        // saving necessary info
         forceScaling = options.getReal("ForceScaling");
     }
 

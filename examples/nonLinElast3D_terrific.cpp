@@ -27,7 +27,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
     cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln, 2 - NeoHooke_2",materialLaw);
+    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln",materialLaw);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs

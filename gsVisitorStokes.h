@@ -39,7 +39,7 @@ public:
         // a quadrature rule is defined by the basis for the first velocity component.
         // the same rule is used for the presure
         rule = gsQuadrature::get(basisRefs.front(), options);
-
+        // saving necessary info
         viscosity = options.getReal("Viscosity");
     }
 
