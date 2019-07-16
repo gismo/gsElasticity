@@ -15,26 +15,28 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorBaseElasticity.h>
+#include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsFuncData.h>
 
 namespace gismo
 {
 
 template <class T>
-class gsVisitorElMass : public gsVisitorBaseElasticity<T>
+class gsVisitorElMass
 {
 public:
-    typedef gsVisitorBaseElasticity<T> Base;
-
-    gsVisitorElMass(const gsPde<T> & pde_)
-        : Base(pde_,true,false) {}
+    gsVisitorElMass(const gsPde<T> & pde_) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        Base::initialize(basisRefs,patchIndex,options,rule);
+        // parametric dimension of the first displacement component
+        dim = basisRefs.front().dim();
+        // a quadrature rule is defined by the basis for the first displacement component.
+        rule = gsQuadrature::get(basisRefs.front(), options);
+        // saving necessary info
         density = options.getReal("Density");
     }
 
@@ -49,11 +51,10 @@ public:
         // Compute the geometry mapping at the quadrature points
         geo.computeMap(md);
         // find local indices of the displacement basis functions active on the element
-        localIndices.resize(1);
-        basisRefs.front().active_into(quNodes.col(0),localIndices[0]);
-        N_D = localIndices[0].rows();
+        basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
+        N_D = localIndicesDisp.rows();
         // Evaluate displacement basis functions on the element
-        basisRefs.front().evalAllDers_into(quNodes,0,basisValuesDisp);
+        basisRefs.front().eval_into(quNodes,basisValuesDisp);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -65,26 +66,45 @@ public:
         {
             // Multiply quadrature weight by the geometry measure
             const T weight = density * quWeights[q] * md.measure(q);
-            for (index_t i = 0; i < N_D; ++i)
-                for (index_t j = 0; j < N_D; ++j)
-                    for (short_t d = 0; d < dim; ++d)
-                        localMat(d*N_D+i,d*N_D+j) += weight*basisValuesDisp[0](i,q)*basisValuesDisp[0](j,q);
+
+            gsMatrix<T> block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
+            for (short_t d = 0; d < dim; ++d)
+                localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
         }
     }
 
-protected:
-    //------ inherited ------//
-    using Base::dim;
-    using Base::pde_ptr;
-    using Base::md;
-    using Base::localMat;
-    using Base::localIndices;
-    using Base::N_D;
-    using Base::basisValuesDisp;
+    inline void localToGlobal(const int patchIndex,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T> & system)
+    {
+        // number of unknowns: dim of displacement
+        std::vector< gsMatrix<unsigned> > globalIndices(dim);
+        gsVector<size_t> blockNumbers(dim);
+        // computes global indices for displacement components
+        for (short_t d = 0; d < dim; ++d)
+        {
+            system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
+            blockNumbers.at(d) = d;
+        }
+        // push to global system
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+    }
 
-    //------ class specific ----//
+protected:
+    // problem info
+    short_t dim;
     //density
     T density;
+    // geometry mapping
+    gsMapData<T> md;
+    // local components of the global linear system
+    gsMatrix<T> localMat;
+    // local indices (at the current patch) of the displacement basis functions active at the current element
+    gsMatrix<unsigned> localIndicesDisp;
+    // number of displacement basis functions active at the current element
+    index_t N_D;
+    // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
+    gsMatrix<T> basisValuesDisp;
 };
 
 } // namespace gismo

@@ -123,7 +123,7 @@ int main(int argc, char* argv[]){
     clock.restart();
     for (index_t i = 0; i < numTimeSteps; ++i)
     {
-        bar.display(1.*(i+1)/numTimeSteps);
+        bar.display(i+1,numTimeSteps);
         timeSolver.makeTimeStep(timeStep);
         stiffAssembler.constructSolution(timeSolver.displacementVector(),displacement);
         gsWriteParaviewMultiPhysicsTimeStep(fields,"beam",collection,i+1,numPlotPoints);
