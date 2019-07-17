@@ -4,7 +4,7 @@
 /// the stationary thermo-elasticity equation to compute the thermal expansion of the body.
 
 #include <gismo.h>
-#include <gsElasticity/gsElThermoAssembler.h>
+#include <gsElasticity/gsThermoAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     gsField<> tempField(stationary.patches(),solutionTemp);
 
     // creating elasticity assembler
-    gsElThermoAssembler<real_t> elastAssembler(geometry,basis,bcElast,gravity,solutionTemp);
+    gsThermoAssembler<real_t> elastAssembler(geometry,basis,bcElast,gravity,solutionTemp);
     elastAssembler.options().setReal("YoungsModulus",youngsModulus);
     elastAssembler.options().setReal("PoissonsRatio",poissonsRatio);
     elastAssembler.options().setReal("InitTemp",initTemp);
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     for ( int i = 1; i<=numSteps; ++i)
     {
         // display progress bar
-        bar.display(1.*i/numSteps);
+        bar.display(i,numSteps);
         // prepairing the matrix for the next time step
         heatAssembler.nextTimeStep(solVectorTemp, Dt);
         // solving the heat system

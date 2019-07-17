@@ -19,6 +19,7 @@
 
 #include <gsPde/gsPoissonPde.h>
 #include <gsUtils/gsPointGrid.h>
+#include <gsElasticity/gsBaseUtils.h>
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
@@ -111,32 +112,24 @@ void gsElasticityAssembler<T>::refresh()
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(bool assembleMatrix)
+void gsElasticityAssembler<T>::assemble()
 {
-    if (assembleMatrix)
-    {
-        m_system.matrix().setZero();
-        m_system.reserve(m_bases[0], m_options, 1);
-    }
-    m_system.rhs().setZero(Base::numDofs(),1);
 
-    if ( this->numDofs() == 0 )
-    {
-        gsWarn << "No internal DOFs. Computed Dirichlet boundary only.\n";
-        return;
-    }
+    m_system.matrix().setZero();
+    m_system.reserve(m_bases[0], m_options, 1);
+    m_system.rhs().setZero(Base::numDofs(),1);
 
     scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
-        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
+        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr);
         Base::template push<gsVisitorLinearElasticity<T> >(visitor);
     }
     else // mixed formulation (displacement + pressure)
     {
-        gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr,assembleMatrix);
+        gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr);
         Base::template push<gsVisitorMixedLinearElasticity<T> >(visitor);
     }
 
@@ -234,14 +227,13 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     // construct displacement
     constructSolution(solVector,displacement);
     // construct pressure
-    gsVector<index_t> unknowns(1);
-    unknowns.at(0) = m_dim;
-    Base::constructSolution(solVector,pressure,unknowns);
+    constructPressure(solVector,pressure);
 }
 
 template <class T>
 void gsElasticityAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPatch<T>& pressure) const
 {
+    GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
     Base::constructSolution(solVector,pressure,unknowns);

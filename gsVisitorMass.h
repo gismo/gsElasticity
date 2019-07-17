@@ -1,6 +1,6 @@
-/** @file gsVisitorElasticityNeumann.h
+/** @file gsVisitorMass.h
 
-    @brief Visitor class for the surface load integration.
+    @brief Visitor class for the mass matrix assembly for elasticity problems.
 
     This file is part of the G+Smo library.
 
@@ -22,14 +22,10 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorElasticityNeumann
+class gsVisitorMass
 {
 public:
-
-    gsVisitorElasticityNeumann(const gsPde<T> & pde_,
-                               const boundary_condition<T> & s)
-        : neumannFunction_ptr(s.function().get()),
-          patchSide(s.side()) {}
+    gsVisitorMass(const gsPde<T> & pde_) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -41,7 +37,7 @@ public:
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
-        forceScaling = options.getReal("ForceScaling");
+        density = options.getReal("Density");
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -50,75 +46,66 @@ public:
     {
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
-        // NEED_VALUE to get points in the physical domain for evaluation of the load
         // NEED_MEASURE to get the Jacobian determinant values for integration
-        md.flags = NEED_VALUE | NEED_MEASURE;
-        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
+        md.flags = NEED_MEASURE;
+        // Compute the geometry mapping at the quadrature points
         geo.computeMap(md);
-        // Evaluate the Neumann functon on the images of the quadrature points
-        neumannFunction_ptr->eval_into(md.values[0], neumannValues);
         // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();
-        // Evaluate basis functions on element
+        // Evaluate displacement basis functions on the element
         basisRefs.front().eval_into(quNodes,basisValuesDisp);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
-        // Initialize local matrix/rhs
-        localRhs.setZero(dim*N_D,1);
-        // loop over the quadrature nodes
+        // initialize local matrix and rhs
+        localMat.setZero(dim*N_D,dim*N_D);
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
-			// Compute the outer normal vector on the side
-            // normal length equals to the local area measure
-            gsVector<T> unormal;
-            outerNormal(md, q, patchSide, unormal);
-            // Collect the factors here: quadrature weight and geometry measure
-            const T weight = quWeights[q] * unormal.norm() * forceScaling;
+            // Multiply quadrature weight by the geometry measure
+            const T weight = density * quWeights[q] * md.measure(q);
 
+            gsMatrix<T> block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_D,N_D).noalias() += weight * neumannValues(d,q) * basisValuesDisp.col(q);
+                localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
         }
     }
 
     inline void localToGlobal(const int patchIndex,
-                                  const std::vector<gsMatrix<T> > & eliminatedDofs,
-                                  gsSparseSystem<T> & system)
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T> & system)
+    {
+        // number of unknowns: dim of displacement
+        std::vector< gsMatrix<unsigned> > globalIndices(dim);
+        gsVector<size_t> blockNumbers(dim);
+        // computes global indices for displacement components
+        for (short_t d = 0; d < dim; ++d)
         {
-            // number of unknowns: dim of displacement
-            std::vector< gsMatrix<unsigned> > globalIndices(dim);
-            gsVector<size_t> blockNumbers(dim);
-            // computes global indices for displacement components
-            for (short_t d = 0; d < dim; ++d)
-            {
-                system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
-                blockNumbers.at(d) = d;
-            }
-            // push to global system
-            system.pushToRhs(localRhs,globalIndices,blockNumbers);
+            system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
+            blockNumbers.at(d) = d;
         }
+        // push to global system
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+    }
 
-protected:   
+protected:
     // problem info
     short_t dim;
-    const gsFunction<T> * neumannFunction_ptr;
-    T forceScaling;
-    boxSide patchSide;
+    //density
+    T density;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
-    gsMatrix<T> localRhs;
+    gsMatrix<T> localMat;
     // local indices (at the current patch) of the displacement basis functions active at the current element
     gsMatrix<unsigned> localIndicesDisp;
     // number of displacement basis functions active at the current element
     index_t N_D;
     // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
     gsMatrix<T> basisValuesDisp;
-    // values of the boundary loading function stored as a dim x numQuadPoints matrix;
-    gsMatrix<T> neumannValues;
 };
 
 } // namespace gismo
+

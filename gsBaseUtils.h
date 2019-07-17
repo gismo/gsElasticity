@@ -1,4 +1,4 @@
-/** @file gsElUtils.h
+/** @file gsBaseUtils.h
 
     @brief Provides several simple utility and naming classes.
 
@@ -72,8 +72,7 @@ struct material_law
     enum type
     {
         saint_venant_kirchhoff = 0,  /// S = 2*mu*E + lambda*tr(E)*I
-        neo_hooke_ln           = 1,  /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
-        neo_hooke_2            = 2   /// S = lambda/2*(J^2-1)*C^-1 + mu*(I-C^-1)
+        neo_hooke_ln           = 1  /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
     };
 };
 

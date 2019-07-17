@@ -1,9 +1,9 @@
 /// This is an example of generating an isogeometric parametrization using mesh deformation technique
 
 #include <gismo.h>
-#include <gsElasticity/gsElMeshing.h>
+#include <gsElasticity/gsGeoUtils.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsNewton.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
         assembler.setDirichletDofs(0,s,bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs());
 
     // creating the nonlinear solver
-    gsElNewton<real_t> newton(assembler);
+    gsNewton<real_t> newton(assembler);
     newton.options().setInt("NumIncSteps",numSteps);
     newton.options().setInt("MaxItersInter",numIter);
     newton.options().setInt("Verbosity",newton_verbosity::all);

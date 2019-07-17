@@ -1,4 +1,4 @@
-/** @file gsElMeshing.h
+/** @file gsGeoUtils.h
 
     @brief Provides isogeometric meshing and modelling routines.
 

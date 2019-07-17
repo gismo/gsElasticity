@@ -15,10 +15,9 @@
 
 #pragma once
 
-#include <gsElasticity/gsElBaseAssembler.h>
+#include <gsElasticity/gsBaseAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
-
-#include <gsElasticity/gsElUtils.h>
+#include <gsElasticity/gsBaseUtils.h>
 
 namespace gismo
 {
@@ -34,10 +33,10 @@ namespace gismo
            Supports mixed displacement-pressure formulation.
 */
 template <class T>
-class gsElasticityAssembler : public gsElBaseAssembler<T>
+class gsElasticityAssembler : public gsBaseAssembler<T>
 {
 public:
-    typedef gsElBaseAssembler<T> Base;
+    typedef gsBaseAssembler<T> Base;
 
     /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
@@ -60,7 +59,7 @@ public:
 
     /// @brief Assembles the stiffness matrix and the RHS
     /// set *assembleMatrix* to false to only assemble the RHS;
-    virtual void assemble(bool assembleMatrix = true);
+    virtual void assemble();
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
     /// set *assembleMatrix* to false to only assemble the residual;
@@ -79,13 +78,13 @@ public:
                           bool assembleMatrix = true);
 
     /// @brief Construct displacement from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const;
+    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& displacement) const;
 
     /// @brief Construct displacement and pressure from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
+    /// @ brief Construct pressure from computed solution vector
     virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
-
 
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,

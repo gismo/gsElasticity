@@ -1,4 +1,4 @@
-/** @file gsETimeIntegrator.hpp
+/** @file gsElTimeIntegrator.hpp
 
     @brief A class providing time integration for dynamical elasticity.
 
@@ -18,8 +18,8 @@
 #include <gsElasticity/gsElTimeIntegrator.h>
 
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElMassAssembler.h>
-#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsMassAssembler.h>
+#include <gsElasticity/gsNewton.h>
 
 
 namespace gismo
@@ -27,7 +27,7 @@ namespace gismo
 
 template <class T>
 gsElTimeIntegrator<T>::gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssembler_,
-                                          gsElMassAssembler<T> & massAssembler_)
+                                          gsMassAssembler<T> & massAssembler_)
     : stiffAssembler(stiffAssembler_),
       massAssembler(massAssembler_)
 {
@@ -90,7 +90,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
 template <class T>
 gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
 {
-    gsElNewton<T> solver(*this,dispVector);
+    gsNewton<T> solver(*this,dispVector);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
     solver.solve();
     return solver.solution();

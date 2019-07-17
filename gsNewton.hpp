@@ -1,4 +1,4 @@
-/** @file gsElNewton.hpp
+/** @file gsNewton.hpp
 
     @brief Implementation of gsElNewton.
 
@@ -15,9 +15,9 @@
 
 #pragma once
 
-#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsNewton.h>
 
-#include <gsElasticity/gsElBaseAssembler.h>
+#include <gsElasticity/gsBaseAssembler.h>
 
 #include <sstream>
 
@@ -25,7 +25,7 @@ namespace gismo
 {
 
 template <class T>
-gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_)
+gsNewton<T>::gsNewton(gsBaseAssembler<T> & assembler_)
     : assembler(assembler_),
       initialGuess(false),
       m_options(defaultOptions()),
@@ -37,7 +37,7 @@ gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_)
 }
 
 template <class T>
-gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_,
+gsNewton<T>::gsNewton(gsBaseAssembler<T> & assembler_,
                           const gsMatrix<T> & initialSolVector)
     : assembler(assembler_),
       solVector(initialSolVector),
@@ -50,7 +50,7 @@ gsElNewton<T>::gsElNewton(gsElBaseAssembler<T> & assembler_,
 }
 
 template <class T>
-gsOptionList gsElNewton<T>::defaultOptions()
+gsOptionList gsNewton<T>::defaultOptions()
 {
     gsOptionList opt;
     /// stopping creteria
@@ -66,7 +66,7 @@ gsOptionList gsElNewton<T>::defaultOptions()
 }
 
 template <class T>
-void gsElNewton<T>::solve()
+void gsNewton<T>::solve()
 {
     if (initialGuess)
         solveWithGuess();
@@ -75,7 +75,7 @@ void gsElNewton<T>::solve()
 }
 
 template <class T>
-void gsElNewton<T>::solveNoGuess()
+void gsNewton<T>::solveNoGuess()
 {
     T stepSize = 1./m_options.getInt("NumIncSteps");
     for (index_t s = 0; s < m_options.getInt("NumIncSteps"); ++s)
@@ -126,7 +126,7 @@ void gsElNewton<T>::solveNoGuess()
 }
 
 template <class T>
-void gsElNewton<T>::solveWithGuess()
+void gsNewton<T>::solveWithGuess()
 {
     // assuming that the initial guess satisfies Dirichlet BC,
     assembler.setDirichletConstructionScaling(1.);
@@ -152,7 +152,7 @@ void gsElNewton<T>::solveWithGuess()
 }
 
 template <class T>
-bool gsElNewton<T>::computeUpdate()
+bool gsNewton<T>::computeUpdate()
 {
     preProcessingFunction(solVector);
 
@@ -186,7 +186,7 @@ bool gsElNewton<T>::computeUpdate()
 }
 
 template <class T>
-std::string gsElNewton<T>::status()
+std::string gsNewton<T>::status()
 {
     std::string statusString;
     if (m_status == newton_status::converged)
@@ -207,7 +207,7 @@ std::string gsElNewton<T>::status()
 }
 
 template <class T>
-void gsElNewton<T>::reset()
+void gsNewton<T>::reset()
 {
     m_status = newton_status::working;
     numIterations = 0;

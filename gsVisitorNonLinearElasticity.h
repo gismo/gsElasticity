@@ -15,20 +15,21 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorBaseElasticity.h>
+#include <gsElasticity/gsVisitorElUtils.h>
+
+#include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsFuncData.h>
 
 namespace gismo
 {
 
 template <class T>
-class gsVisitorNonLinearElasticity : public gsVisitorBaseElasticity<T>
+class gsVisitorNonLinearElasticity
 {
 public:
-
-    typedef gsVisitorBaseElasticity<T> Base;
-
     gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_, bool assembleMatrix_)
-        : Base(pde_,assembleMatrix_),
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          assembleMatrix(assembleMatrix_),
           displacement(displacement_) { }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -36,10 +37,12 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        Base::initialize(basisRefs,patchIndex,options,rule);
-
+        // parametric dimension of the first displacement component
+        dim = basisRefs.front().dim();
+        // a quadrature rule is defined by the basis for the first displacement component.
+        rule = gsQuadrature::get(basisRefs.front(), options);
+        // saving necessary info
         patch = patchIndex;
-
         materialLaw = options.getInt("MaterialLaw");
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
@@ -61,14 +64,12 @@ public:
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
         // find local indices of the displacement basis functions active on the element
-        localIndices.resize(1);
-        basisRefs.front().active_into(quNodes.col(0),localIndices[0]);
-        N_D = localIndices[0].rows();
+        basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
+        N_D = localIndicesDisp.rows();
         // Evaluate displacement basis functions and their derivatives on the element
         basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
-
         // store quadrature points of the element for displacement evaluation
         mdDisplacement.points = quNodes;
         // NEED_DERIV to compute deformation gradient
@@ -87,7 +88,7 @@ public:
         // elasticity tensor
         gsMatrix<T> C;
         if (materialLaw == 0 && assembleMatrix)
-            Base::setC(C,gsMatrix<T>::Identity(dim,dim),lambda,mu);
+            setC<T>(C,gsMatrix<T>::Identity(dim,dim),lambda,mu);
         // loop over quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
@@ -116,21 +117,14 @@ public:
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda*log(J)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
                 if (assembleMatrix)
-                    Base::setC(C,RCGinv,lambda,mu-lambda*log(J));
-            }
-            if (materialLaw == 2) // neo-Hooke J^2
-            {
-                gsMatrix<T> RCGinv = RCG.cramerInverse();
-                S = (lambda/2*(J*J-1)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
-                if (assembleMatrix)
-                    Base::setC(C,RCGinv,lambda*J*J,mu-lambda*(J*J-1));
+                    setC<T>(C,RCGinv,lambda,mu-lambda*log(J));
             }
             // loop over active basis functions (u_i)
             for (index_t i = 0; i < N_D; i++)
             {
                 // Material tangent K_tg_mat = B_i^T * C * B_j;
                 gsMatrix<T> B_i;
-                Base::setB(B_i,F,physGrad.col(i));
+                setB<T>(B_i,F,physGrad.col(i));
                 if (assembleMatrix)
                 {
                     gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
@@ -140,7 +134,7 @@ public:
                     for (index_t j = 0; j < N_D; j++)
                     {
                         gsMatrix<T> B_j;
-                        Base::setB(B_j,F,physGrad.col(j));
+                        setB<T>(B_j,F,physGrad.col(j));
 
                         gsMatrix<T> materialTangent = materialTangentTemp * B_j;
                         T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
@@ -155,7 +149,7 @@ public:
                 }
                 // Second Piola-Kirchhoff stress tensor as vector
                 gsVector<T> Svec;
-                Base::voigtStress(Svec,S);
+                voigtStress<T>(Svec,S);
                 // rhs = -r = force - B*Svec,
                 gsVector<T> localResidual = B_i.transpose() * Svec;
                 for (short_t d = 0; d < dim; d++)
@@ -167,26 +161,48 @@ public:
         }
     }
 
+    inline void localToGlobal(const int patchIndex,
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T> & system)
+    {
+        // number of unknowns: dim of displacement
+        std::vector< gsMatrix<unsigned> > globalIndices(dim);
+        gsVector<size_t> blockNumbers(dim);
+        // computes global indices for displacement components
+        for (short_t d = 0; d < dim; ++d)
+        {
+            system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
+            blockNumbers.at(d) = d;
+        }
+        // push to glBase(pde_,assembleMatrix_),obal system
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
+        if (assembleMatrix)
+            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+    }
+
 protected:
-    //------ inherited ------//
-    using Base::dim;
-    using Base::pde_ptr;
-    using Base::assembleMatrix;
-    using Base::md;
-    using Base::localMat;
-    using Base::localRhs;
-    using Base::localIndices;
-    using Base::N_D;
-    using Base::basisValuesDisp;
-    using Base::forceValues;
-
-    //------ class specific ----//
+    // problem info
+    short_t dim;
     index_t patch; // current patch
-
-    // material law, Lame coefficients, density and force scaling factor
+    const gsPoissonPde<T> * pde_ptr;
+    index_t materialLaw; // (0: St. Venant-Kirchhoff, 1: ln Neo-Hooke)
+    bool assembleMatrix;
+    // Lame coefficients and force scaling factor
     T lambda, mu, forceScaling;
-    index_t materialLaw; // (0: St. Venant-Kirchhoff, 1: ln Neo-Hooke, 2: quadratic Neo-Hooke)
-
+    // geometry mapping
+    gsMapData<T> md;
+    // local components of the global linear system
+    gsMatrix<T> localMat;
+    gsMatrix<T> localRhs;
+    // local indices (at the current patch) of the displacement basis functions active at the current element
+    gsMatrix<unsigned> localIndicesDisp;
+    // number of displacement basis functions active at the current element
+    index_t N_D;
+    // values and derivatives of displacement basis functions at quadrature points at the current element
+    // values are stored as a N_D x numQuadPoints matrix; not sure about derivatives, must be smth like N_D*dim x numQuadPoints
+    std::vector<gsMatrix<T> > basisValuesDisp;
+    // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
+    gsMatrix<T> forceValues;
     // current displacement field
     const gsMultiPatch<T> & displacement;
     // evaluation data of the current displacement field

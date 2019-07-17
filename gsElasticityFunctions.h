@@ -16,7 +16,7 @@
 #pragma once
 
 #include <gsCore/gsFunction.h>
-#include <gsElasticity/gsElUtils.h>
+#include <gsElasticity/gsBaseUtils.h>
 
 namespace gismo
 {

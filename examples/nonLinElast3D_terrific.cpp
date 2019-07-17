@@ -1,7 +1,7 @@
 /// This is an example of using the nonlinear elasticity solver on a 3D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsNewton.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -27,7 +27,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
     cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln, 2 - NeoHooke_2",materialLaw);
+    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln",materialLaw);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElNewton<real_t> newton(assembler);
+    gsNewton<real_t> newton(assembler);
     newton.options().setInt("MaxIters",maxNumIteration);
     newton.options().setReal("AbsTol",tolerance);
     newton.options().setInt("Verbosity",newton_verbosity::all);

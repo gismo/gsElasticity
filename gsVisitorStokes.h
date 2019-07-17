@@ -1,6 +1,6 @@
-/** @file gsVisitorMixedLinearElasticity.h
+/** @file gsVisitorStokes.h
 
-    @brief Visitor class for volumetric integration of the mixed linear elasticity system.
+    @brief Visitor class for volumetric integration of the Stokes system.
 
     This file is part of the G+Smo library.
 
@@ -9,13 +9,10 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
         A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
 #pragma once
-
-#include <gsElasticity/gsVisitorElUtils.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -24,11 +21,13 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorMixedLinearElasticity
+class gsVisitorStokes
 {
 public:
-    gsVisitorMixedLinearElasticity(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)) {}
+
+    gsVisitorStokes(const gsPde<T> & pde_)
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_))
+    {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -41,11 +40,7 @@ public:
         // the same rule is used for the presure
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda_inv = ( 1. + pr ) * ( 1. - 2. * pr ) / E / pr ;
-        mu     = E / ( 2. * ( 1. + pr ) );
-        forceScaling = options.getReal("ForceScaling");
+        viscosity = options.getReal("Viscosity");
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -60,13 +55,13 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
-        // find local indices of the displacement and pressure basis functions active on the element
-        basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
-        N_D = localIndicesDisp.rows();
+        // find local indices of the velocity and pressure basis functions active on the element
+        basisRefs.front().active_into(quNodes.col(0),localIndicesVel);
+        N_V = localIndicesVel.rows();
         basisRefs.back().active_into(quNodes.col(0), localIndicesPres);
         N_P = localIndicesPres.rows();
-        // Evaluate displacement basis functions and their derivatives on the element
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
+        // Evaluate velocity basis functions and their derivatives on the element
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesVel);
         // Evaluate pressure basis functions on the element
         basisRefs.back().eval_into(quNodes,basisValuesPres);
         // Evaluate right-hand side at the image of the quadrature points
@@ -76,55 +71,32 @@ public:
     inline void assemble(gsDomainIterator<T>    & element,
                          gsVector<T> const      & quWeights)
     {
-        // Initialize local matrix/rhs                      // A | B^T
-        localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
-        localRhs.setZero(dim*N_D + N_P,1);                  // B | C
-        // elasticity tensor
-        gsMatrix<T> C;
-        setC<T>(C,gsMatrix<T>::Identity(dim,dim),0.,mu);
+        // Initialize local matrix/rhs                          // A | B^T
+        localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);         // --|--    matrix structure
+        localRhs.setZero(dim*N_V + N_P,1);                      // B | 0
+
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
-
-            // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGradDisp;
-            transformGradients(md, q, basisValuesDisp[1], physGradDisp);
-            // A-matrix: Loop over displacement basis functions
-            for (index_t i = 0; i < N_D; i++)
-            {
-                gsMatrix<T> B_i;
-                setB<T>(B_i,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(i));
-                gsMatrix<T> tempK = B_i.transpose() * C;
-                // Loop over displacement basis functions
-                for (index_t j = 0; j < N_D; j++)
-                {
-                    gsMatrix<T> B_j;
-                    setB<T>(B_j,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(j));
-                    gsMatrix<T> K = tempK * B_j;
-
-                    for (short_t di = 0; di < dim; ++di)
-                        for (short_t dj = 0; dj < dim; ++dj)
-                            localMat(di*N_D+i, dj*N_D+j) += weight * K(di,dj);
-                }
-            }
-            // B-matrix
+            // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
+            gsMatrix<T> physGradVel;
+            transformGradients(md, q, basisValuesVel[1], physGradVel);
+            // matrix A
+            gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
+            for (short_t d = 0; d < dim; ++d)
+                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+            // matrix B
             for (short_t d = 0; d < dim; ++d)
             {
-                gsMatrix<> block = weight*basisValuesPres.col(q)*physGradDisp.row(d);
-                localMat.block(dim*N_D,d*N_D,N_P,N_D) += block.block(0,0,N_P,N_D);
-                localMat.block(d*N_D,dim*N_D,N_D,N_P) += block.transpose().block(0,0,N_D,N_P);
+                block = weight*basisValuesPres.col(q)*physGradVel.row(d);
+                localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V);
+                localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P);
             }
-
-            // C-matrix
-            if (abs(lambda_inv) > 0)
-                localMat.block(dim*N_D,dim*N_D,N_P,N_P) -=
-                    (weight*lambda_inv*basisValuesPres.col(q)*basisValuesPres.col(q).transpose()).block(0,0,N_P,N_P);
-
             // rhs contribution
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_D,N_D).noalias() += weight * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q) ;
+                localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceValues(d,q) * basisValuesVel[0].col(q) ;
         }
     }
 
@@ -132,13 +104,13 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T> & system)
     {
-        // number of unknowns: dim of displacement + 1 for pressure
+        // number of unknowns: dim of velocity + 1 for pressure
         std::vector< gsMatrix<unsigned> > globalIndices(dim+1);
         gsVector<size_t> blockNumbers(dim+1);
-        // computes global indices for displacement components
+        // computes global indices for velocity components
         for (short_t d = 0; d < dim; ++d)
         {
-            system.mapColIndices(localIndicesDisp,patchIndex,globalIndices[d],d);
+            system.mapColIndices(localIndicesVel, patchIndex, globalIndices[d], d);
             blockNumbers.at(d) = d;
         }
         // computes global indices for pressure
@@ -153,21 +125,20 @@ protected:
     // problem info
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
-    // Lame coefficients and force scaling factor
-    T lambda_inv, mu, forceScaling;
+    T viscosity;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
     // local indices (at the current patch) of basis functions active at the current element
-    gsMatrix<unsigned> localIndicesDisp;
+    gsMatrix<unsigned> localIndicesVel;
     gsMatrix<unsigned> localIndicesPres;
-    // number of displacement and pressure basis functions active at the current element
-    index_t N_D, N_P;
-    // values and derivatives of displacement basis functions at quadrature points at the current element
+    // number of velocity and pressure basis functions active at the current element
+    index_t N_V, N_P;
+    // values and derivatives of velocity basis functions at quadrature points at the current element
     // values are stored as a N_D x numQuadPoints matrix; not sure about derivatives, must be smth like N_D*dim x numQuadPoints
-    std::vector<gsMatrix<T> > basisValuesDisp;
+    std::vector<gsMatrix<T> > basisValuesVel;
     // values of pressure basis functions active at the current element;
     // stores as a N_P x numQuadPoints matrix
     gsMatrix<T> basisValuesPres;
