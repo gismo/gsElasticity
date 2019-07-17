@@ -1,4 +1,4 @@
-/** @file gsElBaseAssembler.h
+/** @file gsBaseAssembler.h
 
     @brief Base class for assemblers of gsElasticity.
 
@@ -24,7 +24,7 @@ namespace gismo
  * Potentially, can be merged back into gsAssembler.
  */
 template <class T>
-class gsElBaseAssembler : public gsAssembler<T>
+class gsBaseAssembler : public gsAssembler<T>
 {
 public:
     /// assembles the linear system given the current solution vector.

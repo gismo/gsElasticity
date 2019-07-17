@@ -1,4 +1,4 @@
-/** @file gsElMeshing.hpp
+/** @file gsGeoUtils.hpp
 
     @brief Provides isogeometric meshing and modelling routines.
 
@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsElMeshing.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 #include <gsCore/gsField.h>
 #include <gsCore/gsFuncData.h>

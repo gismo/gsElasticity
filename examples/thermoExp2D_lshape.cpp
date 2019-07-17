@@ -1,6 +1,6 @@
 /// This is an example of using the thermal expansion solver on a 2D multi-patch geometry
 #include <gismo.h>
-#include <gsElasticity/gsElThermoAssembler.h>
+#include <gsElasticity/gsThermoAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
         basis.uniformRefine();
 
     // creating assembler
-    gsElThermoAssembler<real_t> assembler(geometry,basis,bcInfo,gravity,temperature);
+    gsThermoAssembler<real_t> assembler(geometry,basis,bcInfo,gravity,temperature);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setReal("InitTemp",initTemp);

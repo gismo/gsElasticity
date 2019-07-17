@@ -1,7 +1,7 @@
 /// This is an example of using the time-dependent nonlinear elasticity solver on a 2D geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElMassAssembler.h>
+#include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
@@ -108,7 +108,7 @@ int main(int argc, char* argv[]){
     stiffAssembler.options().setReal("PoissonsRatio",poissonsRatio);
     stiffAssembler.options().setInt("DirichletValues",dirichlet::interpolation);
 
-    gsElMassAssembler<real_t> massAssembler(geometry,basis,bcInfo,g);
+    gsMassAssembler<real_t> massAssembler(geometry,basis,bcInfo,g);
     massAssembler.options().setReal("Density",density);
 
     gsElTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);

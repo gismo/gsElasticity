@@ -15,19 +15,19 @@
 
 #pragma once
 
-#include <gsElasticity/gsElMassAssembler.h>
+#include <gsElasticity/gsMassAssembler.h>
 
 #include <gsPde/gsPoissonPde.h>
-#include <gsElasticity/gsVisitorElMass.h>
+#include <gsElasticity/gsVisitorMass.h>
 
 namespace gismo
 {
 
 template<class T>
-gsElMassAssembler<T>::gsElMassAssembler(const gsMultiPatch<T> & patches,
-                                        const gsMultiBasis<T> & basis,
-                                        const gsBoundaryConditions<T> & bconditions,
-                                        const gsFunction<T> & body_force)
+gsMassAssembler<T>::gsMassAssembler(const gsMultiPatch<T> & patches,
+                                    const gsMultiBasis<T> & basis,
+                                    const gsBoundaryConditions<T> & bconditions,
+                                    const gsFunction<T> & body_force)
 {
     // Originally concieved as a meaningful class, now gsPde is just a container for
     // the domain, boundary conditions and the right-hand side;
@@ -48,7 +48,7 @@ gsElMassAssembler<T>::gsElMassAssembler(const gsMultiPatch<T> & patches,
 }
 
 template <class T>
-gsOptionList gsElMassAssembler<T>::defaultOptions()
+gsOptionList gsMassAssembler<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("Density","Density of the material",1.);
@@ -56,7 +56,7 @@ gsOptionList gsElMassAssembler<T>::defaultOptions()
 }
 
 template <class T>
-void gsElMassAssembler<T>::refresh()
+void gsMassAssembler<T>::refresh()
 {
     GISMO_ENSURE(m_dim == m_pde_ptr->domain().parDim(), "The RHS dimension and the domain dimension don't match!");
     GISMO_ENSURE(m_dim == 2 || m_dim == 3, "Only two- and three-dimenstion domains are supported!");
@@ -78,7 +78,7 @@ void gsElMassAssembler<T>::refresh()
 }
 
 template<class T>
-void gsElMassAssembler<T>::assemble()
+void gsMassAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
@@ -89,8 +89,8 @@ void gsElMassAssembler<T>::assemble()
         return;
     }
 
-    gsVisitorElMass<T> visitor(*m_pde_ptr);
-    Base::template push<gsVisitorElMass<T> >(visitor);
+    gsVisitorMass<T> visitor(*m_pde_ptr);
+    Base::template push<gsVisitorMass<T> >(visitor);
 
     m_system.matrix().makeCompressed();
 }

@@ -1,4 +1,4 @@
-/** @file gsElThermoAssembler.h
+/** @file gsThermoAssembler.h
 
     @brief Provides a thermal expansion solver for 2D plain strain and 3D continua.
 
@@ -25,17 +25,17 @@ namespace gismo
 */
 
 template <class T>
-class gsElThermoAssembler : public gsElasticityAssembler<T>
+class gsThermoAssembler : public gsElasticityAssembler<T>
 {
 public:
     typedef gsElasticityAssembler<T> Base;
 
     /// @brief Constructor of the assembler object.
-    gsElThermoAssembler(const gsMultiPatch<T> & patches,
-                        const gsMultiBasis<T> & bases,
-                        const gsBoundaryConditions<T> & b_conditions,
-                        const gsFunction<T> & body_force,
-                        const gsFunctionSet<T> & temperature_field);
+    gsThermoAssembler(const gsMultiPatch<T> & patches,
+                      const gsMultiBasis<T> & bases,
+                      const gsBoundaryConditions<T> & b_conditions,
+                      const gsFunction<T> & body_force,
+                      const gsFunctionSet<T> & temperature_field);
 
     /// @brief Assembles the stiffness matrix and the RHS
     void assemble();

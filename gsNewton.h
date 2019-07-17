@@ -1,4 +1,4 @@
-/** @file gsElNewton.h
+/** @file gsNewton.h
 
     @brief A class providing a nonlinear solver based on Newton's method.
     Supports incremental loading (ILS = incremental loading step),
@@ -18,14 +18,14 @@
 #pragma once
 
 #include <gsIO/gsOptionList.h>
-#include <gsElasticity/gsElUtils.h>
+#include <gsElasticity/gsBaseUtils.h>
 #include <functional>
 
 namespace gismo
 {
 
 template <class T>
-class gsElBaseAssembler;
+class gsBaseAssembler;
 
 /** @brief A general nonlinear solver based on Newton's method.
  * An equation to solve is specified by an assembler class which
@@ -41,15 +41,15 @@ class gsElBaseAssembler;
  * Currently uses gsElBaseAssembler as a parent interface class. Potentially, can operate on gsAssembler.
 */
 template <class T>
-class gsElNewton
+class gsNewton
 {
 public:
     /// constructor without an initial guess. Assumes a zero initial guess which probably does not
     /// satisfy Dirichlet BC. Uses incremental loading.
-    gsElNewton(gsElBaseAssembler<T> & assembler_);
+    gsNewton(gsBaseAssembler<T> & assembler_);
     /// constructor with an initial guess. Assumes that the initial guess satisfies DBC
     /// and further updates are 0 at the Dirichlet boundary. Does not use incremental loading.
-    gsElNewton(gsElBaseAssembler<T> & assembler_, const gsMatrix<T> & initialSolVector);
+    gsNewton(gsBaseAssembler<T> & assembler_, const gsMatrix<T> & initialSolVector);
     /// default option list. used for initialization
     static gsOptionList defaultOptions();
     /// get options list to read or set parameters
@@ -81,7 +81,7 @@ protected:
 
 protected:
     /// assembler object that generates the linear system
-    gsElBaseAssembler<T> & assembler;
+    gsBaseAssembler<T> & assembler;
     /// solution vector
     gsMatrix<T> solVector;
     bool initialGuess;

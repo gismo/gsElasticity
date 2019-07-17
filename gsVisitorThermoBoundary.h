@@ -1,4 +1,4 @@
-/** @file gsVisitorElThermoBoundary.h
+/** @file gsVisitorThermoBoundary.h
 
     @brief Visitor class for surface integration of the thermal stress.
 
@@ -15,32 +15,31 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorBaseElasticity.h>
-
+#include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
 
 namespace gismo
 {
 
 template <class T>
-class gsVisitorElThermoBoundary : public gsVisitorBaseElasticity<T>
+class gsVisitorThermoBoundary
 {
 public:
-    typedef gsVisitorBaseElasticity<T> Base;
-
-    gsVisitorElThermoBoundary(const gsPde<T> & pde_, boxSide s,
-                              const gsFunctionSet<T> & temperatureField_)
-        : Base (pde_,false), // false = no matrix assembly
-          side(s),
-          temperatureField(temperatureField_) {}
+    gsVisitorThermoBoundary(boxSide s,
+                            const gsFunctionSet<T> & temperatureField_)
+         : side(s),
+           temperatureField(temperatureField_) {}
 
     void initialize(const gsBasisRefs<T>& basisRefs,
                     const index_t patchIndex,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        Base::initialize(basisRefs,patchIndex,options,rule);
-        // storing necessary info
+        // parametric dimension of the first displacement component
+        dim = basisRefs.front().dim();
+        // a quadrature rule is defined by the basis for the first displacement component.
+        rule = gsQuadrature::get(basisRefs.front(), options);
+        // saving necessary info
         patch = patchIndex;
         paramTemp = options.getSwitch("ParamTemp");
         initTemp = options.getReal("InitTemp");
@@ -71,11 +70,10 @@ public:
         else           // evaluate temperature in the physical domain
             temperatureField.eval_into(md.values[0],tempValues);
         // find local indices of the displacement basis functions active on the element
-        localIndices.resize(1);
-        basisRefs.front().active_into(quNodes.col(0),localIndices[0]);
-        N_D = localIndices[0].rows();
+        basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
+        N_D = localIndicesDisp.rows();
         // Evaluate displacement basis functions on the element
-        basisRefs.front().evalAllDers_into(quNodes,0,basisValuesDisp);
+        basisRefs.front().eval_into(quNodes,basisValuesDisp);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -94,30 +92,51 @@ public:
             const T weight = thermalExpCoef*(2*mu+dim*lambda)*quWeights[q] * (tempValues.at(q) - initTemp);
 
             for (index_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_D,N_D).noalias() += weight * unormal(d,0) * basisValuesDisp[0].col(q) ;
+                localRhs.middleRows(d*N_D,N_D).noalias() += weight * unormal(d,0) * basisValuesDisp.col(q) ;
         }
     }
 
-protected:
-    //------ inherited ------//
-    using Base::dim;
-    using Base::md;
-    using Base::localRhs;
-    using Base::localIndices;
-    using Base::N_D;
-    using Base::basisValuesDisp;
+    inline void localToGlobal(const int patchIndex,
+                                  const std::vector<gsMatrix<T> > & eliminatedDofs,
+                                  gsSparseSystem<T> & system)
+        {
+            // number of unknowns: dim of displacement
+            std::vector< gsMatrix<unsigned> > globalIndices(dim);
+            gsVector<size_t> blockNumbers(dim);
+            // computes global indices for displacement components
+            for (short_t d = 0; d < dim; ++d)
+            {
+                system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
+                blockNumbers.at(d) = d;
+            }
+            // push to global system
+            system.pushToRhs(localRhs,globalIndices,blockNumbers);
+        }
 
-    //------ class specific ----//
-    // Lame coefficients
-    T lambda, mu;
+protected:
+    // problem info
+    short_t dim;
+    // Lame and thermal expansion coefficients, initial temperature
+    T lambda, mu, thermalExpCoef, initTemp;
+    // geometry mapping
+    gsMapData<T> md;
+    // local components of the global linear system
+    gsMatrix<T> localRhs;
+    // local indices (at the current patch) of the displacement basis functions active at the current element
+    gsMatrix<unsigned> localIndicesDisp;
+    // number of displacement basis functions active at the current element
+    index_t N_D;
+    // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
+    gsMatrix<T> basisValuesDisp;
     // Temperature info
     index_t patch;
     boxSide side;
     const gsFunctionSet<T> & temperatureField;
     // true if temperature field is defined in the parametric domain; false if in the physical
     bool paramTemp;
-    T thermalExpCoef;
-    T initTemp; // fixed initial temperature
+    // temperature gradient evaluated at the quadrature points or at their images in the physical domain;
+    // stored as a dim x numQuadPoints matrix
+    gsMatrix<T> tempGrads;
     // temperature evaluated at the quadrature points or at their images in the physical domain;
     // stored as a 1 x numQuadPoints matrix
     gsMatrix<T> tempValues;

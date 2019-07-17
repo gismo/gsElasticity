@@ -15,10 +15,9 @@
 
 #pragma once
 
-#include <gsElasticity/gsElBaseAssembler.h>
+#include <gsElasticity/gsBaseAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
-
-#include <gsElasticity/gsElUtils.h>
+#include <gsElasticity/gsBaseUtils.h>
 
 namespace gismo
 {
@@ -34,10 +33,10 @@ namespace gismo
            Supports mixed displacement-pressure formulation.
 */
 template <class T>
-class gsElasticityAssembler : public gsElBaseAssembler<T>
+class gsElasticityAssembler : public gsBaseAssembler<T>
 {
 public:
-    typedef gsElBaseAssembler<T> Base;
+    typedef gsBaseAssembler<T> Base;
 
     /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,

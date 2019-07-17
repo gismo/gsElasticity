@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include <gsElasticity/gsElBaseAssembler.h>
-
-#include <gsElasticity/gsElUtils.h>
+#include <gsElasticity/gsBaseAssembler.h>
+#include <gsElasticity/gsBaseUtils.h>
 
 namespace gismo
 {
@@ -24,20 +23,20 @@ namespace gismo
 template <class T>
 class gsElasticityAssembler;
 template <class T>
-class gsElMassAssembler;
+class gsMassAssembler;
 
 /** @brief Time integation for equations of dynamic elasticity. Can perform explicit (with or without mass lamping)
  *         and implicit (linear and nonlinear) time steps.
 */
 template <class T>
-class gsElTimeIntegrator : public gsElBaseAssembler<T>
+class gsElTimeIntegrator : public gsBaseAssembler<T>
 {
 public:
-    typedef gsElBaseAssembler<T> Base;
+    typedef gsBaseAssembler<T> Base;
     /// constructor method. requires a gsElasticityAssembler for construction of the static linear system
     /// and a gsMassAssembler for the mass matrix
     gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssembler_,
-                       gsElMassAssembler<T> & massAssembler_);
+                       gsMassAssembler<T> & massAssembler_);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -79,7 +78,7 @@ protected:
     /// assembler object that generates the static system
     gsElasticityAssembler<T> & stiffAssembler;
     /// assembler object that generates the mass matrix
-    gsElMassAssembler<T> & massAssembler;
+    gsMassAssembler<T> & massAssembler;
     /// Sparse matrix of the linear system to solve
     gsSparseMatrix<T> m_matrix;
     /// RHS vector of the linear system to solve

@@ -1,4 +1,4 @@
-/** @file gsVisitorElMass.h
+/** @file gsVisitorMass.h
 
     @brief Visitor class for the mass matrix assembly for elasticity problems.
 
@@ -22,10 +22,10 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorElMass
+class gsVisitorMass
 {
 public:
-    gsVisitorElMass(const gsPde<T> & pde_) {}
+    gsVisitorMass(const gsPde<T> & pde_) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,

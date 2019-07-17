@@ -19,6 +19,7 @@
 
 #include <gsPde/gsPoissonPde.h>
 #include <gsUtils/gsPointGrid.h>
+#include <gsElasticity/gsBaseUtils.h>
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>

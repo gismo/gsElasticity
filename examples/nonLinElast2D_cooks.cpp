@@ -1,7 +1,7 @@
 /// This is an example of using the mixed linear elasticity solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElNewton.h>
+#include <gsElasticity/gsNewton.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 #include <sstream>
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsElNewton<real_t> newton(assembler);
+    gsNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
     newton.options().setInt("NumIncSteps",numSteps);
 

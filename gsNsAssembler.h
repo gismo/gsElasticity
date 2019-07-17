@@ -15,8 +15,8 @@
 
 #pragma once
 
-#include <gsElasticity/gsElBaseAssembler.h>
-#include <gsElasticity/gsElUtils.h>
+#include <gsElasticity/gsBaseAssembler.h>
+#include <gsElasticity/gsBaseUtils.h>
 
 namespace gismo
 {
@@ -24,10 +24,10 @@ namespace gismo
 /** @brief TODO: write.
 */
 template <class T>
-class gsNsAssembler : public gsElBaseAssembler<T>
+class gsNsAssembler : public gsBaseAssembler<T>
 {
 public:
-    typedef gsElBaseAssembler<T> Base;
+    typedef gsBaseAssembler<T> Base;
 
     /// @brief Constructor
     gsNsAssembler(const gsMultiPatch<T> & patches,

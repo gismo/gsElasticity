@@ -1,4 +1,4 @@
-/** @file gsElUtils.h
+/** @file gsBaseUtils.h
 
     @brief Provides several simple utility and naming classes.
 

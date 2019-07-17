@@ -1,4 +1,4 @@
-/** @file gsElMassAssembler.h
+/** @file gsMassAssembler.h
 
     @brief Provides mass matrix for elasticity systems in 2D plain strain and 3D continua.
 
@@ -27,12 +27,12 @@ namespace gismo
 */
 
 template <class T>
-class gsElMassAssembler : public gsAssembler<T>
+class gsMassAssembler : public gsAssembler<T>
 {
 public:
     typedef gsAssembler<T> Base;
 
-    gsElMassAssembler(const gsMultiPatch<T> & patches,
+    gsMassAssembler(const gsMultiPatch<T> & patches,
                       const gsMultiBasis<T> & basis,
                       const gsBoundaryConditions<T> & bconditions,
                       const gsFunction<T> & body_force);
