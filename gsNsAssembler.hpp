@@ -21,6 +21,7 @@
 
 // Element visitors
 #include <gsElasticity/gsVisitorStokes.h>
+#include <gsElasticity/gsVisitorNavierStokes.h>
 
 namespace gismo
 {
@@ -51,6 +52,8 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("Viscosity","Kinematic viscosity of the fluid",0.001);
     opt.addReal("DirichletConstruction","Dirichlet BC scaling parameter for solution construction",1.);
+    opt.addReal("ForceScaling","Force scaling parameter",1.);
+    opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
     return opt;
 }
 
@@ -87,6 +90,31 @@ void gsNsAssembler<T>::assemble()
     Base::template push<gsVisitorStokes<T> >(visitor);
 
     m_system.matrix().makeCompressed();
+}
+
+template <class T>
+bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix)
+{
+    gsMultiPatch<T> velocity, pressure;
+    constructSolution(solutionVector,velocity,pressure);
+
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
+    m_system.rhs().setZero(Base::numDofs(),1);
+
+    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
+
+    // Compute volumetric integrals and write to the global linear system
+    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
+    Base::template push<gsVisitorNavierStokes<T> >(visitor);
+
+    Base::resetDDoFs();
+    m_system.matrix().makeCompressed();
+
+    return true;
 }
 
 template <class T>

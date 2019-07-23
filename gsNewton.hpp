@@ -163,7 +163,8 @@ bool gsNewton<T>::computeUpdate()
             gsInfo << status() << std::endl;
         return false;
     }
-    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+    gsSparseSolver<>::BiCGSTABILUT solver(assembler.matrix());
+    //gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
     gsVector<T> updateVector = solver.solve(assembler.rhs());
 
     updateNorm = updateVector.norm();

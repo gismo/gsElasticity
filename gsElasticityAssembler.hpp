@@ -119,7 +119,7 @@ void gsElasticityAssembler<T>::assemble()
     m_system.reserve(m_bases[0], m_options, 1);
     m_system.rhs().setZero(Base::numDofs(),1);
 
-    scaleDDoFs(m_options.getReal("DirichletAssembly"));
+    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
@@ -137,7 +137,7 @@ void gsElasticityAssembler<T>::assemble()
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
     m_system.matrix().makeCompressed();
-    resetDDoFs();
+    Base::resetDDoFs();
 }
 
 template <class T>
@@ -173,7 +173,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, bo
     }
     m_system.rhs().setZero(Base::numDofs(),1);
 
-    scaleDDoFs(m_options.getReal("DirichletAssembly"));
+    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
     gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,assembleMatrix);
@@ -182,7 +182,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, bo
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
-    resetDDoFs();
+    Base::resetDDoFs();
     m_system.matrix().makeCompressed();
 }
 
@@ -197,7 +197,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, co
     }
     m_system.rhs().setZero(Base::numDofs(),1);
 
-    scaleDDoFs(m_options.getReal("DirichletAssembly"));
+    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
     gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure,assembleMatrix);
@@ -206,7 +206,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, co
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
-    resetDDoFs();
+    Base::resetDDoFs();
     m_system.matrix().makeCompressed();
 }
 
@@ -392,39 +392,6 @@ T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) c
     return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
 }
 
-template <class T>
-void gsElasticityAssembler<T>::setDirichletAssemblyScaling(T factor)
-{
-    m_options.setReal("DirichletAssembly",factor);
-}
-
-template <class T>
-void gsElasticityAssembler<T>::setDirichletConstructionScaling(T factor)
-{
-    m_options.setReal("DirichletConstruction",factor);
-}
-
-template <class T>
-void gsElasticityAssembler<T>::setForceScaling(T factor)
-{
-    m_options.setReal("ForceScaling",factor);
-}
-
-template <class T>
-void gsElasticityAssembler<T>::scaleDDoFs(T factor)
-{
-    if (saved_ddof.empty())
-        saved_ddof = m_ddof;
-    for (unsigned d = 0; d < m_ddof.size(); ++d)
-        m_ddof[d] = saved_ddof[d]*factor;
-}
-
-template <class T>
-void gsElasticityAssembler<T>::resetDDoFs()
-{
-    if (!saved_ddof.empty())
-        m_ddof = saved_ddof;
-}
 
 template <class T>
 void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,

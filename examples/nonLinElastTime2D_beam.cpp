@@ -121,6 +121,7 @@ int main(int argc, char* argv[]){
     gsProgressBar bar;
     real_t timeStep = timeSpan/numTimeSteps;
     clock.restart();
+    gsInfo << "Running the transient simulation...\n";
     for (index_t i = 0; i < numTimeSteps; ++i)
     {
         bar.display(i+1,numTimeSteps);

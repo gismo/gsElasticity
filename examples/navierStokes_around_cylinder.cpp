@@ -1,12 +1,13 @@
-/// This is an example of using the Stokes solver on a 2D multi-patch geometry
+/// This is an example of using the Navier-Stokes solver on a 2D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsNsAssembler.h>
+#include <gsElasticity/gsNewton.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 
 int main(int argc, char* argv[]){
-    gsInfo << "Testing the Stokes solver in 2D.\n";
+    gsInfo << "Testing the Navier-Stokes solver in 2D.\n";
 
     //=====================================//
                 // Input //
@@ -19,6 +20,7 @@ int main(int argc, char* argv[]){
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;
     bool subgrid = false;
+    index_t iters = 50;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the Stokes solver in 2D.");
@@ -28,6 +30,7 @@ int main(int argc, char* argv[]){
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
     cmd.addReal("i","inflow","Maximum inflow velocity",maxInflow);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
+    cmd.addInt("j","iters","Max number of Newton's iterations",iters);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -83,26 +86,26 @@ int main(int argc, char* argv[]){
     gsNsAssembler<real_t> assembler(geometry,basisVelocity,basisPressure,bcInfo,g);
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    gsInfo<<"Assembling...\n";
-    gsStopwatch clock;
-    clock.restart();
-    assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
-           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
+    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
+
+    // setting Newton's method
+    gsNewton<real_t> newton(assembler);
+    newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("MaxIters",iters);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
+    gsStopwatch clock;
     clock.restart();
-    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with SimplicialLDLT solver in " << clock.stop() <<"s.\n";
+    newton.solve();
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // constructing solution as an IGA function
     gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(solVector,velocity,pressure);
+    assembler.constructSolution(newton.solution(),velocity,pressure);
 
     // constructing an IGA field (geometry + solution)
     gsField<> velocityField(assembler.patches(),velocity);
@@ -112,12 +115,12 @@ int main(int argc, char* argv[]){
                   // Output //
     //=============================================//
 
-    gsInfo << "Plotting the output to the Paraview file \"stokes_around_cylinder.pvd\"...\n";
+    gsInfo << "Plotting the output to the Paraview file \"NS_around_cylinder.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Velocity"] = &velocityField;
     fields["Pressure"] = &pressureField;
-    gsWriteParaviewMultiPhysics(fields,"stokes_around_cylinder",numPlotPoints);
+    gsWriteParaviewMultiPhysics(fields,"NS_around_cylinder",numPlotPoints);
 
     //=============================================//
                   // Validation //
@@ -129,4 +132,5 @@ int main(int argc, char* argv[]){
                                          pressure.patch(2).eval(point)(0,0) << "Pa\n";
 
     return 0;
+
 }
