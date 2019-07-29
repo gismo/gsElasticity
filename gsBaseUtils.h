@@ -32,6 +32,18 @@ struct time_integration
     };
 };
 
+/// @brief Specifies linear solver to use for iterations of Newton's method
+struct linear_solver
+{
+    enum solver
+    {
+        BiCGSTABILUT = 0,
+        CGDiagonal = 1,
+        LU = 2,
+        SimplicialLDLT = 3
+    };
+};
+
 
 /// @brief Specifies the verbosity of the Newton's solver
 struct newton_verbosity

@@ -53,6 +53,8 @@ template <class T>
 gsOptionList gsNewton<T>::defaultOptions()
 {
     gsOptionList opt;
+    /// linear solver
+    opt.addInt("Solver","Linear solver to use",linear_solver::SimplicialLDLT);
     /// stopping creteria
     opt.addInt("MaxIters","Maximum number of iterations per loop",50);
     opt.addReal("AbsTol","Absolute tolerance for the convergence cretiria",1e-12);
@@ -163,9 +165,28 @@ bool gsNewton<T>::computeUpdate()
             gsInfo << status() << std::endl;
         return false;
     }
-    gsSparseSolver<>::BiCGSTABILUT solver(assembler.matrix());
-    //gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-    gsVector<T> updateVector = solver.solve(assembler.rhs());
+
+    gsVector<T> updateVector;
+    if (m_options.getInt("Solver") == linear_solver::BiCGSTABILUT)
+    {
+        gsSparseSolver<>::BiCGSTABILUT solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
+    if (m_options.getInt("Solver") == linear_solver::CGDiagonal)
+    {
+        gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
+    if (m_options.getInt("Solver") == linear_solver::LU)
+    {
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
+    if (m_options.getInt("Solver") == linear_solver::SimplicialLDLT)
+    {
+        gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
 
     updateNorm = updateVector.norm();
     residualNorm = assembler.rhs().norm();
