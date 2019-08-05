@@ -89,17 +89,38 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
     assembler.options().setSwitch("SUPG",supg);
+    assembler.options().setSwitch("Iteration",false);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
+    //=============================================//
+                  // Solving Oseen//
+    //=============================================//
+    index_t numIter = iters;
+    assembler.assemble();
+    gsSparseSolver<>::LU solver(assembler.matrix());
+    gsMatrix<> solVector = solver.solve(assembler.rhs());
+    gsMatrix<> tempSolVector;
+    for (index_t i = 0; i < numIter; ++i)
+    {
+        assembler.assemble(solVector);
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        tempSolVector = solver.solve(assembler.rhs());
+        gsInfo << "It " << i+1 << " abs " << (tempSolVector-solVector).norm() << std::endl;
+        solVector = tempSolVector;
+    }
+
+    gsMultiPatch<> velocity, pressure;
+    assembler.constructSolution(solVector,velocity,pressure);
+    //=============================================//
+                  // Solving Newton//
+    //=============================================//
+/*
+    assembler.options().setSwitch("Iteration",true);
     // setting Newton's method
-    gsNewton<real_t> newton(assembler);
+    gsNewton<real_t> newton(assembler,solVector);
     newton.options().setInt("Verbosity",newton_verbosity::all);
     newton.options().setInt("MaxIters",iters);
-    newton.options().setInt("Solver",linear_solver::BiCGSTABILUT);
-
-    //=============================================//
-                  // Solving //
-    //=============================================//
+    newton.options().setInt("Solver",linear_solver::LU);
 
     gsInfo << "Solving...\n";
     gsStopwatch clock;
@@ -108,8 +129,8 @@ int main(int argc, char* argv[]){
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // constructing solution as an IGA function
-    gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(newton.solution(),velocity,pressure);
+    //gsMultiPatch<> velocity, pressure;
+    assembler.constructSolution(newton.solution(),velocity,pressure); */
 
     // constructing an IGA field (geometry + solution)
     gsField<> velocityField(assembler.patches(),velocity);
