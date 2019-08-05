@@ -21,6 +21,7 @@ int main(int argc, char* argv[]){
     real_t maxInflow = 0.3;
     bool subgrid = false;
     index_t iters = 50;
+    bool supg = true;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the Stokes solver in 2D.");
@@ -31,6 +32,7 @@ int main(int argc, char* argv[]){
     cmd.addReal("i","inflow","Maximum inflow velocity",maxInflow);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     cmd.addInt("j","iters","Max number of Newton's iterations",iters);
+    cmd.addSwitch("g","supg","Do NOT use SUPG stabilization",supg);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -86,12 +88,14 @@ int main(int argc, char* argv[]){
     gsNsAssembler<real_t> assembler(geometry,basisVelocity,basisPressure,bcInfo,g);
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
+    assembler.options().setSwitch("SUPG",supg);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
     gsNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
     newton.options().setInt("MaxIters",iters);
+    newton.options().setInt("Solver",linear_solver::BiCGSTABILUT);
 
     //=============================================//
                   // Solving //

@@ -54,6 +54,7 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
     opt.addReal("DirichletConstruction","Dirichlet BC scaling parameter for solution construction",1.);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
+    opt.addSwitch("SUPG","Use SUPG stabilaztion",true);
     return opt;
 }
 
@@ -108,7 +109,8 @@ bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembl
     Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
+    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,m_options.getSwitch("SUPG"),
+                                     velocity,pressure,assembleMatrix);
     Base::template push<gsVisitorNavierStokes<T> >(visitor);
 
     Base::resetDDoFs();

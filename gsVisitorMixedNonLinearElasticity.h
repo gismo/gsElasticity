@@ -87,8 +87,8 @@ public:
         pressure.patch(patch).eval_into(quNodes,pressureValues);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T> & quWeights)
     {
         // Initialize local matrix/rhs
         if (assembleMatrix)                                     // A | B^T
