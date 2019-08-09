@@ -26,11 +26,10 @@ class gsVisitorNavierStokes
 {
 public:
 
-    gsVisitorNavierStokes(const gsPde<T> & pde_, bool supg_, const gsMultiPatch<T> & velocity_,
+    gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
                           const gsMultiPatch<T> & pressure_, bool assembleMatrix_)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
           assembleMatrix(assembleMatrix_),
-          supg(supg_),
           velocity(velocity_),
           pressure(pressure_) {}
 
@@ -46,6 +45,7 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         newtonOseen = options.getSwitch("Iteration");
+        supg = options.getSwitch("SUPG");
         viscosity = options.getReal("Viscosity");
         patch = patchIndex;
         forceScaling = options.getReal("ForceScaling");
@@ -177,15 +177,15 @@ protected:
             gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
-            // matrix A: advection 1
+            // matrix A: advection
+            block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
+            for (short_t d = 0; d < dim; ++d)
+                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+            // matrix A: reaction
             block = weight*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
             for (short_t di = 0; di < dim; ++di)
                 for (short_t dj = 0; dj < dim; ++dj)
                     localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
-            // matrix A: advection 2
-            block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrices B and D
             for (short_t d = 0; d < dim; ++d)
             {
@@ -197,19 +197,19 @@ protected:
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling *
                     forceValues(d,q) * basisValuesVel[0].col(q);
-            // rhs: -diffusion (A)
+            // rhs: residual diffusion
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() -= weight * viscosity *
                     (physJacCurVel.row(d) * physGradVel).transpose();
-            // rhs: -advection (A)
+            // rhs: redisual nonlinear term
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() -= weight *
                     (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * basisValuesVel[0].col(q);
-            // rhs: + pressure (D)
+            // rhs: residual pressure
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight *
                     physGradVel.row(d).transpose() * mdPressure.values[0].col(q);
-            // rhs: + constraint (B)
+            // rhs: residual constraint
             T div = 0;
             for (short_t d = 0; d < dim; ++d)
                 div += physJacCurVel(d,d);

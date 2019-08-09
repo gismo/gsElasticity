@@ -95,26 +95,43 @@ int main(int argc, char* argv[]){
     //=============================================//
                   // Solving Oseen//
     //=============================================//
+
+    gsMultiPatch<> velocity, pressure;
+
+    gsField<> velocityField(assembler.patches(),velocity);
+    gsField<> pressureField(assembler.patches(),pressure);
+
+    std::map<std::string,const gsField<> *> fields;
+    fields["Velocity"] = &velocityField;
+    fields["Pressure"] = &pressureField;
+
+    gsParaviewCollection collection("NS_around_cylinder");
+
+
     index_t numIter = iters;
     assembler.assemble();
     gsSparseSolver<>::LU solver(assembler.matrix());
     gsMatrix<> solVector = solver.solve(assembler.rhs());
+    assembler.constructSolution(solVector,velocity,pressure);
+    gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,0,numPlotPoints);
+
     gsMatrix<> tempSolVector;
-    for (index_t i = 0; i < numIter; ++i)
+    for (index_t i = 0; i < 6; ++i)
     {
         assembler.assemble(solVector);
         gsSparseSolver<>::LU solver(assembler.matrix());
         tempSolVector = solver.solve(assembler.rhs());
         gsInfo << "It " << i+1 << " abs " << (tempSolVector-solVector).norm() << std::endl;
         solVector = tempSolVector;
+        assembler.constructSolution(solVector,velocity,pressure);
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,i+1,numPlotPoints);
+
     }
 
-    gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(solVector,velocity,pressure);
     //=============================================//
                   // Solving Newton//
     //=============================================//
-/*
+
     assembler.options().setSwitch("Iteration",true);
     // setting Newton's method
     gsNewton<real_t> newton(assembler,solVector);
@@ -130,11 +147,10 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     //gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(newton.solution(),velocity,pressure); */
+    assembler.constructSolution(newton.solution(),velocity,pressure);
+    gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,7,numPlotPoints);
 
     // constructing an IGA field (geometry + solution)
-    gsField<> velocityField(assembler.patches(),velocity);
-    gsField<> pressureField(assembler.patches(),pressure);
 
     //=============================================//
                   // Output //
@@ -142,10 +158,7 @@ int main(int argc, char* argv[]){
 
     gsInfo << "Plotting the output to the Paraview file \"NS_around_cylinder.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Velocity"] = &velocityField;
-    fields["Pressure"] = &pressureField;
-    gsWriteParaviewMultiPhysics(fields,"NS_around_cylinder",numPlotPoints);
+    //gsWriteParaviewMultiPhysics(fields,"NS_around_cylinder",numPlotPoints);
 
     //=============================================//
                   // Validation //
@@ -155,6 +168,8 @@ int main(int argc, char* argv[]){
     point << 0.5, 0;
     gsInfo << "Pressure difference: " << pressure.patch(0).eval(point)(0,0) -
                                          pressure.patch(2).eval(point)(0,0) << "Pa\n";
+
+    collection.save();
 
     return 0;
 
