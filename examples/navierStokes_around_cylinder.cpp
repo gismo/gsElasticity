@@ -116,7 +116,7 @@ int main(int argc, char* argv[]){
     gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,0,numPlotPoints);
 
     gsMatrix<> tempSolVector;
-    for (index_t i = 0; i < 6; ++i)
+    for (index_t i = 0; i < 2; ++i)
     {
         assembler.assemble(solVector);
         gsSparseSolver<>::LU solver(assembler.matrix());
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]){
     // constructing solution as an IGA function
     //gsMultiPatch<> velocity, pressure;
     assembler.constructSolution(newton.solution(),velocity,pressure);
-    gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,7,numPlotPoints);
+    gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,3,numPlotPoints);
 
     // constructing an IGA field (geometry + solution)
 

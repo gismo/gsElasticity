@@ -197,25 +197,21 @@ protected:
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling *
                     forceValues(d,q) * basisValuesVel[0].col(q);
-            // rhs: residual diffusion
+            /*// rhs: residual diffusion
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() -= weight * viscosity *
-                    (physJacCurVel.row(d) * physGradVel).transpose();
-            // rhs: redisual nonlinear term
+                    (physJacCurVel.row(d)*physGradVel).transpose();*/
+            // rhs: residual advection
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() -= weight *
                     (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * basisValuesVel[0].col(q);
-            // rhs: residual pressure
+           /* // rhs: residual pressure
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight *
-                    physGradVel.row(d).transpose() * mdPressure.values[0].col(q);
-            // rhs: residual constraint
-            T div = 0;
-            for (short_t d = 0; d < dim; ++d)
-                div += physJacCurVel(d,d);
+                    mdPressure.values[0].at(q) * physGradVel.row(d).transpose();
+            // rhs: constraint residual
             localRhs.middleRows(dim*N_V,N_P).noalias() += weight *
-                basisValuesPres.col(q) * div;
-
+                basisValuesPres.col(q) * physJacCurVel.trace();*/
             // SUPG stabilization
             // see D.Kuzmin "A guide to numerical methods for transport equations" pp.67-71
             // and J.Volker " FEM for Incompressible Flow Problems" p. 286
@@ -253,22 +249,22 @@ protected:
                 for (short_t d = 0; d < dim; ++d)
                     localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling * tau *
                         forceValues(d,q) * advectedPhysGradVel;
-                // rhs: diffusion stabilization
+                /*// rhs: diffusion stabilization
                 gsMatrix<T> physLaplCurVel;
                 transformLaplaceHgrad(md,q,mdVelocity.values[1],mdVelocity.values[2],physLaplCurVel);
                 for (short_t d = 0; d < dim; ++d)
                     localRhs.middleRows(d*N_V,N_V).noalias() += weight * tau * viscosity *
-                        physLaplCurVel.at(d) * advectedPhysGradVel;
+                        physLaplCurVel.at(d) * advectedPhysGradVel;*/
                 // rhs: advection stabilization
                 for (short_t d = 0; d < dim; ++d)
                     localRhs.middleRows(d*N_V,N_V).noalias() -= weight * tau *
                         (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * advectedPhysGradVel;
-                // rhs: pressure stabilization
+                /*// rhs: pressure stabilization
                 // Compute physical Jacobian of the current pressure field
                 gsMatrix<T> physJacCurPres = mdPressure.jacobian(q)*(md.jacobian(q).cramerInverse());
                 for (short_t d = 0; d < dim; ++d)
                     localRhs.middleRows(d*N_V,N_V).noalias() -= weight * tau *
-                        physJacCurPres.at(d) * advectedPhysGradVel;
+                        physJacCurPres.at(d) * advectedPhysGradVel;*/
             }
         }
     }
