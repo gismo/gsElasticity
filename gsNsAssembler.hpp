@@ -55,7 +55,7 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
     opt.addSwitch("SUPG","Use SUPG stabilaztion",true);
-    opt.addSwitch("Iteration","Linear iteration to assemble: true - newton, false - oseen",true);
+    opt.addInt("Iteration","Type of the linear iteration used to solve the nonlinear problem",iteration_type::newton);
     return opt;
 }
 

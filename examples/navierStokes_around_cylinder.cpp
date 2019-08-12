@@ -20,7 +20,8 @@ int main(int argc, char* argv[]){
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;
     bool subgrid = false;
-    index_t iters = 50;
+    index_t itersOs = 20;
+    index_t itersN  = 20;
     bool supg = true;
 
     // minimalistic user interface for terminal
@@ -29,9 +30,10 @@ int main(int argc, char* argv[]){
     cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
-    cmd.addReal("i","inflow","Maximum inflow velocity",maxInflow);
+    cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addInt("j","iters","Max number of Newton's iterations",iters);
+    cmd.addInt("i","iters","Max number of Newton's iterations",itersN);
+    cmd.addInt("j","jters","Max number of Oseen iterations",itersOs);
     cmd.addSwitch("g","supg","Do NOT use SUPG stabilization",supg);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -89,7 +91,6 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
     assembler.options().setSwitch("SUPG",supg);
-    assembler.options().setSwitch("Iteration",false);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     //=============================================//
@@ -108,36 +109,52 @@ int main(int argc, char* argv[]){
     gsParaviewCollection collection("NS_around_cylinder");
 
 
-    index_t numIter = iters;
-    assembler.assemble();
-    gsSparseSolver<>::LU solver(assembler.matrix());
-    gsMatrix<> solVector = solver.solve(assembler.rhs());
-    assembler.constructSolution(solVector,velocity,pressure);
-    gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,0,numPlotPoints);
-
+    gsMatrix<> solVector;
+    solVector.setZero(assembler.numDofs(),1);
+    assembler.options().setInt("Iteration",iteration_type::picard);
     gsMatrix<> tempSolVector;
-    for (index_t i = 0; i < 2; ++i)
+    for (index_t i = 0; i < itersOs; ++i)
     {
         assembler.assemble(solVector);
         gsSparseSolver<>::LU solver(assembler.matrix());
         tempSolVector = solver.solve(assembler.rhs());
-        gsInfo << "It " << i+1 << " abs " << (tempSolVector-solVector).norm() << std::endl;
+        gsInfo << "It " << i << " abs " << (tempSolVector-solVector).norm() << std::endl;
         solVector = tempSolVector;
         assembler.constructSolution(solVector,velocity,pressure);
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,i+1,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,i,numPlotPoints);
 
+    }
+    gsInfo << "Newton now\n";
+    assembler.options().setInt("Iteration",iteration_type::newton2);
+    for (index_t i = 0; i < itersN; ++i)
+    {
+        assembler.assemble(solVector);
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        tempSolVector = solver.solve(assembler.rhs());
+        gsInfo << "It " << i << " abs " << (tempSolVector-solVector).norm() << std::endl;
+        solVector = tempSolVector;
+        assembler.constructSolution(solVector,velocity,pressure);
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersOs+i,numPlotPoints);
     }
 
     //=============================================//
                   // Solving Newton//
     //=============================================//
 
-    assembler.options().setSwitch("Iteration",true);
+    assembler.options().setInt("Iteration",iteration_type::newton);
     // setting Newton's method
     gsNewton<real_t> newton(assembler,solVector);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("MaxIters",iters);
+    newton.options().setInt("MaxIters",itersN);
     newton.options().setInt("Solver",linear_solver::LU);
+    index_t i = 0;
+    newton.setPreProcessingFunction([&](const gsMatrix<> & matrix)
+    {
+        assembler.constructSolution(matrix,velocity,pressure);
+
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersOs+itersN+i,numPlotPoints);
+        ++i;
+    });
 
     gsInfo << "Solving...\n";
     gsStopwatch clock;
@@ -147,8 +164,8 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     //gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(newton.solution(),velocity,pressure);
-    gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,3,numPlotPoints);
+    //assembler.constructSolution(newton.solution(),velocity,pressure);
+    //gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersN+itersOs,numPlotPoints);
 
     // constructing an IGA field (geometry + solution)
 

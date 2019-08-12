@@ -20,6 +20,17 @@
 namespace gismo
 {
 
+/// @brief Specifies the iteration type used to solve nonlinear systems
+struct iteration_type
+{
+    enum type
+    {
+        picard = 0,  /// stationary point iteration, 1st order
+        newton = 1,  /// newton's method, yields updates to the solution, 2nd order
+        newton2 = 2  /// newton's method,  yields new solution at each iteration, 2nd order
+    };
+};
+
 /// @brief Specifies the time integration scheme, see Wriggers, Nonlinear FEM, p. 205
 struct time_integration
 {
