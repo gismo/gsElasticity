@@ -96,12 +96,13 @@ public:
         mdPressure.points = quNodes;
         // NEED_VALUE to compute pressure values
         // NEED_DERIV to compute pressure gradient
-        if (supg)
-            mdPressure.flags = NEED_VALUE | NEED_DERIV;
-        else
+        //if (supg)
+        //    mdPressure.flags = NEED_VALUE | NEED_DERIV;
+        //else
             mdPressure.flags = NEED_VALUE;
         // evaluate pressure gradient
-        pressure.patch(patch).computeMap(mdPressure);
+        //pressure.patch(patch).computeMap(mdPressure);
+        pressure.patch(patch).eval_into(quNodes,pressureValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -206,11 +207,11 @@ protected:
             // rhs: residual advection
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() -= weight *
-                    (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * basisValuesVel[0].col(q);
+                    (physJacCurVel.row(d) * mdVelocity.values[0].col(q))(0,0) * basisValuesVel[0].col(q);
             // rhs: residual pressure
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight *
-                    mdPressure.values[0].at(q) * physGradVel.row(d).transpose();
+                    pressureValues.at(q) * physGradVel.row(d).transpose();
             // rhs: constraint residual
             localRhs.middleRows(dim*N_V,N_P).noalias() += weight *
                 basisValuesPres.col(q) * physJacCurVel.trace();
@@ -303,7 +304,7 @@ protected:
             block = weight*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
             for (short_t di = 0; di < dim; ++di)
                 for (short_t dj = 0; dj < dim; ++dj)
-                    localMat.block(di*N_V,dj*N_V,N_V,N_V) += block.block(0,0,N_V,N_V) * physJacCurVel(di,dj);
+                    localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
             // matrices B and D
             for (short_t d = 0; d < dim; ++d)
             {
@@ -318,8 +319,8 @@ protected:
             // rhs: residual nonlinear
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight *
-                    (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * basisValuesVel[0].col(q);
-            if (supg)
+                    (physJacCurVel.row(d) * mdVelocity.values[0].col(q))(0,0) * basisValuesVel[0].col(q);
+            /*if (supg)
             {
                 T velNorm = mdVelocity.values[0].col(q).norm();
                 T Pe_h = velNorm * h / viscosity; // Peclet number
@@ -357,7 +358,7 @@ protected:
                 for (short_t d = 0; d < dim; ++d)
                     localRhs.middleRows(d*N_V,N_V).noalias() += weight * tau *
                         (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * advectedPhysGradVel;
-            }
+            }*/
         }
     }
 
@@ -477,6 +478,7 @@ protected:
     const gsMultiPatch<T> & pressure;
     // evaluation data of the current pressure field stored as a 1 x numQuadPoints matrix
     gsMapData<T> mdPressure;
+    gsMatrix<T> pressureValues;
 };
 
 } // namespace gismo

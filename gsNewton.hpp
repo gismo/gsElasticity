@@ -219,10 +219,10 @@ std::string gsNewton<T>::status()
                 util::to_string(numIterations) + " iteration(s).";
     else if (m_status == newton_status::working)
         statusString = "It: " + util::to_string(numIterations) +
-                 ", resAbs: " + util::to_string(residualNorm) +
-                 ", resRel: " + util::to_string(residualNorm/initResidualNorm) +
                  ", updAbs: " + util::to_string(updateNorm) +
-                 ", updRel: " + util::to_string(updateNorm/initUpdateNorm);
+                 ", updRel: " + util::to_string(updateNorm/initUpdateNorm) +
+                 ", resAbs: " + util::to_string(residualNorm) +
+                 ", resRel: " + util::to_string(residualNorm/initResidualNorm);
     else
         statusString = "Newton's method was interrupted due to an invalid solution.";
     return statusString;

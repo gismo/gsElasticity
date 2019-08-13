@@ -126,7 +126,7 @@ int main(int argc, char* argv[]){
         gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,i,numPlotPoints);
 
     }
-    gsInfo << "Newton now\n";
+    gsInfo << "Newton2 now\n";
     assembler.options().setInt("Iteration",iteration_type::newton2);
     for (index_t i = 0; i < itersN; ++i)
     {
@@ -139,11 +139,25 @@ int main(int argc, char* argv[]){
         gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersOs+i,numPlotPoints);
     }
 
+    gsInfo << "Newton now\n";
+    assembler.options().setInt("Iteration",iteration_type::newton);
+    assembler.options().setReal("DirichletAssembly",0.);
+    for (index_t i = 0; i < itersN2; ++i)
+    {
+        assembler.assemble(solVector);
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        tempSolVector = solver.solve(assembler.rhs());
+        gsInfo << "It " << i << " abs " << tempSolVector.norm() << std::endl;
+        solVector += tempSolVector;
+        assembler.constructSolution(solVector,velocity,pressure);
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersOs+itersN+i,numPlotPoints);
+    }
+
     //=============================================//
                   // Solving Newton//
     //=============================================//
 
-    assembler.options().setInt("Iteration",iteration_type::newton);
+    /*assembler.options().setInt("Iteration",iteration_type::newton);
     // setting Newton's method
     gsNewton<real_t> newton(assembler,solVector);
     newton.options().setInt("Verbosity",newton_verbosity::all);
@@ -162,7 +176,7 @@ int main(int argc, char* argv[]){
     gsStopwatch clock;
     clock.restart();
     newton.solve();
-    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";*/
 
     // constructing solution as an IGA function
     //gsMultiPatch<> velocity, pressure;
