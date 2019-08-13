@@ -163,7 +163,7 @@ protected:
             localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);     // --|--    matrix structure
         localRhs.setZero(dim*N_V + N_P,1);                      // B | 0
         // roughly estimate h - diameter of the element ( for SUPG)
-        T h = cellSize(element);
+        //T h = cellSize(element);
 
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -303,7 +303,7 @@ protected:
             block = weight*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
             for (short_t di = 0; di < dim; ++di)
                 for (short_t dj = 0; dj < dim; ++dj)
-                    localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
+                    localMat.block(di*N_V,dj*N_V,N_V,N_V) += block.block(0,0,N_V,N_V) * physJacCurVel(di,dj);
             // matrices B and D
             for (short_t d = 0; d < dim; ++d)
             {
@@ -319,6 +319,45 @@ protected:
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() += weight *
                     (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * basisValuesVel[0].col(q);
+            if (supg)
+            {
+                T velNorm = mdVelocity.values[0].col(q).norm();
+                T Pe_h = velNorm * h / viscosity; // Peclet number
+                T alpha = std::min(1.,Pe_h/6);
+                T tau = abs(velNorm) > 1e-14 ? alpha * h / velNorm / 2. : 0.; // stabilization parameter
+                // physical gradients of velocity basis functions multiplied by the current velocity; N_V x 1 matrix
+                gsMatrix<T> advectedPhysGradVel = (mdVelocity.values[0].col(q).transpose() * physGradVel).transpose();
+                // matrix A: diffusion stabilization
+                gsMatrix<T> physLaplVel; // laplacians of the basis functions as a 1 x N_V matrix
+                transformLaplaceHgrad(md,q,basisValuesVel[1],basisValuesVel[2],physLaplVel);
+                block = weight*viscosity*tau*advectedPhysGradVel*physLaplVel;
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) -= block.block(0,0,N_V,N_V);
+                // matrix A: advection stabilization
+                block = weight*tau* advectedPhysGradVel*advectedPhysGradVel.transpose();
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+                // matrix A: reaction stabilization
+                block = weight*tau*advectedPhysGradVel* basisValuesVel[0].col(q).transpose();
+                for (short_t di = 0; di < dim; ++di)
+                    for (short_t dj = 0; dj < dim; ++dj)
+                        localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
+                // matrix D: pressure stabilization
+                // Compute physical gradients of the pressure basis functions at q as a dim x numActiveFunction matrix
+                gsMatrix<T> physGradPres;
+                transformGradients(md, q, basisGradsPres, physGradPres);
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,dim*N_V,N_V,N_P) += (weight*tau*advectedPhysGradVel*
+                                                              physGradPres.row(d)).block(0,0,N_V,N_P);
+                // rhs: force stabilization
+                for (short_t d = 0; d < dim; ++d)
+                    localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling * tau *
+                        forceValues(d,q) * advectedPhysGradVel;
+                // rhs: nonlinear stabilization
+                for (short_t d = 0; d < dim; ++d)
+                    localRhs.middleRows(d*N_V,N_V).noalias() += weight * tau *
+                        (physJacCurVel.row(d) * mdVelocity.values[0].col(q)) * advectedPhysGradVel;
+            }
         }
     }
 
@@ -330,7 +369,7 @@ protected:
             localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);     // --|--    matrix structure
         localRhs.setZero(dim*N_V + N_P,1);                      // B | 0
         // roughly estimate h - diameter of the element ( for SUPG)
-        T h = cellSize(element);
+        //T h = cellSize(element);
 
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -364,7 +403,7 @@ protected:
             // SUPG stabilization
             // see D.Kuzmin "A guide to numerical methods for transport equations" pp.67-71
             // and J.Volker " FEM for Incompressible Flow Problems" p. 286
-            if (supg)
+            /*if (supg)
             {
                 T velNorm = mdVelocity.values[0].col(q).norm();
                 T Pe_h = velNorm * h / viscosity; // Peclet number
@@ -393,7 +432,7 @@ protected:
                 for (short_t d = 0; d < dim; ++d)
                     localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling * tau *
                         forceValues(d,q) * advectedPhysGradVel;
-            }
+            }*/
         }
     }
 

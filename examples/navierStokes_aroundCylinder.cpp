@@ -20,8 +20,9 @@ int main(int argc, char* argv[]){
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;
     bool subgrid = false;
-    index_t itersOs = 20;
-    index_t itersN  = 20;
+    index_t itersOs = 10;
+    index_t itersN  = 10;
+    index_t itersN2 = 10;
     bool supg = true;
 
     // minimalistic user interface for terminal
@@ -33,6 +34,7 @@ int main(int argc, char* argv[]){
     cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     cmd.addInt("i","iters","Max number of Newton's iterations",itersN);
+    cmd.addInt("x","xters","Max number of Newtonsss iterations",itersN2);
     cmd.addInt("j","jters","Max number of Oseen iterations",itersOs);
     cmd.addSwitch("g","supg","Do NOT use SUPG stabilization",supg);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -145,7 +147,7 @@ int main(int argc, char* argv[]){
     // setting Newton's method
     gsNewton<real_t> newton(assembler,solVector);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("MaxIters",itersN);
+    newton.options().setInt("MaxIters",itersN2);
     newton.options().setInt("Solver",linear_solver::LU);
     index_t i = 0;
     newton.setPreProcessingFunction([&](const gsMatrix<> & matrix)
