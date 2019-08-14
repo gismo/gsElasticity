@@ -119,14 +119,5 @@ int main(int argc, char* argv[]){
     fields["Pressure"] = &pressureField;
     gsWriteParaviewMultiPhysics(fields,"stokes_around_cylinder",numPlotPoints);
 
-    //=============================================//
-                  // Validation //
-    //=============================================//
-
-    gsMatrix<> point(2,1);
-    point << 0.5, 0;
-    gsInfo << "Pressure difference: " << pressure.patch(0).eval(point)(0,0) -
-                                         pressure.patch(2).eval(point)(0,0) << "Pa\n";
-
     return 0;
 }

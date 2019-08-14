@@ -139,8 +139,6 @@ int main(int argc, char* argv[]){
     real_t U_mean = maxInflow * 2./3.; // mean velocity
     gsInfo << "Drag coefficient: " << 2.*force.at(0)/L/pow(U_mean,2) << std::endl;
     gsInfo << "Lift coefficient: " << 2.*force.at(1)/L/pow(U_mean,2) << std::endl;
-    gsInfo << "Drag: " << force.at(0) << std::endl;
-    gsInfo << "Lift: " << force.at(1) << std::endl;
 
     // evaluating pressure difference at the far front and the far rear points of the cylinder
     gsMatrix<> point(2,1);

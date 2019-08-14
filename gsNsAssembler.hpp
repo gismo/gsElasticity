@@ -153,7 +153,6 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
     gsMatrix<T> force;
     force.setZero(m_dim,1);
     const T viscosity = m_options.getReal("Viscosity");
-    T length = 0.;
 
     // loop over bdry sides
     for (auto &it : bdrySides)
@@ -180,7 +179,7 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
             // NEED_DERIV for velocity gradients
             gsMapData<T> mdVel(NEED_DERIV);
             mdVel.points = quNodes;
-            m_pde_ptr->patches().patch(it.first).computeMap(mdVel);
+            velocity.patch(it.first).computeMap(mdVel);
             // evaluate pressure at the quad points
             gsMatrix<T> pressureValues;
             pressure.patch(it.first).eval_into(quNodes,pressureValues);
@@ -193,18 +192,12 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
                 // normal length is the local measure
                 gsVector<T> normal;
                 outerNormal(mdGeo,q,it.second,normal);
-                gsInfo << "norm\n" <<  normal.norm() << std::endl;
-
-                gsInfo << "norm\n" <<  normal << std::endl;
                 // stress tensor
-                gsMatrix<T> sigma = viscosity*physGradJac - pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim);
+                gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) - viscosity*physGradJac;
                 force += quWeights[q] * sigma * normal;
-
-                length += normal.norm() * quWeights[q];
             }
         }
     }
-    gsInfo << "len " << length << std::endl;
     return force;
 }
 
