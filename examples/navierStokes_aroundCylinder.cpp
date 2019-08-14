@@ -127,13 +127,26 @@ int main(int argc, char* argv[]){
     //=============================================//
                   // Validation //
     //=============================================//
+
+    // computing force acting on the surface of the cylinder
+    std::vector<std::pair<index_t, boxSide> > bdrySides;
+    bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
+    gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
+    real_t L = 0.1; // characteristic lenght
+    real_t U_mean = maxInflow * 2./3.; // mean velocity
+    gsInfo << "Drag coefficient: " << 2.*force.at(0)/L/pow(U_mean,2) << std::endl;
+    gsInfo << "Lift coefficient: " << 2.*force.at(1)/L/pow(U_mean,2) << std::endl;
+    gsInfo << "Drag: " << force.at(0) << std::endl;
+    gsInfo << "Lift: " << force.at(1) << std::endl;
+
     // evaluating pressure difference at the far front and the far rear points of the cylinder
     gsMatrix<> point(2,1);
     point << 0.5, 0;                                                                   // this info is hard-cored in the geometry
     gsInfo << "Pressure difference: " << pressure.patch(0).eval(point)(0,0) -          // far front point
                                          pressure.patch(2).eval(point)(0,0) << "Pa\n"; // far rear point
-    // lift
 
-    // drag
     return 0;
 }
