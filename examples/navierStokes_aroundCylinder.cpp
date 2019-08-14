@@ -20,10 +20,8 @@ int main(int argc, char* argv[]){
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;
     bool subgrid = false;
-    index_t itersOs = 10;
-    index_t itersN  = 10;
-    index_t itersN2 = 10;
-    bool supg = true;
+    index_t iters = 20;
+    bool supg = false;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the Stokes solver in 2D.");
@@ -33,9 +31,7 @@ int main(int argc, char* argv[]){
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
     cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addInt("i","iters","Max number of Newton's iterations",itersN);
-    cmd.addInt("x","xters","Max number of Newtonsss iterations",itersN2);
-    cmd.addInt("j","jters","Max number of Oseen iterations",itersOs);
+    cmd.addInt("i","iters","Max number of Newton's iterations",iters);
     cmd.addSwitch("g","supg","Do NOT use SUPG stabilization",supg);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -96,114 +92,48 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     //=============================================//
-                  // Solving Oseen//
-    //=============================================//
-
-    gsMultiPatch<> velocity, pressure;
-
-    gsField<> velocityField(assembler.patches(),velocity);
-    gsField<> pressureField(assembler.patches(),pressure);
-
-    std::map<std::string,const gsField<> *> fields;
-    fields["Velocity"] = &velocityField;
-    fields["Pressure"] = &pressureField;
-
-    gsParaviewCollection collection("NS_around_cylinder");
-
-
-    gsMatrix<> solVector;
-    solVector.setZero(assembler.numDofs(),1);
-    assembler.options().setInt("Iteration",iteration_type::picard);
-    gsMatrix<> tempSolVector;
-    for (index_t i = 0; i < itersOs; ++i)
-    {
-        assembler.assemble(solVector);
-        gsSparseSolver<>::LU solver(assembler.matrix());
-        tempSolVector = solver.solve(assembler.rhs());
-        gsInfo << "It " << i << " abs " << (tempSolVector-solVector).norm() << std::endl;
-        solVector = tempSolVector;
-        assembler.constructSolution(solVector,velocity,pressure);
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,i,numPlotPoints);
-
-    }
-    gsInfo << "Newton2 now\n";
-    assembler.options().setInt("Iteration",iteration_type::newton2);
-    for (index_t i = 0; i < itersN; ++i)
-    {
-        assembler.assemble(solVector);
-        gsSparseSolver<>::LU solver(assembler.matrix());
-        tempSolVector = solver.solve(assembler.rhs());
-        gsInfo << "It " << i << " abs " << (tempSolVector-solVector).norm() << std::endl;
-        solVector = tempSolVector;
-        assembler.constructSolution(solVector,velocity,pressure);
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersOs+i,numPlotPoints);
-    }
-
-    gsInfo << "Newton now\n";
-    assembler.options().setInt("Iteration",iteration_type::newton);
-    assembler.options().setReal("DirichletAssembly",0.);
-    for (index_t i = 0; i < itersN2; ++i)
-    {
-        assembler.assemble(solVector);
-        gsSparseSolver<>::LU solver(assembler.matrix());
-        tempSolVector = solver.solve(assembler.rhs());
-        gsInfo << "It " << i << " abs " << tempSolVector.norm() << std::endl;
-        solVector += tempSolVector;
-        assembler.constructSolution(solVector,velocity,pressure);
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersOs+itersN+i,numPlotPoints);
-    }
-
-    //=============================================//
                   // Solving Newton//
     //=============================================//
 
-    /*assembler.options().setInt("Iteration",iteration_type::newton);
     // setting Newton's method
-    gsNewton<real_t> newton(assembler,solVector);
+    gsNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("MaxIters",itersN2);
+    newton.options().setInt("MaxIters",iters);
     newton.options().setInt("Solver",linear_solver::LU);
-    index_t i = 0;
-    newton.setPreProcessingFunction([&](const gsMatrix<> & matrix)
-    {
-        assembler.constructSolution(matrix,velocity,pressure);
-
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersOs+itersN+i,numPlotPoints);
-        ++i;
-    });
 
     gsInfo << "Solving...\n";
     gsStopwatch clock;
     clock.restart();
     newton.solve();
-    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";*/
-
-    // constructing solution as an IGA function
-    //gsMultiPatch<> velocity, pressure;
-    //assembler.constructSolution(newton.solution(),velocity,pressure);
-    //gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_around_cylinder",collection,itersN+itersOs,numPlotPoints);
-
-    // constructing an IGA field (geometry + solution)
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     //=============================================//
                   // Output //
     //=============================================//
 
-    gsInfo << "Plotting the output to the Paraview file \"NS_around_cylinder.pvd\"...\n";
+    // constructing solution as an IGA function
+    gsMultiPatch<> velocity, pressure;
+    assembler.constructSolution(newton.solution(),velocity,pressure);
+    // constructuin isogeometric field (geometry + solution)
+    gsField<> velocityField(assembler.patches(),velocity);
+    gsField<> pressureField(assembler.patches(),pressure);
     // creating a container to plot all fields to one Paraview file
-    //gsWriteParaviewMultiPhysics(fields,"NS_around_cylinder",numPlotPoints);
+    std::map<std::string,const gsField<> *> fields;
+    fields["Velocity"] = &velocityField;
+    fields["Pressure"] = &pressureField;
+    gsInfo << "Plotting the output to the Paraview file \"NS_around_cylinder.pvd\"...\n";
+    gsWriteParaviewMultiPhysics(fields,"NS_aroundCylinder",numPlotPoints);
 
     //=============================================//
                   // Validation //
     //=============================================//
-
+    // evaluating pressure difference at the far front and the far rear points of the cylinder
     gsMatrix<> point(2,1);
-    point << 0.5, 0;
-    gsInfo << "Pressure difference: " << pressure.patch(0).eval(point)(0,0) -
-                                         pressure.patch(2).eval(point)(0,0) << "Pa\n";
+    point << 0.5, 0;                                                                   // this info is hard-cored in the geometry
+    gsInfo << "Pressure difference: " << pressure.patch(0).eval(point)(0,0) -          // far front point
+                                         pressure.patch(2).eval(point)(0,0) << "Pa\n"; // far rear point
+    // lift
 
-    collection.save();
-
+    // drag
     return 0;
-
 }
