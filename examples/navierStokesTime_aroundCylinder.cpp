@@ -100,7 +100,7 @@ int main(int argc, char* argv[]){
     massAssembler.options().setReal("Density",density);
 
     gsNsTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
-    timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
+    timeSolver.options().setInt("Scheme",time_integration_NS::implicit_oseen);
     timeSolver.options().setInt("Verbosity",newton_verbosity::all);
     // set initial conditions
     timeSolver.setInitialSolution(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));

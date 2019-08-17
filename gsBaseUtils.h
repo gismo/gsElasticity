@@ -30,6 +30,18 @@ struct iteration_type
     };
 };
 
+
+/// @brief Specifies the time integration scheme for incompressible Navier-Stokes equations
+struct time_integration_NS
+{
+    enum scheme
+    {
+        explicit_euler = 0,  /// explicit Euler time integration
+        implicit_newton = 1,  /// implicit Euler time integration with full Newton's method at each time step
+        implicit_oseen = 2 /// implicit Euler time integration with linear Oseen equation solver at each step
+    };
+};
+
 /// @brief Specifies the time integration scheme, see Wriggers, Nonlinear FEM, p. 205
 struct time_integration
 {

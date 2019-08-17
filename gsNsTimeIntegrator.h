@@ -61,7 +61,8 @@ public:
 
 protected:
     /// time integraton schemes
-    gsMatrix<T> implicitEuler();
+    gsMatrix<T> implicitNewton();
+    gsMatrix<T> implicitOseen();
 
 protected:
     /// assembler object that generates the static system
@@ -77,6 +78,7 @@ protected:
     T tStep;
     /// vector of displacement DoFs
     gsMatrix<T> solVector;
+    using Base::m_system;
     using Base::m_options;
 };
 

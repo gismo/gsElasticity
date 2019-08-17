@@ -56,18 +56,38 @@ template <class T>
 void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
 {
     tStep = timeStep;
-    if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
-        solVector = implicitEuler();
+    if (m_options.getInt("Scheme") == time_integration_NS::implicit_newton)
+        solVector = implicitNewton();
+    if (m_options.getInt("Scheme") == time_integration_NS::implicit_oseen)
+        solVector = implicitOseen();
 }
 
 template <class T>
-gsMatrix<T> gsNsTimeIntegrator<T>::implicitEuler()
+gsMatrix<T> gsNsTimeIntegrator<T>::implicitNewton()
 {
     gsNewton<T> solver(*this,solVector);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
     solver.options().setInt("MaxIters",1);
     solver.solve();
     return solver.solution();
+}
+
+template <class T>
+gsMatrix<T> gsNsTimeIntegrator<T>::implicitOseen()
+{
+    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
+    stiffAssembler.assemble(solVector);
+    m_system.matrix() = tStep*stiffAssembler.matrix();
+    index_t numDofsVel = massAssembler.numDofs();
+    gsSparseMatrix<T> tempMassMatrix = massAssembler.matrix();
+    tempMassMatrix.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
+    m_system.matrix().leftCols(numDofsVel) += tempMassMatrix;
+    m_system.matrix().makeCompressed();
+    m_system.rhs() = tStep*stiffAssembler.rhs();
+    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel) + massAssembler.rhs();
+
+    gsSparseSolver<>::LU solver(m_system.matrix());
+    return solver.solve(m_system.rhs());
 }
 
 template <class T>
@@ -79,7 +99,6 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector, bool as
     index_t numDofsVel = massAssembler.numDofs();
     gsSparseMatrix<T> tempMassMatrix = massAssembler.matrix();
     tempMassMatrix.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
-    gsInfo << tempMassMatrix.coeffRef(numDofsVel,0) << std::endl;
     Base::m_system.matrix().leftCols(numDofsVel) += tempMassMatrix;
     Base::m_system.rhs() = tStep*stiffAssembler.rhs();
     Base::m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*(solVector-solutionVector);
