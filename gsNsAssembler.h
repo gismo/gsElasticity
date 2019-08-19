@@ -68,7 +68,7 @@ public:
     virtual void setForceScaling(T factor) { m_options.setReal("ForceScaling",factor); }
     /// compute forces acting on a given part of the boundary (drag and lift)
     virtual gsMatrix<T> computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
-                                     const std::vector<std::pair<index_t,boxSide> > & bdrySides);
+                                     const std::vector<std::pair<index_t,boxSide> > & bdrySides) const;
 
 protected:
 

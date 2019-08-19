@@ -63,6 +63,7 @@ protected:
     /// time integraton schemes
     gsMatrix<T> implicitNewton();
     gsMatrix<T> implicitOseen();
+    gsMatrix<T> semiImplicitOseen();
 
 protected:
     /// assembler object that generates the static system

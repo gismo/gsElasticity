@@ -5,7 +5,34 @@
 #include <gsElasticity/gsNsTimeIntegrator.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
+#include <fstream>
+
 using namespace gismo;
+
+void validation(std::ofstream & ofs,
+                const gsNsAssembler<real_t> & assembler, real_t maxInflow,
+                const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure)
+{
+    // computing force acting on the surface of the cylinder
+    std::vector<std::pair<index_t, boxSide> > bdrySides;
+    bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
+    gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
+    real_t L = 0.1; // characteristic lenght
+    real_t U_mean = maxInflow * 2./3.; // mean velocity
+    real_t drag =  2.*force.at(0)/L/pow(U_mean,2);
+    real_t lift =  2.*force.at(1)/L/pow(U_mean,2);
+
+    // evaluating pressure difference at the far front and the far rear points of the cylinder
+    gsMatrix<> point(2,1);
+    point << 0.5, 0;
+    real_t pressureDiff =  pressure.patch(0).eval(point)(0,0) - pressure.patch(2).eval(point)(0,0);
+
+    ofs << drag << " " << lift << " " << pressureDiff << std::endl;
+}
+
 
 int main(int argc, char* argv[]){
     gsInfo << "Testing the time-dependent Navier-Stokes solver in 2D.\n";
@@ -17,14 +44,15 @@ int main(int argc, char* argv[]){
     std::string filename = ELAST_DATA_DIR"/flow_around_cylinder.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numKRef = 0; // number of k-refinements
-    index_t numPlotPoints = 10000;
+    index_t numPlotPoints = 1000;
     real_t viscosity = 0.001;
     real_t density = 1.;
     real_t maxInflow = 1.5;
     bool subgrid = false;
     bool supg = false;
-    index_t numTimeSteps = 100;
-    real_t timeSpan = 10.;
+    real_t timeStep = 0.01;
+    real_t timeSpan = 5.;
+    bool validate = false;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
@@ -36,8 +64,9 @@ int main(int argc, char* argv[]){
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     cmd.addSwitch("g","supg","Do NOT use SUPG stabilization",supg);
     cmd.addReal("t","time","Time span, sec",timeSpan);
-    cmd.addInt("s","steps","Number of time steps",numTimeSteps);
+    cmd.addReal("s","step","Time step",timeStep);
     cmd.addReal("d","density","Density of the fluid",density);
+    cmd.addSwitch("x","valiate","Validate the solver by measuring the drag/lift/pressure difference",validate);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -100,9 +129,8 @@ int main(int argc, char* argv[]){
     massAssembler.options().setReal("Density",density);
 
     gsNsTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
-    timeSolver.options().setInt("Scheme",time_integration_NS::implicit_oseen);
+    timeSolver.options().setInt("Scheme",time_integration_NS::crank_nicolson_oseen);
     timeSolver.options().setInt("Verbosity",newton_verbosity::all);
-    // set initial conditions
     timeSolver.setInitialSolution(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));
     timeSolver.initialize();
 
@@ -123,28 +151,63 @@ int main(int argc, char* argv[]){
     gsParaviewCollection collection("NS_aroundCylinder");
     // plotting initial condition
     stiffAssembler.constructSolution(gsMatrix<>::Zero(stiffAssembler.numDofs(),1),velocity,pressure);
-    gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,0,numPlotPoints);
+    if (numPlotPoints > 0)
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,0,numPlotPoints);
+    // output file for solver validation
+    std::ofstream ofs;
+    ofs.open ("validation.txt");
 
-    real_t timeStep = timeSpan/numTimeSteps;
-    gsStopwatch clock;
     gsProgressBar bar;
+    gsStopwatch clock;
 
     //=============================================//
-              // Transient simulation //
+          // Solving for initial conditions //
     //=============================================//
 
+
+    timeSolver.options().setInt("Scheme",time_integration_NS::implicit_euler_oseen);
     clock.restart();
-    gsInfo << "Running the transient simulation...\n";
-    for (index_t i = 0; i < numTimeSteps; ++i)
+    gsInfo << "Running the simulation with a coarse time step to compute an initial solution...\n";
+    for (index_t i = 0; i < 30; ++i)
     {
-        bar.display(i+1,numTimeSteps);
-        timeSolver.makeTimeStep(timeStep);
+        bar.display(i+1,30);
+        timeSolver.makeTimeStep(0.1);
         stiffAssembler.constructSolution(timeSolver.solutionVector(),velocity,pressure);
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,i+1,numPlotPoints);
+        if (numPlotPoints > 0)
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,i+1,numPlotPoints);
     }
     gsInfo << "Complete in " << clock.stop() << "s.\n";
-    collection.save();
-    gsInfo << "The results are saved to the Paraview file \"NS_aroundCylinder.pvd\"\n";
+
+    //=============================================//
+                  // Main simulation //
+    //=============================================//
+
+
+    timeSolver.options().setInt("Scheme",time_integration_NS::crank_nicolson_oseen);
+    clock.restart();
+    gsInfo << "Running the simulation with a fine time step...\n";
+    for (index_t i = 0; i < timeSpan/timeStep; ++i)
+    {
+        bar.display(i+1,timeSpan/timeStep);
+        timeSolver.makeTimeStep(timeStep);
+        stiffAssembler.constructSolution(timeSolver.solutionVector(),velocity,pressure);
+        if (numPlotPoints > 0)
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,i+11,numPlotPoints);
+        if (validate)
+            validation(ofs,stiffAssembler,maxInflow,velocity,pressure);
+    }
+    gsInfo << "Complete in " << clock.stop() << "s.\n";
+
+    //=============================================//
+                // Final touches //
+    //=============================================//
+
+    if (numPlotPoints > 0)
+    {
+        collection.save();
+        gsInfo << "The results are saved to the Paraview file \"NS_aroundCylinder.pvd\"\n";
+    }
+    ofs.close();
 
     return 0;
 }

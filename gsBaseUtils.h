@@ -37,8 +37,10 @@ struct time_integration_NS
     enum scheme
     {
         explicit_euler = 0,  /// explicit Euler time integration
-        implicit_newton = 1,  /// implicit Euler time integration with full Newton's method at each time step
-        implicit_oseen = 2 /// implicit Euler time integration with linear Oseen equation solver at each step
+        implicit_euler_newton = 1,  /// implicit Euler time integration, full Newton's method at each time step
+        implicit_euler_oseen = 2, /// implicit Euler time integration, linear Oseen equation solved at each step
+        crank_nicolson_newton = 3, /// semi-implicit (mid-point rule) time integration, full Newton's method at each time step
+        crank_nicolson_oseen = 4 /// semi-implicit (mid-point rule) time integration, linear Oseen equation solved at each step
     };
 };
 

@@ -56,10 +56,12 @@ template <class T>
 void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
 {
     tStep = timeStep;
-    if (m_options.getInt("Scheme") == time_integration_NS::implicit_newton)
+    if (m_options.getInt("Scheme") == time_integration_NS::implicit_euler_newton)
         solVector = implicitNewton();
-    if (m_options.getInt("Scheme") == time_integration_NS::implicit_oseen)
+    if (m_options.getInt("Scheme") == time_integration_NS::implicit_euler_oseen)
         solVector = implicitOseen();
+    if (m_options.getInt("Scheme") == time_integration_NS::crank_nicolson_oseen)
+        solVector = semiImplicitOseen();
 }
 
 template <class T>
@@ -70,24 +72,6 @@ gsMatrix<T> gsNsTimeIntegrator<T>::implicitNewton()
     solver.options().setInt("MaxIters",1);
     solver.solve();
     return solver.solution();
-}
-
-template <class T>
-gsMatrix<T> gsNsTimeIntegrator<T>::implicitOseen()
-{
-    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
-    stiffAssembler.assemble(solVector);
-    m_system.matrix() = tStep*stiffAssembler.matrix();
-    index_t numDofsVel = massAssembler.numDofs();
-    gsSparseMatrix<T> tempMassMatrix = massAssembler.matrix();
-    tempMassMatrix.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
-    m_system.matrix().leftCols(numDofsVel) += tempMassMatrix;
-    m_system.matrix().makeCompressed();
-    m_system.rhs() = tStep*stiffAssembler.rhs();
-    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel) + massAssembler.rhs();
-
-    gsSparseSolver<>::LU solver(m_system.matrix());
-    return solver.solve(m_system.rhs());
 }
 
 template <class T>
@@ -104,6 +88,44 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector, bool as
     Base::m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*(solVector-solutionVector);
 
     return true;
+}
+
+
+template <class T>
+gsMatrix<T> gsNsTimeIntegrator<T>::implicitOseen()
+{
+    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
+    stiffAssembler.assemble(solVector);
+    m_system.matrix() = tStep*stiffAssembler.matrix();
+    index_t numDofsVel = massAssembler.numDofs();
+    gsSparseMatrix<T> tempMassMatrix = massAssembler.matrix();
+    tempMassMatrix.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
+    m_system.matrix().leftCols(numDofsVel) += tempMassMatrix;
+    m_system.matrix().makeCompressed();
+    m_system.rhs() = tStep*stiffAssembler.rhs();
+    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel);// + massAssembler.rhs();
+
+    gsSparseSolver<>::LU solver(m_system.matrix());
+    return solver.solve(m_system.rhs());
+}
+
+template <class T>
+gsMatrix<T> gsNsTimeIntegrator<T>::semiImplicitOseen()
+{
+    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
+    stiffAssembler.assemble(solVector);
+    m_system.matrix() = 0.5*tStep*stiffAssembler.matrix();
+    index_t numDofsVel = massAssembler.numDofs();
+    gsSparseMatrix<T> tempMassMatrix = massAssembler.matrix();
+    tempMassMatrix.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
+    m_system.matrix().leftCols(numDofsVel) += tempMassMatrix;
+    m_system.matrix().makeCompressed();
+
+    m_system.rhs() = tStep*(stiffAssembler.rhs()-0.5*stiffAssembler.matrix()*solVector);
+    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel);
+
+    gsSparseSolver<>::LU solver(m_system.matrix());
+    return solver.solve(m_system.rhs());
 }
 
 } // namespace ends

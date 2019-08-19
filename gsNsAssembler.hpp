@@ -148,7 +148,7 @@ void gsNsAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPa
 
 template <class T>
 gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
-                                           const std::vector<std::pair<index_t,boxSide> > & bdrySides)
+                                           const std::vector<std::pair<index_t,boxSide> > & bdrySides) const
 {
     gsMatrix<T> force;
     force.setZero(m_dim,1);
