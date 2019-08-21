@@ -61,7 +61,7 @@ public:
 
 protected:
     /// time integraton schemes
-    gsMatrix<T> implicitNewton();
+    gsMatrix<T> newton();
     gsMatrix<T> implicitOseen();
     gsMatrix<T> semiImplicitOseen();
 
