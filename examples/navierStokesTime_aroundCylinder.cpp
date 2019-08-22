@@ -114,6 +114,15 @@ int main(int argc, char* argv[]){
         basisVelocity.uniformRefine();
         basisPressure.uniformRefine();
     }
+    // additional refinement of the boundary layer around the cylinder
+    gsMatrix<> box(2,2);
+    box << 0.,0.,0.,0.2;
+    for (index_t p = 0; p < 4; ++p)
+    {
+        basisVelocity.refine(p,box);
+        basisPressure.refine(p,box);
+    }
+    // additional velocity refinement for stable mixed FEM
     if (subgrid)
         basisVelocity.uniformRefine();
     else
