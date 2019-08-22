@@ -87,8 +87,8 @@ public:
         pressure.patch(patch).eval_into(quNodes,pressureValues);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T> & quWeights)
     {
         // Initialize local matrix/rhs
         if (assembleMatrix)                                     // A | B^T
@@ -171,8 +171,10 @@ public:
                     localMat.block(dim*N_D,dim*N_D,N_P,N_P) -=
                         (weight*lambda_inv*basisValuesPres.col(q)*basisValuesPres.col(q).transpose()).block(0,0,N_P,N_P);
             }
+            // rhs: constraint residual
+            localRhs.middleRows(dim*N_D,N_P) += weight*basisValuesPres.col(q)*(lambda_inv*pressureValues.at(q)-log(J));
 
-            // rhs contribution
+            // rhs: force
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_D,N_D).noalias() += weight * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q) ;
         }

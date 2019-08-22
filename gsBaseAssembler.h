@@ -81,6 +81,26 @@ public:
             result.addPatch( gsAssembler<T>::m_bases[basisIndices[0]][p].makeGeometry( give(coeffs) ) );
         }
     }
+protected:
+    /// scale Dirichlet degrees of freedom
+    void scaleDDoFs(T factor)
+    {
+        if (saved_ddof.empty())
+            saved_ddof = gsAssembler<T>::m_ddof;
+        for (unsigned d = 0; d < gsAssembler<T>::m_ddof.size(); ++d)
+            gsAssembler<T>::m_ddof[d] = saved_ddof[d]*factor;
+    }
+    /// reset Dirichlet degrees of freedom to its original state
+    void resetDDoFs()
+    {
+        if (!saved_ddof.empty())
+            gsAssembler<T>::m_ddof = saved_ddof;
+    }
+
+protected:
+    /// Dirichlet degrees of freedom saved to recover after modification
+    std::vector<gsMatrix<T> > saved_ddof;
+
 };
 
 } // namespace ends

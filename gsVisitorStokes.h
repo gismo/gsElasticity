@@ -68,8 +68,8 @@ public:
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T> & quWeights)
     {
         // Initialize local matrix/rhs                          // A | B^T
         localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);         // --|--    matrix structure
@@ -137,7 +137,7 @@ protected:
     // number of velocity and pressure basis functions active at the current element
     index_t N_V, N_P;
     // values and derivatives of velocity basis functions at quadrature points at the current element
-    // values are stored as a N_D x numQuadPoints matrix; not sure about derivatives, must be smth like N_D*dim x numQuadPoints
+    // values are stored as a N_V x numQuadPoints matrix; not sure about derivatives, must be smth like N_V*dim x numQuadPoints
     std::vector<gsMatrix<T> > basisValuesVel;
     // values of pressure basis functions active at the current element;
     // stores as a N_P x numQuadPoints matrix

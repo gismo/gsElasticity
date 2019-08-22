@@ -73,8 +73,8 @@ public:
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
-                         gsVector<T> const      & quWeights)
+    inline void assemble(gsDomainIterator<T> & element,
+                         const gsVector<T> & quWeights)
     {
         // Initialize local matrix/rhs                      // A | B^T
         localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure

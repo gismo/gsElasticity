@@ -45,8 +45,11 @@ public:
     /// @brief Assembly of the linear system for the Stokes problem
     virtual void assemble();
 
-    /// @ brief TODO: write
-    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true) {return true;}
+    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method
+    /// to solve the Navier-Stokes problem;
+    /// set *assembleMatrix* to false to only assemble the residual;
+    /// ATTENTION: rhs() returns a negative residual (-r) !!!
+    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
 
     /// @brief Construct velocity from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& velocity) const;
@@ -58,11 +61,14 @@ public:
     virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
 
     /// sets scaling of Dirichlet BC used for linear system assembly
-    virtual void setDirichletAssemblyScaling(T factor) {}
+    virtual void setDirichletAssemblyScaling(T factor) { m_options.setReal("DirichletAssembly",factor); }
     /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
-    virtual void setDirichletConstructionScaling(T factor) {}
+    virtual void setDirichletConstructionScaling(T factor) { m_options.setReal("DirichletConstruction",factor); }
     /// set scaling of the force loading (volume and surface loading)
-    virtual void setForceScaling(T factor) {}
+    virtual void setForceScaling(T factor) { m_options.setReal("ForceScaling",factor); }
+    /// compute forces acting on a given part of the boundary (drag and lift)
+    virtual gsMatrix<T> computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
+                                     const std::vector<std::pair<index_t,boxSide> > & bdrySides) const;
 
 protected:
 

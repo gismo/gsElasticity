@@ -115,17 +115,11 @@ public:
     virtual T solutionJacRatio(const gsMultiPatch<T> & solution) const;
 
     /// sets scaling of Dirichlet BC used for linear system assembly
-    virtual void setDirichletAssemblyScaling(T factor);
+    virtual void setDirichletAssemblyScaling(T factor) { m_options.setReal("DirichletAssembly",factor); }
     /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
-    virtual void setDirichletConstructionScaling(T factor);
+    virtual void setDirichletConstructionScaling(T factor) { m_options.setReal("DirichletConstruction",factor); }
     /// set scaling of the force loading (volume and surface loading)
-    virtual void setForceScaling(T factor);
-
-protected:
-    /// scale Dirichlet degrees of freedom
-    void scaleDDoFs(T factor);
-    /// reset Dirichlet degrees of freedom to its original state
-    void resetDDoFs();
+    virtual void setForceScaling(T factor) { m_options.setReal("ForceScaling",factor); }
 
 protected:
 
@@ -138,8 +132,6 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
-    /// Dirichlet degrees of freedom saved to recover after modification
-    std::vector<gsMatrix<T> > saved_ddof;
 };
 
 /// @brief Generates a matrix of sampling points for a given parametric element;

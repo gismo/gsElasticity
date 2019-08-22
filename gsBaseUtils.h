@@ -20,6 +20,29 @@
 namespace gismo
 {
 
+/// @brief Specifies the iteration type used to solve nonlinear systems
+struct iteration_type
+{
+    enum type
+    {
+        picard = 0,  /// stationary point iteration, 1st order, yields a new solution to each iteration
+        newton = 1,  /// newton's method, 2nd order, yields updates to the solution
+    };
+};
+
+
+/// @brief Specifies the time integration scheme for incompressible Navier-Stokes equations
+struct time_integration_NS
+{
+    enum scheme
+    {
+        explicit_euler = 0,  /// explicit Euler time integration
+        implicit_euler_newton = 1,  /// implicit Euler time integration, full Newton's method at each time step
+        implicit_euler_oseen = 2, /// implicit Euler time integration, linear Oseen equation solved at each step
+        crank_nicolson_oseen = 3 /// semi-implicit (mid-point rule) time integration, linear Oseen equation solved at each step
+    };
+};
+
 /// @brief Specifies the time integration scheme, see Wriggers, Nonlinear FEM, p. 205
 struct time_integration
 {
@@ -29,6 +52,18 @@ struct time_integration
         explicit_lumped = 1,  /// explicit scheme with lumped mass matrix
         implicit_linear = 2,  /// implicit scheme with linear problem
         implicit_nonlinear = 3 /// implicit scheme with nonlinear problem
+    };
+};
+
+/// @brief Specifies linear solver to use for iterations of Newton's method
+struct linear_solver
+{
+    enum solver
+    {
+        BiCGSTABILUT = 0,
+        CGDiagonal = 1,
+        LU = 2,
+        SimplicialLDLT = 3
     };
 };
 

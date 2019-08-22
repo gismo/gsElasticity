@@ -53,6 +53,8 @@ template <class T>
 gsOptionList gsNewton<T>::defaultOptions()
 {
     gsOptionList opt;
+    /// linear solver
+    opt.addInt("Solver","Linear solver to use",linear_solver::SimplicialLDLT);
     /// stopping creteria
     opt.addInt("MaxIters","Maximum number of iterations per loop",50);
     opt.addReal("AbsTol","Absolute tolerance for the convergence cretiria",1e-12);
@@ -163,8 +165,28 @@ bool gsNewton<T>::computeUpdate()
             gsInfo << status() << std::endl;
         return false;
     }
-    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-    gsVector<T> updateVector = solver.solve(assembler.rhs());
+
+    gsVector<T> updateVector;
+    if (m_options.getInt("Solver") == linear_solver::BiCGSTABILUT)
+    {
+        gsSparseSolver<>::BiCGSTABILUT solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
+    if (m_options.getInt("Solver") == linear_solver::CGDiagonal)
+    {
+        gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
+    if (m_options.getInt("Solver") == linear_solver::LU)
+    {
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
+    if (m_options.getInt("Solver") == linear_solver::SimplicialLDLT)
+    {
+        gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+    }
 
     updateNorm = updateVector.norm();
     residualNorm = assembler.rhs().norm();
@@ -197,10 +219,10 @@ std::string gsNewton<T>::status()
                 util::to_string(numIterations) + " iteration(s).";
     else if (m_status == newton_status::working)
         statusString = "It: " + util::to_string(numIterations) +
-                 ", resAbs: " + util::to_string(residualNorm) +
-                 ", resRel: " + util::to_string(residualNorm/initResidualNorm) +
                  ", updAbs: " + util::to_string(updateNorm) +
-                 ", updRel: " + util::to_string(updateNorm/initUpdateNorm);
+                 ", updRel: " + util::to_string(updateNorm/initUpdateNorm) +
+                 ", resAbs: " + util::to_string(residualNorm) +
+                 ", resRel: " + util::to_string(residualNorm/initResidualNorm);
     else
         statusString = "Newton's method was interrupted due to an invalid solution.";
     return statusString;
