@@ -54,6 +54,7 @@ int main(int argc, char* argv[]){
     real_t maxInflow = 0.3;
     bool subgrid = false;
     bool supg = false;
+    index_t iter = 5;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
@@ -66,6 +67,7 @@ int main(int argc, char* argv[]){
     cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     cmd.addSwitch("g","supg","Do NOT use SUPG stabilization",supg);
+    cmd.addInt("i","iter","Number of coupling iterations",iter);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -196,7 +198,18 @@ int main(int argc, char* argv[]){
              // Coupled simulation //
     //=============================================//
 
-
+    gsStopwatch clock;
+    clock.restart();
+    for (index_t i = 0; i < iter; ++i)
+    {
+        // 1. apply flow-mesh deformation (how?)
+        // 2. solve flow (done)
+        // 3. compute drag&lift (done)
+        // 4. apply drag&lift (how?)
+        // 5. solve beam (done)
+        // 6. compute flow mesh deformation (done)
+    }
+    gsInfo << "Solverd in "<< clock.stop() <<"s.\n";
 
     //=============================================//
              // Final touches //
