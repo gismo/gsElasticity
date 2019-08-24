@@ -48,7 +48,7 @@ int main(int argc, char* argv[]){
     index_t numKRef = 0; // number of k-refinements
     index_t numBLRef = 1; // number of additional boundary layer refinements
     index_t numPlotPoints = 10000;
-    real_t youngModulus = 0.5e6;
+    real_t youngsModulus = 0.5e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;
@@ -59,8 +59,9 @@ int main(int argc, char* argv[]){
     gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
+    cmd.addInt("b","blayer","Number of additional boundary layer refinements",numBLRef);
     cmd.addInt("p","plot","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addReal("y","young","Young modulus of the beam materail",youngModulus);
+    cmd.addReal("y","young","Young's modulus of the beam materail",youngsModulus);
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
     cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
@@ -106,6 +107,12 @@ int main(int argc, char* argv[]){
     gsMultiPatch<> geoBeam;
     gsReadFile<>(filenameBeam, geoBeam);
 
+    // boundary conditions: flow mesh, set zero dirichlet on the entire boundary
+    gsBoundaryConditions<> bcInfoMesh;
+    for (auto it = geoFlow.bBegin(); it != geoFlow.bEnd(); ++it)
+        for (index_t d = 0; d < 2; ++d)
+            bcInfoMesh.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+
     // creating bases
     gsMultiBasis<> basisVelocity(geoFlow);
     gsMultiBasis<> basisPressure(geoFlow);
@@ -140,97 +147,64 @@ int main(int argc, char* argv[]){
         basisVelocity.degreeElevate();
         basisDisplacement.degreeElevate();
     }
-
-    /// todo //////////////////////////
-
-
-    gsNsAssembler<real_t> stiffAssembler(geometry,basisVelocity,basisPressure,bcInfo,g);
-    stiffAssembler.options().setReal("Viscosity",viscosity);
-    stiffAssembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    stiffAssembler.options().setSwitch("SUPG",supg);
-    gsInfo << "Initialized system with " << stiffAssembler.numDofs() << " dofs.\n";
-
-    gsMassAssembler<real_t> massAssembler(geometry,basisVelocity,bcInfo,g);
-    massAssembler.options().setReal("Density",density);
-
-    gsNsTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
-    timeSolver.setInitialSolution(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));
-    timeSolver.initialize();
+    // navier stokes assembler
+    gsNsAssembler<real_t> nsAssembler(geoFlow,basisVelocity,basisPressure,bcInfoFlow,g);
+    nsAssembler.options().setReal("Viscosity",viscosity);
+    nsAssembler.options().setSwitch("SUPG",supg);
+    gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
+    // elasticity assembler: beam
+    gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
+    elAssembler.options().setReal("YoungsModulus",youngsModulus);
+    elAssembler.options().setReal("PoissonsRatio",poissonsRatio);
+    elAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
+    gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
+    // elasticity assembler: flow mesh
+    gsElasticityAssembler<real_t> meshAssembler(geoFlow,basisVelocity,bcInfoMesh,g);
+    elAssembler.options().setReal("PoissonsRatio",0.4);
+    elAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
+    gsInfo << "Initialized elasticity system for mesh deformation with " << meshAssembler.numDofs() << " dofs.\n";
 
     //=============================================//
              // Setting output and auxilary //
     //=============================================//
 
     // containers for solution as IGA functions
-    gsMultiPatch<> velocity, pressure;
+    gsMultiPatch<> velocity, pressure, displacementBeam, displacementMesh;
     // isogeometric fields (geometry + solution)
-    gsField<> velocityField(geometry,velocity);
-    gsField<> pressureField(geometry,pressure);
+    gsField<> velocityField(geoFlow,velocity);
+    gsField<> pressureField(geoFlow,pressure);
+    gsField<> displacementFieldBeam(geoBeam,displacementBeam);
+    gsField<> displacementFieldMesh(geoFlow,displacementMesh);
     // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Velocity"] = &velocityField;
-    fields["Pressure"] = &pressureField;
+    std::map<std::string,const gsField<> *> fieldsFlow;
+    fieldsFlow["Velocity"] = &velocityField;
+    fieldsFlow["Pressure"] = &pressureField;
+    fieldsFlow["Displacement"] = &displacementFieldMesh;
+    std::map<std::string,const gsField<> *> fieldsBeam;
+    fieldsBeam["Displacement"] = &displacementFieldBeam;
     // paraview collection of time steps
-    gsParaviewCollection collection("NS_aroundCylinder");
+    gsParaviewCollection collectionFlow("fsi_steady_flow");
+    gsParaviewCollection collectionBeam("fsi_steady_beam");
     // plotting initial condition
-    stiffAssembler.constructSolution(gsMatrix<>::Zero(stiffAssembler.numDofs(),1),velocity,pressure);
-    if (numPlotPoints > 0)
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,0,numPlotPoints);
-    // output file for solver validation
-    std::ofstream ofs;
-    ofs.open ("validation.txt");
-
-    gsProgressBar bar;
-    gsStopwatch clock;
+    nsAssembler.constructSolution(gsMatrix<>::Zero(nsAssembler.numDofs(),1),velocity,pressure);
+    elAssembler.constructSolution(gsMatrix<>::Zero(elAssembler.numDofs(),1),displacementBeam);
+    meshAssembler.constructSolution(gsMatrix<>::Zero(meshAssembler.numDofs(),1),displacementMesh);
+    gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,0,numPlotPoints);
+    gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,0,numPlotPoints);
 
     //=============================================//
-          // Solving for initial conditions //
+             // Coupled simulation //
     //=============================================//
 
 
-    timeSolver.options().setInt("Scheme",time_integration_NS::implicit_euler_oseen);
-    clock.restart();
-    gsInfo << "Running the simulation with a coarse time step to compute an initial solution...\n";
-    for (index_t i = 0; i < 30; ++i)
-    {
-        bar.display(i+1,30);
-        timeSolver.makeTimeStep(0.1);
-        stiffAssembler.constructSolution(timeSolver.solutionVector(),velocity,pressure);
-        if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,i+1,numPlotPoints);
-    }
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
 
     //=============================================//
-                  // Main simulation //
+             // Final touches //
     //=============================================//
 
-
-    timeSolver.options().setInt("Scheme",time_integration_NS::implicit_euler_oseen);
-    clock.restart();
-    gsInfo << "Running the simulation with a fine time step...\n";
-    for (index_t i = 0; i < timeSpan/timeStep; ++i)
-    {
-        bar.display(i+1,timeSpan/timeStep);
-        timeSolver.makeTimeStep(timeStep);
-        stiffAssembler.constructSolution(timeSolver.solutionVector(),velocity,pressure);
-        if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,i+11,numPlotPoints);
-        if (validate)
-            validation(ofs,stiffAssembler,maxInflow,velocity,pressure);
-    }
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
-
-    //=============================================//
-                // Final touches //
-    //=============================================//
-
-    if (numPlotPoints > 0)
-    {
-        collection.save();
-        gsInfo << "The results are saved to the Paraview file \"NS_aroundCylinder.pvd\"\n";
-    }
-    ofs.close();
+    gsInfo << "Plotting the output to the Paraview files \"fsi_steady flow.pvd\" and \"fsi_steady beam.pvd\"...\n";
+    collectionFlow.save();
+    collectionBeam.save();
 
     return 0;
 }
