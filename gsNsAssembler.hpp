@@ -110,8 +110,16 @@ bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembl
     Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
-    Base::template push<gsVisitorNavierStokes<T> >(visitor);
+    if (!ALE)
+    {
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
+        Base::template push<gsVisitorNavierStokes<T> >(visitor);
+    }
+    else
+    {
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,*aleDisp,assembleMatrix);
+        Base::template push<gsVisitorNavierStokes<T> >(visitor);
+    }
 
     Base::resetDDoFs();
     m_system.matrix().makeCompressed();
@@ -193,7 +201,8 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
                 gsVector<T> normal;
                 outerNormal(mdGeo,q,it.second,normal);
                 // stress tensor
-                gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) - viscosity*physGradJac;
+                gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
+                                    viscosity*(physGradJac + physGradJac.transpose());
                 force += quWeights[q] * sigma * normal;
             }
         }

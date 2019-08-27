@@ -88,4 +88,53 @@ void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) co
         result(0,i) = mappingData.jacobian(i).determinant();
 }
 
+template <class T>
+void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.setZero(targetDim(),u.cols());
+    // mapping points back to the parameter space
+    gsMatrix<T> paramPoints;
+    m_geo.patch(m_patch).invertPoints(u,paramPoints);
+    // evaluate geometry mapping at the param points
+    // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to physical domain
+    gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
+    mdGeo.points = paramPoints;
+    m_geo.patch(m_patch).computeMap(mdGeo);
+    // evaluate velocity at the param points
+    // NEED_DERIV for velocity gradients
+    gsMapData<T> mdVel(NEED_DERIV);
+    mdVel.points = paramPoints;
+    m_vel.patch(m_patch).computeMap(mdVel);
+    // evaluate pressure at the quad points
+    gsMatrix<T> pressureValues;
+    m_pres.patch(m_patch).eval_into(paramPoints,pressureValues);
+    // evaluate ALE mapping at the param points
+    // NEED_DERIV for gradients
+    gsMapData<T> mdALE(NEED_DERIV);
+    mdALE.points = paramPoints;
+    m_ale.patch(m_patch).computeMap(mdALE);
+
+    for (index_t p = 0; p < paramPoints.cols(); ++p)
+    {
+        // transform velocity gradients from parametric to physical
+        gsMatrix<T> physGradVel = mdVel.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
+        // ALE jacobian (identity + physical displacement gradient)
+        gsMatrix<T> physJacALE = gsMatrix<T>::Identity(targetDim(),targetDim()) +
+                mdALE.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
+        // inverse ALE jacobian
+        gsMatrix<T> invJacALE = physJacALE.cramerInverse();
+        // ALE stress tensor
+        gsMatrix<T> sigma = pressureValues.at(p)*gsMatrix<T>::Identity(targetDim(),targetDim())
+                            - m_viscosity*(physGradVel*invJacALE +
+                                           physGradVel.transpose()*invJacALE.transpose());
+        // stress tensor pull back
+        gsMatrix<T> sigmaALE = physJacALE.determinant()*sigma*(invJacALE.transpose());
+
+        // normal length is the local measure
+        gsVector<T> normal;
+        outerNormal(mdGeo,p,m_side,normal);
+        result.col(p) = sigmaALE * normal / normal.norm();
+    }
+}
+
 } // namespace gismo ends

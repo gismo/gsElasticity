@@ -17,6 +17,7 @@
 
 #include <gsCore/gsFunction.h>
 #include <gsElasticity/gsBaseUtils.h>
+#include <gsCore/gsBoundary.h>
 
 namespace gismo
 {
@@ -108,6 +109,47 @@ protected:
 
     gsMultiPatch<T> const & m_geo;
     index_t m_patch;
+
+}; // class definition ends
+
+/** @brief Loading function to transfer fluid action to the solid.
+ * Used in Fluid-Structure Interaction simulation.
+*/
+template <class T>
+class gsFsiLoad : public gsFunction<T>
+{
+public:
+
+    gsFsiLoad(const gsMultiPatch<T> & geoFlow, index_t patch, boxSide side,
+              const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
+              const gsMultiPatch<T> & ALEmapping, T viscosity)
+        : m_geo(geoFlow),
+          m_patch(patch),
+          m_side(side),
+          m_vel(velocity),
+          m_pres(pressure),
+          m_ale(ALEmapping),
+          m_viscosity(viscosity)
+    {}
+
+    virtual short_t domainDim() const { return m_geo.domainDim(); }
+
+    virtual short_t targetDim() const { return m_geo.domainDim(); }
+
+    /** @brief Each column of the input matrix (u) corresponds to one evaluation point.
+     *         Each column of the output matrix is the jacobian determinant of the mapping at this point.
+     */
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
+
+protected:
+
+    gsMultiPatch<T> const & m_geo;
+    index_t m_patch;
+    boxSide m_side;
+    gsMultiPatch<T> const & m_vel;
+    gsMultiPatch<T> const & m_pres;
+    gsMultiPatch<T> const & m_ale;
+    T m_viscosity;
 
 }; // class definition ends
 

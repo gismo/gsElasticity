@@ -36,6 +36,14 @@ public:
                   const gsBoundaryConditions<T> & bconditions,
                   const gsFunction<T> & body_force);
 
+    /// @brief Constructor with ALE formulation
+    gsNsAssembler(const gsMultiPatch<T> & patches,
+                  const gsMultiBasis<T> & basisVel,
+                  const gsMultiBasis<T> & basisPres,
+                  const gsBoundaryConditions<T> & bconditions,
+                  const gsFunction<T> & body_force,
+                  const gsMultiPatch<T> & aleDisplacement);
+
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
 
@@ -69,7 +77,12 @@ public:
     /// compute forces acting on a given part of the boundary (drag and lift)
     virtual gsMatrix<T> computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
                                      const std::vector<std::pair<index_t,boxSide> > & bdrySides) const;
-
+    /// set ALE displacement field (NOT the deformation!!!)
+    virtual void setALE(const gsMultiPatch<T> & ale)
+    {
+        aleDisp = &ale;
+        ALE = true;
+    }
 protected:
 
     /// Dimension of the problem
@@ -81,6 +94,11 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
+
+    /// ALE displacement field (used for FSI)
+    gsMultiPatch<T> const * aleDisp = nullptr;
+    /// flag to use ALE formulation
+    bool ALE = false;
 };
 
 } // namespace gismo ends

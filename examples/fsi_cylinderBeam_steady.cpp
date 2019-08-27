@@ -54,7 +54,7 @@ int main(int argc, char* argv[]){
     real_t maxInflow = 0.3;
     bool subgrid = false;
     bool supg = false;
-    index_t iter = 5;
+    index_t iter = 1;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
@@ -75,6 +75,18 @@ int main(int argc, char* argv[]){
     // inflow velocity profile
     gsFunctionExpr<> inflow(util::to_string(maxInflow) + "*4*y*(0.41-y)/0.41^2",2);
 
+    //=============================================//
+          // Setting assemblers and solvers //
+    //=============================================//
+
+    // scanning geometry
+    gsMultiPatch<> geoFlow;
+    gsReadFile<>(filenameFlow, geoFlow);
+    gsMultiPatch<> geoBeam;
+    gsReadFile<>(filenameBeam, geoBeam);
+
+    // containers for solution as IGA functions
+    gsMultiPatch<> velocity, pressure, displacementBeam, displacementMesh;
     // boundary conditions: flow
     gsBoundaryConditions<> bcInfoFlow;
     bcInfoFlow.addCondition(0,boundary::west,condition_type::dirichlet,&inflow,0);
@@ -98,17 +110,12 @@ int main(int argc, char* argv[]){
     gsBoundaryConditions<> bcInfoBeam;
     for (index_t d = 0; d < 2; ++d)
         bcInfoBeam.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
-
-    //=============================================//
-          // Setting assemblers and solvers //
-    //=============================================//
-
-    // scanning geometry
-    gsMultiPatch<> geoFlow;
-    gsReadFile<>(filenameFlow, geoFlow);
-    gsMultiPatch<> geoBeam;
-    gsReadFile<>(filenameBeam, geoBeam);
-
+    gsFsiLoad<real_t> fSouth(geoFlow,4,boundary::north,velocity,pressure,displacementMesh,viscosity);
+    gsFsiLoad<real_t> fEast(geoFlow,5,boundary::west,velocity,pressure,displacementMesh,viscosity);
+    gsFsiLoad<real_t> fNorth(geoFlow,3,boundary::south,velocity,pressure,displacementMesh,viscosity);
+    bcInfoBeam.addCondition(0,boundary::south,condition_type::neumann,&fSouth);
+    bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&fEast);
+    bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&fNorth);
     // boundary conditions: flow mesh, set zero dirichlet on the entire boundary
     gsBoundaryConditions<> bcInfoMesh;
     for (auto it = geoFlow.bBegin(); it != geoFlow.bEnd(); ++it)
@@ -149,29 +156,31 @@ int main(int argc, char* argv[]){
         basisVelocity.degreeElevate();
         basisDisplacement.degreeElevate();
     }
-    // navier stokes assembler
+    // navier stokes assembler with ALE formulation
     gsNsAssembler<real_t> nsAssembler(geoFlow,basisVelocity,basisPressure,bcInfoFlow,g);
+    nsAssembler.setALE(displacementMesh);
     nsAssembler.options().setReal("Viscosity",viscosity);
     nsAssembler.options().setSwitch("SUPG",supg);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
+    gsMatrix<> solutionFlow = gsMatrix<>::Zero(nsAssembler.numDofs(),1);
     // elasticity assembler: beam
     gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
     elAssembler.options().setReal("YoungsModulus",youngsModulus);
     elAssembler.options().setReal("PoissonsRatio",poissonsRatio);
     elAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
+    gsMatrix<> solutionBeam = gsMatrix<>::Zero(elAssembler.numDofs(),1);
     // elasticity assembler: flow mesh
     gsElasticityAssembler<real_t> meshAssembler(geoFlow,basisVelocity,bcInfoMesh,g);
     elAssembler.options().setReal("PoissonsRatio",0.4);
     elAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
     gsInfo << "Initialized elasticity system for mesh deformation with " << meshAssembler.numDofs() << " dofs.\n";
+    gsMatrix<> solutionMesh = gsMatrix<>::Zero(meshAssembler.numDofs(),1);
 
     //=============================================//
              // Setting output and auxilary //
     //=============================================//
 
-    // containers for solution as IGA functions
-    gsMultiPatch<> velocity, pressure, displacementBeam, displacementMesh;
     // isogeometric fields (geometry + solution)
     gsField<> velocityField(geoFlow,velocity);
     gsField<> pressureField(geoFlow,pressure);
@@ -188,9 +197,9 @@ int main(int argc, char* argv[]){
     gsParaviewCollection collectionFlow("fsi_steady_flow");
     gsParaviewCollection collectionBeam("fsi_steady_beam");
     // plotting initial condition
-    nsAssembler.constructSolution(gsMatrix<>::Zero(nsAssembler.numDofs(),1),velocity,pressure);
-    elAssembler.constructSolution(gsMatrix<>::Zero(elAssembler.numDofs(),1),displacementBeam);
-    meshAssembler.constructSolution(gsMatrix<>::Zero(meshAssembler.numDofs(),1),displacementMesh);
+    nsAssembler.constructSolution(solutionFlow,velocity,pressure);
+    elAssembler.constructSolution(solutionBeam,displacementBeam);
+    meshAssembler.constructSolution(solutionMesh,displacementMesh);
     gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,0,numPlotPoints);
     gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,0,numPlotPoints);
 
@@ -202,12 +211,61 @@ int main(int argc, char* argv[]){
     clock.restart();
     for (index_t i = 0; i < iter; ++i)
     {
+        gsInfo << i << "/" << iter << " FSI iterations\n";
         // 1. apply flow-mesh deformation (how?)
-        // 2. solve flow (done)
+        meshAssembler.constructSolution(solutionMesh,displacementMesh);
+        // 2. solve flow
+        gsInfo << "solving flow\n";
+        gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow);
+        newtonFlow.options().setInt("Verbosity",newton_verbosity::all);
+        newtonFlow.options().setInt("Solver",linear_solver::LU);
+        newtonFlow.solve();
+        solutionFlow = newtonFlow.solution();
         // 3. compute drag&lift (done)
+        nsAssembler.constructSolution(solutionFlow,velocity,pressure);
         // 4. apply drag&lift (how?)
+        /// done automatically
         // 5. solve beam (done)
+
+        gsInfo << "solving beam\n";
+        gsNewton<real_t> newtonBeam(elAssembler,solutionBeam);
+        newtonBeam.options().setInt("Verbosity",newton_verbosity::all);
+        newtonBeam.options().setInt("Solver",linear_solver::LU);
+        newtonBeam.solve();
+        solutionBeam = newtonBeam.solution();
+        elAssembler.constructSolution(solutionBeam,displacementBeam);
         // 6. compute flow mesh deformation (done)
+
+        std::vector<gsMatrix<> > oldInterfaceDDoFs;
+        for (index_t d = 0; d < geoBeam.domainDim(); ++d)
+            oldInterfaceDDoFs.push_back(meshAssembler.fixedDofs(d));
+
+        meshAssembler.setDirichletDofs(3,boundary::south,
+                                       displacementBeam.patch(0).boundary(boundary::north)->coefs());
+        meshAssembler.setDirichletDofs(4,boundary::north,
+                                       displacementBeam.patch(0).boundary(boundary::south)->coefs());
+        meshAssembler.setDirichletDofs(5,boundary::west,
+                                       displacementBeam.patch(0).boundary(boundary::east)->coefs());
+
+        real_t interfaceRes = 0;
+        for (index_t d = 0; d < geoBeam.domainDim(); ++d)
+            interfaceRes += pow((meshAssembler.fixedDofs(d)-oldInterfaceDDoFs[d]).norm(),2);
+        interfaceRes = sqrt(interfaceRes);
+        gsInfo << "INTERFACE RESIDUAL " << interfaceRes << std::endl;
+
+        gsNewton<real_t> newtonMesh(meshAssembler,solutionMesh);
+        newtonMesh.options().setInt("Verbosity",newton_verbosity::all);
+        newtonMesh.options().setInt("Solver",linear_solver::LU);
+        newtonMesh.solve();
+        solutionMesh = newtonMesh.solution();
+        meshAssembler.constructSolution(solutionMesh,displacementMesh);
+
+
+
+        // 7. plot
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,i+1,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,i+1,numPlotPoints);
+
     }
     gsInfo << "Solverd in "<< clock.stop() <<"s.\n";
 
@@ -218,6 +276,14 @@ int main(int argc, char* argv[]){
     gsInfo << "Plotting the output to the Paraview files \"fsi_steady flow.pvd\" and \"fsi_steady beam.pvd\"...\n";
     collectionFlow.save();
     collectionBeam.save();
+
+    //=============================================//
+             // Validation //
+    //=============================================//
+
+    gsMatrix<> point(2,1);
+    point << 1.,0.5;
+    gsInfo << "Displacement of the beam point A:\n" << displacementBeam.patch(0).eval(point) << std::endl;
 
     return 0;
 }
