@@ -48,7 +48,7 @@ int main(int argc, char* argv[]){
     index_t numKRef = 0; // number of k-refinements
     index_t numBLRef = 1; // number of additional boundary layer refinements
     index_t numPlotPoints = 10000;
-    real_t youngsModulus = 0.5e6;
+    real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;

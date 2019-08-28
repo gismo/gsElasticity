@@ -126,7 +126,7 @@ void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
         // ALE stress tensor
         gsMatrix<T> sigma = pressureValues.at(p)*gsMatrix<T>::Identity(targetDim(),targetDim())
                             - m_viscosity*(physGradVel*invJacALE +
-                                           physGradVel.transpose()*invJacALE.transpose());
+                                           invJacALE.transpose()*physGradVel.transpose());
         // stress tensor pull back
         gsMatrix<T> sigmaALE = physJacALE.determinant()*sigma*(invJacALE.transpose());
 
