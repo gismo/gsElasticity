@@ -51,6 +51,7 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("Viscosity","Kinematic viscosity of the fluid",0.001);
+    opt.addReal("Density","Density of the fluid",1.);
     opt.addReal("DirichletConstruction","Dirichlet BC scaling parameter for solution construction",1.);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
@@ -161,6 +162,7 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
     gsMatrix<T> force;
     force.setZero(m_dim,1);
     const T viscosity = m_options.getReal("Viscosity");
+    const T density = m_options.getReal("Density");
 
     // loop over bdry sides
     for (auto &it : bdrySides)
@@ -202,8 +204,79 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
                 outerNormal(mdGeo,q,it.second,normal);
                 // stress tensor
                 gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
-                                    viscosity*(physGradJac + physGradJac.transpose());
+                                    density*viscosity*(physGradJac + physGradJac.transpose());
                 force += quWeights[q] * sigma * normal;
+            }
+        }
+    }
+    return force;
+}
+
+template <class T>
+gsMatrix<T> gsNsAssembler<T>::computeForceALE(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
+                                              const gsMultiPatch<T> & displacementALE,
+                                              const std::vector<std::pair<index_t,boxSide> > & bdrySides) const
+{
+    gsMatrix<T> force;
+    force.setZero(m_dim,1);
+    const T viscosity = m_options.getReal("Viscosity");
+    const T density = m_options.getReal("Density");
+
+    // loop over bdry sides
+    for (auto &it : bdrySides)
+    {
+        // basis of the patch
+        const gsBasis<T> & basis = m_bases[0][it.first];
+        // setting quadrature rule for the boundary side
+        gsGaussRule<T> bdQuRule(basis,1.0,1,it.second.direction());
+        // loop over elements of the side
+        typename gsBasis<T>::domainIter elem = basis.makeDomainIterator(it.second);
+        for (; elem->good(); elem->next())
+        {
+            // mapping quadrature rule to the element
+            gsMatrix<T> quNodes;
+            gsVector<T> quWeights;
+            bdQuRule.mapTo(elem->lowerCorner(),elem->upperCorner(),quNodes,quWeights);
+            // evaluate geoemtry mapping at the quad points
+            // NEED_MEASURE for integration
+            // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to physical domain
+            gsMapData<T> mdGeo(NEED_MEASURE | NEED_GRAD_TRANSFORM);
+            mdGeo.points = quNodes;
+            m_pde_ptr->patches().patch(it.first).computeMap(mdGeo);
+            // evaluate velocity at the quad points
+            // NEED_DERIV for velocity gradients
+            gsMapData<T> mdVel(NEED_DERIV);
+            mdVel.points = quNodes;
+            velocity.patch(it.first).computeMap(mdVel);
+            // evaluate pressure at the quad points
+            gsMatrix<T> pressureValues;
+            pressure.patch(it.first).eval_into(quNodes,pressureValues);
+            // evaluate ALE mapping at the param points
+            // NEED_DERIV for gradients
+            gsMapData<T> mdALE(NEED_DERIV);
+            mdALE.points = quNodes;
+            displacementALE.patch(it.first).computeMap(mdALE);
+
+            // loop over quad points
+            for (index_t q = 0; q < quWeights.rows(); ++q)
+            {
+                // transform gradients from parametric to physical
+                gsMatrix<T> physGradJac = mdVel.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+                // ALE jacobian (identity + physical displacement gradient)
+                gsMatrix<T> physJacALE = gsMatrix<T>::Identity(m_dim,m_dim) +
+                        mdALE.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+                // inverse ALE jacobian
+                gsMatrix<T> invJacALE = physJacALE.cramerInverse();
+                // normal length is the local measure
+                gsVector<T> normal;
+                outerNormal(mdGeo,q,it.second,normal);
+                // stress tensor
+                gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
+                                    density*viscosity*(physGradJac*invJacALE +
+                                                       invJacALE.transpose()*physGradJac.transpose());
+                // stress tensor pull back
+                gsMatrix<T> sigmaALE = physJacALE.determinant()*sigma*(invJacALE.transpose());
+                force += quWeights[q] * sigmaALE * normal;
             }
         }
     }

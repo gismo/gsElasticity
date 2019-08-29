@@ -58,6 +58,7 @@ public:
         iterationType = options.getInt("Iteration");
         supg = options.getSwitch("SUPG");
         viscosity = options.getReal("Viscosity");
+        density = options.getReal("Density");
         patch = patchIndex;
         forceScaling = options.getReal("ForceScaling");
     }
@@ -187,15 +188,15 @@ protected:
             // Compute physical Jacobian of the current velocity field
             gsMatrix<T> physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
             // matrix A: diffusion
-            gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
+            gsMatrix<T> block = weight*density*viscosity * physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrix A: advection
             block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
             for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+                localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
             // matrix A: reaction
-            block = weight*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
+            block = weight*density*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
             for (short_t di = 0; di < dim; ++di)
                 for (short_t dj = 0; dj < dim; ++dj)
                     localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
@@ -208,15 +209,15 @@ protected:
             }
             // rhs: force
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling *
+                localRhs.middleRows(d*N_V,N_V).noalias() += weight *density* forceScaling *
                     forceValues(d,q) * basisValuesVel[0].col(q);
             // rhs: residual diffusion
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_V,N_V).noalias() -= weight * viscosity *
+                localRhs.middleRows(d*N_V,N_V).noalias() -= weight * viscosity * density*
                     (physJacCurVel.row(d)*physGradVel).transpose();
-            // rhs: residual advection
+            // rhs: residual nonlinear
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_V,N_V).noalias() -= weight *
+                localRhs.middleRows(d*N_V,N_V).noalias() -= weight * density*
                     (physJacCurVel.row(d) * mdVelocity.values[0].col(q))(0,0) * basisValuesVel[0].col(q);
             // rhs: residual pressure
             for (short_t d = 0; d < dim; ++d)
@@ -304,13 +305,13 @@ protected:
             // Compute physical Jacobian of the current velocity field
             gsMatrix<T> physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
             // matrix A: diffusion
-            gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
+            gsMatrix<T> block = weight*viscosity *density* physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrix A: advection
             block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
             for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+                localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
             // matrices B and D
             for (short_t d = 0; d < dim; ++d)
             {
@@ -320,7 +321,7 @@ protected:
             }
             // rhs: force
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling *
+                localRhs.middleRows(d*N_V,N_V).noalias() += weight *density* forceScaling *
                     forceValues(d,q) * basisValuesVel[0].col(q);
             // SUPG stabilization
             // see D.Kuzmin "A guide to numerical methods for transport equations" pp.67-71
@@ -395,7 +396,7 @@ protected:
                         for (index_t j = 0; j < N_V; ++j)
                         {
                             setUFFU(B_j,invJacALE,physGradVel.col(j),dj);
-                            localMat(di*N_V+i,dj*N_V+j) += 0.5*weight*J*viscosity*
+                            localMat(di*N_V+i,dj*N_V+j) += 0.5*weight*J*viscosity*density*
                                     (B_i.array()*B_j.array()).sum();
                         }
                 }
@@ -407,13 +408,13 @@ protected:
             gsMatrix<T> Fu = invJacALE*mdVelocity.values[0].col(q);
             gsMatrix<T> block = weight*J*basisValuesVel[0].col(q) * (Fu.transpose()*physGradVel);
             for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+                localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
             // matrix A: reaction
             for (short_t dj = 0; dj < dim; ++dj)
             {
                 block = weight*J*physJacCurVel*(invJacALE.col(dj)*basisValuesVel[0].col(q).transpose());
                 for (short_t di = 0; di < dim; ++di)
-                    localMat.block(di*N_V,dj*N_V,N_V,N_V) += (basisValuesVel[0].col(q)*block.row(di)).block(0,0,N_V,N_V);
+                    localMat.block(di*N_V,dj*N_V,N_V,N_V) += density*(basisValuesVel[0].col(q)*block.row(di)).block(0,0,N_V,N_V);
             }
             // matrices B and D
             for (short_t d = 0; d < dim; ++d)
@@ -424,16 +425,16 @@ protected:
             }
             // rhs: force
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling *
+                localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceScaling *density*
                     J*forceValues(d,q) * basisValuesVel[0].col(q);
             // rhs: residual diffusion
             block = (physJacCurVel*invJacALE + invJacALE.transpose()*physJacCurVel.transpose()) *
-                    invJacALE.transpose()*weight*J*viscosity;
+                    invJacALE.transpose()*weight*J*viscosity*density;
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_V,N_V).noalias() -= (block.row(d)*physGradVel).transpose();
             // rhs: residual nonlinear
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_V,N_V).noalias() -= weight*J*
+                localRhs.middleRows(d*N_V,N_V).noalias() -= weight*J*density*
                         (physJacCurVel.row(d)*invJacALE*mdVelocity.values[0].col(q))(0,0) * basisValuesVel[0].col(q);
             // rhs: residual pressure
             for (short_t d = 0; d < dim; ++d)
@@ -465,7 +466,7 @@ protected:
     index_t iterationType;
     index_t patch; // current patch
     // constants: viscosity and the force scaling factor
-    T viscosity, forceScaling;
+    T viscosity, forceScaling, density;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system

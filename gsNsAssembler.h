@@ -77,6 +77,10 @@ public:
     /// compute forces acting on a given part of the boundary (drag and lift)
     virtual gsMatrix<T> computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
                                      const std::vector<std::pair<index_t,boxSide> > & bdrySides) const;
+    /// compute forces acting on a given part of the boundary (drag and lift) in the reference fluid configuration
+    virtual gsMatrix<T> computeForceALE(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
+                                        const gsMultiPatch<T> & displacementALE,
+                                        const std::vector<std::pair<index_t,boxSide> > & bdrySides) const;
     /// set ALE displacement field (NOT the deformation!!!)
     virtual void setALE(const gsMultiPatch<T> & ale)
     {

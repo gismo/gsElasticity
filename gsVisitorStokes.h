@@ -41,6 +41,7 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         viscosity = options.getReal("Viscosity");
+        density = options.getReal("Density");
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -84,7 +85,7 @@ public:
             gsMatrix<T> physGradVel;
             transformGradients(md, q, basisValuesVel[1], physGradVel);
             // matrix A
-            gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
+            gsMatrix<T> block = weight*viscosity*density * physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrix B
@@ -96,7 +97,7 @@ public:
             }
             // rhs contribution
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_V,N_V).noalias() += weight * forceValues(d,q) * basisValuesVel[0].col(q) ;
+                localRhs.middleRows(d*N_V,N_V).noalias() += weight *density * forceValues(d,q) * basisValuesVel[0].col(q) ;
         }
     }
 
@@ -125,7 +126,7 @@ protected:
     // problem info
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
-    T viscosity;
+    T viscosity, density;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system

@@ -55,6 +55,8 @@ int main(int argc, char* argv[]){
     bool subgrid = false;
     bool supg = false;
     index_t iter = 1;
+    real_t densityFluid = 1000.;
+    real_t densitySolid = 1000.;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
@@ -110,9 +112,12 @@ int main(int argc, char* argv[]){
     gsBoundaryConditions<> bcInfoBeam;
     for (index_t d = 0; d < 2; ++d)
         bcInfoBeam.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
-    gsFsiLoad<real_t> fSouth(geoFlow,4,boundary::north,velocity,pressure,displacementMesh,viscosity);
-    gsFsiLoad<real_t> fEast(geoFlow,5,boundary::west,velocity,pressure,displacementMesh,viscosity);
-    gsFsiLoad<real_t> fNorth(geoFlow,3,boundary::south,velocity,pressure,displacementMesh,viscosity);
+    gsFsiLoad<real_t> fSouth(geoFlow,4,boundary::north,velocity,pressure,
+                             displacementMesh,viscosity,densityFluid);
+    gsFsiLoad<real_t> fEast(geoFlow,5,boundary::west,velocity,pressure,
+                            displacementMesh,viscosity,densityFluid);
+    gsFsiLoad<real_t> fNorth(geoFlow,3,boundary::south,velocity,pressure,
+                             displacementMesh,viscosity,densityFluid);
     bcInfoBeam.addCondition(0,boundary::south,condition_type::neumann,&fSouth);
     bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&fEast);
     bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&fNorth);
@@ -160,6 +165,7 @@ int main(int argc, char* argv[]){
     gsNsAssembler<real_t> nsAssembler(geoFlow,basisVelocity,basisPressure,bcInfoFlow,g);
     nsAssembler.setALE(displacementMesh);
     nsAssembler.options().setReal("Viscosity",viscosity);
+    nsAssembler.options().setReal("Density",densityFluid);
     nsAssembler.options().setSwitch("SUPG",supg);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
     gsMatrix<> solutionFlow = gsMatrix<>::Zero(nsAssembler.numDofs(),1);
@@ -211,30 +217,47 @@ int main(int argc, char* argv[]){
     clock.restart();
     for (index_t i = 0; i < iter; ++i)
     {
-        gsInfo << i << "/" << iter << " FSI iterations\n";
+        gsInfo << i+1 << "/" << iter << " FSI ITERATIONS\n";
         // 1. apply flow-mesh deformation (how?)
-        meshAssembler.constructSolution(solutionMesh,displacementMesh);
         // 2. solve flow
         gsInfo << "solving flow\n";
         gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow);
-        newtonFlow.options().setInt("Verbosity",newton_verbosity::all);
+        newtonFlow.options().setInt("Verbosity",newton_verbosity::none);
         newtonFlow.options().setInt("Solver",linear_solver::LU);
         newtonFlow.solve();
         solutionFlow = newtonFlow.solution();
         // 3. compute drag&lift (done)
         nsAssembler.constructSolution(solutionFlow,velocity,pressure);
+
+        std::vector<std::pair<index_t, boxSide> > bdrySides;
+        bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
+        bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
+        bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
+        bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
+        bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
+        bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
+
+        gsMatrix<> forceALE = nsAssembler.computeForceALE(velocity,pressure,displacementMesh,bdrySides);
+        gsInfo << "Drag: " << forceALE.at(0) << std::endl;
+        gsInfo << "Lift: " << forceALE.at(1) << std::endl;
+
         // 4. apply drag&lift (how?)
         /// done automatically
         // 5. solve beam (done)
 
         gsInfo << "solving beam\n";
         gsNewton<real_t> newtonBeam(elAssembler,solutionBeam);
-        newtonBeam.options().setInt("Verbosity",newton_verbosity::all);
+        newtonBeam.options().setInt("Verbosity",newton_verbosity::none);
         newtonBeam.options().setInt("Solver",linear_solver::LU);
         newtonBeam.solve();
         solutionBeam = newtonBeam.solution();
         elAssembler.constructSolution(solutionBeam,displacementBeam);
-        // 6. compute flow mesh deformation (done)
+
+        // 5*. validation
+
+        gsMatrix<> point(2,1);
+        point << 1.,0.5;
+        gsInfo << "Displacement of the beam point A:\n" << displacementBeam.patch(0).eval(point) << std::endl;
 
         std::vector<gsMatrix<> > oldInterfaceDDoFs;
         for (index_t d = 0; d < geoBeam.domainDim(); ++d)
@@ -253,14 +276,14 @@ int main(int argc, char* argv[]){
         interfaceRes = sqrt(interfaceRes);
         gsInfo << "INTERFACE RESIDUAL " << interfaceRes << std::endl;
 
+        // 6. compute flow mesh deformation (done)
+        gsInfo << "computing ALE\n";
         gsNewton<real_t> newtonMesh(meshAssembler,solutionMesh);
-        newtonMesh.options().setInt("Verbosity",newton_verbosity::all);
+        newtonMesh.options().setInt("Verbosity",newton_verbosity::none);
         newtonMesh.options().setInt("Solver",linear_solver::LU);
         newtonMesh.solve();
         solutionMesh = newtonMesh.solution();
         meshAssembler.constructSolution(solutionMesh,displacementMesh);
-
-
 
         // 7. plot
         gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,i+1,numPlotPoints);
@@ -277,13 +300,6 @@ int main(int argc, char* argv[]){
     collectionFlow.save();
     collectionBeam.save();
 
-    //=============================================//
-             // Validation //
-    //=============================================//
-
-    gsMatrix<> point(2,1);
-    point << 1.,0.5;
-    gsInfo << "Displacement of the beam point A:\n" << displacementBeam.patch(0).eval(point) << std::endl;
 
     return 0;
 }

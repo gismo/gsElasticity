@@ -316,6 +316,8 @@ void gsElasticityAssembler<T>::setDirichletDofs(size_t patch, boxSide side, cons
         for (index_t i = 0; i < globalIndices.rows(); ++i)
             m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
     }
+
+    Base::saved_ddof = gsAssembler<T>::m_ddof;
 }
 
 template <class T>

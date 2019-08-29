@@ -122,14 +122,15 @@ public:
 
     gsFsiLoad(const gsMultiPatch<T> & geoFlow, index_t patch, boxSide side,
               const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
-              const gsMultiPatch<T> & ALEmapping, T viscosity)
+              const gsMultiPatch<T> & ALEmapping, T viscosity, T density)
         : m_geo(geoFlow),
           m_patch(patch),
           m_side(side),
           m_vel(velocity),
           m_pres(pressure),
           m_ale(ALEmapping),
-          m_viscosity(viscosity)
+          m_viscosity(viscosity),
+          m_density(density)
     {}
 
     virtual short_t domainDim() const { return m_geo.domainDim(); }
@@ -150,6 +151,7 @@ protected:
     gsMultiPatch<T> const & m_pres;
     gsMultiPatch<T> const & m_ale;
     T m_viscosity;
+    T m_density;
 
 }; // class definition ends
 
