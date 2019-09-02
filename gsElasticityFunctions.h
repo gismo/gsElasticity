@@ -114,21 +114,24 @@ protected:
 
 /** @brief Loading function to transfer fluid action to the solid.
  * Used in Fluid-Structure Interaction simulation.
+ * Different parametrizations can be used for the geometry+ALE and velocity+pressure
 */
 template <class T>
 class gsFsiLoad : public gsFunction<T>
 {
 public:
 
-    gsFsiLoad(const gsMultiPatch<T> & geoFlow, index_t patch, boxSide side,
+    gsFsiLoad(const gsMultiPatch<T> & geoRef, const gsMultiPatch<T> & ALEdisplacement,
+              index_t patchGeo, boxSide sideGeo,
               const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
-              const gsMultiPatch<T> & ALEmapping, T viscosity, T density)
-        : m_geo(geoFlow),
-          m_patch(patch),
-          m_side(side),
+              index_t patchVelPres, T viscosity, T density)
+        : m_geo(geoRef),
+          m_ale(ALEdisplacement),
+          m_patchGeo(patchGeo),
+          m_sideGeo(sideGeo),
           m_vel(velocity),
           m_pres(pressure),
-          m_ale(ALEmapping),
+          m_patchVP(patchVelPres),
           m_viscosity(viscosity),
           m_density(density)
     {}
@@ -145,11 +148,12 @@ public:
 protected:
 
     gsMultiPatch<T> const & m_geo;
-    index_t m_patch;
-    boxSide m_side;
+    gsMultiPatch<T> const & m_ale;
+    index_t m_patchGeo;
+    boxSide m_sideGeo;
     gsMultiPatch<T> const & m_vel;
     gsMultiPatch<T> const & m_pres;
-    gsMultiPatch<T> const & m_ale;
+    index_t m_patchVP;
     T m_viscosity;
     T m_density;
 

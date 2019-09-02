@@ -92,31 +92,31 @@ template <class T>
 void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     result.setZero(targetDim(),u.cols());
-    // mapping points back to the parameter space
+    // mapping points back to the parameter space via the reference configuration
     gsMatrix<T> paramPoints;
-    m_geo.patch(m_patch).invertPoints(u,paramPoints);
-    // evaluate geometry mapping at the param points
-    // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to physical domain
+    m_geo.patch(m_patchGeo).invertPoints(u,paramPoints);
+    // evaluate reference geometry mapping at the param points
+    // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to reference domain
     gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
     mdGeo.points = paramPoints;
-    m_geo.patch(m_patch).computeMap(mdGeo);
+    m_geo.patch(m_patchGeo).computeMap(mdGeo);
     // evaluate velocity at the param points
     // NEED_DERIV for velocity gradients
     gsMapData<T> mdVel(NEED_DERIV);
     mdVel.points = paramPoints;
-    m_vel.patch(m_patch).computeMap(mdVel);
+    m_vel.patch(m_patchVP).computeMap(mdVel);
     // evaluate pressure at the quad points
     gsMatrix<T> pressureValues;
-    m_pres.patch(m_patch).eval_into(paramPoints,pressureValues);
-    // evaluate ALE mapping at the param points
+    m_pres.patch(m_patchVP).eval_into(paramPoints,pressureValues);
+    // evaluate ALE dispacement at the param points
     // NEED_DERIV for gradients
     gsMapData<T> mdALE(NEED_DERIV);
     mdALE.points = paramPoints;
-    m_ale.patch(m_patch).computeMap(mdALE);
+    m_ale.patch(m_patchGeo).computeMap(mdALE);
 
     for (index_t p = 0; p < paramPoints.cols(); ++p)
     {
-        // transform velocity gradients from parametric to physical
+        // transform velocity gradients from parametric to reference
         gsMatrix<T> physGradVel = mdVel.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
         // ALE jacobian (identity + physical displacement gradient)
         gsMatrix<T> physJacALE = gsMatrix<T>::Identity(targetDim(),targetDim()) +
@@ -132,7 +132,7 @@ void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 
         // normal length is the local measure
         gsVector<T> normal;
-        outerNormal(mdGeo,p,m_side,normal);
+        outerNormal(mdGeo,p,m_sideGeo,normal);
         result.col(p) = sigmaALE * normal / normal.norm();
     }
 }

@@ -47,6 +47,7 @@ int main(int argc, char* argv[]){
     index_t numPlotPoints = 1000;
     real_t viscosity = 0.001;
     real_t density = 1.;
+    index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
     real_t maxInflow = 1.5;
     bool subgrid = false;
     bool supg = false;
@@ -57,6 +58,7 @@ int main(int argc, char* argv[]){
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
+    cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
     cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
     cmd.addInt("p","plot","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
@@ -66,7 +68,8 @@ int main(int argc, char* argv[]){
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
     cmd.addReal("d","density","Density of the fluid",density);
-    cmd.addSwitch("x","valiate","Validate the solver by measuring the drag/lift/pressure difference",validate);
+
+    cmd.addSwitch("x","validate","Validate the solver by measuring the drag/lift/pressure difference",validate);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -117,11 +120,12 @@ int main(int argc, char* argv[]){
     // additional refinement of the boundary layer around the cylinder
     gsMatrix<> box(2,2);
     box << 0.,0.,0.,0.2;
-    for (index_t p = 0; p < 4; ++p)
-    {
-        basisVelocity.refine(p,box);
-        basisPressure.refine(p,box);
-    }
+    for (index_t i = 0; i < numBLRef; ++i)
+        for (index_t p = 0; p < 4; ++p)
+        {
+            basisVelocity.refine(p,box);
+            basisPressure.refine(p,box);
+        }
     // additional velocity refinement for stable mixed FEM
     if (subgrid)
         basisVelocity.uniformRefine();

@@ -16,6 +16,7 @@ int main(int argc, char* argv[]){
     std::string filename = ELAST_DATA_DIR"/flow_around_cylinder.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numKRef = 0; // number of k-refinements
+    index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
     index_t numPlotPoints = 10000;
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]){
     gsCmdLine cmd("Testing the Stokes solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
+    cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
     cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
@@ -82,11 +84,12 @@ int main(int argc, char* argv[]){
     // additional refinement of the boundary layer around the cylinder
     gsMatrix<> box(2,2);
     box << 0.,0.,0.,0.2;
-    for (index_t p = 0; p < 4; ++p)
-    {
-        basisVelocity.refine(p,box);
-        basisPressure.refine(p,box);
-    }
+    for (index_t i = 0; i < numBLRef; ++i)
+        for (index_t p = 0; p < 4; ++p)
+        {
+            basisVelocity.refine(p,box);
+            basisPressure.refine(p,box);
+        }
     // additional velocity refinement for stable mixed FEM
     if (subgrid)
         basisVelocity.uniformRefine();

@@ -117,7 +117,11 @@ int main(int argc, char* argv[])
     });
 
     gsInfo << "Solving...\n";
+    gsStopwatch clock;
+    clock.restart();
     newton.solve();
+    gsInfo << "Solverd in "<< clock.stop() <<"s.\n";
+
     // get the final displacement as well
     displacements.push_back(gsMultiPatch<>());
     assembler.constructSolution(newton.solution(),displacements.back());
