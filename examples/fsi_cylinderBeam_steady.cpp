@@ -348,48 +348,28 @@ int main(int argc, char* argv[]){
 
         gsInfo << ", intRes: " << computeResidual(interfaceOld,interfaceNow) << std::endl;
 
-        // 5*. validation
-
-        /*std::vector<std::pair<index_t, boxSide> > bdrySides;
-        bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
-        bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
-        bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
-        bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
-        bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
-        bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
-        gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
-        gsInfo << "Drag: " << force.at(0) << std::endl;
-        gsInfo << "Lift: " << force.at(1) << std::endl;*/
-
-
-        /*gsMatrix<> point(2,1);
-        point << 1.,0.5;
-        gsInfo << "Displacement of the beam point A:\n" << displacement.patch(0).eval(point) << std::endl;
-
-        std::vector<gsMatrix<> > oldInterfaceDDoFs;
-        for (index_t d = 0; d < geoBeam.domainDim(); ++d)
-            oldInterfaceDDoFs.push_back(aleAssembler.fixedDofs(d));
-
-
-        real_t interfaceRes = 0;
-        for (index_t d = 0; d < geoBeam.domainDim(); ++d)
-            interfaceRes += pow((aleAssembler.fixedDofs(d)-oldInterfaceDDoFs[d]).norm(),2);
-        interfaceRes = sqrt(interfaceRes);
-        gsInfo << "INTERFACE RESIDUAL " << interfaceRes << std::endl;
-
-
         // 7. plot
         gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,i+1,numPlotPoints);
         gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,i+1,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,i+1,numPlotPoints);*/
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,i+1,numPlotPoints);
 
     }
     gsInfo << "Solved in " << clock.stop() << "s.\n";
 
+    // 5*. validation
+    std::vector<std::pair<index_t, boxSide> > bdrySides;
+    bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
+    bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
+    bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
+    bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
+    bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
+    gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
+    gsInfo << "Drag: " << force.at(0) << std::endl;
+    gsInfo << "Lift: " << force.at(1) << std::endl;
     gsMatrix<> point(2,1);
     point << 1.,0.5;
     gsInfo << "Displacement of the beam point A:\n" << displacement.patch(0).eval(point) << std::endl;
-
 
     gsInfo << "Plotting the output to the Paraview files \"fsi_steady flow.pvd\" and \"fsi_steady beam.pvd\"...\n";
     collectionFlow.save();
