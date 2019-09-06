@@ -270,7 +270,6 @@ int main(int argc, char* argv[]){
     aleAssembler.constructSolution(solutionALE,ALE);
     if (numPlotPoints > 0)
     {
-
         gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,0,numPlotPoints);
         gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,0,numPlotPoints);
         gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,0,numPlotPoints);
@@ -278,6 +277,7 @@ int main(int argc, char* argv[]){
     //=============================================//
              // Coupled simulation //
     //=============================================//
+
 
     // containers for interface displacement DoFs
     std::vector<gsMatrix<> > interfaceOld, interfaceNow, interfaceNew;
@@ -294,48 +294,54 @@ int main(int argc, char* argv[]){
 
     gsStopwatch clock;
     clock.restart();
+
+    // 0. pre-solve flow to get a stable flow
+    gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow);
+    newtonFlow.options().setInt("Verbosity",newton_verbosity::none);
+    newtonFlow.options().setInt("Solver",linear_solver::LU);
+    newtonFlow.solve();
+    solutionFlow = newtonFlow.solution();
+    nsAssembler.constructSolution(solutionFlow,velocity,pressure);
+
     while (!converged && iter < 50)
     {
         if (iter > 0)
         {
             // 1. compute ALE displacement
-            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]);
-            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]);
-            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]);
-            gsNewton<real_t> newtonALE(aleAssembler,solutionALE);
-            newtonALE.options().setInt("Verbosity",newton_verbosity::none);
-            newtonALE.options().setInt("Solver",linear_solver::LU);
-            newtonALE.solve();
-            solutionALE = newtonALE.solution();
+            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
+            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
+            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
+            aleAssembler.assemble(ALE);
+            gsSparseSolver<>::LU solverALE(aleAssembler.matrix());
+            solutionALE += solverALE.solve(aleAssembler.rhs());
             // 2. deform flow mesh
             // reverse previous deformation
             nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
             nsAssembler.patches().patch(4).coefs() -= ALE.patch(1).coefs();
             nsAssembler.patches().patch(5).coefs() -= ALE.patch(2).coefs();
             // apply new deformation
+            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]);
+            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]);
+            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]);
             aleAssembler.constructSolution(solutionALE,ALE);
             nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
             nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
             nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
         }
         // 3. solve flow
-        gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow);
-        newtonFlow.options().setInt("Verbosity",newton_verbosity::none);
-        newtonFlow.options().setInt("Solver",linear_solver::LU);
-        newtonFlow.solve();
-        solutionFlow = newtonFlow.solution();
+        nsAssembler.assemble(solutionFlow);
+        gsSparseSolver<>::LU solverFlow(nsAssembler.matrix());
+        solutionFlow += solverFlow.solve(nsAssembler.rhs());
         nsAssembler.constructSolution(solutionFlow,velocity,pressure);
 
         // 4. solve beam
-        gsNewton<real_t> newtonBeam(elAssembler,solutionBeam);
-        newtonBeam.options().setInt("Verbosity",newton_verbosity::none);
-        newtonBeam.options().setInt("Solver",linear_solver::LU);
-        newtonBeam.solve();
-        solutionBeam = newtonBeam.solution();
+        elAssembler.assemble(solutionBeam);
+        gsSparseSolver<>::LU solverBeam(elAssembler.matrix());
+        solutionBeam += solverBeam.solve(elAssembler.rhs());
         elAssembler.constructSolution(solutionBeam,displacement);
 
         // 5. Aitken relaxation
-        if (iter == 0)
+        if (iter== 0)
         {
             interfaceNow.clear();
             interfaceNow.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
@@ -359,6 +365,7 @@ int main(int argc, char* argv[]){
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,iter+1,numPlotPoints);
             gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,iter+1,numPlotPoints);
         }
+
         // 8. convergence
         real_t residual = computeResidual(interfaceOld,interfaceNow);
         if (iter == 0)
