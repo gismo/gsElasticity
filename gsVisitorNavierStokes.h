@@ -36,13 +36,17 @@ public:
 
     gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
                           const gsMultiPatch<T> & pressure_,
-                          const gsMultiPatch<T> & ALEdisplacement, bool assembleMatrix_)
+                          const gsMultiPatch<T> & ALEvelocity,
+                          std::vector<std::pair<index_t,index_t> > alepatches,
+                          bool assembleMatrix_)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
           assembleMatrix(assembleMatrix_),
           velocity(velocity_),
           pressure(pressure_),
-          dispALE(ALEdisplacement),
-          ALE(true) {}
+          velALE(ALEvelocity),
+          patchesALE(alepatches),
+          ALE(false) {}
+
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -61,6 +65,7 @@ public:
         density = options.getReal("Density");
         patch = patchIndex;
         forceScaling = options.getReal("ForceScaling");
+        ALE = false;
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -109,23 +114,23 @@ public:
         // evaluate pressure grads
         if (supg)
             pressure.patch(patch).deriv_into(quNodes,pressureGrads);
-        if (ALE)
-        {
-            mdALE.flags = NEED_DERIV;
-            mdALE.points = quNodes;
-            dispALE.patch(patch).computeMap(mdALE);
-        }
+        for (index_t p = 0; p < patchesALE.size(); ++p)
+            if (patchesALE[p].first == patch)
+            {
+                mdALE.flags = NEED_VALUE;
+                mdALE.points = quNodes;
+                velALE.patch(patchesALE[p].second).computeMap(mdALE);
+                ALE = true;
+            }
     }
 
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
-        if (iterationType == 0 && !ALE)
+        if (iterationType == 0)
             assembleOseen(element,quWeights);
-        else if (iterationType == 1 && !ALE)
+        else if (iterationType == 1)
             assembleNewton(element,quWeights);
-        else if (ALE)
-            assembleNewtonALE(element,quWeights);
     }
 
     inline void localToGlobal(const int patchIndex,
@@ -309,7 +314,12 @@ protected:
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrix A: advection
-            block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
+            if (!ALE)
+                block = weight*basisValuesVel[0].col(q) *
+                        (mdVelocity.values[0].col(q).transpose()*physGradVel);
+            else
+                block = weight*basisValuesVel[0].col(q) *
+                        ((mdVelocity.values[0].col(q)-mdALE.values[0].col(q)).transpose()*physGradVel);
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
             // matrices B and D
@@ -359,7 +369,7 @@ protected:
         }
     }
 
-    void assembleNewtonALE(gsDomainIterator<T> & element,
+    /*void assembleNewtonALE(gsDomainIterator<T> & element,
                            const gsVector<T> & quWeights)
     {
         // Initialize local matrix/rhs
@@ -400,9 +410,9 @@ protected:
                                     (B_i.array()*B_j.array()).sum();
                         }
                 }
-            /*gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
+            gsMatrix<T> block = weight*viscosity * physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);*/
+                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrix A: advection
             // transformed advecting velocity
             gsMatrix<T> Fu = invJacALE*mdVelocity.values[0].col(q);
@@ -444,7 +454,7 @@ protected:
             localRhs.middleRows(dim*N_V,N_P).noalias() += weight * J * basisValuesPres.col(q) *
                     (physJacCurVel*invJacALE).trace();
         }
-    }
+    }*/
 
     // auxiliary matrix nabla_U*F + F^T*nabla_u^T
     void setUFFU(gsMatrix<T> & UFFU, const gsMatrix<T> & F, const gsVector<T> & bGrad, short_t d)
@@ -499,11 +509,12 @@ protected:
     // pressure gradients at the current element (only for supg); stored as a dim x numQuadPoints matrix
     gsMatrix<T> pressureGrads;
     // ALE displacement field (only used for FSI)
-    gsMultiPatch<T> dispALE;
+    gsMultiPatch<T> velALE;
     // flag to assemble ALE formulation
     bool ALE;
     // evaluation data of the ALE field
     gsMapData<T> mdALE;
+    std::vector<std::pair<index_t,index_t> > patchesALE;
 };
 
 } // namespace gismo

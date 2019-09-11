@@ -59,6 +59,8 @@ public:
     /// set scaling of the force loading (volume and surface loading)
     virtual void setForceScaling(T factor) { stiffAssembler.setForceScaling(factor); }
 
+    gsMatrix<T> oseenFSI(const gsMultiPatch<T> & velocity, T timeStep, const gsMatrix<T> & soluVector);
+
 protected:
     /// time integraton schemes
     gsMatrix<T> newton();

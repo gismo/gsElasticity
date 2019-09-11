@@ -115,7 +115,7 @@ int main(int argc, char* argv[]){
     timeSolver.options().setInt("Scheme",time_integration::implicit_linear);
     // set initial conditions
     timeSolver.setInitialDisplacement(solVector);
-    timeSolver.setInitialVeclocity(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));
+    timeSolver.setInitialVelocity(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));
     timeSolver.initialize();
 
     gsProgressBar bar;

@@ -42,7 +42,7 @@ public:
     static gsOptionList defaultOptions();
     /// set intial conditions
     void setInitialDisplacement(const gsMatrix<T> & initialDisplacement) { dispVector = initialDisplacement; }
-    void setInitialVeclocity(const gsMatrix<T> & initialVelocity) { velVector = initialVelocity; }
+    void setInitialVelocity(const gsMatrix<T> & initialVelocity) { velVector = initialVelocity; }
     /// @brief Initialize the solver; execute before computing any time steps
     void initialize();
     /// make a time step according to a chosen scheme
@@ -53,6 +53,7 @@ public:
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
     /// returns  vector of displacement DoFs
     const gsMatrix<T> & displacementVector() const {return dispVector;}
+    const gsMatrix<T> & velocityVector() const {return velVector;}
 
     /// sets scaling of Dirichlet BC used for linear system assembly
     virtual void setDirichletAssemblyScaling(T factor) { stiffAssembler.setDirichletAssemblyScaling(factor); }

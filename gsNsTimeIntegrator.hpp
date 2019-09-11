@@ -116,6 +116,26 @@ gsMatrix<T> gsNsTimeIntegrator<T>::implicitOseen()
 }
 
 template <class T>
+gsMatrix<T> gsNsTimeIntegrator<T>::oseenFSI(const gsMultiPatch<T> & velocity, T timeStep, const gsMatrix<T> & soluVector)
+{
+    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
+    stiffAssembler.assemble(velocity);
+    m_system.matrix() = timeStep*stiffAssembler.matrix();
+
+    index_t numDofsVel = massAssembler.numDofs();
+    gsSparseMatrix<T> tempMassMatrix = massAssembler.matrix();
+    tempMassMatrix.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
+    m_system.matrix().leftCols(numDofsVel) += tempMassMatrix;
+    m_system.matrix().makeCompressed();
+
+    m_system.rhs() = timeStep*stiffAssembler.rhs();
+    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*soluVector.middleRows(0,numDofsVel);
+
+    gsSparseSolver<>::LU solver(m_system.matrix());
+    return solver.solve(m_system.rhs());
+}
+
+template <class T>
 gsMatrix<T> gsNsTimeIntegrator<T>::semiImplicitOseen()
 {
     stiffAssembler.options().setInt("Iteration",iteration_type::picard);

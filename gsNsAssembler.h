@@ -59,6 +59,9 @@ public:
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
     virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
 
+    virtual void assemble(const gsMultiPatch<T> & velocity);
+
+
     /// @brief Construct velocity from computed solution vector
     virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& velocity) const;
 
@@ -87,6 +90,24 @@ public:
         aleDisp = &ale;
         ALE = true;
     }
+
+    /// set ALE displacement field (NOT the deformation!!!)
+    virtual void setALEvelocity(const gsMultiPatch<T> & velocity,
+                                std::vector<std::pair<index_t,index_t> > & patches)
+    {
+        aleVel = &velocity;
+        alePatches = patches;
+    }
+
+    /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
+     *
+     * A usual source of degrees of freedom is another geometry where it is known that the corresponding
+     * bases match. The function is not safe in that it assumes a correct numbering of DoFs in a given
+     * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
+     * to gsBoundaryCondtions container that is passed to the assembler constructor.
+     */
+    virtual void setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
+
 protected:
 
     /// Dimension of the problem
@@ -103,6 +124,10 @@ protected:
     gsMultiPatch<T> const * aleDisp = nullptr;
     /// flag to use ALE formulation
     bool ALE = false;
+
+    gsMultiPatch<T> const * aleVel = nullptr;
+    std::vector<std::pair<index_t,index_t> > alePatches;
+
 };
 
 } // namespace gismo ends

@@ -1,8 +1,11 @@
-/// This is an example of solving the steady 2D Fluid-Structure Interaction problem
+/// This is an example of solving the unsteady 2D Fluid-Structure Interaction problem
 /// using the incompressible Navier-Stokes and nonlinear elasticity solvers
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsElTimeIntegrator.h>
 #include <gsElasticity/gsNsAssembler.h>
+#include <gsElasticity/gsNsTimeIntegrator.h>
+#include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsNewton.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
@@ -83,48 +86,42 @@ real_t computeResidual(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMa
 
 int main(int argc, char* argv[])
 {
-    gsInfo << "Testing the unsteady fluid-structure interaction solver in 2D.\n";
-
-    //=====================================//
-                // Input //
-    //=====================================//
+    gsInfo << "Testing the steady fluid-structure interaction solver in 2D.\n";
 
     std::string filenameFlow = ELAST_DATA_DIR"/fsi_flow_around_cylinder.xml";
     std::string filenameFlowPart = ELAST_DATA_DIR"/fsi_flow_around_cylinder_segment.xml";
     std::string filenameBeam = ELAST_DATA_DIR"/fsi_beam_around_cylinder.xml";
-    index_t numUniRefFlow = 3; // number of h-refinements for the fluid
+    index_t numUniRefFlow = 2; // number of h-refinements for the fluid
     index_t numKRefFlow = 0; // number of k-refinements for the fluid
     index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
-    index_t numUniRefBeam = 3; // number of h-refinements for the beam and the ALE mapping
+    index_t numUniRefBeam = 2; // number of h-refinements for the beam and the ALE mapping
     index_t numKRefBeam = 0; // number of k-refinements for the beam and the ALE mapping
-    index_t numPlotPoints = 10000;
+    index_t numPlotPoints = 1000;
     real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
     real_t maxInflow = 0.3;
-    bool subgrid = false;
+    bool subgrid = true;
     bool supg = false;
-    real_t densityFluid = 1000.;
-    real_t densitySolid = 1000.;
+    real_t densityFluid = 1.0e3;
+    real_t densitySolid = 1.0e3;
     real_t absTol = 1e-6;
     real_t relTol = 1e-6;
+    real_t timeStep = 0.001;
+    real_t timeSpan = 5.;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the unsteady fluid-structure interaction solver in 2D.");
+    gsCmdLine cmd("Testing the steady fluid-structure interaction solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications for the fluid",numUniRefFlow);
     cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
     cmd.addInt("b","beamrefine","Number of uniform refinement applications for the beam and ALE",numUniRefBeam);
     cmd.addInt("p","plot","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addReal("y","young","Young's modulus of the beam materail",youngsModulus);
-    cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
-    cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
-    cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addSwitch("g","supg","Use SUPG stabilization",supg);
-    cmd.addReal("d","density","Density of the solid",densitySolid);
+    cmd.addReal("t","time","Time span, sec",timeSpan);
+    cmd.addReal("s","step","Time step",timeStep);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
-          // Setting assemblers and solvers //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -134,6 +131,57 @@ int main(int argc, char* argv[])
     gsReadFile<>(filenameFlowPart, geoPart);
     gsMultiPatch<> geoBeam;
     gsReadFile<>(filenameBeam, geoBeam);
+
+    // creating bases
+    gsMultiBasis<> basisVelocity(geoFlow);
+    gsMultiBasis<> basisPressure(geoFlow);
+    for (index_t i = 0; i < numKRefFlow; ++i)
+    {
+        basisVelocity.degreeElevate();
+        basisPressure.degreeElevate();
+        basisVelocity.uniformRefine();
+        basisPressure.uniformRefine();
+    }
+    for (index_t i = 0; i < numUniRefFlow; ++i)
+    {
+        basisVelocity.uniformRefine();
+        basisPressure.uniformRefine();
+    }
+    // additional refinement of the boundary layer around the cylinder
+    for (index_t i = 0; i < numBLRef; ++i)
+        refineBoundaryLayer(basisVelocity,basisPressure);
+
+    // additional velocity refinement for stable mixed FEM;
+    // displacement is also refined to keep bases match at the fsi interface
+    if (subgrid)
+        basisVelocity.uniformRefine();
+    else
+        basisVelocity.degreeElevate();
+
+    gsMultiBasis<> basisDisplacement(geoBeam);
+    for (index_t i = 0; i < numKRefBeam; ++i)
+    {
+        basisDisplacement.degreeElevate();
+        geoPart.degreeElevate();
+        geoFlow.degreeElevate();
+        basisDisplacement.uniformRefine();
+        geoPart.uniformRefine();
+        geoFlow.uniformRefine();
+    }
+    for (index_t i = 0; i < numUniRefFlow; ++i)
+    {
+        basisDisplacement.uniformRefine();
+        geoPart.uniformRefine();
+        geoFlow.uniformRefine();
+    }
+    basisDisplacement.uniformRefine();
+    geoPart.uniformRefine();
+    geoFlow.uniformRefine();
+    gsMultiBasis<> basisALE(geoPart);
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
@@ -180,69 +228,34 @@ int main(int argc, char* argv[])
         for (index_t d = 0; d < 2; ++d)
             bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
 
-    // creating bases
-    gsMultiBasis<> basisVelocity(geoFlow);
-    gsMultiBasis<> basisPressure(geoFlow);
-    for (index_t i = 0; i < numKRefFlow; ++i)
-    {
-        basisVelocity.degreeElevate();
-        basisPressure.degreeElevate();
-        basisVelocity.uniformRefine();
-        basisPressure.uniformRefine();
-    }
-    for (index_t i = 0; i < numUniRefFlow; ++i)
-    {
-        basisVelocity.uniformRefine();
-        basisPressure.uniformRefine();
-    }
-    // additional refinement of the boundary layer around the cylinder
-    for (index_t i = 0; i < numBLRef; ++i)
-        refineBoundaryLayer(basisVelocity,basisPressure);
+    //=============================================//
+          // Setting assemblers and solvers //
+    //=============================================//
 
-    // additional velocity refinement for stable mixed FEM;
-    // displacement is also refined to keep bases match at the fsi interface
-    if (subgrid)
-        basisVelocity.uniformRefine();
-    else
-        basisVelocity.degreeElevate();
-
-    gsMultiBasis<> basisDisplacement(geoBeam);
-    for (index_t i = 0; i < numKRefBeam; ++i)
-    {
-        basisDisplacement.degreeElevate();
-        geoPart.degreeElevate();
-        geoFlow.degreeElevate();
-        basisDisplacement.uniformRefine();
-        geoPart.uniformRefine();
-        geoFlow.uniformRefine();
-    }
-    for (index_t i = 0; i < numUniRefFlow; ++i)
-    {
-        basisDisplacement.uniformRefine();
-        geoPart.uniformRefine();
-        geoFlow.uniformRefine();
-    }
-    gsMultiBasis<> basisALE(geoPart);
-
-    // navier stokes assembler in the current configuration
+    // navier stokes solver in the current configuration
     gsNsAssembler<real_t> nsAssembler(geoFlow,basisVelocity,basisPressure,bcInfoFlow,g);
     nsAssembler.options().setReal("Viscosity",viscosity);
     nsAssembler.options().setReal("Density",densityFluid);
+    gsMassAssembler<real_t> nsMassAssembler(geoFlow,basisVelocity,bcInfoFlow,g);
+    nsMassAssembler.options().setReal("Density",densityFluid);
+    gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler);
+    nsTimeSolver.options().setInt("Scheme",time_integration_NS::implicit_euler_oseen);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
-    gsMatrix<> solutionFlow = gsMatrix<>::Zero(nsAssembler.numDofs(),1);
-    // elasticity assembler: beam
+    // elasticity solver: beam
     gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
     elAssembler.options().setReal("YoungsModulus",youngsModulus);
     elAssembler.options().setReal("PoissonsRatio",poissonsRatio);
     elAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
+    gsMassAssembler<real_t> elMassAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
+    elMassAssembler.options().setReal("Density",densitySolid);
+    gsElTimeIntegrator<real_t> elTimeSolver(elAssembler,elMassAssembler);
+    elTimeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
-    gsMatrix<> solutionBeam = gsMatrix<>::Zero(elAssembler.numDofs(),1);
     // elasticity assembler: flow mesh
     gsElasticityAssembler<real_t> aleAssembler(geoPart,basisALE,bcInfoALE,g);
     aleAssembler.options().setReal("PoissonsRatio",0.4);
     aleAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
     gsInfo << "Initialized elasticity system for ALE with " << aleAssembler.numDofs() << " dofs.\n";
-    gsMatrix<> solutionALE = gsMatrix<>::Zero(aleAssembler.numDofs(),1);
 
     //=============================================//
              // Setting output and auxilary //
@@ -262,134 +275,44 @@ int main(int argc, char* argv[])
     std::map<std::string,const gsField<> *> fieldsPart;
     fieldsPart["ALE"] = &aleField;
     // paraview collection of time steps
-    gsParaviewCollection collectionFlow("fsi_steady_flow");
-    gsParaviewCollection collectionBeam("fsi_steady_beam");
-    gsParaviewCollection collectionFlowPart("fsi_steady_flow_part");
+    gsParaviewCollection collectionFlow("fsi_unsteady_flow");
+    gsParaviewCollection collectionBeam("fsi_unsteady_beam");
+    gsParaviewCollection collectionFlowPart("fsi_unsteady_flow_part");
+
+    gsProgressBar bar;
+    gsStopwatch clock;
+
+    //=============================================//
+             // Initial conditions //
+    //=============================================//
+
+    gsInfo << "Running the simulation with a coarse time step to compute an initial flow solution...\n";
+    nsTimeSolver.setInitialSolution(gsMatrix<>::Zero(nsAssembler.numDofs(),1));
+    nsTimeSolver.initialize();
+
+    clock.restart();
+    for (index_t i = 0; i < 30; ++i)
+    {
+        bar.display(i+1,30);
+        nsTimeSolver.makeTimeStep(0.1);
+    }
+    gsInfo << "Complete in " << clock.stop() << "s.\n";
+
+    gsMatrix<> solutionFlow = nsTimeSolver.solutionVector();
+    gsMatrix<> solutionBeam = gsMatrix<>::Zero(elAssembler.numDofs(),1);
+    gsMatrix<> solutionALE = gsMatrix<>::Zero(aleAssembler.numDofs(),1);
+
     // plotting initial condition
     nsAssembler.constructSolution(solutionFlow,velocity,pressure);
     elAssembler.constructSolution(solutionBeam,displacement);
     aleAssembler.constructSolution(solutionALE,ALE);
     if (numPlotPoints > 0)
     {
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,0,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,0,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_unsteady_flow",collectionFlow,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_unsteady_beam",collectionBeam,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_unsteady_flow_part",collectionFlowPart,0,numPlotPoints);
     }
-    //=============================================//
-             // Coupled simulation //
-    //=============================================//
 
-
-    // containers for interface displacement DoFs
-    std::vector<gsMatrix<> > interfaceOld, interfaceNow, interfaceNew;
-    // push zeros to the old interface
-    interfaceOld.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
-    interfaceOld.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
-    interfaceOld.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
-    // Aitken relaxation factor
-    real_t omega;
-    // convergence
-    real_t initRes;
-    bool converged = false;
-    index_t iter = 0;
-
-    gsStopwatch clock;
-    clock.restart();
-    // 0. pre-solve flow to get a stable flow
-    gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow);
-    newtonFlow.options().setInt("Verbosity",newton_verbosity::none);
-    newtonFlow.options().setInt("Solver",linear_solver::LU);
-    newtonFlow.solve();
-    solutionFlow = newtonFlow.solution();
-    nsAssembler.constructSolution(solutionFlow,velocity,pressure);
-
-    while (!converged && iter < 50)
-    {
-        if (iter > 0)
-        {
-            // 1. compute ALE displacement
-            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
-            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
-            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
-            aleAssembler.assemble(ALE);
-            gsSparseSolver<>::LU solverALE(aleAssembler.matrix());
-            solutionALE += solverALE.solve(aleAssembler.rhs());
-            // 2. deform flow mesh
-            // reverse previous deformation
-            nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
-            nsAssembler.patches().patch(4).coefs() -= ALE.patch(1).coefs();
-            nsAssembler.patches().patch(5).coefs() -= ALE.patch(2).coefs();
-            // apply new deformation
-            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]);
-            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]);
-            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]);
-            aleAssembler.constructSolution(solutionALE,ALE);
-            nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
-            nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
-            nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
-        }
-        // 3. solve flow
-        nsAssembler.assemble(solutionFlow);
-        gsSparseSolver<>::LU solverFlow(nsAssembler.matrix());
-        solutionFlow += solverFlow.solve(nsAssembler.rhs());
-        nsAssembler.constructSolution(solutionFlow,velocity,pressure);
-
-        // 4. solve beam
-        elAssembler.assemble(solutionBeam);
-        gsSparseSolver<>::LU solverBeam(elAssembler.matrix());
-        solutionBeam += solverBeam.solve(elAssembler.rhs());
-        elAssembler.constructSolution(solutionBeam,displacement);
-
-        // 5. Aitken relaxation
-        if (iter== 0)
-        {
-            interfaceNow.clear();
-            interfaceNow.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
-            interfaceNow.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
-            interfaceNow.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
-            omega = 1.;
-        }
-        else
-        {
-            interfaceNew.clear();
-            interfaceNew.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
-            interfaceNew.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
-            interfaceNew.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
-            aitkenRelaxation(interfaceOld,interfaceNow,interfaceNew,omega);
-        }
-
-        // 7. plot
-        if (numPlotPoints > 0)
-        {
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,iter+1,numPlotPoints);
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,iter+1,numPlotPoints);
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,iter+1,numPlotPoints);
-        }
-
-        // 8. convergence
-        real_t residual = computeResidual(interfaceOld,interfaceNow);
-        if (iter == 0)
-            initRes = residual;
-        gsInfo << "Iter " << iter + 1 << ", intRes: " << residual << std::endl;
-        if (residual < absTol || residual/initRes < relTol)
-            converged = true;
-        iter++;
-
-        std::vector<std::pair<index_t, boxSide> > bdrySides;
-        bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
-        bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
-        bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
-        bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
-        bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
-        bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
-        gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
-        gsInfo << "Drag: " << force.at(0) << std::endl;
-        gsInfo << "Lift: " << force.at(1) << std::endl;
-
-    }
-    gsInfo << "Solved in " << clock.stop() << "s.\n";
-
-    // 5*. validation
     std::vector<std::pair<index_t, boxSide> > bdrySides;
     bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
     bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
@@ -400,13 +323,77 @@ int main(int argc, char* argv[])
     gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
     gsInfo << "Drag: " << force.at(0) << std::endl;
     gsInfo << "Lift: " << force.at(1) << std::endl;
+
+    //=============================================//
+             // Move solid //
+    //=============================================//
+
+    elTimeSolver.initialize();
+    elTimeSolver.makeTimeStep(timeStep);
+    elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
     gsMatrix<> point(2,1);
     point << 1.,0.5;
     gsInfo << "Displacement of the beam point A:\n" << displacement.patch(0).eval(point) << std::endl;
 
-    gsInfo << "Plotting the output to the Paraview files \"fsi_steady flow.pvd\" and \"fsi_steady beam.pvd\"...\n";
+    //=============================================//
+             // Update flow mesh //
+    //=============================================//
+
+    aleAssembler.setDirichletDofs(0,boundary::south,displacement.patch(0).boundary(boundary::north)->coefs());
+    aleAssembler.setDirichletDofs(1,boundary::north,displacement.patch(0).boundary(boundary::south)->coefs());
+    aleAssembler.setDirichletDofs(2,boundary::west,displacement.patch(0).boundary(boundary::east)->coefs());
+
+    gsNewton<real_t> aleNewton(aleAssembler);
+    aleNewton.options().setInt("Verbosity",newton_verbosity::all);
+    aleNewton.solve();
+    aleAssembler.constructSolution(aleNewton.solution(),ALE);
+
+    nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
+    nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
+    nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
+
+    gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_unsteady_beam",collectionBeam,1,numPlotPoints);
+    gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_unsteady_flow_part",collectionFlowPart,1,numPlotPoints);
+
+
+    //=============================================//
+             // set flow in ALE //
+    //=============================================//
+
+    gsMultiPatch<> velocityALE;
+    aleAssembler.constructSolution(aleNewton.solution(),velocityALE);
+    velocityALE.patch(0).coefs() /= timeStep;
+    velocityALE.patch(1).coefs() /= timeStep;
+    velocityALE.patch(2).coefs() /= timeStep;
+
+    gsMatrix<> pointA(2,1);
+    pointA << 0.,0.5;
+    gsInfo << "velocity A:\n" << velocityALE.patch(2).eval(pointA) << std::endl;
+
+
+    nsAssembler.setDirichletDofs(3,boundary::south,velocityALE.patch(0).boundary(boundary::south)->coefs());
+    nsAssembler.setDirichletDofs(4,boundary::north,velocityALE.patch(1).boundary(boundary::north)->coefs());
+    nsAssembler.setDirichletDofs(5,boundary::west,velocityALE.patch(2).boundary(boundary::west)->coefs());
+
+    std::vector<std::pair<index_t,index_t> > alePatches;
+    alePatches.push_back(std::pair<index_t,index_t>(3,0));
+    alePatches.push_back(std::pair<index_t,index_t>(4,1));
+    alePatches.push_back(std::pair<index_t,index_t>(5,2));
+    nsAssembler.setALEvelocity(ALE,alePatches);
+
+    solutionFlow =  nsTimeSolver.oseenFSI(velocity,timeStep,solutionFlow);
+    nsAssembler.constructSolution(solutionFlow,velocity,pressure);
+
+    force = nsAssembler.computeForce(velocity,pressure,bdrySides);
+    gsInfo << "Drag: " << force.at(0) << std::endl;
+    gsInfo << "Lift: " << force.at(1) << std::endl;
+
+    gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_unsteady_flow",collectionFlow,1,numPlotPoints);
+
+    gsInfo << "The output is plotted to the Paraview files \"fsi_unsteady flow.pvd\" and \"fsi_unsteady beam.pvd\"...\n";
     collectionFlow.save();
     collectionBeam.save();
     collectionFlowPart.save();
+
     return 0;
 }

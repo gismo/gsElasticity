@@ -49,12 +49,13 @@ template <class T>
 void gsElTimeIntegrator<T>::initialize()
 {
     massAssembler.assemble();
-    stiffAssembler.assemble();
 
     if (dispVector.rows() != stiffAssembler.numDofs())
         dispVector.setZero(stiffAssembler.numDofs(),1);
     if (velVector.rows() != stiffAssembler.numDofs())
         velVector.setZero(stiffAssembler.numDofs(),1);
+
+    stiffAssembler.assemble(dispVector);
 
     gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
     accVector = solver.solve(-1*stiffAssembler.matrix()*dispVector+stiffAssembler.rhs());
