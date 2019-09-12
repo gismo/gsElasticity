@@ -16,7 +16,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/fsi_flappingBeam_beam.xml";
+    std::string filename = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]){
     gsCmdLine cmd("Benchmark CSM1: steady-state deformation of an elastic beam.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
-    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -79,17 +79,21 @@ int main(int argc, char* argv[]){
     newton.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
-    // solution to the nonlinear problem as an isogeometric displacement field
+    // solution as an isogeometric displacement field
     gsMultiPatch<> solution;
     assembler.constructSolution(newton.solution(),solution);
 
     //=============================================//
-                  // Output //
+                  // Validation //
     //=============================================//
 
     gsMatrix<> A(2,1);
     A << 1,0.5;
     gsInfo << "Displacement of the point A:\n" << solution.patch(0).eval(A) << std::endl;
+
+    //=============================================//
+                  // Visualization //
+    //=============================================//
 
     // constructing an IGA field (geometry + solution)
     gsField<> displacementField(assembler.patches(),solution);

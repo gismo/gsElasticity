@@ -9,13 +9,13 @@
 
 using namespace gismo;
 
-void validation(std::ofstream & file, const gsMultiPatch<> & displacement)
+void validation(std::ofstream & file, real_t time, const gsMultiPatch<> & displacement)
 {
     // evaluating displacement at the point A
     gsMatrix<> point(2,1);
     point << 1., 0.5;
     gsMatrix<> dispA = displacement.patch(0).eval(point);
-    file << dispA.at(0) << " " << dispA.at(1) << std::endl;
+    file << time << " " << dispA.at(0) << " " << dispA.at(1) << std::endl;
 }
 
 int main(int argc, char* argv[]){
@@ -37,7 +37,7 @@ int main(int argc, char* argv[]){
     real_t timeSpan = 2;
     real_t timeStep = 0.01;
     index_t numPlotPoints = 10000;
-    bool validate = false;
+    bool validate = true;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Benchmark CSM1: steady-state deformation of an elastic beam.");
@@ -117,7 +117,10 @@ int main(int argc, char* argv[]){
 
     std::ofstream file;
     if (validate)
+    {
         file.open("fsi_CSM3.txt");
+        validation(file,0.,displacement);
+    }
 
     //=============================================//
                   // Solving //
@@ -133,7 +136,7 @@ int main(int argc, char* argv[]){
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"fsi_CSM3",collection,i+1,numPlotPoints);
         if (validate)
-            validation(file,displacement);
+            validation(file,timeStep*(i+1),displacement);
     }
     gsInfo << "Complete in " << clock.stop() << "s.\n";
 
