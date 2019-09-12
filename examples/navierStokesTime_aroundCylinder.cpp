@@ -203,7 +203,7 @@ int main(int argc, char* argv[]){
         timeSolver.makeTimeStep(timeStep);
         stiffAssembler.constructSolution(timeSolver.solutionVector(),velocity,pressure);
         if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,i+11,numPlotPoints);
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"NS_aroundCylinder",collection,i+31,numPlotPoints);
         if (validate)
             validation(ofs,stiffAssembler,maxInflow,velocity,pressure);
     }

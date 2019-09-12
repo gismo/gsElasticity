@@ -88,9 +88,9 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filenameFlow = ELAST_DATA_DIR"/fsi_flow_around_cylinder.xml";
-    std::string filenameFlowPart = ELAST_DATA_DIR"/fsi_flow_around_cylinder_segment.xml";
-    std::string filenameBeam = ELAST_DATA_DIR"/fsi_beam_around_cylinder.xml";
+    std::string filenameFlow = ELAST_DATA_DIR"/fsi_flappingBeam_flowFull.xml";
+    std::string filenameFlowPart = ELAST_DATA_DIR"/fsi_flappingBeam_flowPart.xml";
+    std::string filenameBeam = ELAST_DATA_DIR"/fsi_flappingBeam_beam.xml";
     index_t numUniRefFlow = 3; // number of h-refinements for the fluid
     index_t numKRefFlow = 0; // number of k-refinements for the fluid
     index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
