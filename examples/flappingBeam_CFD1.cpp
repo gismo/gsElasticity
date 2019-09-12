@@ -179,8 +179,8 @@ int main(int argc, char* argv[]){
     std::map<std::string,const gsField<> *> fields;
     fields["Velocity"] = &velocityField;
     fields["Pressure"] = &pressureField;
-    gsWriteParaviewMultiPhysics(fields,"fsi_CFD1",numPlotPoints,plotMesh);
-    gsInfo << "Open \"fsi_CFD1.pvd\" in Paraview for visualization.\n";
+    gsWriteParaviewMultiPhysics(fields,"flappingBeam_CFD1",numPlotPoints,plotMesh);
+    gsInfo << "Open \"flappingBeam_CFD1.pvd\" in Paraview for visualization.\n";
 
     return 0;
 }

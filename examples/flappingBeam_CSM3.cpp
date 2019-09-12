@@ -33,7 +33,6 @@ int main(int argc, char* argv[]){
     real_t youngsModulus = 1.4e6;
     real_t density = 1.0e3;
     real_t gravitationalAcc = 2.0;
-    // roughly, period = 2 * pi * sqrt(density)/width(0.02)/sqrt(YoungsModulus) = 2.22
     real_t timeSpan = 2;
     real_t timeStep = 0.01;
     index_t numPlotPoints = 10000;
@@ -108,9 +107,9 @@ int main(int argc, char* argv[]){
     fields["Displacement"] = &dispField;
 
     // plotting initial displacement
-    gsParaviewCollection collection("fsi_CSM3");
+    gsParaviewCollection collection("flappingBeam_CSM3");
     if (numPlotPoints > 0)
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"fsi_CSM3",collection,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CSM3",collection,0,numPlotPoints);
 
     gsProgressBar bar;
     gsStopwatch clock;
@@ -118,7 +117,7 @@ int main(int argc, char* argv[]){
     std::ofstream file;
     if (validate)
     {
-        file.open("fsi_CSM3.txt");
+        file.open("flappingBeam_CSM3.txt");
         validation(file,0.,displacement);
     }
 
@@ -134,7 +133,7 @@ int main(int argc, char* argv[]){
         timeSolver.makeTimeStep(timeStep);
         assembler.constructSolution(timeSolver.displacementVector(),displacement);
         if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"fsi_CSM3",collection,i+1,numPlotPoints);
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CSM3",collection,i+1,numPlotPoints);
         if (validate)
             validation(file,timeStep*(i+1),displacement);
     }
@@ -147,12 +146,12 @@ int main(int argc, char* argv[]){
     if (numPlotPoints > 0)
     {
         collection.save();
-        gsInfo << "Open \"fsi_CSM3.pvd\" in Paraview for visualization.\n";
+        gsInfo << "Open \"flappingBeam_CSM3.pvd\" in Paraview for visualization.\n";
     }
     if (validate)
     {
         file.close();
-        gsInfo << "Displacement of the point A over time is saved to \"fsi_CSM3.txt\".\n";
+        gsInfo << "Displacement of the point A over time is saved to \"flappingBeam_CSM3.txt\".\n";
     }
 
     return 0;

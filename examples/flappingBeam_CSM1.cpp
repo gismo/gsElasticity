@@ -97,12 +97,11 @@ int main(int argc, char* argv[]){
 
     // constructing an IGA field (geometry + solution)
     gsField<> displacementField(assembler.patches(),solution);
-    gsInfo << "Plotting the output to the Paraview file \"fsi_CSM1.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fields;
     fields["Displacement"] = &displacementField;
-    gsWriteParaviewMultiPhysics(fields,"fsi_CSM1",numPlotPoints);
-    gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
+    gsWriteParaviewMultiPhysics(fields,"flappingBeam_CSM1",numPlotPoints);
+    gsInfo << "Open \"flappingBeam_CSM1.pvd\" in Paraview for visualization.\n";
 
     return 0;
 }
