@@ -27,9 +27,8 @@ class gsVisitorNavierStokes
 public:
 
     gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
-                          const gsMultiPatch<T> & pressure_, bool assembleMatrix_)
+                          const gsMultiPatch<T> & pressure_)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          assembleMatrix(assembleMatrix_),
           velocity(velocity_),
           pressure(pressure_),
           ALE(false) {}
@@ -37,10 +36,8 @@ public:
     gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
                           const gsMultiPatch<T> & pressure_,
                           const gsMultiPatch<T> & ALEvelocity,
-                          std::vector<std::pair<index_t,index_t> > alepatches,
-                          bool assembleMatrix_)
+                          std::vector<std::pair<index_t,index_t> > alepatches)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          assembleMatrix(assembleMatrix_),
           velocity(velocity_),
           pressure(pressure_),
           velALE(ALEvelocity),
@@ -151,8 +148,7 @@ public:
         blockNumbers.at(dim) = dim;
         // push to global system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
-        if (assembleMatrix)
-            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:
@@ -176,11 +172,9 @@ protected:
     void assembleNewton(gsDomainIterator<T> & element,
                         const gsVector<T> & quWeights)
     {
-        // Initialize local matrix/rhs
-        if (assembleMatrix)                                     // A | D
-            localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);     // --|--    matrix structure
-        localRhs.setZero(dim*N_V + N_P,1);                      // B | 0
-        // roughly estimate h - diameter of the element ( for SUPG)
+        // Initialize local matrix/rhs                     // A | D
+        localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
+        localRhs.setZero(dim*N_V + N_P,1);                 // B | 0// roughly estimate h - diameter of the element ( for SUPG)
         // T h = cellSize(element);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -292,10 +286,9 @@ protected:
     void assembleOseen(gsDomainIterator<T> & element,
                        const gsVector<T> & quWeights)
     {
-        // Initialize local matrix/rhs
-        if (assembleMatrix)                                     // A | D
-            localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);     // --|--    matrix structure
-        localRhs.setZero(dim*N_V + N_P,1);                      // B | 0
+        // Initialize local matrix/rhs                     // A | D
+        localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
+        localRhs.setZero(dim*N_V + N_P,1);                 // B | 0
         // roughly estimate h - diameter of the element ( for SUPG)
         //T h = cellSize(element);
 
@@ -469,7 +462,6 @@ protected:
     // problem info
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
-    bool assembleMatrix;
     // flag to apply SUPG stabilization
     bool supg;
     // switch between assembling Newton (true) or Oseen (false) iteration

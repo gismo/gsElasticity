@@ -82,12 +82,7 @@ void gsMassAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
-
-    if ( this->numDofs() == 0 )
-    {
-        gsWarn << "No internal DOFs. Computed Dirichlet boundary only.\n";
-        return;
-    }
+    m_system.rhs().setZero(Base::numDofs(),1);
 
     gsVisitorMass<T> visitor(*m_pde_ptr);
     Base::template push<gsVisitorMass<T> >(visitor);

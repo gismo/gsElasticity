@@ -48,19 +48,14 @@ public:
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
     /// assemble the linear system for the nonlinear solver
-    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
-
+    virtual bool assemble(const gsMatrix<T> & solutionVector,
+                          const std::vector<gsMatrix<T> > & fixedDoFs);
+    /// return the number of free degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
-    /// returns  vector of displacement DoFs
+    /// returns vector of displacement DoFs
     const gsMatrix<T> & displacementVector() const {return dispVector;}
+    /// returns vector of velocity DoFs
     const gsMatrix<T> & velocityVector() const {return velVector;}
-
-    /// sets scaling of Dirichlet BC used for linear system assembly
-    virtual void setDirichletAssemblyScaling(T factor) { stiffAssembler.setDirichletAssemblyScaling(factor); }
-    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
-    virtual void setDirichletConstructionScaling(T factor) { stiffAssembler.setDirichletConstructionScaling(factor); }
-    /// set scaling of the force loading (volume and surface loading)
-    virtual void setForceScaling(T factor) { stiffAssembler.setForceScaling(factor); }
 
 protected:
     /// time integraton schemes
@@ -95,6 +90,7 @@ protected:
     gsMatrix<T> accVector;
 
     using Base::m_options;
+    using Base::m_ddof;
 };
 
 }

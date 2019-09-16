@@ -26,7 +26,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/fsi_flappingBeam_beam.xml";
+    std::string filename = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numKRef = 1; // number of k-refinements
     real_t poissonsRatio = 0.4;
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]){
     real_t gravitationalAcc = 2.0;
     real_t timeSpan = 2;
     real_t timeStep = 0.01;
-    index_t numPlotPoints = 10000;
+    index_t numPlotPoints = 1000;
     bool validate = true;
 
     // minimalistic user interface for terminal

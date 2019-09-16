@@ -52,9 +52,7 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("Viscosity","Kinematic viscosity of the fluid",0.001);
     opt.addReal("Density","Density of the fluid",1.);
-    opt.addReal("DirichletConstruction","Dirichlet BC scaling parameter for solution construction",1.);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
-    opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
     opt.addSwitch("SUPG","Use SUPG stabilaztion",true);
     opt.addInt("Iteration","Type of the linear iteration used to solve the nonlinear problem",iteration_type::newton);
     return opt;
@@ -82,6 +80,8 @@ void gsNsAssembler<T>::refresh()
         Base::computeDirichletDofs(d);
 }
 
+//--------------------- SYSTEM ASSEMBLY ----------------------------------//
+
 template<class T>
 void gsNsAssembler<T>::assemble()
 {
@@ -96,51 +96,48 @@ void gsNsAssembler<T>::assemble()
 }
 
 template <class T>
-bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix)
+bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
+                                const std::vector<gsMatrix<T> > & fixedDoFs)
 {
     gsMultiPatch<T> velocity, pressure;
-    constructSolution(solutionVector,velocity,pressure);
+    constructSolution(solutionVector,fixedDoFs,velocity,pressure);
 
-    if (assembleMatrix)
-    {
-        m_system.matrix().setZero();
-        m_system.reserve(m_bases[0], m_options, 1);
-    }
+    m_system.matrix().setZero();
+    m_system.reserve(m_bases[0], m_options, 1);
     m_system.rhs().setZero(Base::numDofs(),1);
-
-    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
 
     // Compute volumetric integrals and write to the global linear system
     if (alePatches.empty())
     {
-        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure);
         Base::template push<gsVisitorNavierStokes<T> >(visitor);
     }
     else
     {
-        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,*aleVel,alePatches,assembleMatrix);
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,*aleVel,alePatches);
         Base::template push<gsVisitorNavierStokes<T> >(visitor);
     }
 
-    Base::resetDDoFs();
     m_system.matrix().makeCompressed();
 
     return true;
 }
 
 template <class T>
-void gsNsAssembler<T>::assemble(const gsMultiPatch<T> & velocity)
+void gsNsAssembler<T>::assemble(const gsMultiPatch<T> & velocity,
+                                const gsMultiPatch<T> & pressure)
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
 
     m_system.rhs().setZero(Base::numDofs(),1);
-    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,velocity,true);
+    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure);
     Base::template push<gsVisitorNavierStokes<T> >(visitor);
 
     m_system.matrix().makeCompressed();
 }
 
+//--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
 template <class T>
 void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& velocity) const
@@ -148,7 +145,18 @@ void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPa
     gsVector<index_t> unknowns(m_dim);
     for (short_t d = 0; d < m_dim; ++d)
         unknowns.at(d) = d;
-    Base::constructSolution(solVector,velocity,unknowns);
+    Base::constructSolution(solVector,m_ddof,velocity,unknowns);
+}
+
+template <class T>
+void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                         const std::vector<gsMatrix<T> > & fixedDoFs,
+                                         gsMultiPatch<T>& velocity) const
+{
+    gsVector<index_t> unknowns(m_dim);
+    for (short_t d = 0; d < m_dim; ++d)
+        unknowns.at(d) = d;
+    Base::constructSolution(solVector,fixedDoFs,velocity,unknowns);
 }
 
 template <class T>
@@ -162,12 +170,25 @@ void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 }
 
 template <class T>
+void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                         const std::vector<gsMatrix<T> > & fixedDoFs,
+                                         gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const
+{
+    // construct displacement
+    constructSolution(solVector,fixedDoFs,velocity);
+    // construct pressure
+    constructPressure(solVector,pressure);
+}
+
+template <class T>
 void gsNsAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPatch<T>& pressure) const
 {
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
-    Base::constructSolution(solVector,pressure,unknowns);
+    Base::constructSolution(solVector,m_ddof,pressure,unknowns);
 }
+
+//--------------------- SPECIALS ----------------------------------//
 
 template <class T>
 gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
@@ -295,39 +316,6 @@ gsMatrix<T> gsNsAssembler<T>::computeForceALE(const gsMultiPatch<T> & velocity, 
         }
     }
     return force;
-}
-
-template <class T>
-void gsNsAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
-{
-    bool dirBcExists = false;
-    typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
-    while (!dirBcExists && it != m_pde_ptr->bc().dirichletEnd())
-    {
-        if (it->patch() == patch && it->side() == side)
-            dirBcExists = true;
-        ++it;
-    }
-    GISMO_ASSERT(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
-                             + " does not belong to the Dirichlet boundary\n");
-
-    gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
-    GISMO_ASSERT(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
-                 "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
-                 " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
-                 " x " + util::to_string(m_dim) + ".\n");
-
-
-    for (short_t d = 0; d < m_dim; ++d )
-    {
-        gsMatrix<unsigned> globalIndices;
-        m_system.mapColIndices(localBIndices, patch, globalIndices, d);
-
-        for (index_t i = 0; i < globalIndices.rows(); ++i)
-            m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
-    }
-
-    Base::saved_ddof = gsAssembler<T>::m_ddof;
 }
 
 } // namespace ends

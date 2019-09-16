@@ -75,11 +75,11 @@ gsMatrix<T> gsNsTimeIntegrator<T>::newton()
 }
 
 template <class T>
-bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix)
+bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
+                                     const std::vector<gsMatrix<T> > & fixedDoFs)
 {
     stiffAssembler.options().setInt("Iteration",iteration_type::newton);
-    if (!stiffAssembler.assemble(solutionVector))
-        return false;
+    stiffAssembler.assemble(solutionVector,fixedDoFs);
     m_system.matrix() = tStep*stiffAssembler.matrix();
 
     index_t numDofsVel = massAssembler.numDofs();
@@ -99,7 +99,9 @@ template <class T>
 gsMatrix<T> gsNsTimeIntegrator<T>::implicitOseen()
 {
     stiffAssembler.options().setInt("Iteration",iteration_type::picard);
-    stiffAssembler.assemble(solVector);
+    gsMultiPatch<T> curVelocity, curPressure;
+    stiffAssembler.constructSolution(solVector,curVelocity,curPressure);
+    stiffAssembler.assemble(curVelocity,curPressure);
     m_system.matrix() = tStep*stiffAssembler.matrix();
 
     index_t numDofsVel = massAssembler.numDofs();
@@ -116,30 +118,12 @@ gsMatrix<T> gsNsTimeIntegrator<T>::implicitOseen()
 }
 
 template <class T>
-gsMatrix<T> gsNsTimeIntegrator<T>::oseenFSI(const gsMultiPatch<T> & velocity, T timeStep, const gsMatrix<T> & soluVector)
-{
-    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
-    stiffAssembler.assemble(velocity);
-    m_system.matrix() = timeStep*stiffAssembler.matrix();
-
-    index_t numDofsVel = massAssembler.numDofs();
-    gsSparseMatrix<T> tempMassMatrix = massAssembler.matrix();
-    tempMassMatrix.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
-    m_system.matrix().leftCols(numDofsVel) += tempMassMatrix;
-    m_system.matrix().makeCompressed();
-
-    m_system.rhs() = timeStep*stiffAssembler.rhs();
-    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*soluVector.middleRows(0,numDofsVel);
-
-    gsSparseSolver<>::LU solver(m_system.matrix());
-    return solver.solve(m_system.rhs());
-}
-
-template <class T>
 gsMatrix<T> gsNsTimeIntegrator<T>::semiImplicitOseen()
 {
     stiffAssembler.options().setInt("Iteration",iteration_type::picard);
-    stiffAssembler.assemble(solVector);
+    gsMultiPatch<T> curVelocity, curPressure;
+    stiffAssembler.constructSolution(solVector,curVelocity,curPressure);
+    stiffAssembler.assemble(curVelocity,curPressure);
     m_system.matrix() = 0.5*tStep*stiffAssembler.matrix();
 
     index_t numDofsVel = massAssembler.numDofs();

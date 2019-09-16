@@ -28,9 +28,8 @@ class gsVisitorMixedNonLinearElasticity
 {
 public:
     gsVisitorMixedNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_,
-                                      const gsMultiPatch<T> & pressure_, bool assembleMatrix_)
+                                      const gsMultiPatch<T> & pressure_)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          assembleMatrix(assembleMatrix_),
           displacement(displacement_),
           pressure(pressure_) {}
 
@@ -90,10 +89,9 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
-        // Initialize local matrix/rhs
-        if (assembleMatrix)                                     // A | B^T
-            localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
-        localRhs.setZero(dim*N_D + N_P,1);                      // B | C
+        // Initialize local matrix/rhs                      // A | B^T
+        localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
+        localRhs.setZero(dim*N_D + N_P,1);                  // B | C
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
@@ -118,34 +116,31 @@ public:
             // Second Piola-Kirchhoff stress tensor
             gsMatrix<T> S = (pressureValues.at(q)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
             gsMatrix<T> C; // elasticity tensor
-            if (assembleMatrix)
-                setC<T>(C,RCGinv,0.,mu-pressureValues.at(q));
+            setC<T>(C,RCGinv,0.,mu-pressureValues.at(q));
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
                 gsMatrix<T> B_i;
                 setB<T>(B_i,F,physGradDisp.col(i));
-                if (assembleMatrix)
+                gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
+                // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
+                gsVector<T> geometricTangentTemp = S * physGradDisp.col(i);
+                // A-matrix
+                for (index_t j = 0; j < N_D; j++)
                 {
-                    gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
-                    // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
-                    gsVector<T> geometricTangentTemp = S * physGradDisp.col(i);
-                    // A-matrix
-                    for (index_t j = 0; j < N_D; j++)
-                    {
-                        gsMatrix<T> B_j;
-                        setB<T>(B_j,F,physGradDisp.col(j));
-                        gsMatrix<T> materialTangent = materialTangentTemp * B_j;
-                        T geometricTangent =  geometricTangentTemp.transpose() * physGradDisp.col(j);
-                        // K_tg = K_tg_mat + I*K_tg_geo;
-                        for (short_t d = 0; d < dim; ++d)
-                            materialTangent(d,d) += geometricTangent;
+                    gsMatrix<T> B_j;
+                    setB<T>(B_j,F,physGradDisp.col(j));
+                    gsMatrix<T> materialTangent = materialTangentTemp * B_j;
+                    T geometricTangent =  geometricTangentTemp.transpose() * physGradDisp.col(j);
+                    // K_tg = K_tg_mat + I*K_tg_geo;
+                    for (short_t d = 0; d < dim; ++d)
+                        materialTangent(d,d) += geometricTangent;
 
-                        for (short_t di = 0; di < dim; ++di)
-                            for (short_t dj = 0; dj < dim; ++dj)
-                                localMat(di*N_D+i, dj*N_D+j) += weight * materialTangent(di,dj);
-                    }
+                    for (short_t di = 0; di < dim; ++di)
+                        for (short_t dj = 0; dj < dim; ++dj)
+                            localMat(di*N_D+i, dj*N_D+j) += weight * materialTangent(di,dj);
                 }
+
                 // Second Piola-Kirchhoff stress tensor as vector
                 gsVector<T> Svec;
                 voigtStress<T>(Svec,S);
@@ -156,21 +151,19 @@ public:
 
             }
 
-            if (assembleMatrix)
+            // B-matrix
+            gsMatrix<T> divV = F.cramerInverse().transpose() * physGradDisp;
+            for (short_t d = 0; d < dim; ++d)
             {
-                // B-matrix
-                gsMatrix<T> divV = F.cramerInverse().transpose() * physGradDisp;
-                for (short_t d = 0; d < dim; ++d)
-                {
-                    gsMatrix<> block = weight*basisValuesPres.col(q)*divV.row(d);
-                    localMat.block(dim*N_D,d*N_D,N_P,N_D) += block.block(0,0,N_P,N_D);
-                    localMat.block(d*N_D,dim*N_D,N_D,N_P) += block.transpose().block(0,0,N_D,N_P);
-                }
-                // C-matrix
-                if (abs(lambda_inv) > 0)
-                    localMat.block(dim*N_D,dim*N_D,N_P,N_P) -=
-                        (weight*lambda_inv*basisValuesPres.col(q)*basisValuesPres.col(q).transpose()).block(0,0,N_P,N_P);
+                gsMatrix<> block = weight*basisValuesPres.col(q)*divV.row(d);
+                localMat.block(dim*N_D,d*N_D,N_P,N_D) += block.block(0,0,N_P,N_D);
+                localMat.block(d*N_D,dim*N_D,N_D,N_P) += block.transpose().block(0,0,N_D,N_P);
             }
+            // C-matrix
+            if (abs(lambda_inv) > 0)
+                localMat.block(dim*N_D,dim*N_D,N_P,N_P) -=
+                        (weight*lambda_inv*basisValuesPres.col(q)*basisValuesPres.col(q).transpose()).block(0,0,N_P,N_P);
+
             // rhs: constraint residual
             localRhs.middleRows(dim*N_D,N_P) += weight*basisValuesPres.col(q)*(lambda_inv*pressureValues.at(q)-log(J));
 
@@ -198,15 +191,13 @@ public:
         blockNumbers.at(dim) = dim;
         // push to global system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
-        if (assembleMatrix)
-            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:
     // problem info
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
-    bool assembleMatrix;
     index_t patch; // current patch
     // Lame coefficients and force scaling factor
     T lambda_inv, mu, forceScaling;

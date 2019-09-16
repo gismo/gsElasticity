@@ -43,7 +43,7 @@ public:
     /// @brief Refresh routine to set dof-mappers
     virtual void refresh();
 
-    /// @brief Assembles the stiffness matrix and the RHS
+    /// @brief Assembles the mass matrix
     virtual void assemble();
 
 protected:

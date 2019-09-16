@@ -50,34 +50,46 @@ public:
     /// @brief Refresh routine to set dof-mappers
     virtual void refresh();
 
+    //--------------------- SYSTEM ASSEMBLY ----------------------------------//
+
     /// @brief Assembly of the linear system for the Stokes problem
     virtual void assemble();
 
-    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method
-    /// to solve the Navier-Stokes problem;
-    /// set *assembleMatrix* to false to only assemble the residual;
-    /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
+    /// Assembles the tangential linear system for Newton's method given the current solution
+    /// in the form of free and fixed/Dirichelt degrees of freedom.
+    /// Returns the status of the assembly (for safe exit)
+    virtual bool assemble(const gsMatrix<T> & solutionVector,
+                          const std::vector<gsMatrix<T> > & fixedDoFs);
 
-    virtual void assemble(const gsMultiPatch<T> & velocity);
+    /// Assembles the tangential linear system for Newton's method given the current solution
+    /// in the form of free and fixed/Dirichelt degrees of freedom.
+    virtual void assemble(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure);
 
+    //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
     /// @brief Construct velocity from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& velocity) const;
+    virtual void constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & velocity) const;
+
+    /// @brief Construct velocity from computed solution vector and fixed degrees of freedom
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & velocity) const;
 
     /// @brief Construct velocity and pressure from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const;
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const;
+
+    /// @brief Construct velocity and pressure from computed solution vector and fixed degrees of freedom
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const;
 
     /// @ brief Construct pressure from computed solution vector
     virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
 
-    /// sets scaling of Dirichlet BC used for linear system assembly
-    virtual void setDirichletAssemblyScaling(T factor) { m_options.setReal("DirichletAssembly",factor); }
-    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
-    virtual void setDirichletConstructionScaling(T factor) { m_options.setReal("DirichletConstruction",factor); }
-    /// set scaling of the force loading (volume and surface loading)
-    virtual void setForceScaling(T factor) { m_options.setReal("ForceScaling",factor); }
-    /// compute forces acting on a given part of the boundary (drag and lift)
+    //--------------------- SPECIALS ----------------------------------//
+
+     /// compute forces acting on a given part of the boundary (drag and lift)
     virtual gsMatrix<T> computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
                                      const std::vector<std::pair<index_t,boxSide> > & bdrySides) const;
     /// compute forces acting on a given part of the boundary (drag and lift) in the reference fluid configuration
@@ -98,15 +110,6 @@ public:
         aleVel = &velocity;
         alePatches = patches;
     }
-
-    /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
-     *
-     * A usual source of degrees of freedom is another geometry where it is known that the corresponding
-     * bases match. The function is not safe in that it assumes a correct numbering of DoFs in a given
-     * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
-     * to gsBoundaryCondtions container that is passed to the assembler constructor.
-     */
-    virtual void setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
 protected:
 
