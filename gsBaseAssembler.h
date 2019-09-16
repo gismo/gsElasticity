@@ -50,7 +50,7 @@ public:
      * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
      * to gsBoundaryCondtions container that is passed to the assembler constructor.
      */
-    //virtual void modifyDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
+    virtual void setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
     //virtual void setDirichletDofs(const gsMatrix<T> & ddofs);
 

@@ -55,9 +55,11 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
     }
 }
 
-/*
+//--------------------- DIRICHLET BC SHENANIGANS ----------------------------------//
+
+
 template <class T>
-void gsElasticityAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
+void gsBaseAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -67,11 +69,12 @@ void gsElasticityAssembler<T>::setDirichletDofs(size_t patch, boxSide side, cons
             dirBcExists = true;
         ++it;
     }
-    GISMO_ASSERT(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
+    GISMO_ENSURE(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
                              + " does not belong to the Dirichlet boundary\n");
 
+    short_t m_dim = m_pde_ptr->rhs()->targetDim();
     gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
-    GISMO_ASSERT(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
+    GISMO_ENSURE(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
                  "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
                  " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
                  " x " + util::to_string(m_dim) + ".\n");
@@ -84,8 +87,6 @@ void gsElasticityAssembler<T>::setDirichletDofs(size_t patch, boxSide side, cons
         for (index_t i = 0; i < globalIndices.rows(); ++i)
             m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
     }
-
-    Base::saved_ddof = gsAssembler<T>::m_ddof;
-}*/
+}
 
 }// namespace gismo ends

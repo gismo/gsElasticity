@@ -90,8 +90,6 @@ void gsNewton<T>::solve()
 {
     while (m_status == newton_status::working)
     {
-        if (numIterations == 1) // set Dirichlet BC to zero after the first iteration
-            assembler.homogenizeFixedDofs(-1);
         if (!computeUpdate())
         {
             m_status = newton_status::bad_solution;
@@ -116,6 +114,9 @@ void gsNewton<T>::solve()
 template <class T>
 bool gsNewton<T>::computeUpdate()
 {
+    if (numIterations == 1) // set Dirichlet BC to zero after the first iteration
+        assembler.homogenizeFixedDofs(-1);
+
     if (!assembler.assemble(solVector,fixedDoFs))
         return false;
 

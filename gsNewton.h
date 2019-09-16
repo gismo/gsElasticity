@@ -70,8 +70,6 @@ public:
     std::string status();
     /// reset the solver state
     void reset();
-
-protected:
     /// computes update of the solution
     bool computeUpdate();
 
