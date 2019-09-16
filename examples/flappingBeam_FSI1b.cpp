@@ -67,7 +67,7 @@ void aitkenRelaxation(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMat
     omega = -1.*omega*(residualOld.transpose()*(residualNew-residualOld))(0,0) /
             pow((residualNew-residualOld).norm(),2);
 
-    for (index_t i = 0; i < interfaceOld.size(); ++i)
+    for (index_t i = 0; i < index_t(interfaceOld.size()); ++i)
     {
         interfaceOld[i] = interfaceNow[i];
         interfaceNow[i] += omega*(interfaceNew[i]-interfaceNow[i]);
@@ -89,9 +89,9 @@ int main(int argc, char* argv[])
                 // Input //
     //=====================================//
 
-    std::string filenameFlow = ELAST_DATA_DIR"/fsi_flow_around_cylinder.xml";
-    std::string filenameFlowPart = ELAST_DATA_DIR"/fsi_flow_around_cylinder_segment.xml";
-    std::string filenameBeam = ELAST_DATA_DIR"/fsi_beam_around_cylinder.xml";
+    std::string filenameFlow = ELAST_DATA_DIR"/flappingBeam_flowFull.xml";
+    std::string filenameFlowPart = ELAST_DATA_DIR"/flappingBeam_flowPart.xml";
+    std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRefFlow = 3; // number of h-refinements for the fluid
     index_t numKRefFlow = 0; // number of k-refinements for the fluid
     index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
@@ -289,19 +289,19 @@ int main(int argc, char* argv[])
     // Aitken relaxation factor
     real_t omega;
     // convergence
-    real_t initRes;
+    real_t initRes = 0.01;
     bool converged = false;
     index_t iter = 0;
 
     gsStopwatch clock;
     clock.restart();
     // 0. pre-solve flow to get a stable flow
-    gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow);
+    gsNewton<real_t> newtonFlow(nsAssembler);
     newtonFlow.options().setInt("Verbosity",newton_verbosity::none);
     newtonFlow.options().setInt("Solver",linear_solver::LU);
     newtonFlow.solve();
     solutionFlow = newtonFlow.solution();
-    nsAssembler.constructSolution(solutionFlow,velocity,pressure);
+    nsAssembler.constructSolution(newtonFlow.solution(),newtonFlow.allFixedDoFs(),velocity,pressure);
 
     while (!converged && iter < 50)
     {
@@ -313,29 +313,25 @@ int main(int argc, char* argv[])
             aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
             aleAssembler.assemble(ALE);
             gsSparseSolver<>::LU solverALE(aleAssembler.matrix());
-            solutionALE += solverALE.solve(aleAssembler.rhs());
+            gsMatrix<> aleUpdateVector = solverALE.solve(aleAssembler.rhs());
+            gsMultiPatch<> aleUpdate;
+            aleAssembler.constructSolution(aleUpdateVector,aleUpdate);
             // 2. deform flow mesh
-            // reverse previous deformation
-            nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
-            nsAssembler.patches().patch(4).coefs() -= ALE.patch(1).coefs();
-            nsAssembler.patches().patch(5).coefs() -= ALE.patch(2).coefs();
-            // apply new deformation
-            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]);
-            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]);
-            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]);
-            aleAssembler.constructSolution(solutionALE,ALE);
-            nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
-            nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
-            nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
+            // update ALE
+            for (index_t p = 0; p < 3; ++p)
+                ALE.patch(p).coefs() += aleUpdate.patch(p).coefs();
+            // update flow mesh
+            for (index_t p = 0; p < 3; ++p)
+                nsAssembler.patches().patch(p+3).coefs() += aleUpdate.patch(p).coefs();
         }
         // 3. solve flow
-        nsAssembler.assemble(solutionFlow);
+        nsAssembler.assemble(velocity,pressure);
         gsSparseSolver<>::LU solverFlow(nsAssembler.matrix());
         solutionFlow += solverFlow.solve(nsAssembler.rhs());
-        nsAssembler.constructSolution(solutionFlow,velocity,pressure);
+        nsAssembler.constructSolution(solutionFlow,newtonFlow.allFixedDoFs(),velocity,pressure);
 
         // 4. solve beam
-        elAssembler.assemble(solutionBeam);
+        elAssembler.assemble(displacement);
         gsSparseSolver<>::LU solverBeam(elAssembler.matrix());
         solutionBeam += solverBeam.solve(elAssembler.rhs());
         elAssembler.constructSolution(solutionBeam,displacement);
@@ -374,18 +370,6 @@ int main(int argc, char* argv[])
         if (residual < absTol || residual/initRes < relTol)
             converged = true;
         iter++;
-
-        std::vector<std::pair<index_t, boxSide> > bdrySides;
-        bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
-        bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
-        bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
-        bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
-        bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
-        bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
-        gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
-        gsInfo << "Drag: " << force.at(0) << std::endl;
-        gsInfo << "Lift: " << force.at(1) << std::endl;
-
     }
     gsInfo << "Solved in " << clock.stop() << "s.\n";
 

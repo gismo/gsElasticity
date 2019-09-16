@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     index_t numSteps = 5; // number of incremental loading steps used during deformation
     index_t numIter = 1; // number of Newton's iterations at each non-final incremental loading step
     real_t poissRatio = 0.45;
-    index_t law = 1; // material law used in the material model; 0 - St. Venant-Kirchhoff, 1 - ln-neo-Hooke, 2 - quad-neo-Hooke
+    index_t law = material_law::neo_hooke_ln;
     /// Output options
     index_t numPlotPoints = 0;
 
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=====================================//
-                // Algorithm //
+          // Initial domain generation //
     //=====================================//
 
     gsMultiPatch<> bdry;
@@ -85,6 +85,10 @@ int main(int argc, char* argv[])
     initGeo.computeTopology();
     gsInfo << "Initialized a 2D problem with " << initGeo.patch(0).coefsSize() * 2 << " dofs.\n";
 
+    //=====================================//
+            // Deformation: settings //
+    //=====================================//
+
     gsMultiBasis<> basis(initGeo);
     // first tell assembler to allocate space for Dirichlet DoFs; we specify the values later
     gsBoundaryConditions<> bcInfo;
@@ -98,33 +102,40 @@ int main(int argc, char* argv[])
     gsElasticityAssembler<real_t> assembler(initGeo,basis,bcInfo,g);
     assembler.options().setReal("PoissonsRatio",poissRatio);
     assembler.options().setInt("MaterialLaw",law);
-    // setting Dirichlet DoFs
-    for (index_t s = 1; s < 5; ++s)
-        assembler.setDirichletDofs(0,s,bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs());
+    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // creating the nonlinear solver
     gsNewton<real_t> newton(assembler);
-    newton.options().setInt("NumIncSteps",numSteps);
-    newton.options().setInt("MaxItersInter",numIter);
     newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("MaxIters",numIter);
 
-    // a small trick to get the intermediate displacements from the nonlinear solver
+    //=====================================//
+            // Deformation: solving //
+    //=====================================//
+
+    // container for displacements
     std::vector<gsMultiPatch<> > displacements;
-    newton.setPreProcessingFunction([&](const gsMatrix<> & matrix)
-    {
-        displacements.push_back(gsMultiPatch<>());
-        assembler.constructSolution(matrix,displacements.back());
-    });
 
     gsInfo << "Solving...\n";
     gsStopwatch clock;
     clock.restart();
-    newton.solve();
-    gsInfo << "Solverd in "<< clock.stop() <<"s.\n";
 
-    // get the final displacement as well
-    displacements.push_back(gsMultiPatch<>());
-    assembler.constructSolution(newton.solution(),displacements.back());
+    for (index_t i = 0; i < numSteps; ++i)
+    {
+        gsInfo << "Loading: " << index_t(100.*i/numSteps) << "% -> " << index_t(100.*(i+1)/numSteps) << "%\n";
+        // setting Dirichlet DoFs
+        for (index_t s = 1; s < 5; ++s)
+            assembler.setDirichletDofs(0,s,(bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs())/numSteps);
+
+        if (i == numSteps-1)
+            newton.options().setInt("MaxIters",50);
+        newton.reset();
+        newton.solve();
+        displacements.push_back(gsMultiPatch<>());
+        assembler.constructSolution(newton.solution(),newton.allFixedDoFs(),displacements.back());
+    }
+
+    gsInfo << "Solved in "<< clock.stop() <<"s.\n";
 
     //=====================================//
                 // Output //

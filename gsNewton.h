@@ -66,12 +66,15 @@ public:
     void solve();
     /// returns the solution vector
     const gsMatrix<T> & solution() const { return solVector; }
+    /// returns the fixed degrees of freedom
+    const std::vector<gsMatrix<T> > & allFixedDoFs() const { return fixedDoFs; }
     /// return solver status as a string
     std::string status();
     /// reset the solver state
     void reset();
     /// computes update of the solution
     bool computeUpdate();
+
 
 protected:
     /// assembler object that generates the linear system

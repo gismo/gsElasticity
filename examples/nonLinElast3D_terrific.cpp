@@ -83,15 +83,16 @@ int main(int argc, char* argv[]){
                   // Solving //
     //=============================================//
 
-    // make the first iteration by hand to get the linear solution
-    newton.computeUpdate();
-    gsMultiPatch<> solutionLinear;
-    assembler.constructSolution(newton.solution(),solutionLinear);
-
-    // finalize automatically
     gsInfo << "Solving...\n";
     gsStopwatch clock;
     clock.restart();
+
+    // make the first iteration by hand to get the linear solution
+    newton.computeUpdate();
+    gsInfo << newton.status() << std::endl;
+    gsMultiPatch<> solutionLinear;
+    assembler.constructSolution(newton.solution(),solutionLinear);
+    // continue iterations till convergence
     newton.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 

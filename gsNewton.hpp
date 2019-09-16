@@ -31,7 +31,7 @@ gsNewton<T>::gsNewton(gsBaseAssembler<T> & assembler_)
 {
     solVector.setZero(assembler.numDofs(),1);
     fixedDoFs = assembler.allFixedDofs();
-    for (index_t d = 0; d < fixedDoFs.size(); ++d)
+    for (index_t d = 0; d < index_t(fixedDoFs.size()); ++d)
         fixedDoFs[d].setZero();
     reset();
 }
@@ -44,6 +44,7 @@ gsNewton<T>::gsNewton(gsBaseAssembler<T> & assembler_,
       m_options(defaultOptions())
 {
     fixedDoFs = assembler.allFixedDofs();
+    assembler.homogenizeFixedDofs(-1);
     reset();
 }
 
@@ -148,7 +149,7 @@ bool gsNewton<T>::computeUpdate()
     solVector += updateVector;
     // update fixed degrees fo freedom at the first iteration only (they are zero afterwards)
     if (numIterations == 0)
-        for (index_t d = 0; d < fixedDoFs.size(); ++d)
+        for (index_t d = 0; d < index_t(fixedDoFs.size()); ++d)
             fixedDoFs[d] += assembler.fixedDofs(d);
 
     if (numIterations == 0)

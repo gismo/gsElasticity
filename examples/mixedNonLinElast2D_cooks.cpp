@@ -19,7 +19,6 @@ int main(int argc, char* argv[]){
     index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
     real_t poissonsRatio = 0.4;
-    index_t numSteps = 1;
     bool subgrid = false;
 
     // minimalistic user interface for terminal
@@ -29,7 +28,6 @@ int main(int argc, char* argv[]){
     cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addInt("i","iter","Number of incremental loading steps",numSteps);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
@@ -86,7 +84,6 @@ int main(int argc, char* argv[]){
     // setting Newton's method
     gsNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("NumIncSteps",numSteps);
 
     //=============================================//
                   // Solving //

@@ -67,7 +67,7 @@ void aitkenRelaxation(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMat
     omega = -1.*omega*(residualOld.transpose()*(residualNew-residualOld))(0,0) /
             pow((residualNew-residualOld).norm(),2);
 
-    for (index_t i = 0; i < interfaceOld.size(); ++i)
+    for (index_t i = 0; i < index_t(interfaceOld.size()); ++i)
     {
         interfaceOld[i] = interfaceNow[i];
         interfaceNow[i] += omega*(interfaceNew[i]-interfaceNow[i]);
@@ -88,9 +88,9 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filenameFlow = ELAST_DATA_DIR"/fsi_flappingBeam_flowFull.xml";
-    std::string filenameFlowPart = ELAST_DATA_DIR"/fsi_flappingBeam_flowPart.xml";
-    std::string filenameBeam = ELAST_DATA_DIR"/fsi_flappingBeam_beam.xml";
+    std::string filenameFlow = ELAST_DATA_DIR"/flappingBeam_flowFull.xml";
+    std::string filenameFlowPart = ELAST_DATA_DIR"/flappingBeam_flowPart.xml";
+    std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRefFlow = 3; // number of h-refinements for the fluid
     index_t numKRefFlow = 0; // number of k-refinements for the fluid
     index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
@@ -288,9 +288,13 @@ int main(int argc, char* argv[]){
     // Aitken relaxation factor
     real_t omega;
     // convergence
-    real_t initRes;
+    real_t initRes = 0.01;
     bool converged = false;
     index_t iter = 0;
+
+    std::vector<gsMatrix<> > fixedDoFsALE = aleAssembler.allFixedDofs();
+    std::vector<gsMatrix<> > fixedDoFsFlow = nsAssembler.allFixedDofs();
+    nsAssembler.homogenizeFixedDofs(-1);
 
     gsStopwatch clock;
     clock.restart();
@@ -299,32 +303,34 @@ int main(int argc, char* argv[]){
         if (iter > 0)
         {
             // 1. compute ALE displacement
-            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]);
-            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]);
-            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]);
-            gsNewton<real_t> newtonALE(aleAssembler,solutionALE);
+            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
+            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
+            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
+            gsNewton<real_t> newtonALE(aleAssembler,solutionALE,fixedDoFsALE);
             newtonALE.options().setInt("Verbosity",newton_verbosity::none);
             newtonALE.options().setInt("Solver",linear_solver::LU);
             newtonALE.solve();
             solutionALE = newtonALE.solution();
+            fixedDoFsALE = newtonALE.allFixedDoFs();
             // 2. deform flow mesh
             // reverse previous deformation
             nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
             nsAssembler.patches().patch(4).coefs() -= ALE.patch(1).coefs();
             nsAssembler.patches().patch(5).coefs() -= ALE.patch(2).coefs();
             // apply new deformation
-            aleAssembler.constructSolution(solutionALE,ALE);
+            aleAssembler.constructSolution(solutionALE,fixedDoFsALE,ALE);
             nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
             nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
             nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
         }
         // 3. solve flow
-        gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow);
+        gsNewton<real_t> newtonFlow(nsAssembler,solutionFlow,fixedDoFsFlow);
         newtonFlow.options().setInt("Verbosity",newton_verbosity::none);
         newtonFlow.options().setInt("Solver",linear_solver::LU);
         newtonFlow.solve();
         solutionFlow = newtonFlow.solution();
-        nsAssembler.constructSolution(solutionFlow,velocity,pressure);
+        fixedDoFsFlow = newtonFlow.allFixedDoFs();
+        nsAssembler.constructSolution(solutionFlow,fixedDoFsFlow,velocity,pressure);
 
         // 4. solve beam
         gsNewton<real_t> newtonBeam(elAssembler,solutionBeam);
@@ -367,6 +373,7 @@ int main(int argc, char* argv[]){
         if (residual < absTol || residual/initRes < relTol)
             converged = true;
         iter++;
+
     }
     gsInfo << "Solved in " << clock.stop() << "s.\n";
 
