@@ -92,8 +92,8 @@ void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix
 template <class T>
 void gsBaseAssembler<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
 {
-    GISMO_ENSURE(ddofs.size() == m_ddof.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
-                 ". Must be: " + util::to_string(m_ddof.size()));
+    GISMO_ENSURE(ddofs.size() >= m_ddof.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
+                 ". Must be at least: " + util::to_string(m_ddof.size()));
 
     for (short_t d = 0; d < index_t(m_ddof.size()); ++d)
     {

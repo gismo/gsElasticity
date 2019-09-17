@@ -25,7 +25,8 @@ template <class T>
 class gsVisitorMass
 {
 public:
-    gsVisitorMass(const gsPde<T> & pde_) {}
+    gsVisitorMass(bool assembleMatrix_) :
+    assembleMatrix(assembleMatrix_) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -44,32 +45,39 @@ public:
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
     {
-        // store quadrature points of the element for geometry evaluation
-        md.points = quNodes;
-        // NEED_MEASURE to get the Jacobian determinant values for integration
-        md.flags = NEED_MEASURE;
-        // Compute the geometry mapping at the quadrature points
-        geo.computeMap(md);
-        // find local indices of the displacement basis functions active on the element
+        if (assembleMatrix)
+        {
+            // store quadrature points of the element for geometry evaluation
+            md.points = quNodes;
+            // NEED_MEASURE to get the Jacobian determinant values for integration
+            md.flags = NEED_MEASURE;
+            // Compute the geometry mapping at the quadrature points
+            geo.computeMap(md);
+            // Evaluate displacement basis functions on the element
+            basisRefs.front().eval_into(quNodes,basisValuesDisp);
+            // find local indices of the displacement basis functions active on the element
+        }
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();
-        // Evaluate displacement basis functions on the element
-        basisRefs.front().eval_into(quNodes,basisValuesDisp);
+
     }
 
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
         // initialize local matrix and rhs
-        localMat.setZero(dim*N_D,dim*N_D);
-        for (index_t q = 0; q < quWeights.rows(); ++q)
+        if (assembleMatrix)
         {
-            // Multiply quadrature weight by the geometry measure
-            const T weight = density * quWeights[q] * md.measure(q);
+            localMat.setZero(dim*N_D,dim*N_D);
+            for (index_t q = 0; q < quWeights.rows(); ++q)
+            {
+                // Multiply quadrature weight by the geometry measure
+                const T weight = density * quWeights[q] * md.measure(q);
 
-            gsMatrix<T> block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
+                gsMatrix<T> block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
+            }
         }
     }
 
@@ -87,7 +95,9 @@ public:
             blockNumbers.at(d) = d;
         }
         // push to global system
-        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        system.pushToRhs(gsMatrix<T>::Zero(dim*N_D,1),globalIndices,blockNumbers);
+        if (assembleMatrix)
+            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:
@@ -105,6 +115,7 @@ protected:
     index_t N_D;
     // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
     gsMatrix<T> basisValuesDisp;
+    bool assembleMatrix;
 };
 
 } // namespace gismo

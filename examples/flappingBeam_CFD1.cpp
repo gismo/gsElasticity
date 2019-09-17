@@ -150,7 +150,7 @@ int main(int argc, char* argv[]){
 
     // solution as two isogeometric fields
     gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(newton.solution(),velocity,pressure);
+    assembler.constructSolution(newton.solution(),newton.allFixedDofs(),velocity,pressure);
 
     //=============================================//
                   // Validation //

@@ -74,6 +74,7 @@ int main(int argc, char* argv[]){
     bool validate = true;
     real_t warmUpTimeSpan = 2.;
     real_t warmUpTimeStep = 0.1;
+    real_t theta = 0.5;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Benchmark CFD3: transient flow of an incompressible fluid.");
@@ -85,6 +86,7 @@ int main(int argc, char* argv[]){
     cmd.addSwitch("g","supg","Use SUPG stabilization (testing)",supg);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step, sec",timeStep);
+    cmd.addReal("f","theta","Time integration parameter: 0 - exp.Euler, 1 - imp.Euler, 0.5 - Crank-Nicolson",theta);
     cmd.addSwitch("x","validate","Save lift and drag over time to a text file for further analysis",validate);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -161,6 +163,7 @@ int main(int argc, char* argv[]){
     // creating time integrator
     gsNsTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
     timeSolver.options().setInt("Scheme",time_integration_NS::theta_scheme_linear);
+    timeSolver.options().setReal("Theta",theta);
     timeSolver.options().setInt("Verbosity",newton_verbosity::all);
 
     //=============================================//
@@ -190,41 +193,38 @@ int main(int argc, char* argv[]){
                    // Warming up //
     //=============================================//
 
-    /*assembler.constructSolution(gsMatrix<>::Zero(assembler.numDofs(),1),velocity,pressure);
-    gsMatrix<> inflowDDoFs = velocity.patch(0).boundary(boundary::west)->coefs();
+    gsMatrix<> solVector = gsMatrix<>::Zero(assembler.numDofs(),1);
+    std::vector<gsMatrix<> > zeroFixedDoFs = assembler.allFixedDofs();
+    for (index_t d = 0; d < index_t(zeroFixedDoFs.size()); ++d)
+        zeroFixedDoFs[d].setZero();
 
-    assembler.setDirichletDofs(0,boundary::west,inflowDDoFs*0.);
-    assembler.constructSolution(gsMatrix<>::Zero(assembler.numDofs(),1),velocity,pressure);
+    assembler.constructSolution(solVector,velocity,pressure);
+    gsMatrix<> inflowDDoFs = velocity.patch(0).boundary(boundary::west)->coefs();
+    assembler.homogenizeFixedDofs(-1);
+    timeSolver.setSolutionVector(solVector);
+    timeSolver.setFixedDofs(zeroFixedDoFs);
+    timeSolver.initialize();
+    assembler.constructSolution(solVector,zeroFixedDoFs,velocity,pressure);
     // plotting initial condition
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,0,numPlotPoints);
 
     clock.restart();
     gsInfo << "Running the simulation with a coarse time step to compute an initial solution...\n";
-    gsMatrix<> solVector = gsMatrix<>::Zero(assembler.numDofs(),1);
     for (index_t i = 0; i < index_t(warmUpTimeSpan/warmUpTimeStep); ++i)
     {
         bar.display(i+1,index_t(warmUpTimeSpan/warmUpTimeStep));
-        assembler.setDirichletDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
-        //solVector = timeSolver.oseenFSI(velocity,warmUpTimeStep,solVector);
-        assembler.constructSolution(solVector,velocity,pressure);
+        assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
+        timeSolver.makeTimeStep(warmUpTimeStep);
+        assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i+1,numPlotPoints);
     }
-    gsInfo << "Complete in " << clock.stop() << "s.\n";*/
+    gsInfo << "Complete in " << clock.stop() << "s.\n";
 
     //=============================================//
                   // Solving //
     //=============================================//
-
-    gsMatrix<> solVector = gsMatrix<>::Zero(assembler.numDofs(),1);
-    assembler.constructSolution(solVector,velocity,pressure);
-    // plotting initial condition
-    if (numPlotPoints > 0)
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,0,numPlotPoints);
-    // set initial conditions
-    timeSolver.setSolutionVector(solVector);
-    timeSolver.initialize();
 
     gsInfo << "Running the transient simulation...\n";
     clock.restart();
@@ -234,9 +234,9 @@ int main(int argc, char* argv[]){
         timeSolver.makeTimeStep(timeStep);
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i + 1/* + index_t(warmUpTimeSpan/warmUpTimeStep)*/,numPlotPoints);
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i + 1 + index_t(warmUpTimeSpan/warmUpTimeStep),numPlotPoints);
         if (validate)
-            validation(file,assembler,/*warmUpTimeSpan + */timeStep*(i+1),velocity,pressure);
+            validation(file,assembler,warmUpTimeSpan + timeStep*(i+1),velocity,pressure);
     }
     gsInfo << "Complete in " << clock.stop() << "s.\n";
 

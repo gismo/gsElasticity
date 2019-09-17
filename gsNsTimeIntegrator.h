@@ -75,7 +75,7 @@ protected:
     gsMatrix<T> oldResidual;
 
     /// time step length
-    T tStep;
+    T tStep, oldTimeStep;
     /// vector of displacement DoFs
     gsMatrix<T> solVector;
     gsMatrix<T> oldSolVector;

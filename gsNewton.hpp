@@ -188,8 +188,8 @@ std::string gsNewton<T>::status()
 template <class T>
 void gsNewton<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
 {
-    GISMO_ENSURE(ddofs.size() == fixedDoFs.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
-                 ". Must be: " + util::to_string(fixedDoFs.size()));
+    GISMO_ENSURE(ddofs.size() >= fixedDoFs.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
+                 ". Must be at least: " + util::to_string(fixedDoFs.size()));
 
     for (short_t d = 0; d < index_t(fixedDoFs.size()); ++d)
     {

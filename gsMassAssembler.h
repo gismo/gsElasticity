@@ -44,7 +44,10 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the mass matrix
-    virtual void assemble();
+    virtual void assemble(bool assembleMatrix = true);
+
+    /// set all fixed degrees of freedom
+    virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
 
 protected:
 
@@ -56,6 +59,7 @@ protected:
     using Base::m_bases;
     using Base::m_options;
     using Base::m_system;
+    using Base::m_ddof;
 };
 
 } // namespace gismo ends
