@@ -40,24 +40,28 @@ public:
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
     /// set intial conditions
-    void setInitialSolution(const gsMatrix<T> & initialSolution) { solVector = initialSolution; }
+    void setSolutionVector(const gsMatrix<T> & solutionVector)
+    {
+        GISMO_ENSURE(solutionVector.rows() == stiffAssembler.numDofs(),"Wrong size of the solution vector: " + util::to_string(solutionVector.rows()) +
+                     ". Must be: " + util::to_string(stiffAssembler.numDofs()));
+        solVector = solutionVector;
+    }
     /// @brief Initialize the solver; execute before computing any time steps
     void initialize();
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs);
+                          const std::vector<gsMatrix<T> > & fixedDoFs,
+                          bool assembleMatrix = true);
 
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
     /// returns  vector of displacement DoFs
     const gsMatrix<T> & solutionVector() const {return solVector;}
 
-protected:
     /// time integraton schemes
-    gsMatrix<T> newton();
-    gsMatrix<T> implicitOseen();
-    gsMatrix<T> semiImplicitOseen();
+    void implicitLinear();
+    void implicitNonlinear();
 
 protected:
     /// assembler object that generates the static system
@@ -68,13 +72,16 @@ protected:
     gsSparseMatrix<T> m_matrix;
     /// RHS vector of the linear system to solve
     gsMatrix<T> m_rhs;
+    gsMatrix<T> oldResidual;
 
     /// time step length
     T tStep;
     /// vector of displacement DoFs
     gsMatrix<T> solVector;
+    gsMatrix<T> oldSolVector;
     using Base::m_system;
     using Base::m_options;
+    using Base::m_ddof;
 };
 
 }

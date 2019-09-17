@@ -87,7 +87,7 @@ void gsNsAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
+    m_system.rhs().setZero();
 
     gsVisitorStokes<T> visitor(*m_pde_ptr);
     Base::template push<gsVisitorStokes<T> >(visitor);
@@ -97,24 +97,28 @@ void gsNsAssembler<T>::assemble()
 
 template <class T>
 bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
-                                const std::vector<gsMatrix<T> > & fixedDoFs)
+                                const std::vector<gsMatrix<T> > & fixedDoFs,
+                                bool assembleMatrix)
 {
     gsMultiPatch<T> velocity, pressure;
     constructSolution(solutionVector,fixedDoFs,velocity,pressure);
 
-    m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
     if (alePatches.empty())
     {
-        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure);
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
         Base::template push<gsVisitorNavierStokes<T> >(visitor);
     }
     else
     {
-        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,*aleVel,alePatches);
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,*aleVel,alePatches,assembleMatrix);
         Base::template push<gsVisitorNavierStokes<T> >(visitor);
     }
 
@@ -125,13 +129,18 @@ bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
 
 template <class T>
 void gsNsAssembler<T>::assemble(const gsMultiPatch<T> & velocity,
-                                const gsMultiPatch<T> & pressure)
+                                const gsMultiPatch<T> & pressure,
+                                bool assembleMatrix)
 {
-    m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
+    m_system.rhs().setZero();
 
     m_system.rhs().setZero(Base::numDofs(),1);
-    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure);
+    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
     Base::template push<gsVisitorNavierStokes<T> >(visitor);
 
     m_system.matrix().makeCompressed();

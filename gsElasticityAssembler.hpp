@@ -116,7 +116,7 @@ void gsElasticityAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
@@ -138,7 +138,8 @@ void gsElasticityAssembler<T>::assemble()
 
 template <class T>
 bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
-                                        const std::vector<gsMatrix<T> > & fixedDoFs)
+                                        const std::vector<gsMatrix<T> > & fixedDoFs,
+                                        bool assembleMatrix)
 {
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
@@ -146,7 +147,7 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
         constructSolution(solutionVector,fixedDoFs,displacement);
         if (checkSolution(displacement) != -1)
             return false;
-        assemble(displacement);
+        assemble(displacement,assembleMatrix);
     }
     else // mixed formulation (displacement + pressure)
     {
@@ -154,20 +155,24 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
         constructSolution(solutionVector,fixedDoFs,displacement,pressure);
         if (checkSolution(displacement) != -1)
             return false;
-        assemble(displacement,pressure);
+        assemble(displacement,pressure,assembleMatrix);
     }
     return true;
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
+                                        bool assembleMatrix)
 {
-    m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,assembleMatrix);
     Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
@@ -178,14 +183,18 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
 
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
-                                        const gsMultiPatch<T> & pressure)
+                                        const gsMultiPatch<T> & pressure,
+                                        bool assembleMatrix)
 {
-    m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure);
+    gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure,assembleMatrix);
     Base::template push<gsVisitorMixedNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system

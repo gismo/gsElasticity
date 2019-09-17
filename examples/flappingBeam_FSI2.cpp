@@ -410,7 +410,6 @@ int main(int argc, char* argv[])
 
             //nsTimeSolver.makeTimeStep(timeStep);
        tempFlowSOl =  nsTimeSolver.oseenFSI(trueVelocity,timeStep,solutionFlow);
-            nsAssembler.constructSolution(tempFlowSOl,velocity,pressure);
 
             std::vector<std::pair<index_t, boxSide> > bdrySides;
             bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
@@ -428,6 +427,12 @@ int main(int argc, char* argv[])
             elTimeSolver.setInitialDisplacement(solutionBeam);
             elTimeSolver.setInitialVelocity(solutionBeamVelocity);
             elTimeSolver.initialize();
+
+
+            // set new forces AFTER the initialization where the old residual is assembled
+            nsAssembler.constructSolution(tempFlowSOl,velocity,pressure);
+
+
             elTimeSolver.makeTimeStep(timeStep);
             elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
             gsMatrix<> point(2,1);

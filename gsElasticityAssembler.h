@@ -67,17 +67,20 @@ public:
     /// in the form of free and fixed/Dirichelt degrees of freedom.
     /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs);
+                          const std::vector<gsMatrix<T> > & fixedDoFs,
+                          bool assembleMatrix = true);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for displacement formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & displacement);
+    virtual void assemble(const gsMultiPatch<T> & displacement,
+                          bool assembleMatrix = true);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for mixed formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure);
+    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
+                          bool assembleMatrix = true);
 
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 

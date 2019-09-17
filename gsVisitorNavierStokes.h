@@ -27,22 +27,26 @@ class gsVisitorNavierStokes
 public:
 
     gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
-                          const gsMultiPatch<T> & pressure_)
+                          const gsMultiPatch<T> & pressure_,
+                          bool assembleMatrix_)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
           velocity(velocity_),
           pressure(pressure_),
-          ALE(false) {}
+          ALE(false),
+          assembleMatrix(assembleMatrix_) {}
 
     gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
                           const gsMultiPatch<T> & pressure_,
                           const gsMultiPatch<T> & ALEvelocity,
-                          std::vector<std::pair<index_t,index_t> > alepatches)
+                          std::vector<std::pair<index_t,index_t> > alepatches,
+                          bool assembleMatrix_)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
           velocity(velocity_),
           pressure(pressure_),
           velALE(ALEvelocity),
           patchesALE(alepatches),
-          ALE(false) {}
+          ALE(false),
+          assembleMatrix(assembleMatrix_) {}
 
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -148,7 +152,8 @@ public:
         blockNumbers.at(dim) = dim;
         // push to global system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
-        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        if (assembleMatrix)
+            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:
@@ -172,9 +177,10 @@ protected:
     void assembleNewton(gsDomainIterator<T> & element,
                         const gsVector<T> & quWeights)
     {
-        // Initialize local matrix/rhs                     // A | D
-        localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
-        localRhs.setZero(dim*N_V + N_P,1);                 // B | 0// roughly estimate h - diameter of the element ( for SUPG)
+        // Initialize local matrix/rhs
+        if (assembleMatrix)                                    // A | D
+            localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
+        localRhs.setZero(dim*N_V + N_P,1);                     // B | 0// roughly estimate h - diameter of the element ( for SUPG)
         // T h = cellSize(element);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -186,25 +192,28 @@ protected:
             transformGradients(md, q, basisValuesVel[1], physGradVel);
             // Compute physical Jacobian of the current velocity field
             gsMatrix<T> physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
-            // matrix A: diffusion
-            gsMatrix<T> block = weight*density*viscosity * physGradVel.transpose()*physGradVel;
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
-            // matrix A: advection
-            block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
-            // matrix A: reaction
-            block = weight*density*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
-            for (short_t di = 0; di < dim; ++di)
-                for (short_t dj = 0; dj < dim; ++dj)
-                    localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
-            // matrices B and D
-            for (short_t d = 0; d < dim; ++d)
+            if (assembleMatrix)
             {
-                block = weight*basisValuesPres.col(q)*physGradVel.row(d);
-                localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V); // B
-                localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P); // D
+                // matrix A: diffusion
+                gsMatrix<T> block = weight*density*viscosity * physGradVel.transpose()*physGradVel;
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+                // matrix A: advection
+                block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
+                // matrix A: reaction
+                block = weight*density*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
+                for (short_t di = 0; di < dim; ++di)
+                    for (short_t dj = 0; dj < dim; ++dj)
+                        localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
+                // matrices B and D
+                for (short_t d = 0; d < dim; ++d)
+                {
+                    block = weight*basisValuesPres.col(q)*physGradVel.row(d);
+                    localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V); // B
+                    localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P); // D
+                }
             }
             // rhs: force
             for (short_t d = 0; d < dim; ++d)
@@ -286,9 +295,10 @@ protected:
     void assembleOseen(gsDomainIterator<T> & element,
                        const gsVector<T> & quWeights)
     {
-        // Initialize local matrix/rhs                     // A | D
-        localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
-        localRhs.setZero(dim*N_V + N_P,1);                 // B | 0
+        // Initialize local matrix/rhs
+        if (assembleMatrix)                                    // A | D
+            localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
+        localRhs.setZero(dim*N_V + N_P,1);                     // B | 0
         // roughly estimate h - diameter of the element ( for SUPG)
         //T h = cellSize(element);
 
@@ -302,25 +312,28 @@ protected:
             transformGradients(md, q, basisValuesVel[1], physGradVel);
             // Compute physical Jacobian of the current velocity field
             gsMatrix<T> physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
-            // matrix A: diffusion
-            gsMatrix<T> block = weight*viscosity *density* physGradVel.transpose()*physGradVel;
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
-            // matrix A: advection
-            if (!ALE)
-                block = weight*basisValuesVel[0].col(q) *
-                        (mdVelocity.values[0].col(q).transpose()*physGradVel);
-            else
-                block = weight*basisValuesVel[0].col(q) *
-                        ((mdVelocity.values[0].col(q)-mdALE.values[0].col(q)).transpose()*physGradVel);
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
-            // matrices B and D
-            for (short_t d = 0; d < dim; ++d)
+            if (assembleMatrix)
             {
-                block = weight*basisValuesPres.col(q)*physGradVel.row(d);
-                localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V); // B
-                localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P); // D
+                // matrix A: diffusion
+                gsMatrix<T> block = weight*viscosity *density* physGradVel.transpose()*physGradVel;
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+                // matrix A: advection
+                if (!ALE)
+                    block = weight*basisValuesVel[0].col(q) *
+                            (mdVelocity.values[0].col(q).transpose()*physGradVel);
+                else
+                    block = weight*basisValuesVel[0].col(q) *
+                            ((mdVelocity.values[0].col(q)-mdALE.values[0].col(q)).transpose()*physGradVel);
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
+                // matrices B and D
+                for (short_t d = 0; d < dim; ++d)
+                {
+                    block = weight*basisValuesPres.col(q)*physGradVel.row(d);
+                    localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V); // B
+                    localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P); // D
+                }
             }
             // rhs: force
             for (short_t d = 0; d < dim; ++d)
@@ -507,6 +520,7 @@ protected:
     // evaluation data of the ALE field
     gsMapData<T> mdALE;
     std::vector<std::pair<index_t,index_t> > patchesALE;
+    bool assembleMatrix;
 };
 
 } // namespace gismo

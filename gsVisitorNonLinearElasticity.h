@@ -27,9 +27,10 @@ template <class T>
 class gsVisitorNonLinearElasticity
 {
 public:
-    gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_)
+    gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_,bool assembleMatrix_)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          displacement(displacement_) { }
+          displacement(displacement_),
+          assembleMatrix(assembleMatrix_) { }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -81,11 +82,12 @@ public:
                          const gsVector<T> & quWeights)
     {     
         // initialize local matrix and rhs
-        localMat.setZero(dim*N_D,dim*N_D);
+        if (assembleMatrix)
+            localMat.setZero(dim*N_D,dim*N_D);
         localRhs.setZero(dim*N_D,1);
         // elasticity tensor
         gsMatrix<T> C;
-        if (materialLaw == 0)
+        if (materialLaw == 0 && assembleMatrix)
             setC<T>(C,gsMatrix<T>::Identity(dim,dim),lambda,mu);
         // loop over quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -114,7 +116,8 @@ public:
                 GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
                 gsMatrix<T> RCGinv = RCG.cramerInverse();
                 S = (lambda*log(J)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
-                setC<T>(C,RCGinv,lambda,mu-lambda*log(J));
+                if (assembleMatrix)
+                    setC<T>(C,RCGinv,lambda,mu-lambda*log(J));
             }
             // loop over active basis functions (u_i)
             for (index_t i = 0; i < N_D; i++)
@@ -122,26 +125,28 @@ public:
                 // Material tangent K_tg_mat = B_i^T * C * B_j;
                 gsMatrix<T> B_i;
                 setB<T>(B_i,F,physGrad.col(i));
-                gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
-                // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
-                gsVector<T> geometricTangentTemp = S * physGrad.col(i);
-                // loop over active basis functions (v_j)
-                for (index_t j = 0; j < N_D; j++)
+                if (assembleMatrix)
                 {
-                    gsMatrix<T> B_j;
-                    setB<T>(B_j,F,physGrad.col(j));
+                    gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
+                    // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
+                    gsVector<T> geometricTangentTemp = S * physGrad.col(i);
+                    // loop over active basis functions (v_j)
+                    for (index_t j = 0; j < N_D; j++)
+                    {
+                        gsMatrix<T> B_j;
+                        setB<T>(B_j,F,physGrad.col(j));
 
-                    gsMatrix<T> materialTangent = materialTangentTemp * B_j;
-                    T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
-                    // K_tg = K_tg_mat + I*K_tg_geo;
-                    for (short_t d = 0; d < dim; ++d)
-                        materialTangent(d,d) += geometricTangent;
+                        gsMatrix<T> materialTangent = materialTangentTemp * B_j;
+                        T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
+                        // K_tg = K_tg_mat + I*K_tg_geo;
+                        for (short_t d = 0; d < dim; ++d)
+                            materialTangent(d,d) += geometricTangent;
 
-                    for (short_t di = 0; di < dim; ++di)
-                        for (short_t dj = 0; dj < dim; ++dj)
-                            localMat(di*N_D+i, dj*N_D+j) += weight * materialTangent(di,dj);
+                        for (short_t di = 0; di < dim; ++di)
+                            for (short_t dj = 0; dj < dim; ++dj)
+                                localMat(di*N_D+i, dj*N_D+j) += weight * materialTangent(di,dj);
+                    }
                 }
-
                 // Second Piola-Kirchhoff stress tensor as vector
                 gsVector<T> Svec;
                 voigtStress<T>(Svec,S);
@@ -171,7 +176,8 @@ public:
         }
         // push to glBase(pde_,assembleMatrix_),obal system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
-        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        if (assembleMatrix)
+            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:
@@ -200,6 +206,7 @@ protected:
     const gsMultiPatch<T> & displacement;
     // evaluation data of the current displacement field
     gsMapData<T> mdDisplacement;
+    bool assembleMatrix;
 };
 
 } // namespace gismo

@@ -56,12 +56,10 @@ void gsElTimeIntegrator<T>::initialize()
     if (velVector.rows() != stiffAssembler.numDofs())
         velVector.setZero(stiffAssembler.numDofs(),1);
 
-    gsMultiPatch<T> curDisplacement;
-    stiffAssembler.constructSolution(dispVector,curDisplacement);
-    stiffAssembler.assemble(curDisplacement);
+    stiffAssembler.assemble(dispVector,m_ddof,false);
 
     gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
-    accVector = solver.solve(-1*stiffAssembler.matrix()*dispVector+stiffAssembler.rhs());
+    accVector = solver.solve(stiffAssembler.rhs());
 }
 
 template <class T>
@@ -100,9 +98,10 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
 
 template <class T>
 bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
-                                     const std::vector<gsMatrix<T> > & fixedDoFs)
+                                     const std::vector<gsMatrix<T> > & fixedDoFs,
+                                     bool assembleMatrix)
 {
-    stiffAssembler.assemble(solutionVector,fixedDoFs);
+    stiffAssembler.assemble(solutionVector,fixedDoFs,assembleMatrix);
     Base::m_system.matrix() = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
     Base::m_system.matrix().makeCompressed();
     Base::m_system.rhs() = stiffAssembler.rhs() + massAssembler.matrix()*(alpha1()*(dispVector-solutionVector) + alpha2()*velVector + alpha3()*accVector);

@@ -59,11 +59,13 @@ public:
     /// in the form of free and fixed/Dirichelt degrees of freedom.
     /// Returns the status of the assembly (for safe exit)
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs);
+                          const std::vector<gsMatrix<T> > & fixedDoFs,
+                          bool assembleMatrix = true);
 
     /// Assembles the tangential linear system for Newton's method given the current solution
     /// in the form of free and fixed/Dirichelt degrees of freedom.
-    virtual void assemble(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure);
+    virtual void assemble(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
+                          bool assembleMatrix = true);
 
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 

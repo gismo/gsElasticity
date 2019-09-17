@@ -49,7 +49,8 @@ public:
     void makeTimeStep(T timeStep);
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs);
+                          const std::vector<gsMatrix<T> > & fixedDoFs,
+                          bool assembleMatrix = true);
     /// return the number of free degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
     /// returns vector of displacement DoFs

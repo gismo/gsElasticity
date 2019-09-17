@@ -59,7 +59,7 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
 
 
 template <class T>
-void gsBaseAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
+void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -70,14 +70,14 @@ void gsBaseAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMa
         ++it;
     }
     GISMO_ENSURE(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
-                             + " does not belong to the Dirichlet boundary\n");
+                             + " does not belong to the Dirichlet boundary.");
 
     short_t m_dim = m_pde_ptr->domain().targetDim();
     gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
     GISMO_ENSURE(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
                  "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
                  " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
-                 " x " + util::to_string(m_dim) + ".\n");
+                 " x " + util::to_string(m_dim));
 
     for (short_t d = 0; d < m_dim; ++d )
     {
@@ -86,6 +86,20 @@ void gsBaseAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMa
 
         for (index_t i = 0; i < globalIndices.rows(); ++i)
             m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
+    }
+}
+
+template <class T>
+void gsBaseAssembler<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
+{
+    GISMO_ENSURE(ddofs.size() == m_ddof.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
+                 ". Must be: " + util::to_string(m_ddof.size()));
+
+    for (short_t d = 0; d < index_t(m_ddof.size()); ++d)
+    {
+        GISMO_ENSURE(m_ddof[d].rows() == ddofs[d].rows(),"Wrong number of fixed DoFs for " + util::to_string(d) + "component: " +
+                     util::to_string(ddofs[d].rows()) + ". Must be: " + util::to_string(m_ddof[d].rows()));
+        m_ddof[d] = ddofs[d];
     }
 }
 
