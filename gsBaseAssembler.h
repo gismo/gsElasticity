@@ -56,6 +56,10 @@ public:
     /// set all fixed degrees of freedom
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
 
+    /// get fixed degrees of freedom corresponding to a given part of the bdry.
+    /// each column of the resulting matrix correspond to one variable/component of the vector-valued vairable
+    virtual void getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs);
+
     //virtual void modifyDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
 protected:

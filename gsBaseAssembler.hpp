@@ -103,4 +103,33 @@ void gsBaseAssembler<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
     }
 }
 
+template <class T>
+void gsBaseAssembler<T>::getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs)
+{
+    bool dirBcExists = false;
+    typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
+    while (!dirBcExists && it != m_pde_ptr->bc().dirichletEnd())
+    {
+        if (it->patch() == patch && it->side() == side)
+            dirBcExists = true;
+        ++it;
+    }
+    GISMO_ENSURE(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
+                             + " does not belong to the Dirichlet boundary.");
+
+    short_t m_dim = m_pde_ptr->domain().targetDim();
+    gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
+    ddofs.clear();
+    ddofs.resize(localBIndices.rows(),m_dim);
+    for (short_t d = 0; d < m_dim; ++d )
+    {
+        gsMatrix<unsigned> globalIndices;
+        m_system.mapColIndices(localBIndices, patch, globalIndices, d);
+
+        for (index_t i = 0; i < globalIndices.rows(); ++i)
+            ddofs(i,d) = m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0);
+    }
+
+}
+
 }// namespace gismo ends

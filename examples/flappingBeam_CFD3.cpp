@@ -87,6 +87,7 @@ int main(int argc, char* argv[]){
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step, sec",timeStep);
     cmd.addReal("f","theta","Time integration parameter: 0 - exp.Euler, 1 - imp.Euler, 0.5 - Crank-Nicolson",theta);
+    cmd.addReal("v","velocity","Mean inflow velocity",meanVelocity);
     cmd.addSwitch("x","validate","Save lift and drag over time to a text file for further analysis",validate);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -193,19 +194,21 @@ int main(int argc, char* argv[]){
                    // Warming up //
     //=============================================//
 
-    gsMatrix<> solVector = gsMatrix<>::Zero(assembler.numDofs(),1);
-    std::vector<gsMatrix<> > zeroFixedDoFs = assembler.allFixedDofs();
-    for (index_t d = 0; d < index_t(zeroFixedDoFs.size()); ++d)
-        zeroFixedDoFs[d].setZero();
+    // we will change Dirichlet DoFs for warming up, so we save them here for later
+    gsMatrix<> inflowDDoFs;
+    assembler.getFixedDofs(0,boundary::west,inflowDDoFs);
 
-    assembler.constructSolution(solVector,velocity,pressure);
-    gsMatrix<> inflowDDoFs = velocity.patch(0).boundary(boundary::west)->coefs();
+    // set all Dirichlet DoFs to zero
     assembler.homogenizeFixedDofs(-1);
+    gsMatrix<> solVector = gsMatrix<>::Zero(assembler.numDofs(),1);
+
+    // set initial velocity: zero free and fixed DoFs
     timeSolver.setSolutionVector(solVector);
-    timeSolver.setFixedDofs(zeroFixedDoFs);
+    timeSolver.setFixedDofs(assembler.allFixedDofs());
     timeSolver.initialize();
-    assembler.constructSolution(solVector,zeroFixedDoFs,velocity,pressure);
-    // plotting initial condition
+
+    // consruct and plot initial velocity
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),velocity,pressure);
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,0,numPlotPoints);
 
