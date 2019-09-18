@@ -303,15 +303,15 @@ int main(int argc, char* argv[]){
         if (iter > 0)
         {
             // 1. compute ALE displacement
-            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
-            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
-            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
+            aleAssembler.setFixedDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
+            aleAssembler.setFixedDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
+            aleAssembler.setFixedDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
             gsNewton<real_t> newtonALE(aleAssembler,solutionALE,fixedDoFsALE);
             newtonALE.options().setInt("Verbosity",newton_verbosity::none);
             newtonALE.options().setInt("Solver",linear_solver::LU);
             newtonALE.solve();
             solutionALE = newtonALE.solution();
-            fixedDoFsALE = newtonALE.allFixedDoFs();
+            fixedDoFsALE = newtonALE.allFixedDofs();
             // 2. deform flow mesh
             // reverse previous deformation
             nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
@@ -329,7 +329,7 @@ int main(int argc, char* argv[]){
         newtonFlow.options().setInt("Solver",linear_solver::LU);
         newtonFlow.solve();
         solutionFlow = newtonFlow.solution();
-        fixedDoFsFlow = newtonFlow.allFixedDoFs();
+        fixedDoFsFlow = newtonFlow.allFixedDofs();
         nsAssembler.constructSolution(solutionFlow,fixedDoFsFlow,velocity,pressure);
 
         // 4. solve beam

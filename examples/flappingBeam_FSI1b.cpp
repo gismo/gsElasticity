@@ -301,16 +301,16 @@ int main(int argc, char* argv[])
     newtonFlow.options().setInt("Solver",linear_solver::LU);
     newtonFlow.solve();
     solutionFlow = newtonFlow.solution();
-    nsAssembler.constructSolution(newtonFlow.solution(),newtonFlow.allFixedDoFs(),velocity,pressure);
+    nsAssembler.constructSolution(newtonFlow.solution(),newtonFlow.allFixedDofs(),velocity,pressure);
 
     while (!converged && iter < 50)
     {
         if (iter > 0)
         {
             // 1. compute ALE displacement
-            aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
-            aleAssembler.setDirichletDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
-            aleAssembler.setDirichletDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
+            aleAssembler.setFixedDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
+            aleAssembler.setFixedDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
+            aleAssembler.setFixedDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
             aleAssembler.assemble(ALE);
             gsSparseSolver<>::LU solverALE(aleAssembler.matrix());
             gsMatrix<> aleUpdateVector = solverALE.solve(aleAssembler.rhs());
@@ -328,7 +328,7 @@ int main(int argc, char* argv[])
         nsAssembler.assemble(velocity,pressure);
         gsSparseSolver<>::LU solverFlow(nsAssembler.matrix());
         solutionFlow += solverFlow.solve(nsAssembler.rhs());
-        nsAssembler.constructSolution(solutionFlow,newtonFlow.allFixedDoFs(),velocity,pressure);
+        nsAssembler.constructSolution(solutionFlow,newtonFlow.allFixedDofs(),velocity,pressure);
 
         // 4. solve beam
         elAssembler.assemble(displacement);
