@@ -38,7 +38,7 @@ template <class T>
 gsOptionList gsNsTimeIntegrator<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
-    opt.addInt("Scheme","Time integration scheme",time_integration_NS::theta_scheme);
+    opt.addInt("Scheme","Time integration scheme",time_integration_NS::theta_scheme_linear);
     opt.addReal("Theta","Time integration parametrer: 0 - explicit Euler, 1 - implicit Euler, 0.5 - Crank-Nicolson",0.5);
     opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",newton_verbosity::none);
     return opt;

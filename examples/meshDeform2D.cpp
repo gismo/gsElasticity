@@ -125,14 +125,14 @@ int main(int argc, char* argv[])
         gsInfo << "Loading: " << index_t(100.*i/numSteps) << "% -> " << index_t(100.*(i+1)/numSteps) << "%\n";
         // setting Dirichlet DoFs
         for (index_t s = 1; s < 5; ++s)
-            assembler.setDirichletDofs(0,s,(bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs())/numSteps);
+            assembler.setFixedDofs(0,s,(bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs())/numSteps);
 
         if (i == numSteps-1)
             newton.options().setInt("MaxIters",50);
         newton.reset();
         newton.solve();
         displacements.push_back(gsMultiPatch<>());
-        assembler.constructSolution(newton.solution(),newton.allFixedDoFs(),displacements.back());
+        assembler.constructSolution(newton.solution(),newton.allFixedDofs(),displacements.back());
     }
 
     gsInfo << "Solved in "<< clock.stop() <<"s.\n";

@@ -261,19 +261,18 @@ int main(int argc, char* argv[]){
     std::map<std::string,const gsField<> *> fieldsPart;
     fieldsPart["ALE"] = &aleField;
     // paraview collection of time steps
-    gsParaviewCollection collectionFlow("fsi_steady_flow");
-    gsParaviewCollection collectionBeam("fsi_steady_beam");
-    gsParaviewCollection collectionFlowPart("fsi_steady_flow_part");
+    gsParaviewCollection collectionFlow("flappingBeam_FSI1a_flow");
+    gsParaviewCollection collectionBeam("flappingBeam_FSI1a_beam");
+    gsParaviewCollection collectionFlowPart("flappingBeam_FSI1a_ALE");
     // plotting initial condition
     nsAssembler.constructSolution(solutionFlow,velocity,pressure);
     elAssembler.constructSolution(solutionBeam,displacement);
     aleAssembler.constructSolution(solutionALE,ALE);
     if (numPlotPoints > 0)
     {
-
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,0,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,0,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSI1a_flow",collectionFlow,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSI1a_beam",collectionBeam,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"flappingBeam_FSI1a_ALE",collectionFlowPart,0,numPlotPoints);
     }
     //=============================================//
              // Coupled simulation //
@@ -361,9 +360,9 @@ int main(int argc, char* argv[]){
         // 7. plot
         if (numPlotPoints > 0)
         {
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"fsi_steady_flow",collectionFlow,iter+1,numPlotPoints);
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"fsi_steady_beam",collectionBeam,iter+1,numPlotPoints);
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"fsi_steady_flow_part",collectionFlowPart,iter+1,numPlotPoints);
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSI1a_flow",collectionFlow,iter+1,numPlotPoints);
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSI1a_beam",collectionBeam,iter+1,numPlotPoints);
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"flappingBeam_FSI1a_ALE",collectionFlowPart,iter+1,numPlotPoints);
         }
         // 8. convergence
         real_t residual = computeResidual(interfaceOld,interfaceNow);
@@ -392,9 +391,12 @@ int main(int argc, char* argv[]){
     point << 1.,0.5;
     gsInfo << "Displacement of the beam point A:\n" << displacement.patch(0).eval(point) << std::endl;
 
-    gsInfo << "Plotting the output to the Paraview files \"fsi_steady flow.pvd\" and \"fsi_steady beam.pvd\"...\n";
-    collectionFlow.save();
-    collectionBeam.save();
-    collectionFlowPart.save();
+    if (numPlotPoints > 0)
+    {
+        gsInfo << "Open \"flappingBeam_FSI1a*.pvd\" in Paraview for visualization.\n";
+        collectionFlow.save();
+        collectionBeam.save();
+        collectionFlowPart.save();
+    }
     return 0;
 }
