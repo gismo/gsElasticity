@@ -142,7 +142,7 @@ int main(int argc, char* argv[]){
     massAssembler.options().setReal("Density",density);
 
     gsNsTimeIntegrator<real_t> timeSolver(stiffAssembler,massAssembler);
-    timeSolver.setInitialSolution(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));
+    timeSolver.setSolutionVector(gsMatrix<>::Zero(stiffAssembler.numDofs(),1));
     timeSolver.initialize();
 
     //=============================================//
@@ -176,7 +176,7 @@ int main(int argc, char* argv[]){
     //=============================================//
 
 
-    timeSolver.options().setInt("Scheme",time_integration_NS::implicit_euler_oseen);
+    timeSolver.options().setInt("Scheme",time_integration_NS::theta_scheme_linear);
     clock.restart();
     gsInfo << "Running the simulation with a coarse time step to compute an initial solution...\n";
     for (index_t i = 0; i < 30; ++i)
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]){
     //=============================================//
 
 
-    timeSolver.options().setInt("Scheme",time_integration_NS::implicit_euler_oseen);
+    timeSolver.options().setInt("Scheme",time_integration_NS::theta_scheme_linear);
     clock.restart();
     gsInfo << "Running the simulation with a fine time step...\n";
     for (index_t i = 0; i < timeSpan/timeStep; ++i)

@@ -8,6 +8,7 @@
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsNewton.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 using namespace gismo;
 
@@ -97,7 +98,7 @@ int main(int argc, char* argv[])
     index_t numUniRefBeam = 2; // number of h-refinements for the beam and the ALE mapping
     index_t numKRefBeam = 0; // number of k-refinements for the beam and the ALE mapping
     index_t numPlotPoints = 1000;
-    real_t youngsModulus = 1.4e6;
+    real_t youngsModulus = 0.5e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
     real_t meanVelocity = 1;
@@ -280,7 +281,7 @@ int main(int argc, char* argv[])
     // paraview collection of time steps
     gsParaviewCollection collectionFlow("flappingBeam_FSI2_test_flow");
     gsParaviewCollection collectionBeam("flappingBeam_FSI2_test_beam");
-    gsParaviewCollection collectionFlowPart("flappingBeam_FSI2_test_ALE");
+    gsParaviewCollection collectionALE("flappingBeam_FSI2_test_ALE");
 
     gsProgressBar bar;
     gsStopwatch clock;
@@ -317,7 +318,6 @@ int main(int argc, char* argv[])
     //=============================================//
              // Initial conditions //
     //=============================================//
-
     gsMatrix<> solutionFlow = nsTimeSolver.solutionVector();
     gsMatrix<> solutionBeam = gsMatrix<>::Zero(elAssembler.numDofs(),1);
     gsMatrix<> solutionALE = gsMatrix<>::Zero(aleAssembler.numDofs(),1);
@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
     {
         gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSI2_test_flow",collectionFlow,0,numPlotPoints);
         gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSI2_test_beam",collectionBeam,0,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"flappingBeam_FSI2_test_ALE",collectionFlowPart,0,numPlotPoints);
+        plotDeformation(geoPart,ALE,"flappingBeam_FSI2_test_ALE",collectionALE,0);
     }
 
     std::vector<std::pair<index_t, boxSide> > bdrySides;
@@ -352,14 +352,15 @@ int main(int argc, char* argv[])
     gsMatrix<> DBC1 = displacement.patch(0).boundary(boundary::north)->coefs();
     gsMatrix<> DBC2 = displacement.patch(0).boundary(boundary::south)->coefs();
     gsMatrix<> DBC3 = displacement.patch(0).boundary(boundary::east)->coefs();
-    gsInfo <<  "dbc"<< DBC3.row(0) << std::endl;
+
     gsNewton<real_t> aleNewton(aleAssembler,solutionALE,aleAssembler.allFixedDofs());
     aleNewton.options().setInt("Verbosity",newton_verbosity::some);
     aleNewton.options().setInt("MaxIters",10);
 
-    for (index_t i = 0; i < 1000; ++i)
+    index_t numI = 200;
+    for (index_t i = 0; i < numI; ++i)
     {
-        bar.display(i+1,1000);
+        bar.display(i+1,numI);
         elTimeSolver.makeTimeStep(timeStep);
         elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
         gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSI2_test_beam",collectionBeam,i+1,numPlotPoints);
@@ -376,7 +377,7 @@ int main(int argc, char* argv[])
         aleNewton.reset();
         aleNewton.solve();
         aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),ALE);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"flappingBeam_FSI2_test_ALE",collectionFlowPart,i+1,numPlotPoints);
+        plotDeformation(geoPart,ALE,"flappingBeam_FSI2_test_ALE",collectionALE,i+1);
         DBC1 = displacement.patch(0).boundary(boundary::north)->coefs();
         DBC2 = displacement.patch(0).boundary(boundary::south)->coefs();
         DBC3 = displacement.patch(0).boundary(boundary::east)->coefs();
@@ -455,7 +456,7 @@ int main(int argc, char* argv[])
         gsInfo << "Open \"flappingBeam_FSI2_test.pvd\" in Paraview for visualization.\n";
         collectionFlow.save();
         collectionBeam.save();
-        collectionFlowPart.save();
+        collectionALE.save();
     }
 
     return 0;

@@ -188,14 +188,13 @@ protected:
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGradVel;
             transformGradients(md, q, basisValuesVel[1], physGradVel);
             // Compute physical Jacobian of the current velocity field
-            gsMatrix<T> physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
+            physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
             if (assembleMatrix)
             {
                 // matrix A: diffusion
-                gsMatrix<T> block = weight*density*viscosity * physGradVel.transpose()*physGradVel;
+                block = weight*density*viscosity * physGradVel.transpose()*physGradVel;
                 for (short_t d = 0; d < dim; ++d)
                     localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
                 // matrix A: advection
@@ -308,14 +307,13 @@ protected:
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGradVel;
             transformGradients(md, q, basisValuesVel[1], physGradVel);
             // Compute physical Jacobian of the current velocity field
-            gsMatrix<T> physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
+            physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
             if (assembleMatrix)
             {
                 // matrix A: diffusion
-                gsMatrix<T> block = weight*viscosity *density* physGradVel.transpose()*physGradVel;
+                block = weight*viscosity *density* physGradVel.transpose()*physGradVel;
                 for (short_t d = 0; d < dim; ++d)
                     localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
                 // matrix A: advection
@@ -521,6 +519,9 @@ protected:
     gsMapData<T> mdALE;
     std::vector<std::pair<index_t,index_t> > patchesALE;
     bool assembleMatrix;
+
+    // all temporary matrices defined here for efficiency
+    gsMatrix<T> block, physGradVel, physJacCurVel;
 };
 
 } // namespace gismo

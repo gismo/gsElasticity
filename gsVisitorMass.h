@@ -74,7 +74,7 @@ public:
                 // Multiply quadrature weight by the geometry measure
                 const T weight = density * quWeights[q] * md.measure(q);
 
-                gsMatrix<T> block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
+                block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
                 for (short_t d = 0; d < dim; ++d)
                     localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
             }
@@ -116,6 +116,9 @@ protected:
     // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
     gsMatrix<T> basisValuesDisp;
     bool assembleMatrix;
+
+    // all temporary matrices defined here for efficiency
+    gsMatrix<T> block;
 };
 
 } // namespace gismo
