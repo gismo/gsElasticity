@@ -203,6 +203,15 @@ template <class T>
 gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
                                            const std::vector<std::pair<index_t,boxSide> > & bdrySides) const
 {
+    // all temporary data structures
+    gsMatrix<T> quNodes, pressureValues, physGradJac, sigma;
+    gsVector<T> quWeights, normal;
+    // NEED_MEASURE for integration
+    // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to physical domain
+    gsMapData<T> mdGeo(NEED_MEASURE | NEED_GRAD_TRANSFORM);
+    // NEED_DERIV for velocity gradients
+    gsMapData<T> mdVel(NEED_DERIV);
+
     gsMatrix<T> force;
     force.setZero(m_dim,1);
     const T viscosity = m_options.getReal("Viscosity");
@@ -220,35 +229,26 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
         for (; elem->good(); elem->next())
         {
             // mapping quadrature rule to the element
-            gsMatrix<T> quNodes;
-            gsVector<T> quWeights;
             bdQuRule.mapTo(elem->lowerCorner(),elem->upperCorner(),quNodes,quWeights);
             // evaluate geoemtry mapping at the quad points
-            // NEED_MEASURE for integration
-            // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to physical domain
-            gsMapData<T> mdGeo(NEED_MEASURE | NEED_GRAD_TRANSFORM);
             mdGeo.points = quNodes;
             m_pde_ptr->patches().patch(it.first).computeMap(mdGeo);
             // evaluate velocity at the quad points
-            // NEED_DERIV for velocity gradients
-            gsMapData<T> mdVel(NEED_DERIV);
             mdVel.points = quNodes;
             velocity.patch(it.first).computeMap(mdVel);
             // evaluate pressure at the quad points
-            gsMatrix<T> pressureValues;
             pressure.patch(it.first).eval_into(quNodes,pressureValues);
 
             // loop over quad points
             for (index_t q = 0; q < quWeights.rows(); ++q)
             {
                 // transform gradients from parametric to physical
-                gsMatrix<T> physGradJac = mdVel.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+                physGradJac = mdVel.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
                 // normal length is the local measure
-                gsVector<T> normal;
                 outerNormal(mdGeo,q,it.second,normal);
                 // stress tensor
-                gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
-                                    density*viscosity*(physGradJac + physGradJac.transpose());
+                sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
+                        density*viscosity*(physGradJac + physGradJac.transpose());
                 force += quWeights[q] * sigma * normal;
             }
         }

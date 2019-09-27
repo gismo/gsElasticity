@@ -101,42 +101,39 @@ public:
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGradDisp;
             transformGradients(md,q,basisValuesDisp[1],physGradDisp);
             // physical jacobian of displacemnt du/dx = du/dxi * dxi/dx
-            gsMatrix<T> physDispJac = mdDisplacement.jacobian(q)*(md.jacobian(q).cramerInverse());
+            physDispJac = mdDisplacement.jacobian(q)*(md.jacobian(q).cramerInverse());
             // deformation gradient F = I + du/dx
-            gsMatrix<T> F = gsMatrix<T>::Identity(dim,dim) + physDispJac;
+            F = gsMatrix<T>::Identity(dim,dim) + physDispJac;
             // deformation jacobian J = det(F)
             T J = F.determinant();
             // Right Cauchy Green strain, C = F'*F
-            gsMatrix<T> RCG = F.transpose() * F;
+            RCG = F.transpose() * F;
             // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
-            gsMatrix<T> E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
+            E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
             // logarithmic neo-Hooke
             GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
-            gsMatrix<T> RCGinv = RCG.cramerInverse();
+            RCGinv = RCG.cramerInverse();
             // Second Piola-Kirchhoff stress tensor
-            gsMatrix<T> S = (pressureValues.at(q)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
-            gsMatrix<T> C; // elasticity tensor
+            S = (pressureValues.at(q)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
+            // elasticity tensor
             if (assembleMatrix)
                 setC<T>(C,RCGinv,0.,mu-pressureValues.at(q));
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
-                gsMatrix<T> B_i;
                 setB<T>(B_i,F,physGradDisp.col(i));
                 if (assembleMatrix)
                 {
-                    gsMatrix<T> materialTangentTemp = B_i.transpose() * C;
+                    materialTangentTemp = B_i.transpose() * C;
                     // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
-                    gsVector<T> geometricTangentTemp = S * physGradDisp.col(i);
+                    geometricTangentTemp = S * physGradDisp.col(i);
                     // A-matrix
                     for (index_t j = 0; j < N_D; j++)
                     {
-                        gsMatrix<T> B_j;
                         setB<T>(B_j,F,physGradDisp.col(j));
-                        gsMatrix<T> materialTangent = materialTangentTemp * B_j;
+                        materialTangent = materialTangentTemp * B_j;
                         T geometricTangent =  geometricTangentTemp.transpose() * physGradDisp.col(j);
                         // K_tg = K_tg_mat + I*K_tg_geo;
                         for (short_t d = 0; d < dim; ++d)
@@ -148,10 +145,9 @@ public:
                     }
                 }
                 // Second Piola-Kirchhoff stress tensor as vector
-                gsVector<T> Svec;
                 voigtStress<T>(Svec,S);
                 // rhs = -r = force - B*Svec,
-                gsVector<T> localResidual = B_i.transpose() * Svec;
+                localResidual = B_i.transpose() * Svec;
                 for (short_t d = 0; d < dim; d++)
                     localRhs(d*N_D+i) -= weight * localResidual(d);
 
@@ -159,10 +155,10 @@ public:
             if (assembleMatrix)
             {
                 // B-matrix
-                gsMatrix<T> divV = F.cramerInverse().transpose() * physGradDisp;
+                divV = F.cramerInverse().transpose() * physGradDisp;
                 for (short_t d = 0; d < dim; ++d)
                 {
-                    gsMatrix<> block = weight*basisValuesPres.col(q)*divV.row(d);
+                    block = weight*basisValuesPres.col(q)*divV.row(d);
                     localMat.block(dim*N_D,d*N_D,N_P,N_D) += block.block(0,0,N_P,N_D);
                     localMat.block(d*N_D,dim*N_D,N_D,N_P) += block.transpose().block(0,0,N_D,N_P);
                 }
@@ -236,6 +232,10 @@ protected:
     // evaluation data of the current pressure field stored as a 1 x numQuadPoints matrix
     gsMatrix<T> pressureValues;
     bool assembleMatrix;
+
+    // all temporary matrices defined here for efficiency
+    gsMatrix<T> C, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block;
+    gsVector<T> geometricTangentTemp, Svec, localResidual;
 };
 
 } // namespace gismo

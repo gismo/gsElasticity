@@ -82,10 +82,9 @@ public:
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGradVel;
             transformGradients(md, q, basisValuesVel[1], physGradVel);
             // matrix A
-            gsMatrix<T> block = weight*viscosity*density * physGradVel.transpose()*physGradVel;
+            block = weight*viscosity*density * physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
                 localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
             // matrix B
@@ -145,6 +144,9 @@ protected:
     gsMatrix<T> basisValuesPres;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+
+    // all temporary matrices defined here for efficiency
+    gsMatrix<T> block, physGradVel;
 };
 
 } // namespace gismo

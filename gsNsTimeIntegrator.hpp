@@ -78,6 +78,7 @@ void gsNsTimeIntegrator<T>::implicitLinear()
 {
     T theta = m_options.getReal("Theta");
     index_t numDofsVel = massAssembler.numDofs();
+    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
 
     // rhs = M*u_n - dt*(1-theta)*A(u_n)*u_n + dt*(1-theta)*F_n + dt*theta*F_n+1
     // rhs: dt*(1-theta)*F_n
@@ -106,10 +107,12 @@ void gsNsTimeIntegrator<T>::implicitLinear()
 
     m_system.matrix().makeCompressed();
     oldSolVector = solVector;
+    oldTimeStep = tStep;
     m_ddof = stiffAssembler.allFixedDofs();
 
     gsSparseSolver<>::LU solver(m_system.matrix());
     solVector = solver.solve(m_system.rhs());
+    //solVector = solver.solveWithGuess(m_system.rhs(),solVector);
 }
 
 template <class T>

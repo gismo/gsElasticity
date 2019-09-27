@@ -85,7 +85,7 @@ real_t computeResidual(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMa
 }
 
 int main(int argc, char* argv[])
-{
+{/*
     gsInfo << "Testing the steady fluid-structure interaction solver in 2D.\n";
 
     std::string filenameFlow = ELAST_DATA_DIR"/fsi_flow_around_cylinder.xml";
@@ -372,7 +372,7 @@ int main(int argc, char* argv[])
                 {
                     nsAssembler.patches().patch(p+3).coefs() -= updateALE.patch(p).coefs()*timeStep;
                     ALE.patch(p).coefs() -= updateALE.patch(p).coefs()*timeStep;
-                }*/
+                }
 
                 // 1. compute ALE displacement
                 aleAssembler.setDirichletDofs(0,boundary::south,interfaceNow[0]-interface[0]);
@@ -393,11 +393,11 @@ int main(int argc, char* argv[])
 
             // 2. solve flow
             // deform flow mesh
-          /*  for (index_t p = 0; p < 3; ++p)
+            for (index_t p = 0; p < 3; ++p)
             {
                 nsAssembler.patches().patch(p+3).coefs() += updateALE.patch(p).coefs()*timeStep;
                 ALE.patch(p).coefs() += updateALE.patch(p).coefs()*timeStep;
-            }*/
+            }
 
            //nsAssembler.setDirichletDofs(3,boundary::south,
              //                            updateALE.patch(0).boundary(boundary::south)->coefs());
@@ -455,7 +455,7 @@ int main(int argc, char* argv[])
             interfaceNow.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
             interfaceNow.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
 
-             /*// 5. Aitken relaxation
+             // 5. Aitken relaxation
             if (iter == 0)
             {
                 interfaceNew.clear();
@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
                 interfaceNew.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
                 interfaceNew.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
                 aitkenRelaxation(interfaceOld,interfaceNow,interfaceNew,omega);
-            }*/
+            }
 
             // 8. convergence
             real_t residual = computeResidual(interfaceOld,interfaceNow);
@@ -513,5 +513,5 @@ int main(int argc, char* argv[])
     collectionBeam.save();
     collectionFlowPart.save();
 
-    return 0;
+    return 0;*/
 }

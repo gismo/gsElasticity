@@ -77,7 +77,6 @@ public:
         localMat.setZero(dim*N_D,dim*N_D);
         localRhs.setZero(dim*N_D,1);
         // linear elasticity tensor
-        gsMatrix<T> C;
         setC<T>(C,gsMatrix<T>::Identity(dim,dim),lambda,mu);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -85,21 +84,18 @@ public:
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGrad;
             transformGradients(md,q,basisValuesDisp[1],physGrad);
             // loop over active basis functions (v_j)
             for (index_t i = 0; i < N_D; i++)
             {
                 // stiffness matrix K = B_i^T * C * B_j;
-                gsMatrix<T> B_i;
                 setB<T>(B_i,gsMatrix<T>::Identity(dim,dim),physGrad.col(i));
-                gsMatrix<T> tempK = B_i.transpose() * C;
+                tempK = B_i.transpose() * C;
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {
-                    gsMatrix<T> B_j;
                     setB<T>(B_j,gsMatrix<T>::Identity(dim,dim),physGrad.col(j));
-                    gsMatrix<T> K = tempK * B_j;
+                    K = tempK * B_j;
                     for (short_t di = 0; di < dim; ++di)
                         for (short_t dj = 0; dj < dim; ++dj)
                             localMat(di*N_D+i,dj*N_D+j) += weight * K(di,dj);
@@ -149,6 +145,9 @@ protected:
     std::vector<gsMatrix<T> > basisValuesDisp;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+
+    // all temporary matrices defined here for efficiency
+    gsMatrix<T> C, physGrad, B_i, tempK, B_j, K;
 };
 
 } // namespace gismo

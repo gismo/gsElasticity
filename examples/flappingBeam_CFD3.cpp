@@ -229,7 +229,7 @@ int main(int argc, char* argv[]){
                   // Solving //
     //=============================================//
 
-    gsInfo << "Running the transient simulation...\n";
+    gsInfo << "Running the main simulation...\n";
     clock.restart();
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
     {
@@ -257,8 +257,6 @@ int main(int argc, char* argv[]){
         file.close();
         gsInfo << "Drag and lift over time are saved to \"flappingBeam_CFD3.txt\".\n";
     }
-
-
 
     return 0;
 }

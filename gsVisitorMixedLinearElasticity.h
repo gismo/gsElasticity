@@ -80,7 +80,6 @@ public:
         localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
         localRhs.setZero(dim*N_D + N_P,1);                  // B | C
         // elasticity tensor
-        gsMatrix<T> C;
         setC<T>(C,gsMatrix<T>::Identity(dim,dim),0.,mu);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -89,20 +88,17 @@ public:
             const T weight = quWeights[q] * md.measure(q);
 
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
-            gsMatrix<T> physGradDisp;
             transformGradients(md, q, basisValuesDisp[1], physGradDisp);
             // A-matrix: Loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
-                gsMatrix<T> B_i;
                 setB<T>(B_i,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(i));
-                gsMatrix<T> tempK = B_i.transpose() * C;
+                tempK = B_i.transpose() * C;
                 // Loop over displacement basis functions
                 for (index_t j = 0; j < N_D; j++)
                 {
-                    gsMatrix<T> B_j;
                     setB<T>(B_j,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(j));
-                    gsMatrix<T> K = tempK * B_j;
+                    K = tempK * B_j;
 
                     for (short_t di = 0; di < dim; ++di)
                         for (short_t dj = 0; dj < dim; ++dj)
@@ -112,7 +108,7 @@ public:
             // B-matrix
             for (short_t d = 0; d < dim; ++d)
             {
-                gsMatrix<> block = weight*basisValuesPres.col(q)*physGradDisp.row(d);
+                block = weight*basisValuesPres.col(q)*physGradDisp.row(d);
                 localMat.block(dim*N_D,d*N_D,N_P,N_D) += block.block(0,0,N_P,N_D);
                 localMat.block(d*N_D,dim*N_D,N_D,N_P) += block.transpose().block(0,0,N_D,N_P);
             }
@@ -173,6 +169,9 @@ protected:
     gsMatrix<T> basisValuesPres;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+
+    // all temporary matrices defined here for efficiency
+    gsMatrix<T> C, physGradDisp, B_i, tempK, B_j, K, block;
 };
 
 } // namespace gismo
