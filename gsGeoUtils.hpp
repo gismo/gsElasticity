@@ -27,6 +27,8 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsUtils/gsMesh/gsMesh.h>
+#include <gsIO/gsWriteParaview.h>
 
 namespace gismo
 {
@@ -152,6 +154,29 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
     (void)res;
 }
 
+
+template <class T>
+void plotDeformation(const gsMultiPatch<T> & initDomain, const gsMultiPatch<T> & displacement,
+                     std::string const & fileName, gsParaviewCollection & collection, index_t step)
+{
+    GISMO_ENSURE(initDomain.nPatches() == displacement.nPatches(), "Wrong number of patches! Geometry has " +
+                 util::to_string(initDomain.nPatches()) + " patches. Displacement has " + util::to_string(displacement.nPatches()) + " patches.");
+
+    gsMultiPatch<T> configuration;
+    for (size_t p = 0; p < initDomain.nPatches(); ++p)
+    {
+        configuration.addPatch(initDomain.patch(p).clone());
+        configuration.patch(p).coefs() += displacement.patch(p).coefs();
+    }
+
+    for (size_t p = 0; p < configuration.nPatches(); ++p)
+    {
+        gsMesh<T> mesh(configuration.basis(p),8);
+        configuration.patch(p).evaluateMesh(mesh);
+        gsWriteParaview(mesh,fileName + util::to_string(step) + "_" + util::to_string(p),false);
+        collection.addTimestep(fileName + util::to_string(step) + "_",p,step,".vtp");
+    }
+}
 
 template <class T>
 index_t checkGeometry(gsMultiPatch<T> const & domain)

@@ -11,6 +11,7 @@ namespace gismo
 {
     CLASS_TEMPLATE_INST gsCauchyStressFunction<real_t>;
     CLASS_TEMPLATE_INST gsDetFunction<real_t>;
+    CLASS_TEMPLATE_INST gsFsiLoad<real_t>;
     CLASS_TEMPLATE_INST gsElasticityAssembler<real_t>;
 
     TEMPLATE_INST void genSamplingPoints(const gsVector<real_t> & lower, const gsVector<real_t> & upper,

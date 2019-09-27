@@ -42,24 +42,21 @@ public:
     static gsOptionList defaultOptions();
     /// set intial conditions
     void setInitialDisplacement(const gsMatrix<T> & initialDisplacement) { dispVector = initialDisplacement; }
-    void setInitialVeclocity(const gsMatrix<T> & initialVelocity) { velVector = initialVelocity; }
+    void setInitialVelocity(const gsMatrix<T> & initialVelocity) { velVector = initialVelocity; }
     /// @brief Initialize the solver; execute before computing any time steps
     void initialize();
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
     /// assemble the linear system for the nonlinear solver
-    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
-
+    virtual bool assemble(const gsMatrix<T> & solutionVector,
+                          const std::vector<gsMatrix<T> > & fixedDoFs,
+                          bool assembleMatrix = true);
+    /// return the number of free degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
-    /// returns  vector of displacement DoFs
+    /// returns vector of displacement DoFs
     const gsMatrix<T> & displacementVector() const {return dispVector;}
-
-    /// sets scaling of Dirichlet BC used for linear system assembly
-    virtual void setDirichletAssemblyScaling(T factor) { stiffAssembler.setDirichletAssemblyScaling(factor); }
-    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
-    virtual void setDirichletConstructionScaling(T factor) { stiffAssembler.setDirichletConstructionScaling(factor); }
-    /// set scaling of the force loading (volume and surface loading)
-    virtual void setForceScaling(T factor) { stiffAssembler.setForceScaling(factor); }
+    /// returns vector of velocity DoFs
+    const gsMatrix<T> & velocityVector() const {return velVector;}
 
 protected:
     /// time integraton schemes
@@ -94,6 +91,7 @@ protected:
     gsMatrix<T> accVector;
 
     using Base::m_options;
+    using Base::m_ddof;
 };
 
 }

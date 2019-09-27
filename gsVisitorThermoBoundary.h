@@ -86,7 +86,6 @@ public:
         {
             // Compute the outer normal vector on the side
             // normal length equals to the local area measure
-            gsVector<T> unormal;
             outerNormal(md, q, side, unormal);
             // Collect the factors here: quadrature weight, geometry measure and time factor
             const T weight = thermalExpCoef*(2*mu+dim*lambda)*quWeights[q] * (tempValues.at(q) - initTemp);
@@ -140,6 +139,9 @@ protected:
     // temperature evaluated at the quadrature points or at their images in the physical domain;
     // stored as a 1 x numQuadPoints matrix
     gsMatrix<T> tempValues;
+
+    // all temporary matrices defined here for efficiency
+    gsVector<T> unormal;
 
 }; //class definition ends
 

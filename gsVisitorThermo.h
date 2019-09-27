@@ -88,7 +88,6 @@ public:
             if (paramTemp) // transform temperature gradients to the physical domain
             {
                 // temperature gradient at one point in the physical domain, dim x 1
-                gsMatrix<T> physGrad;
                 transformGradients(md,q,tempGrads,physGrad);
                 for (index_t d = 0; d < dim; ++d)
                     localRhs.middleRows(d*N_D,N_D).noalias() -= weight * physGrad(d,0) * basisValuesDisp.col(q);
@@ -139,6 +138,9 @@ protected:
     // temperature gradient evaluated at the quadrature points or at their images in the physical domain;
     // stored as a dim x numQuadPoints matrix
     gsMatrix<T> tempGrads;
+
+    // all temporary matrices defined here for efficiency
+    gsMatrix<T> physGrad;
 
 }; //class definition ends
 

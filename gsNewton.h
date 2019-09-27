@@ -44,12 +44,20 @@ template <class T>
 class gsNewton
 {
 public:
-    /// constructor without an initial guess. Assumes a zero initial guess which probably does not
-    /// satisfy Dirichlet BC. Uses incremental loading.
+    /// constructor without an initial guess. Assumes a zero initial guess.
     gsNewton(gsBaseAssembler<T> & assembler_);
-    /// constructor with an initial guess. Assumes that the initial guess satisfies DBC
-    /// and further updates are 0 at the Dirichlet boundary. Does not use incremental loading.
-    gsNewton(gsBaseAssembler<T> & assembler_, const gsMatrix<T> & initialSolVector);
+    /// constructor with an given initial free degrees of freedom.
+    /// Fixed/Dirichlet degrees of freedom are taken from the assembler.
+    /// fixed DoFs are given as a single vector arranged according to the function
+    /// gsMatrix<> fixedDoFsAsVector() of gsBaseAssembler
+    gsNewton(gsBaseAssembler<T> & assembler_,
+             const gsMatrix<T> & initSolutionVector);
+    /// constructor with an initial guess given as a combination of free and fixed/Dirichlet degrees of freedom.
+    /// fixed DoFs are given as a single vector arranged according to the function
+    /// gsMatrix<> fixedDoFsAsVector() of gsBaseAssembler
+    gsNewton(gsBaseAssembler<T> & assembler_,
+             const gsMatrix<T> & initSolutionVector,
+             const std::vector<gsMatrix<T> > & initFixedDoFs);
     /// default option list. used for initialization
     static gsOptionList defaultOptions();
     /// get options list to read or set parameters
@@ -58,36 +66,26 @@ public:
     void solve();
     /// returns the solution vector
     const gsMatrix<T> & solution() const { return solVector; }
+    /// returns the fixed degrees of freedom
+    const std::vector<gsMatrix<T> > & allFixedDofs() const { return fixedDoFs; }
     /// return solver status as a string
     std::string status();
     /// reset the solver state
     void reset();
-    /// sets a pre-processing function that is executed at the BEGINNING of each iteration.
-    /// can be used to get some information out of the solver without modifying the solver's code
-    void setPreProcessingFunction(std::function<void(const gsMatrix<T> &)> f) { preProcessingFunction = f; }
-    /// sets a post-processing function that is executed at the END of each iteration.
-    /// can be used to get some information out of the solver without modifying the solver's code
-    void setPostProcessingFunction(std::function<void(const gsMatrix<T> &)> f) { postProcessingFunction = f; }
-
-protected:
     /// computes update of the solution
     bool computeUpdate();
-    /// solution procedure without an initial guess. Assumes 0 initial guess
-    /// that does not satisfy Dirichlet BC. Uses incremental loading
-    void solveNoGuess();
-    /// solution procedure with an initial guess. Assumes that the initial guess
-    /// satisfies Dirichlet BC. Does not use incremental loading.
-    void solveWithGuess();
+    /// set all fixed degrees of freedom
+    virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
 
 protected:
     /// assembler object that generates the linear system
     gsBaseAssembler<T> & assembler;
     /// solution vector
     gsMatrix<T> solVector;
-    bool initialGuess;
+    /// current Dirichlet DoFs that the solution satisfies
+    std::vector<gsMatrix<T> > fixedDoFs;
     /// ---- status variables ----- ///
-    index_t numIterations; /// number of Newton's iterations performed at the current ILS
-    index_t incStep; /// current incremental loading step
+    index_t numIterations; /// number of Newton's iterations performed
     newton_status m_status;  /// status of the solver (converged, interrupted, working)
     T residualNorm; /// norm of the residual vector
     T initResidualNorm; /// norm of the residual vector at the beginning of the loop
@@ -95,9 +93,6 @@ protected:
     T initUpdateNorm; /// norm of the update vector at the beginning of the loop
     /// option list
     gsOptionList m_options;
-    /// pre- and post-processing function to get some information out of the solver
-    std::function<void(const gsMatrix<T> &)> preProcessingFunction;
-    std::function<void(const gsMatrix<T> &)> postProcessingFunction;
 };
 
 } // namespace ends

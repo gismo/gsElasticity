@@ -36,10 +36,8 @@ struct time_integration_NS
 {
     enum scheme
     {
-        explicit_euler = 0,  /// explicit Euler time integration
-        implicit_euler_newton = 1,  /// implicit Euler time integration, full Newton's method at each time step
-        implicit_euler_oseen = 2, /// implicit Euler time integration, linear Oseen equation solved at each step
-        crank_nicolson_oseen = 3 /// semi-implicit (mid-point rule) time integration, linear Oseen equation solved at each step
+        theta_scheme = 0, /// standard one-step time integration: theta = 0 - explicit Euler, theta = 1 - implicit Euler, theta = 0.5 - Crank-Nicolson
+        theta_scheme_linear = 1 /// implicit-explicit, or IMEX, scheme that avoids solving the nonlinear system at every time step. Uses extraplation to predict velocity
     };
 };
 

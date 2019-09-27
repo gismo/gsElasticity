@@ -27,80 +27,46 @@ template <class T>
 class gsBaseAssembler : public gsAssembler<T>
 {
 public:
-    /// assembles the linear system given the current solution vector.
-    /// checks if the current solution is valid (Newton's solver can exit safely if invalid).
-    /// assembles only the RHS vector if \a assembleMatrix is set to false
-    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true) = 0;
-    /// sets scaling of Dirichlet BC used for linear system assembly
-    virtual void setDirichletAssemblyScaling(T factor) = 0;
-    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
-    virtual void setDirichletConstructionScaling(T factor) = 0;
-    /// set scaling of the force loading (volume and surface loading)
-    virtual void setForceScaling(T factor) = 0;
+    /// Assembles the tangential linear system for Newton's method given the current solution
+    /// in the form of free and fixed/Dirichelt degrees of freedom.
+    /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
+    virtual bool assemble(const gsMatrix<T> & solutionVector,
+                          const std::vector<gsMatrix<T> > & fixedDDoFs,
+                          bool assembleMatrix = true) = 0;
 
+    /// Returns number of free degrees of freedom
     virtual int numDofs() const { return gsAssembler<T>::numDofs(); }
 
-    /// constructs solution as a gsMultiPatch object from the solution vector.
-    /// exactly the same as the gsAssembler<>::constructSolution, but allows to control the scaling of Dirichlet BC
-    virtual void constructSolution(const gsMatrix<T>& solVector,
-                                   gsMultiPatch<T>& result,
-                                   const gsVector<index_t> & unknowns) const
-    {
-        GISMO_ASSERT(solVector.cols()==1, "Vector valued output only works for single rhs");
-        unsigned idx;
+    /// Constructs solution as a gsMultiPatch object from the solution vector and fixed DoFs
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDDofs,
+                                   gsMultiPatch<T> & result,
+                                   const gsVector<index_t> & unknowns) const;
 
-        const index_t dim = unknowns.rows();
+    //--------------------- DIRICHLET BC SHENANIGANS ----------------------------------//
+    /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
+     *
+     * A usual source of degrees of freedom is another geometry where it is known that the corresponding
+     * bases match. The function is not safe in that it assumes a correct numbering of DoFs in a given
+     * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
+     * to gsBoundaryCondtions container that is passed to the assembler constructor.
+     */
+    virtual void setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
-        std::vector<gsDofMapper> mappers(dim);
-        for(index_t unk = 0; unk<dim;++unk)
-            mappers[unk] = gsAssembler<T>::m_system.colMapper(unknowns[unk]);
+    /// set all fixed degrees of freedom
+    virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
 
-        result.clear(); // result is cleared first
+    /// get fixed degrees of freedom corresponding to a given part of the bdry.
+    /// each column of the resulting matrix correspond to one variable/component of the vector-valued vairable
+    virtual void getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs);
 
-        gsMatrix<T> coeffs;
-        gsVector<index_t> basisIndices(dim);
-        for(index_t unk = 0; unk<dim;++unk)
-            basisIndices[unk] = gsAssembler<T>::m_system.colBasis(unknowns[unk]);
-
-        for (size_t p = 0; p < gsAssembler<T>::m_pde_ptr->domain().nPatches(); ++p)
-        {
-            const int sz  = gsAssembler<T>::m_bases[basisIndices[0]][p].size(); //must be equal for all unk
-            coeffs.resize(sz, dim);
-
-            for(index_t unk = 0; unk<dim;++unk)
-                for (index_t i = 0; i < sz; ++i)
-                    if ( mappers[unk].is_free(i, p) ) // DoF value is in the solVector
-                    {
-                        gsAssembler<T>::m_system.mapToGlobalColIndex(i,p,idx,unknowns[unk]);
-                        coeffs(i,unk) = solVector(idx,0);
-                    }
-                    else // eliminated DoF: fill with Dirichlet data
-                        coeffs(i,unk) = gsAssembler<T>::m_ddof[unknowns[unk]](mappers[unk].bindex(i, p),0) *
-                                        gsAssembler<T>::m_options.getReal("DirichletConstruction");
-
-            result.addPatch( gsAssembler<T>::m_bases[basisIndices[0]][p].makeGeometry( give(coeffs) ) );
-        }
-    }
-protected:
-    /// scale Dirichlet degrees of freedom
-    void scaleDDoFs(T factor)
-    {
-        if (saved_ddof.empty())
-            saved_ddof = gsAssembler<T>::m_ddof;
-        for (unsigned d = 0; d < gsAssembler<T>::m_ddof.size(); ++d)
-            gsAssembler<T>::m_ddof[d] = saved_ddof[d]*factor;
-    }
-    /// reset Dirichlet degrees of freedom to its original state
-    void resetDDoFs()
-    {
-        if (!saved_ddof.empty())
-            gsAssembler<T>::m_ddof = saved_ddof;
-    }
+    //virtual void modifyDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
 protected:
-    /// Dirichlet degrees of freedom saved to recover after modification
-    std::vector<gsMatrix<T> > saved_ddof;
-
+    using gsAssembler<T>::m_pde_ptr;
+    using gsAssembler<T>::m_bases;
+    using gsAssembler<T>::m_system;
+    using gsAssembler<T>::m_ddof;
 };
 
 } // namespace ends

@@ -89,8 +89,8 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
         collection.addPart(fileName + util::to_string(i), ".vts");
 
         if ( mesh )
-        {
-            writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
+            {
+                writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
             collection.addPart(fileName + util::to_string(i) + "_mesh", ".vtp");
         }
         if ( ctrlNet ) // Output the control net

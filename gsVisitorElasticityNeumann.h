@@ -74,7 +74,6 @@ public:
         {
 			// Compute the outer normal vector on the side
             // normal length equals to the local area measure
-            gsVector<T> unormal;
             outerNormal(md, q, patchSide, unormal);
             // Collect the factors here: quadrature weight and geometry measure
             const T weight = quWeights[q] * unormal.norm() * forceScaling;
@@ -119,6 +118,9 @@ protected:
     gsMatrix<T> basisValuesDisp;
     // values of the boundary loading function stored as a dim x numQuadPoints matrix;
     gsMatrix<T> neumannValues;
+
+    // all temporary matrices defined here for efficiency
+    gsVector<T> unormal;
 };
 
 } // namespace gismo

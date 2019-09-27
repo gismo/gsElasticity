@@ -78,21 +78,30 @@ void gsMassAssembler<T>::refresh()
 }
 
 template<class T>
-void gsMassAssembler<T>::assemble()
+void gsMassAssembler<T>::assemble(bool assembleMatrix)
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
+    m_system.rhs().setZero(Base::numDofs(),1);
 
-    if ( this->numDofs() == 0 )
-    {
-        gsWarn << "No internal DOFs. Computed Dirichlet boundary only.\n";
-        return;
-    }
-
-    gsVisitorMass<T> visitor(*m_pde_ptr);
+    gsVisitorMass<T> visitor(assembleMatrix);
     Base::template push<gsVisitorMass<T> >(visitor);
 
     m_system.matrix().makeCompressed();
+}
+
+template <class T>
+void gsMassAssembler<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
+{
+    GISMO_ENSURE(ddofs.size() >= m_ddof.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
+                 ". Must be at least: " + util::to_string(m_ddof.size()));
+
+    for (short_t d = 0; d < index_t(m_ddof.size()); ++d)
+    {
+        GISMO_ENSURE(m_ddof[d].rows() == ddofs[d].rows(),"Wrong number of fixed DoFs for " + util::to_string(d) + "component: " +
+                     util::to_string(ddofs[d].rows()) + ". Must be: " + util::to_string(m_ddof[d].rows()));
+        m_ddof[d] = ddofs[d];
+    }
 }
 
 }// namespace gismo ends

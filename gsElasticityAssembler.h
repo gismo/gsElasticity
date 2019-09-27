@@ -57,19 +57,24 @@ public:
     /// @brief Refresh routine to set dof-mappers
     virtual void refresh();
 
-    /// @brief Assembles the stiffness matrix and the RHS
+    //--------------------- SYSTEM ASSEMBLY ----------------------------------//
+
+    /// @brief Assembles the stiffness matrix and the RHS for the LINEAR ELASTICITY
     /// set *assembleMatrix* to false to only assemble the RHS;
     virtual void assemble();
 
-    /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method;
-    /// set *assembleMatrix* to false to only assemble the residual;
-    /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual bool assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix = true);
+    /// Assembles the tangential linear system for Newton's method given the current solution
+    /// in the form of free and fixed/Dirichelt degrees of freedom.
+    /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
+    virtual bool assemble(const gsMatrix<T> & solutionVector,
+                          const std::vector<gsMatrix<T> > & fixedDoFs,
+                          bool assembleMatrix = true);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for displacement formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & displacement, bool assembleMatrix = true);
+    virtual void assemble(const gsMultiPatch<T> & displacement,
+                          bool assembleMatrix = true);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for mixed formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
@@ -77,35 +82,34 @@ public:
     virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
                           bool assembleMatrix = true);
 
+    //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
+
     /// @brief Construct displacement from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& displacement) const;
+    virtual void constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & displacement) const;
+
+    /// @brief Construct displacement from computed solution vector and fixed degrees of freedom
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & displacement) const;
 
     /// @brief Construct displacement and pressure from computed solution vector
-    virtual void constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
+
+    /// @brief Construct displacement and pressure from computed solution vector and fixed degrees of freedom
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// @ brief Construct pressure from computed solution vector
     virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
+
+    //--------------------- SPECIALS ----------------------------------//
 
     /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T> & result,
                                  stress_type::type type = stress_type::von_mises) const;
-
-    /** @brief Deform geometric domain using computed displacement field.
-     *
-     * Domain must have the same level of refinement as the basis used for computing the displacement.
-     * Otherwise the number of control points will not match.
-     */
-    virtual void deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain) const;
-
-    /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
-     *
-     * A usual source of degrees of freedom is another geometry where it is known that the corresponding
-     * bases match. The function is not safe in that it assumes a correct numbering of DoFs in a given
-     * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
-     * to gsBoundaryCondtions container that is passed to the assembler constructor.
-     */
-    virtual void setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
     /// @brief Check whether the displacement field is valid, i.e. J = det(F) > 0;
     /// return -1 if yes or a number of the first invalid patch
@@ -113,13 +117,6 @@ public:
 
     /// @brief Return minJ/maxJ
     virtual T solutionJacRatio(const gsMultiPatch<T> & solution) const;
-
-    /// sets scaling of Dirichlet BC used for linear system assembly
-    virtual void setDirichletAssemblyScaling(T factor) { m_options.setReal("DirichletAssembly",factor); }
-    /// sets scaling of Dirichlet BC used for construction of the solution as a gsMultiPatch object
-    virtual void setDirichletConstructionScaling(T factor) { m_options.setReal("DirichletConstruction",factor); }
-    /// set scaling of the force loading (volume and surface loading)
-    virtual void setForceScaling(T factor) { m_options.setReal("ForceScaling",factor); }
 
 protected:
 

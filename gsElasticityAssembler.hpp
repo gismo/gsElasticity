@@ -83,8 +83,6 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("YoungsModulus","Youngs modulus of the material",200e9);
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
-    opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
-    opt.addReal("DirichletConstruction","Dirichlet BC scaling parameter for solution construction",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
     return opt;
 }
@@ -111,15 +109,14 @@ void gsElasticityAssembler<T>::refresh()
         Base::computeDirichletDofs(d);
 }
 
+//--------------------- SYSTEM ASSEMBLY ----------------------------------//
+
 template<class T>
 void gsElasticityAssembler<T>::assemble()
 {
-
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
-
-    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
@@ -137,16 +134,17 @@ void gsElasticityAssembler<T>::assemble()
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
     m_system.matrix().makeCompressed();
-    Base::resetDDoFs();
 }
 
 template <class T>
-bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix)
+bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
+                                        const std::vector<gsMatrix<T> > & fixedDoFs,
+                                        bool assembleMatrix)
 {
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
         gsMultiPatch<T> displacement;
-        constructSolution(solutionVector,displacement);
+        constructSolution(solutionVector,fixedDoFs,displacement);
         if (checkSolution(displacement) != -1)
             return false;
         assemble(displacement,assembleMatrix);
@@ -154,7 +152,7 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool
     else // mixed formulation (displacement + pressure)
     {
         gsMultiPatch<T> displacement, pressure;
-        constructSolution(solutionVector,displacement,pressure);
+        constructSolution(solutionVector,fixedDoFs,displacement,pressure);
         if (checkSolution(displacement) != -1)
             return false;
         assemble(displacement,pressure,assembleMatrix);
@@ -163,17 +161,15 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, bool assembleMatrix)
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
+                                        bool assembleMatrix)
 {
-
     if (assembleMatrix)
     {
         m_system.matrix().setZero();
         m_system.reserve(m_bases[0], m_options, 1);
     }
-    m_system.rhs().setZero(Base::numDofs(),1);
-
-    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
     gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,assembleMatrix);
@@ -182,12 +178,12 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, bo
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
-    Base::resetDDoFs();
     m_system.matrix().makeCompressed();
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
+                                        const gsMultiPatch<T> & pressure,
                                         bool assembleMatrix)
 {
     if (assembleMatrix)
@@ -195,9 +191,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, co
         m_system.matrix().setZero();
         m_system.reserve(m_bases[0], m_options, 1);
     }
-    m_system.rhs().setZero(Base::numDofs(),1);
-
-    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
     gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure,assembleMatrix);
@@ -206,17 +200,29 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement, co
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
 
-    Base::resetDDoFs();
     m_system.matrix().makeCompressed();
 }
 
+//--------------------- SOLUTION CONSTRUCTION ----------------------------------//
+
 template <class T>
-void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& result) const
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & result) const
 {
     gsVector<index_t> unknowns(m_dim);
     for (short_t d = 0; d < m_dim; ++d)
         unknowns.at(d) = d;
-    Base::constructSolution(solVector,result,unknowns);
+    Base::constructSolution(solVector,m_ddof,result,unknowns);
+}
+
+template <class T>
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
+                                                 const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                 gsMultiPatch<T> & result) const
+{
+    gsVector<index_t> unknowns(m_dim);
+    for (short_t d = 0; d < m_dim; ++d)
+        unknowns.at(d) = d;
+    Base::constructSolution(solVector,fixedDoFs,result,unknowns);
 }
 
 template <class T>
@@ -231,13 +237,27 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 }
 
 template <class T>
+void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                                 const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                 gsMultiPatch<T>  & displacement, gsMultiPatch<T> & pressure) const
+{
+    GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
+    // construct displacement
+    constructSolution(solVector,fixedDoFs,displacement);
+    // construct pressure
+    constructPressure(solVector,pressure);
+}
+
+template <class T>
 void gsElasticityAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPatch<T>& pressure) const
 {
     GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
-    Base::constructSolution(solVector,pressure,unknowns);
+    Base::constructSolution(solVector,m_ddof,pressure,unknowns);
 }
+
+//--------------------- SPECIALS ----------------------------------//
 
 template <class T>
 void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,
@@ -258,64 +278,6 @@ void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & d
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
         result.addPiecePointer(new gsCauchyStressFunction<T>(displacement,p,type,lambda,mu));
-}
-
-template <class T>
-void gsElasticityAssembler<T>::deformGeometry(const gsMatrix<T> & solVector, gsMultiPatch<T> & domain) const
-{
-    GISMO_ASSERT(domain.domainDim() == m_dim,
-                 "Wrong parametric dimension of a given domain: " + util::to_string(domain.domainDim()) +
-                 ". Must be: " + util::to_string(m_dim) + ".\n");
-    GISMO_ASSERT(domain.targetDim() == m_dim,
-                 "Wrong dimension of a given domain: " + util::to_string(domain.targetDim()) +
-                 ". Must be: " + util::to_string(m_dim) + ".\n");
-
-    gsMultiPatch<T> solution;
-    constructSolution(solVector,solution);
-
-    GISMO_ASSERT(domain.nPatches() == solution.nPatches(),
-                 "Wrong number of patches of a given domain: " + util::to_string(domain.nPatches()) +
-                 ". Must be: " + util::to_string(solution.nPatches()) + ".\n");
-
-    for (size_t p = 0; p < solution.nPatches(); ++p)
-    {
-        GISMO_ASSERT(domain.patch(p).coefsSize() == solution.patch(p).coefsSize(),
-                     "Wrong number of control points in patch " + util::to_string(p) +
-                     " of a given domain: " + util::to_string(domain.patch(p).coefsSize()) +
-                     ". Must be: " + util::to_string(solution.patch(p).coefsSize()) + ".\n");
-
-        domain.patch(p).coefs() += solution.patch(p).coefs();
-    }
-}
-
-template <class T>
-void gsElasticityAssembler<T>::setDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
-{
-    bool dirBcExists = false;
-    typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
-    while (!dirBcExists && it != m_pde_ptr->bc().dirichletEnd())
-    {
-        if (it->patch() == patch && it->side() == side)
-            dirBcExists = true;
-        ++it;
-    }
-    GISMO_ASSERT(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
-                             + " does not belong to the Dirichlet boundary\n");
-
-    gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
-    GISMO_ASSERT(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
-                 "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
-                 " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
-                 " x " + util::to_string(m_dim) + ".\n");
-
-    for (short_t d = 0; d < m_dim; ++d )
-    {
-        gsMatrix<unsigned> globalIndices;
-        m_system.mapColIndices(localBIndices, patch, globalIndices, d);
-
-        for (index_t i = 0; i < globalIndices.rows(); ++i)
-            m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
-    }
 }
 
 template <class T>

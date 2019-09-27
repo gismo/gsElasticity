@@ -51,9 +51,8 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
     opt.addReal("Viscosity","Kinematic viscosity of the fluid",0.001);
-    opt.addReal("DirichletConstruction","Dirichlet BC scaling parameter for solution construction",1.);
+    opt.addReal("Density","Density of the fluid",1.);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
-    opt.addReal("DirichletAssembly","Dirichlet BC scaling parameter for assembly",1.);
     opt.addSwitch("SUPG","Use SUPG stabilaztion",true);
     opt.addInt("Iteration","Type of the linear iteration used to solve the nonlinear problem",iteration_type::newton);
     return opt;
@@ -81,12 +80,14 @@ void gsNsAssembler<T>::refresh()
         Base::computeDirichletDofs(d);
 }
 
+//--------------------- SYSTEM ASSEMBLY ----------------------------------//
+
 template<class T>
 void gsNsAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
+    m_system.rhs().setZero();
 
     gsVisitorStokes<T> visitor(*m_pde_ptr);
     Base::template push<gsVisitorStokes<T> >(visitor);
@@ -95,29 +96,57 @@ void gsNsAssembler<T>::assemble()
 }
 
 template <class T>
-bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector, bool assembleMatrix)
+bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
+                                const std::vector<gsMatrix<T> > & fixedDoFs,
+                                bool assembleMatrix)
 {
     gsMultiPatch<T> velocity, pressure;
-    constructSolution(solutionVector,velocity,pressure);
+    constructSolution(solutionVector,fixedDoFs,velocity,pressure);
 
     if (assembleMatrix)
     {
         m_system.matrix().setZero();
         m_system.reserve(m_bases[0], m_options, 1);
     }
-    m_system.rhs().setZero(Base::numDofs(),1);
-
-    Base::scaleDDoFs(m_options.getReal("DirichletAssembly"));
+    m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
-    Base::template push<gsVisitorNavierStokes<T> >(visitor);
+    if (alePatches.empty())
+    {
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
+        Base::template push<gsVisitorNavierStokes<T> >(visitor);
+    }
+    else
+    {
+        gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,*aleVel,alePatches,assembleMatrix);
+        Base::template push<gsVisitorNavierStokes<T> >(visitor);
+    }
 
-    Base::resetDDoFs();
     m_system.matrix().makeCompressed();
 
     return true;
 }
+
+template <class T>
+void gsNsAssembler<T>::assemble(const gsMultiPatch<T> & velocity,
+                                const gsMultiPatch<T> & pressure,
+                                bool assembleMatrix)
+{
+    if (assembleMatrix)
+    {
+        m_system.matrix().setZero();
+        m_system.reserve(m_bases[0], m_options, 1);
+    }
+    m_system.rhs().setZero();
+
+    m_system.rhs().setZero(Base::numDofs(),1);
+    gsVisitorNavierStokes<T> visitor(*m_pde_ptr,velocity,pressure,assembleMatrix);
+    Base::template push<gsVisitorNavierStokes<T> >(visitor);
+
+    m_system.matrix().makeCompressed();
+}
+
+//--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
 template <class T>
 void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPatch<T>& velocity) const
@@ -125,7 +154,18 @@ void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector, gsMultiPa
     gsVector<index_t> unknowns(m_dim);
     for (short_t d = 0; d < m_dim; ++d)
         unknowns.at(d) = d;
-    Base::constructSolution(solVector,velocity,unknowns);
+    Base::constructSolution(solVector,m_ddof,velocity,unknowns);
+}
+
+template <class T>
+void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                         const std::vector<gsMatrix<T> > & fixedDoFs,
+                                         gsMultiPatch<T>& velocity) const
+{
+    gsVector<index_t> unknowns(m_dim);
+    for (short_t d = 0; d < m_dim; ++d)
+        unknowns.at(d) = d;
+    Base::constructSolution(solVector,fixedDoFs,velocity,unknowns);
 }
 
 template <class T>
@@ -139,20 +179,92 @@ void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
 }
 
 template <class T>
+void gsNsAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
+                                         const std::vector<gsMatrix<T> > & fixedDoFs,
+                                         gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const
+{
+    // construct displacement
+    constructSolution(solVector,fixedDoFs,velocity);
+    // construct pressure
+    constructPressure(solVector,pressure);
+}
+
+template <class T>
 void gsNsAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPatch<T>& pressure) const
 {
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
-    Base::constructSolution(solVector,pressure,unknowns);
+    Base::constructSolution(solVector,m_ddof,pressure,unknowns);
 }
+
+//--------------------- SPECIALS ----------------------------------//
 
 template <class T>
 gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
                                            const std::vector<std::pair<index_t,boxSide> > & bdrySides) const
 {
+    // all temporary data structures
+    gsMatrix<T> quNodes, pressureValues, physGradJac, sigma;
+    gsVector<T> quWeights, normal;
+    // NEED_MEASURE for integration
+    // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to physical domain
+    gsMapData<T> mdGeo(NEED_MEASURE | NEED_GRAD_TRANSFORM);
+    // NEED_DERIV for velocity gradients
+    gsMapData<T> mdVel(NEED_DERIV);
+
     gsMatrix<T> force;
     force.setZero(m_dim,1);
     const T viscosity = m_options.getReal("Viscosity");
+    const T density = m_options.getReal("Density");
+
+    // loop over bdry sides
+    for (auto &it : bdrySides)
+    {
+        // basis of the patch
+        const gsBasis<T> & basis = m_bases[0][it.first];
+        // setting quadrature rule for the boundary side
+        gsGaussRule<T> bdQuRule(basis,1.0,1,it.second.direction());
+        // loop over elements of the side
+        typename gsBasis<T>::domainIter elem = basis.makeDomainIterator(it.second);
+        for (; elem->good(); elem->next())
+        {
+            // mapping quadrature rule to the element
+            bdQuRule.mapTo(elem->lowerCorner(),elem->upperCorner(),quNodes,quWeights);
+            // evaluate geoemtry mapping at the quad points
+            mdGeo.points = quNodes;
+            m_pde_ptr->patches().patch(it.first).computeMap(mdGeo);
+            // evaluate velocity at the quad points
+            mdVel.points = quNodes;
+            velocity.patch(it.first).computeMap(mdVel);
+            // evaluate pressure at the quad points
+            pressure.patch(it.first).eval_into(quNodes,pressureValues);
+
+            // loop over quad points
+            for (index_t q = 0; q < quWeights.rows(); ++q)
+            {
+                // transform gradients from parametric to physical
+                physGradJac = mdVel.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+                // normal length is the local measure
+                outerNormal(mdGeo,q,it.second,normal);
+                // stress tensor
+                sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
+                        density*viscosity*(physGradJac + physGradJac.transpose());
+                force += quWeights[q] * sigma * normal;
+            }
+        }
+    }
+    return force;
+}
+
+template <class T>
+gsMatrix<T> gsNsAssembler<T>::computeForceALE(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
+                                              const gsMultiPatch<T> & displacementALE,
+                                              const std::vector<std::pair<index_t,boxSide> > & bdrySides) const
+{
+    gsMatrix<T> force;
+    force.setZero(m_dim,1);
+    const T viscosity = m_options.getReal("Viscosity");
+    const T density = m_options.getReal("Density");
 
     // loop over bdry sides
     for (auto &it : bdrySides)
@@ -183,18 +295,32 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
             // evaluate pressure at the quad points
             gsMatrix<T> pressureValues;
             pressure.patch(it.first).eval_into(quNodes,pressureValues);
+            // evaluate ALE mapping at the param points
+            // NEED_DERIV for gradients
+            gsMapData<T> mdALE(NEED_DERIV);
+            mdALE.points = quNodes;
+            displacementALE.patch(it.first).computeMap(mdALE);
 
             // loop over quad points
             for (index_t q = 0; q < quWeights.rows(); ++q)
             {
                 // transform gradients from parametric to physical
                 gsMatrix<T> physGradJac = mdVel.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+                // ALE jacobian (identity + physical displacement gradient)
+                gsMatrix<T> physJacALE = gsMatrix<T>::Identity(m_dim,m_dim) +
+                        mdALE.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+                // inverse ALE jacobian
+                gsMatrix<T> invJacALE = physJacALE.cramerInverse();
                 // normal length is the local measure
                 gsVector<T> normal;
                 outerNormal(mdGeo,q,it.second,normal);
                 // stress tensor
-                gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) - viscosity*physGradJac;
-                force += quWeights[q] * sigma * normal;
+                gsMatrix<T> sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
+                                    density*viscosity*(physGradJac*invJacALE +
+                                                       invJacALE.transpose()*physGradJac.transpose());
+                // stress tensor pull back
+                gsMatrix<T> sigmaALE = physJacALE.determinant()*sigma*(invJacALE.transpose());
+                force += quWeights[q] * sigmaALE * normal;
             }
         }
     }
