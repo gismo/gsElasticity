@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
     newtonFlow.solve();
     solutionFlow = newtonFlow.solution();
     nsAssembler.constructSolution(newtonFlow.solution(),newtonFlow.allFixedDofs(),velocity,pressure);
-
+    gsMatrix<> aleUpdateVector;
     while (!converged && iter < 50)
     {
         if (iter > 0)
@@ -312,8 +312,13 @@ int main(int argc, char* argv[])
             aleAssembler.setFixedDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
             aleAssembler.setFixedDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
             aleAssembler.assemble(ALE);
-            gsSparseSolver<>::LU solverALE(aleAssembler.matrix());
-            gsMatrix<> aleUpdateVector = solverALE.solve(aleAssembler.rhs());
+#ifdef GISMO_WITH_PARDISO
+            gsSparseSolver<>::PardisoLDLT solverALE(aleAssembler.matrix());
+            aleUpdateVector = solverALE.solve(aleAssembler.rhs());
+#else
+            gsSparseSolver<>::SimplicialLDLT solverALE(aleAssembler.matrix());
+            aleUpdateVector = solverALE.solve(aleAssembler.rhs());
+#endif
             gsMultiPatch<> aleUpdate;
             aleAssembler.constructSolution(aleUpdateVector,aleUpdate);
             // 2. deform flow mesh
@@ -326,14 +331,23 @@ int main(int argc, char* argv[])
         }
         // 3. solve flow
         nsAssembler.assemble(velocity,pressure);
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLU solverFlow(nsAssembler.matrix());
+        solutionFlow += solverFlow.solve(nsAssembler.rhs());
+#else
         gsSparseSolver<>::LU solverFlow(nsAssembler.matrix());
         solutionFlow += solverFlow.solve(nsAssembler.rhs());
+#endif
         nsAssembler.constructSolution(solutionFlow,newtonFlow.allFixedDofs(),velocity,pressure);
-
         // 4. solve beam
         elAssembler.assemble(displacement);
-        gsSparseSolver<>::LU solverBeam(elAssembler.matrix());
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLDLT solverBeam(elAssembler.matrix());
         solutionBeam += solverBeam.solve(elAssembler.rhs());
+#else
+        gsSparseSolver<>::SimplicialLDLT solverBeam(elAssembler.matrix());
+        solutionBeam += solverBeam.solve(elAssembler.rhs());
+#endif
         elAssembler.constructSolution(solutionBeam,displacement);
 
         // 5. Aitken relaxation

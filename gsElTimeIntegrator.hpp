@@ -83,8 +83,13 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
     m_matrix = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
     m_matrix.makeCompressed();
     m_rhs = massAssembler.matrix()*(alpha1()*dispVector + alpha2()*velVector + alpha3()*accVector) + stiffAssembler.rhs();
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver(m_matrix);
+    return solver.solve(m_rhs);
+#else
     gsSparseSolver<>::SimplicialLDLT solver(m_matrix);
     return solver.solve(m_rhs);
+#endif
 }
 
 template <class T>
@@ -92,6 +97,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
 {
     gsNewton<T> solver(*this,dispVector);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
+    solver.options().setInt("Solver",linear_solver::LDLT);
     solver.solve();
     return solver.solution();
 }

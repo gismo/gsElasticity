@@ -356,6 +356,7 @@ int main(int argc, char* argv[])
     gsNewton<real_t> aleNewton(aleAssembler,solutionALE,aleAssembler.allFixedDofs());
     aleNewton.options().setInt("Verbosity",newton_verbosity::some);
     aleNewton.options().setInt("MaxIters",10);
+    aleNewton.options().setInt("Solver",linear_solver::LDLT);
 
     index_t numI = 200;
     for (index_t i = 0; i < numI; ++i)

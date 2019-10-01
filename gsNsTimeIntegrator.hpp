@@ -110,9 +110,13 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     oldTimeStep = tStep;
     m_ddof = stiffAssembler.allFixedDofs();
 
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLU solver(m_system.matrix());
+    solVector = solver.solve(m_system.rhs());
+#else
     gsSparseSolver<>::LU solver(m_system.matrix());
     solVector = solver.solve(m_system.rhs());
-    //solVector = solver.solveWithGuess(m_system.rhs(),solVector);
+#endif
 }
 
 template <class T>

@@ -108,6 +108,7 @@ int main(int argc, char* argv[])
     gsNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
     newton.options().setInt("MaxIters",numIter);
+    newton.options().setInt("Solver",linear_solver::LDLT);
 
     //=====================================//
             // Deformation: solving //

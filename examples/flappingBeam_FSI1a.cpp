@@ -307,7 +307,7 @@ int main(int argc, char* argv[]){
             aleAssembler.setFixedDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
             gsNewton<real_t> newtonALE(aleAssembler,solutionALE,fixedDoFsALE);
             newtonALE.options().setInt("Verbosity",newton_verbosity::none);
-            newtonALE.options().setInt("Solver",linear_solver::LU);
+            newtonALE.options().setInt("Solver",linear_solver::LDLT);
             newtonALE.solve();
             solutionALE = newtonALE.solution();
             fixedDoFsALE = newtonALE.allFixedDofs();
@@ -334,7 +334,7 @@ int main(int argc, char* argv[]){
         // 4. solve beam
         gsNewton<real_t> newtonBeam(elAssembler,solutionBeam);
         newtonBeam.options().setInt("Verbosity",newton_verbosity::none);
-        newtonBeam.options().setInt("Solver",linear_solver::LU);
+        newtonBeam.options().setInt("Solver",linear_solver::LDLT);
         newtonBeam.solve();
         solutionBeam = newtonBeam.solution();
         elAssembler.constructSolution(solutionBeam,displacement);
