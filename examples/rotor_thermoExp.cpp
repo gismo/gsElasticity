@@ -92,7 +92,7 @@ int main(int argc, char* argv[]){
     gsInfo << "Solved the heat system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
 #else
     gsSparseSolver<>::SimplicialLDLT solverHeat(heatAssembler.matrix());
-    solVectorHeat = solverHeat.solve(heatAssembler.rhs());
+    gsVector<> solVectorHeat = solverHeat.solve(heatAssembler.rhs());
     gsInfo << "Solved the heat system with EigenLDLT solver in " << clock.stop() <<"s.\n";
 #endif
 
