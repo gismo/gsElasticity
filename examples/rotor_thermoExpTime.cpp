@@ -1,6 +1,6 @@
 /// This is an example of using the thermal expansion solver in a time-dependent setting on a 2D geometry.
 /// The heat equation is solved using the Crank-Nicolson method.
-/// At time step the current temperature distribution is used as an input for
+/// At each time step, the current temperature distribution is used as an input for
 /// the stationary thermo-elasticity equation to compute the thermal expansion of the body.
 
 #include <gismo.h>
@@ -18,29 +18,24 @@ int main(int argc, char *argv[])
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/rotor_2D.xml";
-    int numUniRef = 0; // number of h-refinements
-    int numKRef = 0; // number of k-refinements
-    int numPlotPoints = 10000;
+    index_t numUniRef = 1; // number of h-refinements
+    index_t numKRef = 0; // number of k-refinements
+    index_t numPlotPoints = 10000;
 
-    real_t endTime = 1.;
-    int numSteps = 25;
-    real_t theta = 1.;
+    real_t timeSpan = 1.;
+    real_t timeStep = 0.01;
     real_t fluxValue = 100.;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the thermo-elasticity solver in a time-dependent setting in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
-    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addInt("n","num","Number of time steps",numSteps);
-    cmd.addReal("e","end","End of the integration period",endTime);
-    cmd.addReal("t","theta","Time integration: 0 - explicit Euler, 1 - implicit Euler, 0.5 - Crank-Nicolson",theta);
-    cmd.addReal("f","flux","Heat flux at the boundary",fluxValue);
+    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addReal("s","step","Time step",timeStep);
+    cmd.addReal("t","time","Lenght of time integration period",timeSpan);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // material parameters
-    real_t youngsModulus = 74e9; // doesn't matter for the simulation
-    real_t poissonsRatio = 0.33; // doesn't matter for the simulation
     real_t thExpCoef = 2e-4;
     real_t initTemp = 20.;
 
@@ -60,13 +55,12 @@ int main(int argc, char *argv[])
     // boundary conditions for the linear elasticity equation
     gsBoundaryConditions<> bcElast;
     // Dirichlet BC are imposed separately for every component (coordinate)
-    bcElast.addCondition(0,boundary::south,condition_type::dirichlet,0,0); // the first number is a patch number
-    bcElast.addCondition(0,boundary::south,condition_type::dirichlet,0,1); // the second number is a NULL pointer meaning a zero function
-    bcElast.addCondition(0,boundary::west,condition_type::dirichlet,0,0);  // the third number is a component (coordinate) number
-    bcElast.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
-    bcElast.addCondition(0,boundary::east,condition_type::dirichlet,0,0);
-    bcElast.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
-
+    for (index_t d = 0; d < 2; ++d)
+    {   // 0 refers to a patch number, nullptr means that the dirichlet BC is homogeneous, d stats for the displacement component
+        bcElast.addCondition(0,boundary::south,condition_type::dirichlet,nullptr,d);
+        bcElast.addCondition(0,boundary::west,condition_type::dirichlet,nullptr,d);
+        bcElast.addCondition(0,boundary::east,condition_type::dirichlet,nullptr,d);
+    }
     //=====================================================//
                   // Assembly & output setup //
     //=====================================================//
@@ -89,7 +83,7 @@ int main(int argc, char *argv[])
     // creating an assembler for the heat equation
     gsPoissonAssembler<> stationary(geometry,basis,bcTemp,heatSource);
     gsHeatEquation<real_t> heatAssembler(stationary);
-    heatAssembler.setTheta(theta);
+    heatAssembler.setTheta(0.5);
 
     clock.restart();
     gsInfo<<"Assembling...\n";
@@ -108,8 +102,6 @@ int main(int argc, char *argv[])
 
     // creating elasticity assembler
     gsThermoAssembler<real_t> elastAssembler(geometry,basis,bcElast,gravity,solutionTemp);
-    elastAssembler.options().setReal("YoungsModulus",youngsModulus);
-    elastAssembler.options().setReal("PoissonsRatio",poissonsRatio);
     elastAssembler.options().setReal("InitTemp",initTemp);
     elastAssembler.options().setReal("ThExpCoef",thExpCoef);
 
@@ -135,22 +127,22 @@ int main(int argc, char *argv[])
     fields["Temperature"] = &tempField;
     fields["Displacement"] = &elastField;
 
-    gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,0,numPlotPoints);
+    if (numPlotPoints > 0)
+        gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,0,numPlotPoints);
 
     //=====================================================//
                   // Main time loop //
     //=====================================================//
 
-    real_t Dt = endTime / numSteps ;
     gsInfo << "Solving...\n";
     clock.restart();
     gsProgressBar bar;
-    for ( int i = 1; i<=numSteps; ++i)
+    for ( int i = 1; i <= index_t(timeSpan/timeStep); ++i)
     {
         // display progress bar
-        bar.display(i,numSteps);
+        bar.display(i,index_t(timeSpan/timeStep));
         // prepairing the matrix for the next time step
-        heatAssembler.nextTimeStep(solVectorTemp, Dt);
+        heatAssembler.nextTimeStep(solVectorTemp, timeStep);
         // solving the heat system
 #ifdef GISMO_WITH_PARDISO
         gsSparseSolver<>::PardisoLDLT solverHeat(heatAssembler.matrix());
@@ -177,11 +169,16 @@ int main(int argc, char *argv[])
         // plotting to Paraview
         fields["Temperature"] = &tempField;
         fields["Displacement"] = &elastField;
-        gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,i,numPlotPoints);
+        if (numPlotPoints > 0)
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,i,numPlotPoints);
     }
 
-    gsInfo << "Total time elapsed: " << clock.stop() << "s\n";
-    collection.save();
+    gsInfo << "Complete in " << clock.stop() << "s.\n";
+    if (numPlotPoints > 0)
+    {
+        collection.save();
+        gsInfo << "Open \"rotor.pvd\" in Paraview for visualization.\n";
+    }
 
     return 0;
 }

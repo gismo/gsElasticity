@@ -1,14 +1,13 @@
-/// This is an example of using the nonlinear elasticity solver on a 3D multi-patch geometry
+/// This is an example of using the linear elasticity solver on a 3D multi-patch geometry
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsNewton.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Testing the nonlinear elasticity solver in 3D.\n";
+    gsInfo << "Testing the linear elasticity solver in 3D.\n";
 
     //=====================================//
                 // Input //
@@ -16,24 +15,18 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"terrific.xml";
     index_t numUniRef = 0; // number of h-refinements
-    index_t maxNumIteration = 100;
-    real_t tolerance = 1e-12;
     index_t numPlotPoints = 10000;
-    index_t materialLaw = material_law::saint_venant_kirchhoff;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
-    cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
-    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln",materialLaw);
+    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // source function, rhs
     gsConstantFunction<> f(0.,0.,0.,3);
     // surface load, neumann BC
-    gsConstantFunction<> g(15e7, -10.5e7, 0,3);
+    gsConstantFunction<> g(20e6, -14e6, 0,3);
 
     // material parameters
     real_t youngsModulus = 74e9;
@@ -69,52 +62,55 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
-    assembler.options().setInt("MaterialLaw",materialLaw);
-
-    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
-
-    // setting Newton's method
-    gsNewton<real_t> newton(assembler);
-    newton.options().setInt("MaxIters",maxNumIteration);
-    newton.options().setReal("AbsTol",tolerance);
-    newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("Solver",linear_solver::LDLT);
+    gsInfo<<"Assembling...\n";
+    gsStopwatch clock;
+    clock.restart();
+    assembler.assemble();
+    gsInfo << "Assembled a system (matrix and load vector) with "
+           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
     //=============================================//
                   // Solving //
     //=============================================//
 
     gsInfo << "Solving...\n";
-    gsStopwatch clock;
     clock.restart();
+    gsVector<> solVector;
 
-    // make the first iteration by hand to get the linear solution
-    newton.computeUpdate();
-    gsInfo << newton.status() << std::endl;
-    gsMultiPatch<> solutionLinear;
-    assembler.constructSolution(newton.solution(),solutionLinear);
-    // continue iterations till convergence
-    newton.solve();
-    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver(assembler.matrix());
+    solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+    solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
+#endif
 
-    // solution to the nonlinear problem as an isogeometric displacement field
-    gsMultiPatch<> solutionNonlinear;
-    assembler.constructSolution(newton.solution(),solutionNonlinear);
+    // constructing solution as an IGA function
+    gsMultiPatch<> solution;
+    assembler.constructSolution(solVector,solution);
+    // constructing an IGA field (geometry + solution)
+    gsField<> solutionField(assembler.patches(),solution);
+
+    // constructing stresses
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
+    gsField<> stressField(assembler.patches(),stresses,true);
 
     //=============================================//
                   // Output //
     //=============================================//
 
-    gsField<> nonlinearSolutionField(geometry,solutionNonlinear);
-    gsField<> linearSolutionField(geometry,solutionLinear);
-
-    gsInfo << "Plotting the output to the Paraview file \"terrific.pvd\"...\n";
     // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Deformation (nonlinElast)"] = &nonlinearSolutionField;
-    fields["Deformation (linElast)"] = &linearSolutionField;
-    gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
-    gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
+    if (numPlotPoints > 0)
+    {
+        std::map<std::string,const gsField<> *> fields;
+        fields["Deformation"] = &solutionField;
+        fields["Stresses"] = &stressField;
+        gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
+        gsInfo << "Open \"terrific.pvd\" in Paraview for visualization.\n";
+    }
 
     return 0;
 }
