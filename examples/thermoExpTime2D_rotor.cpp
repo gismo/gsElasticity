@@ -152,15 +152,25 @@ int main(int argc, char *argv[])
         // prepairing the matrix for the next time step
         heatAssembler.nextTimeStep(solVectorTemp, Dt);
         // solving the heat system
-        gsSparseSolver<>::LU solverHeat(heatAssembler.matrix());
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLDLT solverHeat(heatAssembler.matrix());
         solVectorTemp = solverHeat.solve(heatAssembler.rhs());
+#else
+        gsSparseSolver<>::SimplicialLDLT solverHeat(heatAssembler.matrix());
+        solVectorTemp = solverHeat.solve(heatAssembler.rhs());
+#endif
         // constructing solution as an IGA function
         stationary.constructSolution(solVectorTemp,solutionTemp);
         // assembling the thermal contribution to the RHS
         elastAssembler.assembleThermo();
         // solving elasticity system
-        gsSparseSolver<>::LU solverElast(elastAssembler.matrix());
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLDLT solverElast(elastAssembler.matrix());
         solVectorElast = solverElast.solve(elastAssembler.rhs());
+#else
+        gsSparseSolver<>::SimplicialLDLT solverElast(elastAssembler.matrix());
+        solVectorElast = solverElast.solve(elastAssembler.rhs());
+#endif
         // constructing solution as an IGA function
         elastAssembler.constructSolution(solVectorElast,solutionElast);
         gsField<> elastField(elastAssembler.patches(),solutionElast);

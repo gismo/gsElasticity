@@ -13,7 +13,7 @@ namespace gismo
 TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
 
 TEMPLATE_INST void plotDeformation(const gsMultiPatch<real_t> & initDomain, const std::vector<gsMultiPatch<real_t> > & displacements,
-                     std::string fileName, index_t numSamplingPoints = 10000);
+                     std::string fileName, index_t numSamplingPoints);
 
 TEMPLATE_INST void plotDeformation(const gsMultiPatch<real_t> & initDomain, const gsMultiPatch<real_t> & displacement,
                                    std::string const & fileName, gsParaviewCollection & collection, index_t step);

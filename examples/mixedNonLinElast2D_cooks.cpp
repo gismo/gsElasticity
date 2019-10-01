@@ -84,6 +84,7 @@ int main(int argc, char* argv[]){
     // setting Newton's method
     gsNewton<real_t> newton(assembler);
     newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("Solver",linear_solver::LDLT);
 
     //=============================================//
                   // Solving //

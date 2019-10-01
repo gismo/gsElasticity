@@ -75,9 +75,17 @@ int main(int argc, char* argv[]){
 
     gsInfo << "Solving...\n";
     clock.restart();
-    gsSparseSolver<>::LU solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
-    gsInfo << "Solved the system with LU solver in " << clock.stop() << "s.\n";
+    gsVector<> solVector;
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver(assembler.matrix());
+    solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+    solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
+#endif
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;

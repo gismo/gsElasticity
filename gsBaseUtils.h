@@ -53,15 +53,15 @@ struct time_integration
     };
 };
 
-/// @brief Specifies linear solver to use for iterations of Newton's method
+/// @brief Specifies linear solver to use if it is hidden within some other class (like Newton's method or time integrators)
 struct linear_solver
 {
     enum solver
     {
-        BiCGSTABILUT = 0,
-        CGDiagonal = 1,
-        LU = 2,
-        SimplicialLDLT = 3
+        LU = 0, // LU decomposition: direct, no matrix requirements, robust but a bit slow, Eigen and Pardiso available
+        LDLT = 1, // Cholesky decomposition pivoting: direct, simmetric positive or negative semidefinite, rather fast, Eigen and Pardiso available
+        CGDiagonal = 2, // Conjugate gradient solver with diagonal (a.k.a. Jacobi) preconditioning: iterative(!), simmetric, Eigen only
+        BiCGSTABDiagonal = 3 // Bi-conjugate gradient stabilized solver with diagonal (a.k.a. Jacobi) preconditioning: iterative(!), no matrix requirements, Eigen only
     };
 };
 

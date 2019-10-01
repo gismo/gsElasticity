@@ -76,7 +76,7 @@ gsOptionList gsNewton<T>::defaultOptions()
 {
     gsOptionList opt;
     /// linear solver
-    opt.addInt("Solver","Linear solver to use",linear_solver::SimplicialLDLT);
+    opt.addInt("Solver","Linear solver to use",linear_solver::LU);
     /// stopping creteria
     opt.addInt("MaxIters","Maximum number of iterations per loop",50);
     opt.addReal("AbsTol","Absolute tolerance for the convergence cretiria",1e-12);
@@ -122,24 +122,34 @@ bool gsNewton<T>::computeUpdate()
         return false;
 
     gsVector<T> updateVector;
-    if (m_options.getInt("Solver") == linear_solver::BiCGSTABILUT)
+    if (m_options.getInt("Solver") == linear_solver::LU)
     {
-        gsSparseSolver<>::BiCGSTABILUT solver(assembler.matrix());
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLU solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+#else
+        gsSparseSolver<>::LU solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+#endif
+    }
+    if (m_options.getInt("Solver") == linear_solver::LDLT)
+    {
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLDLT solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+#else
+        gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+        updateVector = solver.solve(assembler.rhs());
+#endif
+    }
+    if (m_options.getInt("Solver") == linear_solver::BiCGSTABDiagonal)
+    {
+        gsSparseSolver<>::BiCGSTABDiagonal solver(assembler.matrix());
         updateVector = solver.solve(assembler.rhs());
     }
     if (m_options.getInt("Solver") == linear_solver::CGDiagonal)
     {
         gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
-        updateVector = solver.solve(assembler.rhs());
-    }
-    if (m_options.getInt("Solver") == linear_solver::LU)
-    {
-        gsSparseSolver<>::LU solver(assembler.matrix());
-        updateVector = solver.solve(assembler.rhs());
-    }
-    if (m_options.getInt("Solver") == linear_solver::SimplicialLDLT)
-    {
-        gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
         updateVector = solver.solve(assembler.rhs());
     }
 

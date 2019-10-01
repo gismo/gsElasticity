@@ -78,6 +78,7 @@ int main(int argc, char* argv[]){
     newton.options().setInt("MaxIters",maxNumIteration);
     newton.options().setReal("AbsTol",tolerance);
     newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("Solver",linear_solver::LDLT);
 
     //=============================================//
                   // Solving //
