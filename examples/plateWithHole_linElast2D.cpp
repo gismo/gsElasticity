@@ -1,6 +1,6 @@
 /// This is the 2D linear elasticity benchmark "Infinite plate with circular hole"
-/// as described in Hughes, et.al. 2005
-/// "Isogeometric analysis: CAD, finite elements, NURBS, exact geometry and mesh refinement"
+/// as described in V.P.Nguyen, C.Anitescu, S.P.A.Bordas, T.Rabczuk, 2015
+/// "Isogeometric analysis: An overview and computer implementation aspects"
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
@@ -15,7 +15,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/plateWithHole.xml";
+    std::string filename = ELAST_DATA_DIR"/plateWithHoleMP.xml";
     index_t numUniRef = 5; // number of h-refinements
     index_t numKRef = 0; // number of k-refinements
     index_t numPlotPoints = 10000;
@@ -47,19 +47,26 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
 
+
+    gsFunctionExpr<> analyticalStresses("1-1/(x^2+y^2)*(3/2*cos(2*atan2(y,x)) + cos(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))",
+                                        "-1/(x^2+y^2)*(1/2*cos(2*atan2(y,x)) - cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))",
+                                        "-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))",2);
     // boundary load neumann BC
-    gsFunctionExpr<> traction("-10*(x==-4)","10*(y==4)",2);
-    //gsConstantFunction<> traction(10.,0.,2);
+    gsFunctionExpr<> tractionWest("-1+1/(x^2+y^2)*(3/2*cos(2*atan2(y,x)) + cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))",
+                                  "1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))",2);
+    gsFunctionExpr<> tractionNorth("-1/(x^2+y^2)*(1/2*sin(2*atan2(y,x)) + sin(4*atan2(y,x))) + 3/2/(x^2+y^2)^2*sin(4*atan2(y,x))",
+                                   "-1/(x^2+y^2)*(1/2*cos(2*atan2(y,x)) - cos(4*atan2(y,x))) - 3/2/(x^2+y^2)^2*cos(4*atan2(y,x))",2);
 
     // material parameters
-    real_t youngsModulus = 1e5;
+    real_t youngsModulus = 1.0e5;
     real_t poissonsRatio = 0.3;
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0,boundary::north,condition_type::neumann,&traction);
+    bcInfo.addCondition(0,boundary::north,condition_type::neumann,&tractionWest);
+    bcInfo.addCondition(1,boundary::north,condition_type::neumann,&tractionNorth);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,nullptr,1); // last number is a component (coordinate) number
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,nullptr,0);
+    bcInfo.addCondition(1,boundary::east,condition_type::dirichlet,nullptr,0);
 
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
@@ -95,30 +102,36 @@ int main(int argc, char* argv[]){
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
     assembler.constructSolution(solVector,solution);
-    gsInfo << "Checking bijectivity...\n";
-    if (assembler.checkSolution(solution) != -1)
-        gsInfo << "Computed displacement field is not valid (J < 0)!\n";
 
     // constructing an IGA field (geometry + solution)
     gsField<> solutionField(assembler.patches(),solution);
-
+    // constructing stress tensor
     gsPiecewiseFunction<> stresses;
     assembler.constructCauchyStresses(solution,stresses,stress_type::all_2D);
     gsField<> stressField(assembler.patches(),stresses,true);
 
     //=============================================//
-                  // Output //
+                  // Visualization //
     //=============================================//
 
     if (numPlotPoints > 0)
     {
+        // analytical stresses
+        gsField<> analyticalStressField(assembler.patches(),analyticalStresses,false);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &solutionField;
-        fields["Stresses"] = &stressField;
+        fields["Stress"] = &stressField;
+        fields["AnalyticalStress"] = &analyticalStressField;
         gsWriteParaviewMultiPhysics(fields,"plateWithHole",numPlotPoints,plotMesh);
         gsInfo << "Open \"plateWithHole.pvd\" in Paraview for visualization.\n";
     }
+
+    //=============================================//
+                  // Validation //
+    //=============================================//
+
+    gsInfo << "Stress error in L2 norm: " << stressField.distanceL2(analyticalStresses,false,640000) << std::endl;
 
     return 0;
 }

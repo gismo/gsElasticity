@@ -24,51 +24,58 @@ void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & r
 {
     result.setZero(targetDim(),u.cols());
 
-    // Each column of dispGrad contains components of the displacement Jacabian.
-    // The order is u_xi u_eta v_xi v_eta (or similar in 3D)
-    gsMatrix<T> dispGrad;
-    m_displacement.patch(m_patch).deriv_into(u,dispGrad);
+    // NEED_GRAD_TRANSFORM for displacement gradients transformation from parametric to physical domain
+    gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
+    mdGeo.points = u;
+    m_geometry.patch(m_patch).computeMap(mdGeo);
+    // NEED_DERIV for displacement gradients
+    gsMapData<T> mdDisp(NEED_DERIV);
+    mdDisp.points = u;
+    m_displacement.patch(m_patch).computeMap(mdDisp);
 
-    for (index_t p = 0; p < u.cols(); ++p)
+    gsMatrix<T> dispGrad;
+    for (index_t q = 0; q < u.cols(); ++q)
     {
+        dispGrad = mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+
         if (domainDim() == 2)
         {
-            T s11 = m_lambda * (dispGrad(0,p) + dispGrad(3,p)) + 2 * m_mu * dispGrad(0,p);
-            T s22 = m_lambda * (dispGrad(0,p) + dispGrad(3,p)) + 2 * m_mu * dispGrad(3,p);
-            T s12 = m_mu * (dispGrad(1,p) + dispGrad(2,p));
+            T s11 = m_lambda * (dispGrad(0,0) + dispGrad(1,1)) + 2 * m_mu * dispGrad(0,0);
+            T s22 = m_lambda * (dispGrad(0,0) + dispGrad(1,1)) + 2 * m_mu * dispGrad(1,1);
+            T s12 = m_mu * (dispGrad(0,1) + dispGrad(1,0));
 
             if (m_type == stress_type::von_mises)
-                result(0,p) = math::sqrt(s11*s11 + s22*s22 - s11*s22 + 3.*s12*s12);
+                result(0,q) = math::sqrt(s11*s11 + s22*s22 - s11*s22 + 3.*s12*s12);
             if (m_type == stress_type::all_2D)
             {
-                result(0,p) = s11;
-                result(1,p) = s22;
-                result(2,p) = s12;
+                result(0,q) = s11;
+                result(1,q) = s22;
+                result(2,q) = s12;
             }
         }
 
         if (domainDim() == 3)
         {
-            T s11 = m_lambda * (dispGrad(0,p) + dispGrad(4,p) + dispGrad(8,p)) + 2 * m_mu * dispGrad(0,p);
-            T s22 = m_lambda * (dispGrad(0,p) + dispGrad(4,p) + dispGrad(8,p)) + 2 * m_mu * dispGrad(4,p);
-            T s33 = m_lambda * (dispGrad(0,p) + dispGrad(4,p) + dispGrad(8,p)) + 2 * m_mu * dispGrad(8,p);
-            T s12 = m_mu * (dispGrad(1,p) + dispGrad(3,p));
-            T s13 = m_mu * (dispGrad(2,p) + dispGrad(6,p));
-            T s23 = m_mu * (dispGrad(5,p) + dispGrad(7,p));
+            T s11 = m_lambda * (dispGrad(0,0) + dispGrad(1,1) + dispGrad(2,2)) + 2 * m_mu * dispGrad(0,0);
+            T s22 = m_lambda * (dispGrad(0,0) + dispGrad(1,1) + dispGrad(2,2)) + 2 * m_mu * dispGrad(1,1);
+            T s33 = m_lambda * (dispGrad(0,0) + dispGrad(1,1) + dispGrad(2,2)) + 2 * m_mu * dispGrad(2,2);
+            T s12 = m_mu * (dispGrad(0,1) + dispGrad(1,0));
+            T s13 = m_mu * (dispGrad(0,2) + dispGrad(2,0));
+            T s23 = m_mu * (dispGrad(1,2) + dispGrad(2,1));
             if (m_type == stress_type::von_mises)
-                result(0,p) = math::sqrt(0.5 * ( (s11-s22)*(s11-s22) + (s11-s33)*(s11-s33) + (s22-s33)*(s22-s33) +
+                result(0,q) = math::sqrt(0.5 * ( (s11-s22)*(s11-s22) + (s11-s33)*(s11-s33) + (s22-s33)*(s22-s33) +
                                                  6 * (s12*s12 + s13*s13 + s23*s23) ) );
             if (m_type == stress_type::normal_3D)
             {
-                result(0,p) = s11;
-                result(1,p) = s22;
-                result(2,p) = s33;
+                result(0,q) = s11;
+                result(1,q) = s22;
+                result(2,q) = s33;
             }
             if (m_type == stress_type::shear_3D)
             {
-                result(0,p) = s12;
-                result(1,p) = s13;
-                result(2,p) = s23;
+                result(0,q) = s12;
+                result(1,q) = s13;
+                result(2,q) = s23;
             }
         }
     }

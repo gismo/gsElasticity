@@ -31,10 +31,12 @@ class gsCauchyStressFunction : public gsFunction<T>
 {
 public:
 
-    gsCauchyStressFunction(const gsMultiPatch <T> & displacement,
+    gsCauchyStressFunction(const gsMultiPatch<T> & geometry,
+                           const gsMultiPatch<T> & displacement,
                            index_t patch, stress_type::type type,
                            T lambda, T mu)
-        : m_displacement(displacement),
+        : m_geometry(geometry),
+          m_displacement(displacement),
           m_patch(patch),
           m_type(type),
           m_lambda(lambda),
@@ -75,6 +77,7 @@ public:
 
 protected:
 
+    const gsMultiPatch<T>& m_geometry;
     const gsMultiPatch<T>& m_displacement;
     index_t m_patch;
     stress_type::type m_type;
