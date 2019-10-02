@@ -1,4 +1,8 @@
-/// This is an example of using the mixed linear elasticity solver on a 2D multi-patch geometry
+/// This is the "Cook's membrane" benchmark solved using the linear elasticity solver with a mixed displacement-pressure formulation.
+/// The problem description and reference solutions can be found in the Ph.D. thesis of O.Weeger
+/// "Isogeometric Finite Element Analysis of Nonlinear Structural Vibrations", 2015.
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>

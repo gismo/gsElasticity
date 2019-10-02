@@ -1,6 +1,8 @@
 /// This is the structural solver benchmark CSM1 from this paper:
 /// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsNewton.h>

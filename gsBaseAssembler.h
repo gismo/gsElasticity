@@ -9,7 +9,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
         A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 

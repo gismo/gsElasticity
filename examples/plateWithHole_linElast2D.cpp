@@ -1,6 +1,8 @@
 /// This is the 2D linear elasticity benchmark "Infinite plate with circular hole"
 /// as described in V.P.Nguyen, C.Anitescu, S.P.A.Bordas, T.Rabczuk, 2015
-/// "Isogeometric analysis: An overview and computer implementation aspects"
+/// "Isogeometric analysis: An overview and computer implementation aspects".
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>

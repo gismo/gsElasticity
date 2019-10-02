@@ -1,8 +1,10 @@
 /// This is an example of using the thermal expansion solver in a time-dependent setting on a 2D geometry.
+/// The problems is part of the EU project "MOTOR".
 /// The heat equation is solved using the Crank-Nicolson method.
 /// At each time step, the current temperature distribution is used as an input for
 /// the stationary thermo-elasticity equation to compute the thermal expansion of the body.
-
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsThermoAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>

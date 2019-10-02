@@ -1,5 +1,8 @@
-/// This is an example of solving the unsteady 2D Fluid-Structure Interaction problem
-/// using the incompressible Navier-Stokes and nonlinear elasticity solvers
+/// This is the fluid-structure interaction benchmark FSI2 from this paper:
+/// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
+/// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>

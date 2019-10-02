@@ -1,4 +1,8 @@
-/// This is an example of using the linear elasticity solver on a 3D multi-patch geometry
+/// This is an example of using the linear elasticity solver on a 3D multi-patch geometry.
+/// The problems is part of the EU project "Terrific".
+///
+/// Authors: O. Weeger (2012-1015, TU Kaiserslautern),
+///          A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>

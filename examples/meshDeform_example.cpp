@@ -1,5 +1,6 @@
-/// This is an example of generating an isogeometric parametrization using mesh deformation technique
-
+/// This is an example of generating an isogeometric parametrization using mesh deformation technique.
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsGeoUtils.h>
 #include <gsElasticity/gsElasticityAssembler.h>

@@ -1,5 +1,7 @@
 /// This is the incompressible Navier-Stokes solver benchmark 2D-1 from this project:
 /// http://www.featflow.de/en/benchmarks/cfdbenchmarking.html
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsNsAssembler.h>
 #include <gsElasticity/gsNewton.h>

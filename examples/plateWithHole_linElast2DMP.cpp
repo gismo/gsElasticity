@@ -4,6 +4,8 @@
 /// The only difference is that we are using a two-patch description of the geometry
 /// in order to avoid the singularity in the corner and to facilitate a simpler
 /// description of Neumann BC in G+Smo.
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>

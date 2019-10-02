@@ -1,4 +1,7 @@
-/// This is an example of using the thermal expansion solver on a 2D multi-patch geometry
+/// This is an example of using the thermal expansion solver on a 2D multi-patch geometry.
+/// The problems is part of the EU project "MOTOR".
+///
+/// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsThermoAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
