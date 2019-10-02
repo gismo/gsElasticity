@@ -11,7 +11,7 @@ using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Testing the mixed linear elasticity solver in 2D.\n";
+    gsInfo << "This is Cook's membrane benchmark with mixed linear elasticity solver.\n";
 
     //=====================================//
                 // Input //
@@ -22,6 +22,7 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 3; // number of h-refinements
     index_t numKRef = 1; // number of k-refinements
     index_t numPlotPoints = 10000;
+    real_t youngsModulus = 240.565e6;
     real_t poissonsRatio = 0.4;
     bool subgrid = false;
 
@@ -33,21 +34,6 @@ int main(int argc, char* argv[]){
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-
-    // source function, rhs
-    gsConstantFunction<> g(0.,0.,2);
-
-    // neumann BC
-    gsConstantFunction<> f(0.,625e4,2);
-
-    // material parameters
-    real_t youngsModulus = 240.565e6;
-
-    // boundary conditions
-    gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0); // last number is a component (coordinate) number
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
-    bcInfo.addCondition(0,boundary::east,condition_type::neumann,&f);
 
     //=============================================//
                   // Assembly //
@@ -76,6 +62,18 @@ int main(int argc, char* argv[]){
         basisDisplacement.uniformRefine();
     else
         basisDisplacement.degreeElevate();
+
+    // neumann BC
+    gsConstantFunction<> f(0.,625e4,2);
+
+    // boundary conditions
+    gsBoundaryConditions<> bcInfo;
+    for (index_t d = 0; d < 2; ++d)
+        bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,nullptr,d);
+    bcInfo.addCondition(0,boundary::east,condition_type::neumann,&f);
+
+    // source function, rhs
+    gsConstantFunction<> g(0.,0.,2);
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
@@ -110,26 +108,31 @@ int main(int argc, char* argv[]){
     gsMultiPatch<> displacement, pressure;
     assembler.constructSolution(solVector,displacement,pressure);
 
-    // constructing an IGA field (geometry + solution)
-    gsField<> displacementField(assembler.patches(),displacement);
-    gsField<> pressureField(assembler.patches(),pressure);
-
     //=============================================//
-                  // Output //
+                  // Visualization //
     //=============================================//
 
-    gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(displacement,stresses,stress_type::von_mises);
-    gsField<> stressField(assembler.patches(),stresses,true);
+    if (numPlotPoints > 0)
+    {
+        // constructing an IGA field (geometry + solution)
+        gsField<> displacementField(assembler.patches(),displacement);
+        gsField<> pressureField(assembler.patches(),pressure);
+        gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
+        // creating a container to plot all fields to one Paraview file
+        std::map<std::string,const gsField<> *> fields;
+        fields["Displacement"] = &displacementField;
+        fields["Pressure"] = &pressureField;
+        gsWriteParaviewMultiPhysics(fields,"cooks",numPlotPoints);
+        gsInfo << "Open \"cooks.pvd\" in Paraview for visualization.\n";
+    }
 
+    //=============================================//
+                  // Validation //
+    //=============================================//
 
-    gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
-    // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Displacement"] = &displacementField;
-    fields["Pressure"] = &pressureField;
-    gsWriteParaviewMultiPhysics(fields,"cooks",numPlotPoints);
-    gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
+    gsMatrix<> A(2,1);
+    A << 1.,1.;
+    gsInfo << "Y-displacement of the top-right corner: " << displacement.patch(0).eval(A)(1,0) << std::endl;
 
     return 0;
 }
