@@ -277,7 +277,7 @@ void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & d
     T mu     = E / ( 2. * ( 1. + pr ) );
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
-        result.addPiecePointer(new gsCauchyStressFunction<T>(displacement,p,type,lambda,mu));
+        result.addPiecePointer(new gsCauchyStressFunction<T>(m_pde_ptr->domain(),displacement,p,type,lambda,mu));
 }
 
 template <class T>

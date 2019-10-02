@@ -1,4 +1,8 @@
 /// This is an example of using the nonlinear elasticity solver on a 3D multi-patch geometry
+/// The problems is part of the EU project "Terrific".
+///
+/// Authors: O. Weeger (2012-1015, TU Kaiserslautern),
+///          A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsNewton.h>
@@ -24,9 +28,7 @@ int main(int argc, char* argv[]){
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("i","iter","Max number of iterations for Newton's method",maxNumIteration);
-    cmd.addReal("t","tol","Tolerance value of Newton's method",tolerance);
-    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln",materialLaw);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -68,9 +70,7 @@ int main(int argc, char* argv[]){
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    assembler.options().setInt("DirichletValues",dirichlet::l2Projection);
     assembler.options().setInt("MaterialLaw",materialLaw);
-
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
@@ -105,16 +105,17 @@ int main(int argc, char* argv[]){
                   // Output //
     //=============================================//
 
-    gsField<> nonlinearSolutionField(geometry,solutionNonlinear);
-    gsField<> linearSolutionField(geometry,solutionLinear);
-
-    gsInfo << "Plotting the output to the Paraview file \"terrific.pvd\"...\n";
-    // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Deformation (nonlinElast)"] = &nonlinearSolutionField;
-    fields["Deformation (linElast)"] = &linearSolutionField;
-    gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
-    gsInfo << "Done. Use Warp-by-Vector filter in Paraview to deform the geometry.\n";
+    if (numPlotPoints > 0)
+    {
+        gsField<> nonlinearSolutionField(geometry,solutionNonlinear);
+        gsField<> linearSolutionField(geometry,solutionLinear);
+        // creating a container to plot all fields to one Paraview file
+        std::map<std::string,const gsField<> *> fields;
+        fields["Deformation (nonlinElast)"] = &nonlinearSolutionField;
+        fields["Deformation (linElast)"] = &linearSolutionField;
+        gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
+        gsInfo << "Open \"terrific.pvd\" in Paraview for visualization.\n";
+    }
 
     return 0;
 }
