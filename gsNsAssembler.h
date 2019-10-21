@@ -114,6 +114,10 @@ public:
     }
 
 protected:
+    /// a custom reserve function to allocate memory for the sparse matrix
+    virtual void reserve();
+
+protected:
 
     /// Dimension of the problem
     /// parametric dim = physical dim = velocity dim

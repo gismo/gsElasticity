@@ -121,9 +121,15 @@ int main(int argc, char* argv[]){
         refineBoundaryLayer(basisVelocity,basisPressure);
     // additional velocity refinement for stable mixed FEM
     if (subgrid)
-        basisVelocity.uniformRefine(); // subgrid
+    {
+        gsInfo << "Using subgrid element.\n";
+        basisVelocity.uniformRefine();
+    }
     else
-        basisVelocity.degreeElevate(); // Taylor-Hood
+    {
+        gsInfo << "Using Taylor-Hood element.\n";
+        basisVelocity.degreeElevate();
+    }
 
     // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
     gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);

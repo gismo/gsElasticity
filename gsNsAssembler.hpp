@@ -59,6 +59,25 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
 }
 
 template <class T>
+void gsNsAssembler<T>::reserve()
+{
+    // Pick up values from options
+    const T bdA       = m_options.getReal("bdA");
+    const index_t bdB = m_options.getInt("bdB");
+    const T bdO       = m_options.getReal("bdO");
+
+    index_t deg = 0;
+    for (index_t d = 0; d < m_bases[0][0].dim(); ++d )
+        if (m_bases[0][0].degree(d) > deg)
+            deg = m_bases[0][0].degree(d);
+
+    // m_dim velocity*velocity blocks + 1 pressure*velocity block (additioanal factor 2 for subgrid element)
+    index_t numElPerColumn = pow((bdA*deg+bdB),m_dim)*m_dim + pow((2*bdA*deg+bdB),m_dim);
+
+    m_system.reserve(numElPerColumn*(1+bdO),1);
+}
+
+template <class T>
 void gsNsAssembler<T>::refresh()
 {
     GISMO_ENSURE(m_dim == m_pde_ptr->domain().parDim(), "The RHS dimension and the domain dimension don't match!");
@@ -73,8 +92,7 @@ void gsNsAssembler<T>::refresh()
     dims.setOnes(m_bases.size());
     m_system = gsSparseSystem<T>(m_dofMappers, dims);
 
-    m_options.setReal("bdO",m_bases.size()*(1+m_options.getReal("bdO"))-1);
-    m_system.reserve(m_bases[0], m_options, 1);
+    reserve();
 
     for (unsigned d = 0; d < m_bases.size(); ++d)
         Base::computeDirichletDofs(d);
@@ -86,7 +104,7 @@ template<class T>
 void gsNsAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
+    reserve();
     m_system.rhs().setZero();
 
     gsVisitorStokes<T> visitor(*m_pde_ptr);
@@ -106,7 +124,7 @@ bool gsNsAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
     if (assembleMatrix)
     {
         m_system.matrix().setZero();
-        m_system.reserve(m_bases[0], m_options, 1);
+        reserve();
     }
     m_system.rhs().setZero();
 
@@ -135,7 +153,7 @@ void gsNsAssembler<T>::assemble(const gsMultiPatch<T> & velocity,
     if (assembleMatrix)
     {
         m_system.matrix().setZero();
-        m_system.reserve(m_bases[0], m_options, 1);
+        reserve();
     }
     m_system.rhs().setZero();
 

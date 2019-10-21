@@ -59,9 +59,15 @@ int main(int argc, char* argv[]){
         basisPressure.uniformRefine();
     }
     if (subgrid)
+    {
+        gsInfo << "Using subgrid element.\n";
         basisDisplacement.uniformRefine();
+    }
     else
+    {
+        gsInfo << "Using Taylor-Hood element.\n";
         basisDisplacement.degreeElevate();
+    }
 
     // neumann BC
     gsConstantFunction<> f(0.,625e4,2);
