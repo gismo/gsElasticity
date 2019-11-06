@@ -50,6 +50,14 @@ public:
     void initialize();
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
+    /// make a IMEX time step in ALE formulation
+    void makeTimeStepFSI(T timeStep,gsMatrix<T> & solutionVector, gsMatrix<T> & solutionVectorOld,
+                         gsMultiPatch<T> & velocityALE,
+                         std::vector<std::pair<index_t,index_t> > & patches,
+                         gsSparseMatrix<T> & A_n, gsMatrix<T> & rhs_n);
+    void makeTimeStepFSI2(T timeStep,gsMultiPatch<T> & velocityALE,
+                          std::vector<std::pair<index_t,index_t> > & patches);
+
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs,
@@ -58,6 +66,7 @@ public:
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
     /// returns  vector of displacement DoFs
     const gsMatrix<T> & solutionVector() const {return solVector;}
+    const gsMatrix<T> & SolutionVectorOld() const {return oldSolVector;}
 
     /// time integraton schemes
     void implicitLinear();

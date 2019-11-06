@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
     index_t numUniRefBeam = 2; // number of h-refinements for the beam and the ALE mapping
     index_t numKRefBeam = 0; // number of k-refinements for the beam and the ALE mapping
     index_t numPlotPoints = 1000;
-    real_t youngsModulus = 0.5e6;
+    real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
     real_t meanVelocity = 1;
@@ -375,7 +375,6 @@ int main(int argc, char* argv[])
         aleAssembler.setFixedDofs(0,boundary::south,DBC1new-DBC1);
         aleAssembler.setFixedDofs(1,boundary::north,DBC2new-DBC2);
         aleAssembler.setFixedDofs(2,boundary::west,DBC3new-DBC3);
-
 
 
         aleNewton.reset();

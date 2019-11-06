@@ -103,7 +103,7 @@ int main(int argc, char* argv[]){
     real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
-    real_t maxInflow = 0.3;
+    real_t meanVelocity = 0.2;
     bool subgrid = false;
     bool supg = false;
     real_t densityFluid = 1000.;
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("p","plot","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("y","young","Young's modulus of the beam materail",youngsModulus);
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
-    cmd.addReal("f","inflow","Maximum inflow velocity",maxInflow);
+    cmd.addReal("f","inflow","Maximum inflow velocity",meanVelocity);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     cmd.addSwitch("g","supg","Use SUPG stabilization",supg);
     cmd.addReal("d","density","Density of the solid",densitySolid);
@@ -139,8 +139,8 @@ int main(int argc, char* argv[]){
 
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
-    // inflow velocity profile
-    gsFunctionExpr<> inflow(util::to_string(maxInflow) + "*4*y*(0.41-y)/0.41^2",2);
+    // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
+    gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
 
     // containers for solution as IGA functions
     gsMultiPatch<> velocity, pressure, displacement, ALE;
@@ -375,6 +375,18 @@ int main(int argc, char* argv[]){
         if (residual < absTol || residual/initRes < relTol)
             converged = true;
         iter++;
+
+        // 5*. validation
+        std::vector<std::pair<index_t, boxSide> > bdrySides;
+        bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
+        bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
+        bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
+        bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
+        bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
+        bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
+        gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
+        gsInfo << "Drag: " << force.at(0) << std::endl;
+        gsInfo << "Lift: " << force.at(1) << std::endl;
 
     }
     gsInfo << "Solved in " << clock.stop() << "s.\n";

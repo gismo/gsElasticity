@@ -76,6 +76,7 @@ public:
     bool computeUpdate();
     /// set all fixed degrees of freedom
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
+    void setSolutionVector(const gsMatrix<T> & solutionVector) { solVector = solutionVector; }
 
 protected:
     /// assembler object that generates the linear system
