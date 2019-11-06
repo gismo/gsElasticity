@@ -84,6 +84,7 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
+    opt.addSwitch("LocalStiff","Drops Jacobian determinat from intergration to implement local stiffening",false);
     return opt;
 }
 

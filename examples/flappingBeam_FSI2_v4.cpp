@@ -3,6 +3,8 @@
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
+///
+/// weak coupling
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
@@ -259,8 +261,9 @@ int main(int argc, char* argv[])
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
     // elasticity assembler: flow mesh
     gsElasticityAssembler<real_t> aleAssembler(geoPart,basisALE,bcInfoALE,g);
-    aleAssembler.options().setReal("PoissonsRatio",0.45);
-    aleAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
+    aleAssembler.options().setReal("PoissonsRatio",0.49);
+    aleAssembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
+    aleAssembler.options().setSwitch("LocalStiff",true);
     gsInfo << "Initialized elasticity system for ALE with " << aleAssembler.numDofs() << " dofs.\n";
 
     //=============================================//

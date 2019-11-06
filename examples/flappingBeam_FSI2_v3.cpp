@@ -3,6 +3,8 @@
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
+///
+/// changed coupling order: flow->solid->ALE
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
