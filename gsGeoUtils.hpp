@@ -201,7 +201,10 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
             domain.patch(p).computeMap(md);
             for (index_t q = 0; q < points.cols(); ++q)
                 if (md.jacobian(q).determinant() <= 0)
+                {
+                    gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << md.jacobian(q).determinant() << std::endl;
                     return p;
+                }
         }
     }
     return corruptedPatch;

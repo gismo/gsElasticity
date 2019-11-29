@@ -49,7 +49,7 @@ public:
         lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
         mu     = E / ( 2. * ( 1. + pr ) );
         forceScaling = options.getReal("ForceScaling");
-        localStiffening = options.getSwitch("LocalStiff");
+        localStiffening = options.getReal("LocalStiff");
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -92,12 +92,7 @@ public:
         // loop over quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
-            T weightBody;
-            // Multiply weight by the geometry measure
-            if (localStiffening)
-                weightBody = md.measure(q);
-            else
-                weightBody = quWeights[q] * md.measure(q);
+
             const T weightForce = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md,q,basisValuesDisp[1],physGrad);
@@ -110,7 +105,9 @@ public:
             // Right Cauchy Green strain, C = F'*F
             RCG = F.transpose() * F;
             // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
-            E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
+            E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));          
+            const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
+
             // Second Piola-Kirchhoff stress tensor
             if (materialLaw == 0) // Saint Venant-Kirchhoff
                 S = lambda*E.trace()*gsMatrix<T>::Identity(dim,dim) + 2*mu*E;
@@ -211,7 +208,7 @@ protected:
     // all temporary matrices defined here for efficiency
     gsMatrix<T> C, physGrad, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent;
     gsVector<T> geometricTangentTemp, Svec, localResidual;
-    bool localStiffening;
+    T localStiffening;
 };
 
 } // namespace gismo

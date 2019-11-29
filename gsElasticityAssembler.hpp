@@ -84,7 +84,8 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
-    opt.addSwitch("LocalStiff","Drops Jacobian determinat from intergration to implement local stiffening",false);
+    opt.addReal("LocalStiff","Drops Jacobian determinat from intergration to implement local stiffening",0.);
+    opt.addSwitch("ShearStiff","Drops Jacobian determinat from intergration to implement local stiffening",false);
     return opt;
 }
 
@@ -333,7 +334,10 @@ index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution
                 gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
                 gsMatrix<T> F = gsMatrix<T>::Identity(m_dim,m_dim) + physDispJac;
                 if (F.determinant() <= 0)
+                {
+                    gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << F.determinant() << std::endl;
                     return p;
+                }
             }
         }
     }

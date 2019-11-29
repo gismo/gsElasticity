@@ -115,6 +115,34 @@ protected:
 
 }; // class definition ends
 
+template <class T>
+class gsStiffFunction : public gsFunction<T>
+{
+public:
+
+    gsStiffFunction(const gsMultiPatch<T> & geo,const gsMultiPatch<T> & disp, index_t patch)
+        : m_geo(geo),
+          m_disp(disp),
+          m_patch(patch)
+    {}
+
+    virtual short_t domainDim() const { return m_geo.domainDim(); }
+
+    virtual short_t targetDim() const { return 1; }
+
+    /** @brief Each column of the input matrix (u) corresponds to one evaluation point.
+     *         Each column of the output matrix is the jacobian determinant of the mapping at this point.
+     */
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
+
+protected:
+
+    gsMultiPatch<T> const & m_geo;
+    gsMultiPatch<T> const & m_disp;
+    index_t m_patch;
+
+}; // class definition ends
+
 /** @brief Loading function to transfer fluid action to the solid.
  * Used in Fluid-Structure Interaction simulation.
  * Different parametrizations can be used for the geometry+ALE and velocity+pressure
