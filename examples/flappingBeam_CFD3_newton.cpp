@@ -2,6 +2,9 @@
 /// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006
 ///
+/// INSE are solved using the Crank-Nicolson scheme with full solution of the nonlinear problem at each time step
+/// (see the book by Volker John: Finite Element Methods for Incompressible Flow Problems, Springer, 2016).
+///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsNsAssembler.h>
@@ -69,7 +72,6 @@ int main(int argc, char* argv[]){
     real_t meanVelocity = 2;
     real_t density = 1.0e3;
     bool subgrid = false;
-    bool supg = false;
     real_t timeSpan = 10;
     real_t timeStep = 0.01;
     index_t numPlotPoints = 900;
@@ -85,7 +87,6 @@ int main(int argc, char* argv[]){
     cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addSwitch("g","supg","Use SUPG stabilization (testing)",supg);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step, sec",timeStep);
     cmd.addReal("f","theta","Time integration parameter: 0 - exp.Euler, 1 - imp.Euler, 0.5 - Crank-Nicolson",theta);
@@ -162,7 +163,6 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setReal("Density",density);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    assembler.options().setSwitch("SUPG",supg);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // creating mass assembler
@@ -171,9 +171,9 @@ int main(int argc, char* argv[]){
 
     // creating time integrator
     gsNsTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
-    timeSolver.options().setInt("Scheme",time_integration_NS::theta_scheme_linear);
+    timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     timeSolver.options().setReal("Theta",theta);
-    timeSolver.options().setInt("Verbosity",newton_verbosity::all);
+    timeSolver.options().setInt("Verbosity",solver_verbosity::none);
 
     //=============================================//
             // Setting output & auxilary//

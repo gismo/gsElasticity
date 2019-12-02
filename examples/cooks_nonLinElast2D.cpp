@@ -5,7 +5,7 @@
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -72,9 +72,9 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsNewton<real_t> newton(assembler);
-    newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("Solver",linear_solver::LDLT);
+    gsIterative<real_t> solver(assembler);
+    solver.options().setInt("Verbosity",solver_verbosity::all);
+    solver.options().setInt("Solver",linear_solver::LDLT);
 
     //=============================================//
                   // Solving //
@@ -83,12 +83,12 @@ int main(int argc, char* argv[]){
     gsInfo << "Solving...\n";
     gsStopwatch clock;
     clock.restart();
-    newton.solve();
+    solver.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // solution to the nonlinear problem as an isogeometric displacement field
     gsMultiPatch<> displacement;
-    assembler.constructSolution(newton.solution(),displacement);
+    assembler.constructSolution(solver.solution(),displacement);
 
     //=============================================//
                   // Output //

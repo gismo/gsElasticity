@@ -1,15 +1,15 @@
-/// This is the fluid-structure interaction benchmark FSI2 from this paper:
+/// This is the benchmark for computing ALE mapping for an FSI problem based on this paper:
 /// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
 ///
+/// There is no flow in the benchmark. The flow domain deformation is driven by a freely oscillating beam.
+/// The ALE mapping is computed using the nonlinear elasticity method with Jacobian-based local stiffening.
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
-///
-/// weak coupling
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
 #include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
 
@@ -17,22 +17,20 @@ using namespace gismo;
 
 int main(int argc, char* argv[])
 {
-    gsInfo << "Testing the steady fluid-structure interaction solver in 2D.\n";
+    gsInfo << "Testing the ALE mapping construction in 2D.\n";
 
     std::string filenameALE = ELAST_DATA_DIR"/flappingBeam_flowFull.xml";
     std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
-    index_t numUniRef = 3; // number of h-refinements for the fluid
+    index_t numUniRef = 3; // number of h-refinements
     index_t numPlotPoints = 1000;
     real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
+    real_t loading = 2.;
     real_t densitySolid = 1.0e3;
     real_t timeStep = 0.01;
-    real_t timeSpan = 1;
-    real_t meshPR = 0.3;
-    real_t load = 1.;
-    real_t stiff = 0.;
-    index_t matLaw = 1;
-    bool stop = true;
+    real_t timeSpan = 0.91;
+    real_t poissonsRatioMesh = 0.3;
+    real_t stiffDegree = 2.3;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the steady fluid-structure interaction solver in 2D.");
@@ -40,11 +38,9 @@ int main(int argc, char* argv[])
     cmd.addInt("p","plot","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
-    cmd.addReal("m","mesh","Pois ratio for mesh",meshPR);
-    cmd.addReal("l","load","Gravity",load);
-    cmd.addReal("j","jac","Stiffening",stiff);
-    cmd.addInt("n","law","Law",matLaw);
-    cmd.addSwitch("b","break","Break the simulation",stop);
+    cmd.addReal("m","mesh","Pois ratio for mesh",poissonsRatioMesh);
+    cmd.addReal("l","load","Gravity loading acting on the beam",loading);
+    cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -52,10 +48,15 @@ int main(int argc, char* argv[])
     //=============================================//
 
     // scanning geometry
-    gsMultiPatch<> geoALE; // this is a part of the flow geometry; we deform only this part to save memory and time
-    gsReadFile<>(filenameALE, geoALE);
     gsMultiPatch<> geoBeam;
     gsReadFile<>(filenameBeam, geoBeam);
+    gsMultiPatch<> geoFlowFull; // this is a full flow geometry
+    gsReadFile<>(filenameALE, geoFlowFull);
+    // this is a copy of the flow domain with only the first 6 patches.
+    gsMultiPatch<> geoALE;
+    for (index_t p = 0; p < 6; ++p)
+        geoALE.addPatch(geoFlowFull.patch(p).clone());
+    geoALE.computeTopology();
 
     // creating bases
     gsMultiBasis<> basisDisplacement(geoBeam);
@@ -71,7 +72,7 @@ int main(int argc, char* argv[])
     //=============================================//
 
     // source function, rhs
-    gsConstantFunction<> gBeam(0.,load*densitySolid,2);
+    gsConstantFunction<> gBeam(0.,loading*densitySolid,2);
     gsConstantFunction<> gALE(0.,0.,2);
     // boundary conditions: beam
     gsBoundaryConditions<> bcInfoBeam;
@@ -99,11 +100,11 @@ int main(int argc, char* argv[])
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
     // elasticity assembler: ALE
     gsElasticityAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,gALE);
-    aleAssembler.options().setReal("PoissonsRatio",meshPR);
-    aleAssembler.options().setInt("MaterialLaw",matLaw);
-    aleAssembler.options().setReal("LocalStiff",stiff);
-    gsNewton<real_t> aleNewton(aleAssembler,gsMatrix<>::Zero(aleAssembler.numDofs(),1),aleAssembler.allFixedDofs());
-    aleNewton.options().setInt("Verbosity",newton_verbosity::none);
+    aleAssembler.options().setReal("PoissonsRatio",poissonsRatioMesh);
+    aleAssembler.options().setReal("LocalStiff",stiffDegree);
+    aleAssembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
+    gsIterative<real_t> aleNewton(aleAssembler,gsMatrix<>::Zero(aleAssembler.numDofs(),1),aleAssembler.allFixedDofs());
+    aleNewton.options().setInt("Verbosity",solver_verbosity::none);
     aleNewton.options().setInt("MaxIters",1);
     aleNewton.options().setInt("Solver",linear_solver::LDLT);
     gsInfo << "Initialized elasticity system for ALE with " << aleAssembler.numDofs() << " dofs.\n";
@@ -115,29 +116,20 @@ int main(int argc, char* argv[])
     gsMultiPatch<> displacement,ALE;
     // isogeometric fields (geometry + solution)
     gsField<> displacementField(geoBeam,displacement);
-    gsField<> aleField(geoALE,ALE);
-    gsPiecewiseFunction<> jacs;
-    for (size_t p = 0; p < geoALE.nPatches(); ++p)
-        jacs.addPiecePointer(new gsDetFunction<real_t>(geoALE,p));
-
-    gsField<> jacField(geoALE,jacs,true);
 
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fieldsBeam;
     fieldsBeam["Displacement"] = &displacementField;
-    std::map<std::string,const gsField<> *> fieldsALE;
-    fieldsALE["ALE"] = &aleField;
-    fieldsALE["Jac"] = &jacField;
     // paraview collection of time steps
-    gsParaviewCollection collectionBeam("flappingBeam_mesh_beam");
-    gsParaviewCollection collectionALE("flappingBeam_mesh_ALE");
-    gsParaviewCollection collectionMesh("flappingBeam_mesh_mesh");
+    gsParaviewCollection collectionBeam("flappingBeam_ALE_beam");
+    gsParaviewCollection collectionALE("flappingBeam_ALE_mesh");
 
     gsProgressBar bar;
     gsStopwatch clock;
 
+    // write time and deformation norm
     std::ofstream file;
-    file.open("flappingBeam_mesh_nonlin.txt");
+    file.open("flappingBeam_ALE.txt");
     file << 0. << " " << 0. << std::endl;
 
     //=============================================//
@@ -149,9 +141,8 @@ int main(int argc, char* argv[])
     aleAssembler.constructSolution(gsMatrix<>::Zero(aleAssembler.numDofs(),1),ALE);
     if (numPlotPoints > 0)
     {
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_mesh_beam",collectionBeam,0,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_mesh_ALE",collectionALE,0,numPlotPoints);
-        plotDeformation(geoALE,ALE,"flappingBeam_mesh_mesh",collectionMesh,0);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,0,numPlotPoints);
+        plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,0);
     }
 
     std::vector<gsMatrix<> > interfaceNow, interfaceNew;
@@ -167,22 +158,18 @@ int main(int argc, char* argv[])
     //=============================================//
 
     clock.restart();
-
-    gsInfo << "Running the coupled simulation...\n";
+    gsInfo << "Running...\n";
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
     {
         bar.display(i+1,index_t(timeSpan/timeStep));
-        //gsInfo << "Time " << i << std::endl;
         index_t bad = aleAssembler.checkSolution(ALE);
-
-        if (bad != -1 && stop)
+        if (bad != -1)
         {
             gsInfo << "\n Bad patch: " << bad << std::endl;
             break;
         }
 
         // BEAM
-
         elTimeSolver.makeTimeStep(timeStep);
         elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
 
@@ -190,7 +177,7 @@ int main(int argc, char* argv[])
         interfaceNew[1] = displacement.patch(0).boundary(boundary::south)->coefs();
         interfaceNew[2] = displacement.patch(0).boundary(boundary::east)->coefs();
 
-        // 4. ALE
+        // ALE
         aleAssembler.setFixedDofs(3,boundary::south,interfaceNew[0]-interfaceNow[0]);
         aleAssembler.setFixedDofs(4,boundary::north,interfaceNew[1]-interfaceNow[1]);
         aleAssembler.setFixedDofs(5,boundary::west,interfaceNew[2]-interfaceNow[2]);
@@ -203,9 +190,8 @@ int main(int argc, char* argv[])
 
         if (numPlotPoints > 0)
         {
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_mesh_beam",collectionBeam,i+1,numPlotPoints);
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_mesh_ALE",collectionALE,i+1,numPlotPoints);
-            plotDeformation(geoALE,ALE,"flappingBeam_mesh_mesh",collectionMesh,i+1);
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,i+1,numPlotPoints);
+            plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
         }
 
         real_t aleNorm = 0.;
@@ -213,7 +199,6 @@ int main(int argc, char* argv[])
             aleNorm += pow(ALE.patch(p).coefs().norm(),2);
 
         file << timeStep*(i+1) << " " << sqrt(aleNorm) << std::endl;
-
     }
 
     gsInfo << "Complete in " << clock.stop() << "s.\n";
@@ -226,7 +211,6 @@ int main(int argc, char* argv[])
         gsInfo << "Open \"flappingBeam_mesh_*.pvd\" in Paraview for visualization.\n";
         collectionBeam.save();
         collectionALE.save();
-        collectionMesh.save();
     }
 
     file.close();

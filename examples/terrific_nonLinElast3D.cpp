@@ -5,7 +5,7 @@
 ///          A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -74,10 +74,10 @@ int main(int argc, char* argv[]){
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
-    gsNewton<real_t> newton(assembler);
+    gsIterative<real_t> newton(assembler);
     newton.options().setInt("MaxIters",maxNumIteration);
     newton.options().setReal("AbsTol",tolerance);
-    newton.options().setInt("Verbosity",newton_verbosity::all);
+    newton.options().setInt("Verbosity",solver_verbosity::all);
     newton.options().setInt("Solver",linear_solver::LDLT);
 
     //=============================================//
@@ -89,7 +89,7 @@ int main(int argc, char* argv[]){
     clock.restart();
 
     // make the first iteration by hand to get the linear solution
-    newton.computeUpdate();
+    newton.compute();
     gsInfo << newton.status() << std::endl;
     gsMultiPatch<> solutionLinear;
     assembler.constructSolution(newton.solution(),solutionLinear);

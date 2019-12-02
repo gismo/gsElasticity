@@ -21,23 +21,13 @@ namespace gismo
 {
 
 /// @brief Specifies the iteration type used to solve nonlinear systems
-struct iteration_type
+struct ns_assembly
 {
     enum type
     {
-        picard = 0,  /// stationary point iteration, 1st order, yields a new solution to each iteration
-        newton = 1,  /// newton's method, 2nd order, yields updates to the solution
-    };
-};
-
-
-/// @brief Specifies the time integration scheme for incompressible Navier-Stokes equations
-struct time_integration_NS
-{
-    enum scheme
-    {
-        theta_scheme = 0, /// standard one-step time integration: theta = 0 - explicit Euler, theta = 1 - implicit Euler, theta = 0.5 - Crank-Nicolson
-        theta_scheme_linear = 1 /// implicit-explicit, or IMEX, scheme that avoids solving the nonlinear system at every time step. Uses extraplation to predict velocity
+        ossen = 0,  /// stationary point iteration, 1st order, yields a new solution at each iteration
+        newton_update = 1,  /// newton's method, 2nd order, yields updates to the solution
+        newton_next = 2  /// newton's method, 2nd order, yields a new solution at each iteration
     };
 };
 
@@ -48,8 +38,8 @@ struct time_integration
     {
         explicit_ = 0,  /// explicit scheme
         explicit_lumped = 1,  /// explicit scheme with lumped mass matrix
-        implicit_linear = 2,  /// implicit scheme with linear problem
-        implicit_nonlinear = 3 /// implicit scheme with nonlinear problem
+        implicit_linear = 2,  /// implicit scheme with linear problem (theta-scheme)
+        implicit_nonlinear = 3 /// implicit scheme with nonlinear problem (theta-scheme)
     };
 };
 
@@ -66,8 +56,8 @@ struct linear_solver
 };
 
 
-/// @brief Specifies the verbosity of the Newton's solver
-struct newton_verbosity
+/// @brief Specifies the verbosity of the iterative solver
+struct solver_verbosity
 {
     enum verbosity
     {
@@ -77,8 +67,18 @@ struct newton_verbosity
     };
 };
 
-/// @brief Specifies the status of the Newton's solver
-enum class newton_status { converged, /// method successfully converged
+/// @briefly Specifies iteration type for an iterative solver
+struct iteration_type
+{
+    enum type
+    {
+        update = 0, /// each iteration yields an update
+        next = 1 /// each iteration yields a next solution
+    };
+};
+
+/// @brief Specifies the status of the iterative solver
+enum class solver_status { converged, /// method successfully converged
                            interrupted, /// solver was interrupted after exceeding the limit of iterations
                            working, /// solver working
                            bad_solution }; /// method was interrupted because the current solution is invalid

@@ -3,15 +3,13 @@
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
-///
-/// weak coupling with new geo
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
 #include <gsElasticity/gsNsAssembler.h>
 #include <gsElasticity/gsNsTimeIntegrator.h>
 #include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
 
@@ -108,7 +106,6 @@ int main(int argc, char* argv[])
     real_t viscosity = 0.001;
     real_t meanVelocity = 1.;
     bool subgrid = true;
-    bool supg = false;
     real_t densityFluid = 1.0e3;
     real_t densitySolid = 1.0e4;
     real_t absTol = 1e-10;
@@ -210,20 +207,6 @@ int main(int argc, char* argv[])
     bcInfoFlow.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
     for (index_t d = 0; d < 2; ++d)
     {   // no slip conditions
-        /*bcInfoFlow.addCondition(0,boundary::east,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(1,boundary::south,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(1,boundary::north,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(2,boundary::south,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(2,boundary::north,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(3,boundary::south,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(3,boundary::north,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(4,boundary::south,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(4,boundary::north,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(5,boundary::north,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(6,boundary::west,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(7,boundary::south,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(9,boundary::south,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(9,boundary::north,condition_type::dirichlet,0,d);*/
         bcInfoFlow.addCondition(0,boundary::east,condition_type::dirichlet,0,d);
         bcInfoFlow.addCondition(1,boundary::south,condition_type::dirichlet,0,d);
         bcInfoFlow.addCondition(1,boundary::north,condition_type::dirichlet,0,d);
@@ -267,7 +250,7 @@ int main(int argc, char* argv[])
     gsMassAssembler<real_t> nsMassAssembler(geoFlow,basisVelocity,bcInfoFlow,g);
     nsMassAssembler.options().setReal("Density",densityFluid);
     gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler);
-    nsTimeSolver.options().setInt("Scheme",time_integration_NS::theta_scheme_linear);
+    nsTimeSolver.options().setInt("Scheme",time_integration::implicit_linear);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
     // elasticity solver: beam
     gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
@@ -382,13 +365,9 @@ int main(int argc, char* argv[])
     alePatches.push_back(std::pair<index_t,index_t>(3,3));
     alePatches.push_back(std::pair<index_t,index_t>(4,4));
     alePatches.push_back(std::pair<index_t,index_t>(5,5));
-    //alePatches.push_back(std::pair<index_t,index_t>(6,6));
-    //alePatches.push_back(std::pair<index_t,index_t>(7,7));
-    //alePatches.push_back(std::pair<index_t,index_t>(8,8));
-    //alePatches.push_back(std::pair<index_t,index_t>(9,9));
 
-    gsNewton<real_t> aleNewton(aleAssembler,gsMatrix<>::Zero(aleAssembler.numDofs(),1),aleAssembler.allFixedDofs());
-    aleNewton.options().setInt("Verbosity",newton_verbosity::none);
+    gsIterative<real_t> aleNewton(aleAssembler,gsMatrix<>::Zero(aleAssembler.numDofs(),1),aleAssembler.allFixedDofs());
+    aleNewton.options().setInt("Verbosity",solver_verbosity::none);
     aleNewton.options().setInt("MaxIters",1);
     aleNewton.options().setInt("Solver",linear_solver::LDLT);
 
@@ -409,7 +388,6 @@ int main(int argc, char* argv[])
 
         if (aleAssembler.checkSolution(ALE) != -1)
             break;
-
 
         // 1. FLOW
         // set ALE velocity on the interface

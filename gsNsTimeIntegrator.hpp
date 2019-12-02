@@ -19,7 +19,7 @@
 
 #include <gsElasticity/gsNsAssembler.h>
 #include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 
 namespace gismo
 {
@@ -38,9 +38,9 @@ template <class T>
 gsOptionList gsNsTimeIntegrator<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
-    opt.addInt("Scheme","Time integration scheme",time_integration_NS::theta_scheme_linear);
+    opt.addInt("Scheme","Time integration scheme",time_integration::implicit_nonlinear);
     opt.addReal("Theta","Time integration parametrer: 0 - explicit Euler, 1 - implicit Euler, 0.5 - Crank-Nicolson",0.5);
-    opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",newton_verbosity::none);
+    opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",solver_verbosity::none);
     return opt;
 }
 
@@ -49,11 +49,6 @@ void gsNsTimeIntegrator<T>::initialize()
 {
     if (solVector.rows() != stiffAssembler.numDofs())
         solVector.setZero(stiffAssembler.numDofs(),1);
-
-    if (m_options.getInt("Scheme") == time_integration_NS::theta_scheme)
-        stiffAssembler.options().setInt("Iteration",iteration_type::newton);
-    if (m_options.getInt("Scheme") == time_integration_NS::theta_scheme_linear)
-        stiffAssembler.options().setInt("Iteration",iteration_type::picard);
 
     stiffAssembler.assemble(solVector,m_ddof);
 
@@ -67,9 +62,9 @@ template <class T>
 void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
 {
     tStep = timeStep;
-    if (m_options.getInt("Scheme") == time_integration_NS::theta_scheme)
+    if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
         implicitNonlinear();
-    if (m_options.getInt("Scheme") == time_integration_NS::theta_scheme_linear)
+    if (m_options.getInt("Scheme") == time_integration::implicit_linear)
         implicitLinear();
 }
 
@@ -78,7 +73,7 @@ void gsNsTimeIntegrator<T>::implicitLinear()
 {
     T theta = m_options.getReal("Theta");
     index_t numDofsVel = massAssembler.numDofs();
-    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
+    stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
 
     // rhs = M*u_n - dt*(1-theta)*A(u_n)*u_n + dt*(1-theta)*F_n + dt*theta*F_n+1
     // rhs: dt*(1-theta)*F_n
@@ -128,7 +123,7 @@ void gsNsTimeIntegrator<T>::makeTimeStepFSI(T timeStep,
 {
     T theta = m_options.getReal("Theta");
     index_t numDofsVel = massAssembler.numDofs();
-    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
+    stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
 
     // rhs = M*u_n - dt*(1-theta)*A(u_n-u_ALE)*u_n + dt*(1-theta)*F_n + dt*theta*F_n+1
     // rhs: dt*(1-theta)*F_n
@@ -182,7 +177,7 @@ void gsNsTimeIntegrator<T>::makeTimeStepFSI2(T timeStep,gsMultiPatch<T> & veloci
 {
     T theta = m_options.getReal("Theta");
     index_t numDofsVel = massAssembler.numDofs();
-    stiffAssembler.options().setInt("Iteration",iteration_type::picard);
+    stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
 
     // rhs = M*u_n - dt*(1-theta)*A(u_n)*u_n + dt*(1-theta)*F_n + dt*theta*F_n+1
     // rhs: dt*(1-theta)*F_n
@@ -231,15 +226,21 @@ void gsNsTimeIntegrator<T>::makeTimeStepFSI2(T timeStep,gsMultiPatch<T> & veloci
 template <class T>
 void gsNsTimeIntegrator<T>::implicitNonlinear()
 {
-    /*stiffAssembler.assemble(solVector,m_ddof,false);
+    stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
+    stiffAssembler.assemble(solVector,m_ddof);
     oldResidual = stiffAssembler.rhs();
 
-    gsNewton<T> solver(*this,solVector,m_ddof);
+    index_t numDofsVel = massAssembler.numDofs();
+    oldResidual.middleRows(0,numDofsVel).noalias() -= stiffAssembler.matrix().block(0,0,numDofsVel,numDofsVel)*solVector.middleRows(0,numDofsVel);
+// DBC SHOULD BE CHANGED NOW!!!
+    gsIterative<T> solver(*this,solVector,m_ddof);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
     solver.options().setInt("Solver",linear_solver::LU);
+    solver.options().setInt("IterType",iteration_type::next);
     solver.solve();
+
     solVector = solver.solution();
-    m_ddof = solver.allFixedDoFs();*/
+    m_ddof = stiffAssembler.allFixedDofs();
 }
 
 template <class T>
@@ -248,7 +249,7 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
                                      bool assembleMatrix)
 {
     T theta = m_options.getReal("Theta");
-    stiffAssembler.options().setInt("Iteration",iteration_type::newton);
+    stiffAssembler.options().setInt("Assembly",ns_assembly::newton_next);
     stiffAssembler.assemble(solutionVector,fixedDoFs,assembleMatrix);
 
     m_system.matrix() = tStep*stiffAssembler.matrix();
@@ -261,7 +262,7 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
     m_system.matrix().makeCompressed();
 
     m_system.rhs() = tStep*(stiffAssembler.rhs()*theta + (1-theta)*oldResidual);
-    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*((solVector-solutionVector).middleRows(0,numDofsVel));
+    m_system.rhs().middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel);
 
     return true;
 }

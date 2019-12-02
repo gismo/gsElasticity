@@ -54,7 +54,7 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
     opt.addReal("Density","Density of the fluid",1.);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addSwitch("SUPG","Use SUPG stabilaztion",true);
-    opt.addInt("Iteration","Type of the linear iteration used to solve the nonlinear problem",iteration_type::newton);
+    opt.addInt("Assembly","Type of the linear system to assemble",ns_assembly::newton_update);
     return opt;
 }
 

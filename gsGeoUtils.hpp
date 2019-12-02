@@ -76,6 +76,19 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
 }
 
 template <class T>
+void plotGeometry(const gsMultiPatch<T> & domain, std::string const & fileName,
+                  gsParaviewCollection & collection, index_t step)
+{
+    for (size_t p = 0; p < domain.nPatches(); ++p)
+    {
+        gsMesh<T> mesh(domain.basis(p),8);
+        domain.patch(p).evaluateMesh(mesh);
+        gsWriteParaview(mesh,fileName + util::to_string(step) + "_" + util::to_string(p),false);
+        collection.addTimestep(fileName + util::to_string(step) + "_",p,step,".vtp");
+    }
+}
+
+template <class T>
 void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMultiPatch<T> > & displacements,
                                              std::string fileName, index_t numSamplingPoints)
 {

@@ -19,7 +19,7 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 
 
 namespace gismo
@@ -42,7 +42,7 @@ gsOptionList gsElTimeIntegrator<T>::defaultOptions()
     opt.addInt("Scheme","Time integration scheme",time_integration::implicit_linear);
     opt.addReal("Beta","Parameter beta for the time integration scheme, see Wriggers, Nonlinear FEM, p.213 ",0.25);
     opt.addReal("Gamma","Parameter gamma for the time integration scheme, see Wriggers, Nonlinear FEM, p.213 ",0.5);
-    opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",newton_verbosity::none);
+    opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",solver_verbosity::none);
     return opt;
 }
 
@@ -95,7 +95,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
 template <class T>
 gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
 {
-    gsNewton<T> solver(*this,dispVector);
+    gsIterative<T> solver(*this,dispVector);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
     solver.options().setInt("Solver",linear_solver::LDLT);
     solver.solve();

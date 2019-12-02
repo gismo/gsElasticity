@@ -6,7 +6,7 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsNsAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -84,16 +84,14 @@ real_t computeResidual(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMa
     return residual.norm();
 }
 
-int main(int argc, char* argv[])
-{
-    gsInfo << "Testing the unsteady fluid-structure interaction solver in 2D.\n";
+int main(int argc, char* argv[]){
+    gsInfo << "Testing the steady fluid-structure interaction solver in 2D.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
     std::string filenameFlow = ELAST_DATA_DIR"/flappingBeam_flowFull.xml";
-    std::string filenameFlowPart = ELAST_DATA_DIR"/flappingBeam_flowPart.xml";
     std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRefFlow = 3; // number of h-refinements for the fluid
     index_t numKRefFlow = 0; // number of k-refinements for the fluid
@@ -106,14 +104,13 @@ int main(int argc, char* argv[])
     real_t viscosity = 0.001;
     real_t meanVelocity = 0.2;
     bool subgrid = false;
-    bool supg = false;
     real_t densityFluid = 1000.;
     real_t densitySolid = 1000.;
     real_t absTol = 1e-6;
     real_t relTol = 1e-6;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the unsteady fluid-structure interaction solver in 2D.");
+    gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications for the fluid",numUniRefFlow);
     cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
     cmd.addInt("b","beamrefine","Number of uniform refinement applications for the beam and ALE",numUniRefBeam);
@@ -122,7 +119,6 @@ int main(int argc, char* argv[])
     cmd.addReal("v","viscosity","Viscosity of the fluid",viscosity);
     cmd.addReal("f","inflow","Maximum inflow velocity",meanVelocity);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addSwitch("g","supg","Use SUPG stabilization",supg);
     cmd.addReal("d","density","Density of the solid",densitySolid);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -134,7 +130,10 @@ int main(int argc, char* argv[])
     gsMultiPatch<> geoFlow;
     gsReadFile<>(filenameFlow, geoFlow);
     gsMultiPatch<> geoPart; // this is a part of the flow geometry; we deform only this part to save memory and time
-    gsReadFile<>(filenameFlowPart, geoPart);
+    geoPart.addPatch(geoFlow.patch(3).clone());
+    geoPart.addPatch(geoFlow.patch(4).clone());
+    geoPart.addPatch(geoFlow.patch(5).clone());
+    geoPart.computeTopology();
     gsMultiPatch<> geoBeam;
     gsReadFile<>(filenameBeam, geoBeam);
 
@@ -282,7 +281,6 @@ int main(int argc, char* argv[])
              // Coupled simulation //
     //=============================================//
 
-
     // containers for interface displacement DoFs
     std::vector<gsMatrix<> > interfaceOld, interfaceNow, interfaceNew;
     // push zeros to the old interface
@@ -296,65 +294,33 @@ int main(int argc, char* argv[])
     bool converged = false;
     index_t iter = 0;
 
+    std::vector<gsMatrix<> > fixedDoFsALE = aleAssembler.allFixedDofs();
+    std::vector<gsMatrix<> > fixedDoFsFlow = nsAssembler.allFixedDofs();
+    nsAssembler.homogenizeFixedDofs(-1);
+
     gsStopwatch clock;
     clock.restart();
-    // 0. pre-solve flow to get a stable flow
-    gsNewton<real_t> newtonFlow(nsAssembler);
-    newtonFlow.options().setInt("Verbosity",newton_verbosity::none);
-    newtonFlow.options().setInt("Solver",linear_solver::LU);
-    newtonFlow.solve();
-    solutionFlow = newtonFlow.solution();
-    nsAssembler.constructSolution(newtonFlow.solution(),newtonFlow.allFixedDofs(),velocity,pressure);
-    gsMatrix<> aleUpdateVector;
     while (!converged && iter < 50)
     {
-        if (iter > 0)
-        {
-            // 1. compute ALE displacement
-            aleAssembler.setFixedDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
-            aleAssembler.setFixedDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
-            aleAssembler.setFixedDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
-            aleAssembler.assemble(ALE);
-#ifdef GISMO_WITH_PARDISO
-            gsSparseSolver<>::PardisoLDLT solverALE(aleAssembler.matrix());
-            aleUpdateVector = solverALE.solve(aleAssembler.rhs());
-#else
-            gsSparseSolver<>::SimplicialLDLT solverALE(aleAssembler.matrix());
-            aleUpdateVector = solverALE.solve(aleAssembler.rhs());
-#endif
-            gsMultiPatch<> aleUpdate;
-            aleAssembler.constructSolution(aleUpdateVector,aleUpdate);
-            // 2. deform flow mesh
-            // update ALE
-            for (index_t p = 0; p < 3; ++p)
-                ALE.patch(p).coefs() += aleUpdate.patch(p).coefs();
-            // update flow mesh
-            for (index_t p = 0; p < 3; ++p)
-                nsAssembler.patches().patch(p+3).coefs() += aleUpdate.patch(p).coefs();
-        }
-        // 3. solve flow
-        nsAssembler.assemble(velocity,pressure);
-#ifdef GISMO_WITH_PARDISO
-        gsSparseSolver<>::PardisoLU solverFlow(nsAssembler.matrix());
-        solutionFlow += solverFlow.solve(nsAssembler.rhs());
-#else
-        gsSparseSolver<>::LU solverFlow(nsAssembler.matrix());
-        solutionFlow += solverFlow.solve(nsAssembler.rhs());
-#endif
-        nsAssembler.constructSolution(solutionFlow,newtonFlow.allFixedDofs(),velocity,pressure);
-        // 4. solve beam
-        elAssembler.assemble(displacement);
-#ifdef GISMO_WITH_PARDISO
-        gsSparseSolver<>::PardisoLDLT solverBeam(elAssembler.matrix());
-        solutionBeam += solverBeam.solve(elAssembler.rhs());
-#else
-        gsSparseSolver<>::SimplicialLDLT solverBeam(elAssembler.matrix());
-        solutionBeam += solverBeam.solve(elAssembler.rhs());
-#endif
+        // 1. solve flow
+        gsIterative<real_t> solverFlow(nsAssembler,solutionFlow,fixedDoFsFlow);
+        solverFlow.options().setInt("Verbosity",solver_verbosity::none);
+        solverFlow.options().setInt("Solver",linear_solver::LU);
+        solverFlow.solve();
+        solutionFlow = solverFlow.solution();
+        fixedDoFsFlow = solverFlow.allFixedDofs();
+        nsAssembler.constructSolution(solutionFlow,fixedDoFsFlow,velocity,pressure);
+
+        // 2. solve beam
+        gsIterative<real_t> solverBeam(elAssembler,solutionBeam);
+        solverBeam.options().setInt("Verbosity",solver_verbosity::none);
+        solverBeam.options().setInt("Solver",linear_solver::LDLT);
+        solverBeam.solve();
+        solutionBeam = solverBeam.solution();
         elAssembler.constructSolution(solutionBeam,displacement);
 
-        // 5. Aitken relaxation
-        if (iter== 0)
+        // 3. Aitken relaxation
+        if (iter == 0)
         {
             interfaceNow.clear();
             interfaceNow.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
@@ -371,6 +337,28 @@ int main(int argc, char* argv[])
             aitkenRelaxation(interfaceOld,interfaceNow,interfaceNew,omega);
         }
 
+        // 4. compute ALE displacement
+        aleAssembler.setFixedDofs(0,boundary::south,interfaceNow[0]-interfaceOld[0]);
+        aleAssembler.setFixedDofs(1,boundary::north,interfaceNow[1]-interfaceOld[1]);
+        aleAssembler.setFixedDofs(2,boundary::west,interfaceNow[2]-interfaceOld[2]);
+        gsIterative<real_t> solverALE(aleAssembler,solutionALE,fixedDoFsALE);
+        solverALE.options().setInt("Verbosity",solver_verbosity::none);
+        solverALE.options().setInt("Solver",linear_solver::LDLT);
+        solverALE.options().setInt("MaxIters",1.);
+        solverALE.solve();
+        solutionALE = solverALE.solution();
+        fixedDoFsALE = solverALE.allFixedDofs();
+        // 2. deform flow mesh
+        // reverse previous deformation
+        nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
+        nsAssembler.patches().patch(4).coefs() -= ALE.patch(1).coefs();
+        nsAssembler.patches().patch(5).coefs() -= ALE.patch(2).coefs();
+        // apply new deformation
+        aleAssembler.constructSolution(solutionALE,fixedDoFsALE,ALE);
+        nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
+        nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
+        nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
+
         // 7. plot
         if (numPlotPoints > 0)
         {
@@ -378,32 +366,35 @@ int main(int argc, char* argv[])
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSI1a_beam",collectionBeam,iter+1,numPlotPoints);
             gsWriteParaviewMultiPhysicsTimeStep(fieldsPart,"flappingBeam_FSI1a_ALE",collectionFlowPart,iter+1,numPlotPoints);
         }
-
         // 8. convergence
         real_t residual = computeResidual(interfaceOld,interfaceNow);
         if (iter == 0)
             initRes = residual;
-        gsInfo << "Iter " << iter + 1 << ", intRes: " << residual << std::endl;
+        gsInfo << "Iteration " << iter + 1 << ", interface update norm: " << residual << std::endl;
         if (residual < absTol || residual/initRes < relTol)
             converged = true;
         iter++;
+
+        // 5*. validation
+        std::vector<std::pair<index_t, boxSide> > bdrySides;
+        bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
+        bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
+        bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
+        bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
+        bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
+        bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
+        gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
+        gsInfo << "Drag: " << force.at(0) << std::endl;
+        gsInfo << "Lift: " << force.at(1) << std::endl;
+        gsMatrix<> A(2,1);
+        A << 0.,0.5;
+        A = ALE.patch(2).eval(A);
+        gsInfo << "X-disp of A: " << A.at(0) << std::endl;
+        gsInfo << "Y-disp of A: " << A.at(1) << std::endl;
+
+
     }
     gsInfo << "Solved in " << clock.stop() << "s.\n";
-
-    // 5*. validation
-    std::vector<std::pair<index_t, boxSide> > bdrySides;
-    bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
-    bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
-    bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
-    bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
-    bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
-    bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
-    gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
-    gsInfo << "Drag: " << force.at(0) << std::endl;
-    gsInfo << "Lift: " << force.at(1) << std::endl;
-    gsMatrix<> point(2,1);
-    point << 1.,0.5;
-    gsInfo << "Displacement of the beam point A:\n" << displacement.patch(0).eval(point) << std::endl;
 
     if (numPlotPoints > 0)
     {

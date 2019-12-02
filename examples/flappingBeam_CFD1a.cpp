@@ -2,10 +2,12 @@
 /// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006
 ///
+/// In this version, the linearization of the INSE is used that yields an update to the solution at each iteration.
+///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsNsAssembler.h>
-#include <gsElasticity/gsNewton.h>
+#include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -52,7 +54,6 @@ int main(int argc, char* argv[]){
     real_t meanVelocity = 0.2;
     real_t density = 1.0e3;
     bool subgrid = false;
-    bool supg = false;
     index_t numPlotPoints = 10000;
     bool plotMesh = false;
 
@@ -65,7 +66,6 @@ int main(int argc, char* argv[]){
     cmd.addSwitch("m","mesh","Plot computational mesh",plotMesh);
     cmd.addReal("v","velocity","Mean inflow velocity",meanVelocity);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addSwitch("g","supg","Use SUPG stabilization (testing)",supg);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -137,8 +137,7 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setReal("Density",density);
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    assembler.options().setInt("Iteration",iteration_type::newton);
-    assembler.options().setSwitch("SUPG",supg);
+    assembler.options().setInt("Assembly",ns_assembly::newton_update);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     //=============================================//
@@ -146,19 +145,20 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     // setting Newton's method
-    gsNewton<real_t> newton(assembler);
-    newton.options().setInt("Verbosity",newton_verbosity::all);
-    newton.options().setInt("Solver",linear_solver::LU);
+    gsIterative<real_t> solver(assembler);
+    solver.options().setInt("Verbosity",solver_verbosity::all);
+    solver.options().setInt("Solver",linear_solver::LU);
+    solver.options().setInt("IterType",iteration_type::update);
 
     gsInfo << "Solving...\n";
     gsStopwatch clock;
     clock.restart();
-    newton.solve();
+    solver.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     // solution as two isogeometric fields
     gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(newton.solution(),newton.allFixedDofs(),velocity,pressure);
+    assembler.constructSolution(solver.solution(),solver.allFixedDofs(),velocity,pressure);
 
     //=============================================//
                   // Validation //
