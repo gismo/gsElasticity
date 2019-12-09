@@ -41,6 +41,8 @@ gsOptionList gsNsTimeIntegrator<T>::defaultOptions()
     opt.addInt("Scheme","Time integration scheme",time_integration::implicit_nonlinear);
     opt.addReal("Theta","Time integration parametrer: 0 - explicit Euler, 1 - implicit Euler, 0.5 - Crank-Nicolson",0.5);
     opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",solver_verbosity::none);
+    opt.addReal("AbsTol","Absolute tolerance for the convergence cretiria",1e-10);
+    opt.addReal("RelTol","Relative tolerance for the stopping criteria",1e-7);
     return opt;
 }
 
@@ -227,16 +229,22 @@ template <class T>
 void gsNsTimeIntegrator<T>::implicitNonlinear()
 {
     stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
+
+    std::vector<gsMatrix<T> > tempDDofs = stiffAssembler.allFixedDofs();
+    stiffAssembler.setFixedDofs(m_ddof);
     stiffAssembler.assemble(solVector,m_ddof);
     oldResidual = stiffAssembler.rhs();
 
     index_t numDofsVel = massAssembler.numDofs();
     oldResidual.middleRows(0,numDofsVel).noalias() -= stiffAssembler.matrix().block(0,0,numDofsVel,numDofsVel)*solVector.middleRows(0,numDofsVel);
-// DBC SHOULD BE CHANGED NOW!!!
+
+    stiffAssembler.setFixedDofs(tempDDofs);
     gsIterative<T> solver(*this,solVector,m_ddof);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
     solver.options().setInt("Solver",linear_solver::LU);
     solver.options().setInt("IterType",iteration_type::next);
+    solver.options().setReal("AbsTol",m_options.getReal("AbsTol"));
+    solver.options().setReal("RelTol",m_options.getReal("RelTol"));
     solver.solve();
 
     solVector = solver.solution();

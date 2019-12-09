@@ -251,7 +251,8 @@ int main(int argc, char* argv[])
     nsMassAssembler.options().setReal("Density",densityFluid);
     gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler);
     nsTimeSolver.options().setInt("Scheme",time_integration::implicit_linear);
-
+    nsTimeSolver.options().setInt("Verbosity",solver_verbosity::all);
+    nsTimeSolver.options().setReal("Theta",1.);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
     // elasticity solver: beam
     gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
@@ -272,7 +273,6 @@ int main(int argc, char* argv[])
 
     //=============================================//
              // Setting output and auxilary //
-
     //=============================================//
 
     // isogeometric fields (geometry + solution)
@@ -395,6 +395,7 @@ int main(int argc, char* argv[])
                    // Coupled simulation //
     //=============================================//
 
+    nsTimeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     clock.restart();
     gsInfo << "Running the coupled simulation...\n";
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
@@ -407,15 +408,16 @@ int main(int argc, char* argv[])
         // 1. FLOW
         // set ALE velocity on the interface
         gsMatrix<> bc = velocityALE.patch(3).boundary(boundary::south)->coefs();
-        gsInfo << bc.norm();
-        nsAssembler.setFixedDofs(3,boundary::south,10.*i*velocityALE.patch(3).boundary(boundary::south)->coefs());
-        nsAssembler.setFixedDofs(4,boundary::north,10.*i*velocityALE.patch(4).boundary(boundary::north)->coefs());
-        nsAssembler.setFixedDofs(5,boundary::west,10.*i*velocityALE.patch(5).boundary(boundary::west)->coefs());
+        gsInfo << bc.norm() << std::endl;
+        nsAssembler.setFixedDofs(3,boundary::south,velocityALE.patch(3).boundary(boundary::south)->coefs());
+        nsAssembler.setFixedDofs(4,boundary::north,velocityALE.patch(4).boundary(boundary::north)->coefs());
+        nsAssembler.setFixedDofs(5,boundary::west,velocityALE.patch(5).boundary(boundary::west)->coefs());
         // give all info to the flow time solver to make a time step
 
-        //nsTimeSolver.makeTimeStep(timeStep);
+        nsTimeSolver.makeTimeStep(timeStep);
+        gsInfo << nsTimeSolver.solutionVector().norm() << std::endl;
 
-        nsTimeSolver.makeTimeStepFSI2(timeStep,velocityALE,alePatches);
+        //nsTimeSolver.makeTimeStepFSI2(timeStep,velocityALE,alePatches);
         // construct velocity and pressure
         gsMultiPatch<> vel,pr;
         //nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velocity,pressure);
@@ -435,7 +437,7 @@ int main(int argc, char* argv[])
 
         // 4. ALE
         // compute ALE velocity
-        if (i == -2)
+        if (i == 3)
             aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),velocityALE);
 
         // reverse previous deformation of the flow domain (we will overwrite ALE)
@@ -453,7 +455,7 @@ int main(int argc, char* argv[])
         // apply new deformation to the flow domain
         //for (index_t p = 0; p < 6; ++p)
         //    nsAssembler.patches().patch(p).coefs() += ALE.patch(p).coefs();
-        if (i == -2)
+        if (i == 3)
             for (index_t p = 0; p < 6; ++p)
                 velocityALE.patch(p).coefs() = (ALE.patch(p).coefs() - velocityALE.patch(p).coefs()) / timeStep;
 

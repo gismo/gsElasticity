@@ -54,7 +54,14 @@ void validation(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler, re
     bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
     gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
     // print time-drag-lift
-    ofs << time << " " << force.at(0) << " " << force.at(1) << std::endl;
+    gsMatrix<> A(2,1);
+    A << 0.,0.5;
+    A = pressure.patch(0).eval(A);
+    gsMatrix<> B(2,1);
+    B << 0.,0.5;
+    B = velocity.patch(0).eval(B);
+
+    ofs << time << " " << force.at(0) << " " << force.at(1) << " "<<A.at(0) << " " << B.at(0)<< std::endl;
 }
 
 int main(int argc, char* argv[]){
@@ -76,7 +83,7 @@ int main(int argc, char* argv[]){
     real_t timeStep = 0.01;
     index_t numPlotPoints = 900;
     bool validate = true;
-    real_t warmUpTimeSpan = 2.;
+    real_t warmUpTimeSpan = 3.;
     real_t warmUpTimeStep = 0.1;
     real_t theta = 0.5;
 
@@ -171,7 +178,7 @@ int main(int argc, char* argv[]){
 
     // creating time integrator
     gsNsTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
-    timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
+    timeSolver.options().setInt("Scheme",time_integration::implicit_linear);
     timeSolver.options().setReal("Theta",theta);
     timeSolver.options().setInt("Verbosity",solver_verbosity::none);
 
@@ -225,11 +232,20 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < index_t(warmUpTimeSpan/warmUpTimeStep); ++i)
     {
         bar.display(i+1,index_t(warmUpTimeSpan/warmUpTimeStep));
+        /*if (i < 10)
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i+1)/20))/2);
+        else if (i < 20)
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI/2))/2);
+        else
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i-9)/20))/2);*/
         assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
         timeSolver.makeTimeStep(warmUpTimeStep);
+        gsInfo << timeSolver.solutionVector().norm() << std::endl;
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i+1,numPlotPoints);
+        if (validate)
+            validation(file,assembler,warmUpTimeStep*(i+1),velocity,pressure);
     }
     gsInfo << "Complete in " << clock.stop() << "s.\n";
 
@@ -243,6 +259,8 @@ int main(int argc, char* argv[]){
     {
         bar.display(i+1,index_t(timeSpan/timeStep));
         timeSolver.makeTimeStep(timeStep);
+
+        gsInfo << timeSolver.solutionVector().norm() << std::endl;
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i + 1 + index_t(warmUpTimeSpan/warmUpTimeStep),numPlotPoints);
