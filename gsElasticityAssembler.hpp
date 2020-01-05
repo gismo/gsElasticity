@@ -173,7 +173,7 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
     {
         gsMultiPatch<T> displacement;
         constructSolution(solutionVector,fixedDoFs,displacement);
-        if (checkSolution(displacement) != -1)
+        if (checkSolution(displacement) != -1 && m_options.getInt("MaterialLaw") != material_law::saint_venant_kirchhoff)
             return false;
         assemble(displacement,assembleMatrix);
     }

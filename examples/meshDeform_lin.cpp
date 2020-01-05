@@ -1,4 +1,5 @@
-/// This is an example of generating an isogeometric parametrization using mesh deformation technique.
+/// This is an example of generating an isogeometric parametrization using mesh deformation technique
+/// with incremental deformation based on linear elasticity
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
@@ -99,17 +100,8 @@ int main(int argc, char* argv[])
         bcInfo.addCondition(0,s,condition_type::dirichlet,0,1);
     }
     gsConstantFunction<> g(0.,0.,2);
-
-    gsElasticityAssembler<real_t> assembler(initGeo,basis,bcInfo,g);
-    assembler.options().setReal("PoissonsRatio",poissRatio);
-    assembler.options().setInt("MaterialLaw",law);
-    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
-
-    // creating the nonlinear solver
-    gsIterative<real_t> newton(assembler);
-    newton.options().setInt("Verbosity",solver_verbosity::all);
-    newton.options().setInt("MaxIters",numIter);
-    newton.options().setInt("Solver",linear_solver::LDLT);
+    gsInfo << "Initialized system with " << initGeo.patch(0).coefs().rows()*
+                                            initGeo.patch(0).coefs().cols() << " dofs.\n";
 
     //=====================================//
             // Deformation: solving //
@@ -117,6 +109,10 @@ int main(int argc, char* argv[])
 
     // container for displacements
     std::vector<gsMultiPatch<> > displacements;
+    // current configuration
+    gsMultiPatch<> geo;
+    geo.addPatch(initGeo.patch(0).clone());
+    geo.computeTopology();
 
     gsInfo << "Solving...\n";
     gsStopwatch clock;
@@ -125,16 +121,24 @@ int main(int argc, char* argv[])
     for (index_t i = 0; i < numSteps; ++i)
     {
         gsInfo << "Loading: " << index_t(100.*i/numSteps) << "% -> " << index_t(100.*(i+1)/numSteps) << "%\n";
+        gsElasticityAssembler<real_t> assembler(geo,basis,bcInfo,g);
+        assembler.options().setReal("PoissonsRatio",poissRatio);
         // setting Dirichlet DoFs
         for (index_t s = 1; s < 5; ++s)
             assembler.setFixedDofs(0,s,(bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs())/numSteps);
-
-        if (i == numSteps-1)
-            newton.options().setInt("MaxIters",50);
-        newton.reset();
-        newton.solve();
+        assembler.assemble();
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLDLT solver(assembler.matrix());
+        gsVector<> solVector = solver.solve(assembler.rhs());
+#else
+        gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+        gsVector<> solVector = solver.solve(assembler.rhs());
+#endif
         displacements.push_back(gsMultiPatch<>());
-        assembler.constructSolution(newton.solution(),newton.allFixedDofs(),displacements.back());
+        assembler.constructSolution(solVector,assembler.allFixedDofs(),displacements.back());
+        geo.patch(0).coefs() += displacements.back().patch(0).coefs();
+        if (i > 0)
+            displacements.back().patch(0).coefs() += displacements[i-1].patch(0).coefs();
     }
 
     gsInfo << "Solved in "<< clock.stop() <<"s.\n";
@@ -152,12 +156,12 @@ int main(int argc, char* argv[])
 
     // plotting all intermediate deformed meshes
     plotDeformation(initGeo,displacements,filename,numPlotPoints);
-
-    gsMultiPatch<> displacement;
-    assembler.constructSolution(newton.solution(),displacement);
-    initGeo.patch(0).coefs() += displacement.patch(0).coefs();
     gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
-    gsWrite(initGeo,filename + "_2D");
+    gsWrite(geo,filename + "_2D");
+
+    gsInfo << checkGeometry(geo);
+
+
 
     return 0;
 }
