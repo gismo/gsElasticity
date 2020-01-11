@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
     real_t timeStep = 0.01;
     index_t numPlotPoints = 900;
     bool validate = true;
-    real_t warmUpTimeSpan = 3.;
+    real_t warmUpTimeSpan = 2.;
     real_t warmUpTimeStep = 0.1;
     real_t theta = 0.5;
 
@@ -178,9 +178,9 @@ int main(int argc, char* argv[]){
 
     // creating time integrator
     gsNsTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
-    timeSolver.options().setInt("Scheme",time_integration::implicit_linear);
+    timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     timeSolver.options().setReal("Theta",theta);
-    timeSolver.options().setInt("Verbosity",solver_verbosity::none);
+    timeSolver.options().setInt("Verbosity",solver_verbosity::some);
 
     //=============================================//
             // Setting output & auxilary//
@@ -227,6 +227,8 @@ int main(int argc, char* argv[]){
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,0,numPlotPoints);
 
+
+    timeSolver.options().setInt("Scheme",time_integration::implicit_linear);
     clock.restart();
     gsInfo << "Running the simulation with a coarse time step to compute an initial solution...\n";
     for (index_t i = 0; i < index_t(warmUpTimeSpan/warmUpTimeStep); ++i)
@@ -238,9 +240,9 @@ int main(int argc, char* argv[]){
             assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI/2))/2);
         else
             assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i-9)/20))/2);*/
+
         assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
         timeSolver.makeTimeStep(warmUpTimeStep);
-        gsInfo << timeSolver.solutionVector().norm() << std::endl;
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i+1,numPlotPoints);
@@ -253,6 +255,7 @@ int main(int argc, char* argv[]){
                   // Solving //
     //=============================================//
 
+    timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     gsInfo << "Running the main simulation...\n";
     clock.restart();
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
@@ -260,7 +263,6 @@ int main(int argc, char* argv[]){
         bar.display(i+1,index_t(timeSpan/timeStep));
         timeSolver.makeTimeStep(timeStep);
 
-        gsInfo << timeSolver.solutionVector().norm() << std::endl;
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i + 1 + index_t(warmUpTimeSpan/warmUpTimeStep),numPlotPoints);
