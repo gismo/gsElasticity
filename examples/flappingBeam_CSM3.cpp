@@ -47,6 +47,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("p","points","Number of sampling points to plot to Paraview",numPlotPoints);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step, sec",timeStep);
+    cmd.addReal("g","graviry","Gravitational acceleration",gravitationalAcc);
     cmd.addSwitch("x","validate","Save displacement of the point A to a text file for further analysis",validate);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
