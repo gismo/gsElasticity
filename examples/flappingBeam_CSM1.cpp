@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRef = 3; // number of h-refinements
-    index_t numKRef = 1; // number of k-refinements
+    index_t numKRef = 0; // number of k-refinements
     index_t numPlotPoints = 10000;
     real_t poissonsRatio = 0.4;
     real_t youngsModulus = 1.4e6;
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]){
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
 
     // gravity, rhs
-    gsConstantFunction<> gravity(0.,-1*gravitationalAcc*density,2);
+    gsConstantFunction<> gravity(0.,1*gravitationalAcc*density,2);
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,gravity);

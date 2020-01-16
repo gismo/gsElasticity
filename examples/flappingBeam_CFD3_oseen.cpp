@@ -54,7 +54,13 @@ void validation(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler, re
     bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
     gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
     // print time-drag-lift
-    ofs << time << " " << force.at(0) << " " << force.at(1) << std::endl;
+    gsMatrix<> A(2,1);
+    A << 0.,0.5;
+    A = pressure.patch(0).eval(A);
+    gsMatrix<> B(2,1);
+    B << 0.,0.5;
+    B = velocity.patch(0).eval(B);
+    ofs << time << " " << force.at(0) << " " << force.at(1) << " "<<A.at(0) << " " << B.at(0) << std::endl;
 }
 
 int main(int argc, char* argv[]){
@@ -224,11 +230,28 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < index_t(warmUpTimeSpan/warmUpTimeStep); ++i)
     {
         bar.display(i+1,index_t(warmUpTimeSpan/warmUpTimeStep));
-        assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
+        if (i < 7)
+        {
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i+1)/14))/2);
+            massAssembler.setFixedDofs(assembler.allFixedDofs());
+        }
+        else if (i < 14)
+        {
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI/2))/2);
+            massAssembler.setFixedDofs(assembler.allFixedDofs());
+        }
+        else
+        {
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i-6)/14))/2);
+            massAssembler.setFixedDofs(assembler.allFixedDofs());
+        }
+        //assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
         timeSolver.makeTimeStep(warmUpTimeStep);
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i+1,numPlotPoints);
+        if (validate)
+            validation(file,assembler,warmUpTimeStep*(i+1),velocity,pressure);
     }
     gsInfo << "Complete in " << clock.stop() << "s.\n";
 
