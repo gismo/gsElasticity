@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <gsAssembler/gsAssembler.h>
+#include <gsElasticity/gsBaseAssembler.h>
 
 namespace gismo
 {
@@ -27,10 +27,10 @@ namespace gismo
 */
 
 template <class T>
-class gsMassAssembler : public gsAssembler<T>
+class gsMassAssembler : public gsBaseAssembler<T>
 {
 public:
-    typedef gsAssembler<T> Base;
+    typedef gsBaseAssembler<T> Base;
 
     gsMassAssembler(const gsMultiPatch<T> & patches,
                       const gsMultiBasis<T> & basis,
@@ -46,8 +46,9 @@ public:
     /// @brief Assembles the mass matrix
     virtual void assemble(bool assembleMatrix = true);
 
-    /// set all fixed degrees of freedom
-    virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
+    virtual bool assemble(const gsMatrix<T> & solutionVector,
+                          const std::vector<gsMatrix<T> > & fixedDDoFs,
+                          bool assembleMatrix = true) {assemble(assembleMatrix);}
 
 protected:
 

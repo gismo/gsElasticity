@@ -68,6 +68,8 @@ void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
         implicitNonlinear();
     if (m_options.getInt("Scheme") == time_integration::implicit_linear)
         implicitLinear();
+    if (m_options.getInt("Scheme") == time_integration::explicit_lumped)
+        control();
 }
 
 template <class T>
@@ -106,6 +108,60 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     oldSolVector = solVector;
     oldTimeStep = tStep;
     m_ddof = stiffAssembler.allFixedDofs();
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLU solver(m_system.matrix());
+    solVector = solver.solve(m_system.rhs());
+#else
+    gsSparseSolver<>::LU solver(m_system.matrix());
+    solVector = solver.solve(m_system.rhs());
+#endif
+}
+
+template <class T>
+void gsNsTimeIntegrator<T>::control()
+{
+    index_t numDofsVel = massAssembler.numDofs();
+    stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
+    massAssembler.assemble(true);
+
+    // rhs = M*u_n - dt*(1-theta)*A(u_n)*u_n + dt*(1-theta)*F_n + dt*theta*F_n+1
+    // rhs: dt*(1-theta)*F_n
+    //m_system.rhs() = tStep*(1-theta)*stiffAssembler.rhs();
+    // rhs: -dt*(1-theta)*A(u_n)*u_n
+    //m_system.rhs().middleRows(0,numDofsVel) -= tStep*(1-theta)*stiffAssembler.matrix().block(0,0,numDofsVel,numDofsVel) *
+    //                                                           solVector.middleRows(0,numDofsVel);
+    // rhs: M*u_n
+    //m_system.rhs().middleRows(0,numDofsVel) += massAssembler.matrix() *
+    //                                           solVector.middleRows(0,numDofsVel);
+
+    for (index_t d = 0; d < m_ddof.size(); ++d)
+        m_ddof[d] += massAssembler.allFixedDofs()[d]*tStep;
+    stiffAssembler.assemble(solVector + tStep/oldTimeStep*(solVector-oldSolVector),
+                            m_ddof);
+    // rhs: dt*theta*F_n+1
+    m_system.rhs() = tStep*stiffAssembler.rhs();
+    gsInfo << "Arhs " << stiffAssembler.rhs().norm() << std::endl;
+
+    gsInfo << "Mrhs " << massAssembler.rhs().norm() << std::endl;
+    m_system.rhs().middleRows(0,numDofsVel) += massAssembler.matrix() *
+                                                   solVector.middleRows(0,numDofsVel);
+    m_system.rhs().middleRows(0,numDofsVel) += massAssembler.rhs();
+
+    // matrix = M + dt*theta*A(u_exp)
+    m_system.matrix() = tStep*stiffAssembler.matrix();
+    // we need to modify the (0,0,numDofsVel,numDofsVel) block of the matrix.
+    // unfortunately, eigen provides only a read-only block interfaces.
+    // the following is an ugly way to overcome this
+    gsSparseMatrix<T> tempVelocityBlock = m_system.matrix().block(0,0,numDofsVel,numDofsVel);
+    tempVelocityBlock *= 0.;
+    tempVelocityBlock += massAssembler.matrix();
+    tempVelocityBlock.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
+    m_system.matrix().leftCols(numDofsVel) += tempVelocityBlock;
+
+    m_system.matrix().makeCompressed();
+    oldSolVector = solVector;
+    oldTimeStep = tStep;
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLU solver(m_system.matrix());

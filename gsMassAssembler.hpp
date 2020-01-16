@@ -90,18 +90,5 @@ void gsMassAssembler<T>::assemble(bool assembleMatrix)
     m_system.matrix().makeCompressed();
 }
 
-template <class T>
-void gsMassAssembler<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
-{
-    GISMO_ENSURE(ddofs.size() >= m_ddof.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
-                 ". Must be at least: " + util::to_string(m_ddof.size()));
-
-    for (short_t d = 0; d < index_t(m_ddof.size()); ++d)
-    {
-        GISMO_ENSURE(m_ddof[d].rows() == ddofs[d].rows(),"Wrong number of fixed DoFs for " + util::to_string(d) + "component: " +
-                     util::to_string(ddofs[d].rows()) + ". Must be: " + util::to_string(m_ddof[d].rows()));
-        m_ddof[d] = ddofs[d];
-    }
-}
 
 }// namespace gismo ends

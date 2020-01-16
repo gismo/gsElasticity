@@ -71,6 +71,7 @@ public:
     /// time integraton schemes
     void implicitLinear();
     void implicitNonlinear();
+    void control();
 
 protected:
     /// assembler object that generates the static system
