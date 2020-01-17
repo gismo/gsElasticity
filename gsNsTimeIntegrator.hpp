@@ -136,7 +136,7 @@ void gsNsTimeIntegrator<T>::control()
     //                                           solVector.middleRows(0,numDofsVel);
 
     for (index_t d = 0; d < m_ddof.size(); ++d)
-        m_ddof[d] += massAssembler.allFixedDofs()[d]*tStep;
+        m_ddof[d] += massAssembler.allFixedDofs()[d];
     stiffAssembler.assemble(solVector + tStep/oldTimeStep*(solVector-oldSolVector),
                             m_ddof);
     // rhs: dt*theta*F_n+1

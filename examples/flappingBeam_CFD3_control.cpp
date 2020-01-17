@@ -234,15 +234,20 @@ int main(int argc, char* argv[]){
         bar.display(i+1,index_t(warmUpTimeSpan/warmUpTimeStep));
         if (i < 7)
         {
-            gsMatrix<> temp = inflowDDoFs*(cos(M_PI*i/14)-cos(M_PI*(i+1)/14))/2/warmUpTimeStep;
-            massAssembler.setFixedDofs(0,boundary::west,temp);
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i+1)/14))/2);
+            gsMatrix<> temp = inflowDDoFs*(cos(M_PI*i/14)-cos(M_PI*(i+1)/14))/2;//warmUpTimeStep;
+            //massAssembler.setFixedDofs(0,boundary::west,temp);
         }
         else if (i < 14)  
+        {
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI/2))/2);
             massAssembler.homogenizeFixedDofs(-1);
+        }
         else
         {
-            gsMatrix<> temp = inflowDDoFs*(cos(M_PI*(i-7)/14)-cos(M_PI*(i-6)/14))/2/warmUpTimeStep;
-            massAssembler.setFixedDofs(0,boundary::west,temp);
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i-6)/14))/2);
+            gsMatrix<> temp = inflowDDoFs*(cos(M_PI*(i-7)/14)-cos(M_PI*(i-6)/14))/2;///warmUpTimeStep;
+            //massAssembler.setFixedDofs(0,boundary::west,temp);
         }
         //assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
         timeSolver.makeTimeStep(warmUpTimeStep);
