@@ -91,6 +91,7 @@ int main(int argc, char* argv[]){
     // creating time integrator
     gsElTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
     timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
+    timeSolver.options().setInt("Verbosity",solver_verbosity::none);
     // set initial conditions
     timeSolver.setInitialDisplacement(gsMatrix<>::Zero(assembler.numDofs(),1));
     timeSolver.setInitialVelocity(gsMatrix<>::Zero(assembler.numDofs(),1));
