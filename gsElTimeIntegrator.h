@@ -57,6 +57,10 @@ public:
     const gsMatrix<T> & displacementVector() const {return dispVector;}
     /// returns vector of velocity DoFs
     const gsMatrix<T> & velocityVector() const {return velVector;}
+    /// save solver state
+    void saveState();
+    /// recover solver state from saved state
+    void recoverState();
 
 protected:
     /// time integraton schemes
@@ -92,6 +96,12 @@ protected:
 
     using Base::m_options;
     using Base::m_ddof;
+
+    /// saved state
+    gsMatrix<T> dispVecSaved;
+    gsMatrix<T> velVecSaved;
+    gsMatrix<T> accVecSaved;
+    std::vector<gsMatrix<T> > ddofsSaved;
 };
 
 }

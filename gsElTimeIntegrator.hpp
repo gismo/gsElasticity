@@ -114,4 +114,24 @@ bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
     return true;
 }
 
+template <class T>
+void gsElTimeIntegrator<T>::saveState()
+{
+    dispVecSaved = dispVector;
+    velVecSaved = velVector;
+    accVecSaved = accVector;
+    ddofsSaved = m_ddof;
+}
+
+template <class T>
+void gsElTimeIntegrator<T>::recoverState()
+{
+    GISMO_ASSERT(dispVecSaved.rows() == dispVector.rows(),"No state saved!");
+    dispVector = dispVecSaved;
+    velVector = velVecSaved;
+    accVector = accVecSaved;
+    m_ddof = ddofsSaved;
+}
+
+
 } // namespace ends

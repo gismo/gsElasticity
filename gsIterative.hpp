@@ -221,5 +221,19 @@ void gsIterative<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
     }
 }
 
+template <class T>
+void gsIterative<T>::saveState()
+{
+    solVecSaved = solVector;
+    ddofsSaved = fixedDoFs;
+}
+
+template <class T>
+void gsIterative<T>::recoverState()
+{
+    GISMO_ASSERT(solVecSaved.rows() == solVector.rows(),"No state saved!");
+    solVector = solVecSaved;
+    fixedDoFs = ddofsSaved;
+}
 
 } // namespace ends

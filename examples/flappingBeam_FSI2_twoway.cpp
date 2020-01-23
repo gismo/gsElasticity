@@ -60,14 +60,13 @@ int main(int argc, char* argv[])
     real_t meanVelocity = 1.;
     bool subgrid = false;
     real_t densityFluid = 1.0e3;
-    real_t densitySolid = 1.0e3;
+    real_t densitySolid = 1.0e4;
     real_t timeStep = 0.01;
     real_t timeSpan = 1.;
     real_t warmUpTimeSpan = 2.;
     real_t warmUpTimeStep = 0.1;
     real_t meshPR = 0.4; // poisson ratio for ALE
     real_t meshStiff = 2.; // local stiffening for ALE
-    real_t loading = 0.2;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the one-way fluid-structure interaction solver in 2D.");
@@ -77,7 +76,6 @@ int main(int argc, char* argv[])
     cmd.addReal("s","step","Time step",timeStep);
     cmd.addReal("m","mesh","Poisson's ratio for ALE",meshPR);
     cmd.addReal("j","stiff","Local stiffening for ALE",meshStiff);
-    cmd.addReal("l","load","Gravity loading acting on the beam",loading);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -114,8 +112,7 @@ int main(int argc, char* argv[])
     //=============================================//
 
     // source function, rhs
-    gsConstantFunction<> gFlow(0.,0.,2);
-    gsConstantFunction<> gBeam(0.,loading*densitySolid,2);
+    gsConstantFunction<> g(0.,0.,2);
     // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
     gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
 
@@ -144,6 +141,16 @@ int main(int argc, char* argv[])
     gsBoundaryConditions<> bcInfoBeam;
     for (index_t d = 0; d < 2; ++d)
         bcInfoBeam.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
+    gsFsiLoad<real_t> fSouth(geoALE,ALE,1,boundary::north,
+                             velocity,pressure,4,viscosity,densityFluid);
+    gsFsiLoad<real_t> fEast(geoALE,ALE,2,boundary::west,
+                            velocity,pressure,5,viscosity,densityFluid);
+    gsFsiLoad<real_t> fNorth(geoALE,ALE,0,boundary::south,
+                             velocity,pressure,3,viscosity,densityFluid);
+    bcInfoBeam.addCondition(0,boundary::south,condition_type::neumann,&fSouth);
+    bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&fEast);
+    bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&fNorth);
+
     // boundary conditions: flow mesh, set zero dirichlet on the entire boundary
     gsBoundaryConditions<> bcInfoALE;
     for (auto it = geoALE.bBegin(); it != geoALE.bEnd(); ++it)
@@ -155,26 +162,26 @@ int main(int argc, char* argv[])
     //=============================================//
 
     // navier stokes solver in the current configuration
-    gsNsAssembler<real_t> nsAssembler(geoFlow,basisVelocity,basisPressure,bcInfoFlow,gFlow);
+    gsNsAssembler<real_t> nsAssembler(geoFlow,basisVelocity,basisPressure,bcInfoFlow,g);
     nsAssembler.options().setReal("Viscosity",viscosity);
     nsAssembler.options().setReal("Density",densityFluid);
-    gsMassAssembler<real_t> nsMassAssembler(geoFlow,basisVelocity,bcInfoFlow,gFlow);
+    gsMassAssembler<real_t> nsMassAssembler(geoFlow,basisVelocity,bcInfoFlow,g);
     nsMassAssembler.options().setReal("Density",densityFluid);
     gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler);
     nsTimeSolver.options().setInt("Scheme",time_integration::implicit_linear);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
     // elasticity solver: beam
-    gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,gBeam);
+    gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
     elAssembler.options().setReal("YoungsModulus",youngsModulus);
     elAssembler.options().setReal("PoissonsRatio",poissonsRatio);
     elAssembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
-    gsMassAssembler<real_t> elMassAssembler(geoBeam,basisDisplacement,bcInfoBeam,gFlow);
+    gsMassAssembler<real_t> elMassAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
     elMassAssembler.options().setReal("Density",densitySolid);
     gsElTimeIntegrator<real_t> elTimeSolver(elAssembler,elMassAssembler);
     elTimeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
     // elasticity assembler: flow mesh
-    gsElasticityAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,gFlow);
+    gsElasticityAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,g);
     aleAssembler.options().setReal("PoissonsRatio",meshPR);
     aleAssembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
     aleAssembler.options().setReal("LocalStiff",meshStiff);
@@ -300,45 +307,75 @@ int main(int argc, char* argv[])
         if (aleAssembler.checkSolution(ALE) != -1)
             break;
 
-        // BEAM
-        gsMultiPatch<> dispDiff;
-        elAssembler.constructSolution(elTimeSolver.displacementVector(),dispDiff);
-        elTimeSolver.makeTimeStep(timeStep);
-        elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
-        dispDiff.patch(0).coefs() = displacement.patch(0).coefs() - dispDiff.patch(0).coefs();
+        index_t numIter = 0;
 
-        // ALE
-        aleAssembler.setFixedDofs(0,boundary::south,dispDiff.patch(0).boundary(boundary::north)->coefs());
-        aleAssembler.setFixedDofs(1,boundary::north,dispDiff.patch(0).boundary(boundary::south)->coefs());
-        aleAssembler.setFixedDofs(2,boundary::west,dispDiff.patch(0).boundary(boundary::east)->coefs());
-        aleNewton.reset();
-        aleNewton.solve();
-        // velocity ALE
-        gsMultiPatch<> velocityALE;
-        aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),velocityALE);
-        for (index_t p = 0; p < velocityALE.nPatches(); ++p)
+        elTimeSolver.saveState();
+        aleNewton.saveState();
+        nsTimeSolver.saveState();
+
+        while (numIter < 10)
         {
-            velocityALE.patch(p).coefs() -= ALE.patch(p).coefs();
-            velocityALE.patch(p).coefs() /= timeStep;
+            // BEAM
+            if (numIter > 0)
+                elTimeSolver.recoverState();
+            gsMultiPatch<> dispDiff;
+            elAssembler.constructSolution(elTimeSolver.displacementVector(),dispDiff);
+            elTimeSolver.makeTimeStep(timeStep);
+            elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
+            dispDiff.patch(0).coefs() = displacement.patch(0).coefs() - dispDiff.patch(0).coefs();
+
+            // ALE
+            if (numIter > 0)
+                aleNewton.recoverState();
+            gsMultiPatch<> oldALE;
+            aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),oldALE);
+            aleAssembler.setFixedDofs(0,boundary::south,dispDiff.patch(0).boundary(boundary::north)->coefs());
+            aleAssembler.setFixedDofs(1,boundary::north,dispDiff.patch(0).boundary(boundary::south)->coefs());
+            aleAssembler.setFixedDofs(2,boundary::west,dispDiff.patch(0).boundary(boundary::east)->coefs());
+            aleNewton.reset();
+            aleNewton.solve();
+            // velocity ALE
+            gsMultiPatch<> velocityALE;
+            aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),velocityALE);
+            for (index_t p = 0; p < velocityALE.nPatches(); ++p)
+            {
+                velocityALE.patch(p).coefs() -= oldALE.patch(p).coefs();
+                velocityALE.patch(p).coefs() /= timeStep;
+            }
+            // undo last ALE
+            nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
+            nsAssembler.patches().patch(4).coefs() -= ALE.patch(1).coefs();
+            nsAssembler.patches().patch(5).coefs() -= ALE.patch(2).coefs();
+            // construct ALE
+            aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),ALE);
+            // apply new ALE
+            nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
+            nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
+            nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
+
+
+            // FLOW
+            nsAssembler.setFixedDofs(3,boundary::south,velocityALE.patch(0).boundary(boundary::south)->coefs());
+            nsAssembler.setFixedDofs(4,boundary::north,velocityALE.patch(1).boundary(boundary::north)->coefs());
+            nsAssembler.setFixedDofs(5,boundary::west,velocityALE.patch(2).boundary(boundary::west)->coefs());
+            if (numIter > 0)
+                nsTimeSolver.recoverState();
+            nsTimeSolver.makeTimeStepFSI2(timeStep,velocityALE,alePatches);
+            nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velocity,pressure);
+
+            std::vector<std::pair<index_t, boxSide> > bdrySides;
+            bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
+            bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
+            bdrySides.push_back(std::pair<index_t,index_t>(2,boxSide(boundary::north)));
+            bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
+            bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
+            bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
+            gsMatrix<> force = nsAssembler.computeForce(velocity,pressure,bdrySides);
+            gsInfo << "Drag: " << force.at(0) << std::endl;
+            gsInfo << "Lift: " << force.at(1) << std::endl;
+
+            ++numIter;
         }
-        // undo last ALE
-        nsAssembler.patches().patch(3).coefs() -= ALE.patch(0).coefs();
-        nsAssembler.patches().patch(4).coefs() -= ALE.patch(1).coefs();
-        nsAssembler.patches().patch(5).coefs() -= ALE.patch(2).coefs();
-        // construct ALE
-        aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),ALE);
-        // apply new ALE
-        nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
-        nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
-        nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
-
-
-        // FLOW
-        nsAssembler.setFixedDofs(3,boundary::south,velocityALE.patch(0).boundary(boundary::south)->coefs());
-        nsAssembler.setFixedDofs(4,boundary::north,velocityALE.patch(1).boundary(boundary::north)->coefs());
-        nsAssembler.setFixedDofs(5,boundary::west,velocityALE.patch(2).boundary(boundary::west)->coefs());
-        nsTimeSolver.makeTimeStepFSI2(timeStep,velocityALE,alePatches);
-        nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velocity,pressure);
 
         if (numPlotPoints > 0)
         {

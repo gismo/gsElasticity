@@ -59,6 +59,9 @@ public:
     /// each column of the resulting matrix correspond to one variable/component of the vector-valued vairable
     virtual void getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs);
 
+    virtual void setRHS(const gsMatrix<T> & rhs) {m_system.rhs() = rhs;}
+    virtual void setMatrix(const gsSparseMatrix<T> & matrix) {m_system.matrix() = matrix;}
+
     //virtual void modifyDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
 protected:

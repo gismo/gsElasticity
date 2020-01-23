@@ -75,6 +75,10 @@ public:
     /// set all fixed degrees of freedom
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
     void setSolutionVector(const gsMatrix<T> & solutionVector) { solVector = solutionVector; }
+    /// save solver state
+    void saveState();
+    /// recover solver state from saved state
+    void recoverState();
 
 protected:
     /// assembler object that generates the linear system
@@ -92,6 +96,9 @@ protected:
     T initUpdateNorm; /// norm of the update vector at the beginning of the loop
     /// option list
     gsOptionList m_options;
+
+    gsMatrix<T> solVecSaved;
+    std::vector<gsMatrix<T> > ddofsSaved;
 };
 
 } // namespace ends

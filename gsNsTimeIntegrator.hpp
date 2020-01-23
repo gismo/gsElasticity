@@ -287,6 +287,29 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
     return true;
 }
 
+template <class T>
+void gsNsTimeIntegrator<T>::saveState()
+{
+    velVecSaved = solVector;
+    oldVecSaved = oldSolVector;
+    massRhsSaved = massAssembler.rhs();
+    stiffRhsSaved = stiffAssembler.rhs();
+    stiffMatrixSaved = stiffAssembler.matrix();
+    ddofsSaved = m_ddof;
+}
+
+template <class T>
+void gsNsTimeIntegrator<T>::recoverState()
+{
+    GISMO_ASSERT(velVecSaved.rows() == solVector.rows(),"No state saved!");
+    solVector = velVecSaved;
+    oldSolVector = oldVecSaved;
+    massAssembler.setRHS(massRhsSaved);
+    stiffAssembler.setMatrix(stiffMatrixSaved);
+    stiffAssembler.setRHS(stiffRhsSaved);
+    ddofsSaved = m_ddof;
+}
+
 
 
 } // namespace ends

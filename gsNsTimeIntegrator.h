@@ -72,6 +72,11 @@ public:
     void implicitLinear();
     void implicitNonlinear();
 
+    /// save solver state
+    void saveState();
+    /// recover solver state from saved state
+    void recoverState();
+
 protected:
     /// assembler object that generates the static system
     gsNsAssembler<T> & stiffAssembler;
@@ -91,6 +96,14 @@ protected:
     using Base::m_system;
     using Base::m_options;
     using Base::m_ddof;
+
+    gsMatrix<T> velVecSaved;
+    gsMatrix<T> oldVecSaved;
+    gsMatrix<T> massRhsSaved;
+    gsMatrix<T> stiffRhsSaved;
+    gsSparseMatrix<T> stiffMatrixSaved;
+    std::vector<gsMatrix<T> > ddofsSaved;
+
 };
 
 }
