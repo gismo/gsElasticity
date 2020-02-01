@@ -26,25 +26,18 @@ void validation(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler, re
     bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
     bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
     bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
-    gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides,true);
+    gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
     // print time-drag-lift-pressure-YdispA
-    gsMatrix<> A(2,1);
-    A << 0.,0.5;
-    A = pressure.patch(5).eval(A);
-    gsMatrix<> B(2,1);
-    B << 1.,0.5;
-    B = pressure.patch(0).eval(B);
-    gsMatrix<> C(2,1);
-    C << 1.,0.5;
-    C = displacement.patch(0).eval(C);
-    gsMatrix<> D(2,1);
-    D << 0.,0.5;
-    D = velocity.patch(5).eval(D);
+    gsMatrix<> disp(2,1);
+    disp << 1.,0.5;
+    disp = displacement.patch(0).eval(disp);
+    gsMatrix<> vel(2,1);
+    vel << 0.,0.5;
+    vel = velocity.patch(5).eval(vel);
 
-    ofs << time << " " << force(0,0) + force(0,1)  << " " << force(1,0) + force(1,1) << " "<<B.at(0)-A.at(0)
-        << " "<< C.at(1) << " " << D.at(1) << " " << force(1,0) << " " << force(1,1) << std::endl;
+    ofs << time << " " << force(0,0) << " " << force(1,0) << " "
+        << disp(0,0) << " " << disp(1,0) << " " << vel(0,0) << " " << vel(1,0) << std::endl;
 }
-
 
 void formVector(const gsMultiPatch<> & disp, gsMatrix<> & vector)
 {
@@ -67,20 +60,24 @@ void formVector(const gsMultiPatch<> & disp, gsMatrix<> & vector)
 }
 
 
-void aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB, gsMultiPatch<> & dispC, real_t & omega,bool & converged)
+void aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB, gsMultiPatch<> & dispC, real_t & omega,bool & converged, real_t & resNorInit)
 {
     gsMatrix<> vecA,vecB,vecC;
     formVector(dispA,vecA);
     formVector(dispB,vecB);
     formVector(dispC,vecC);
 
-    gsInfo <<"Resnor " << (vecC-vecB).norm() << std::endl;
-    if ((vecC-vecB).norm() < 1e-4)
-        converged = true;
 
     omega = -1*omega*((vecB-vecA).transpose()*(vecC-vecA))(0,0)/((vecC-vecA).transpose()*(vecC-vecA))(0,0);
     dispA.patch(0).coefs() = dispB.patch(0).coefs();
     dispB.patch(0).coefs() += omega*(dispC.patch(0).coefs()-dispB.patch(0).coefs());
+
+    real_t resnor = ((vecC-vecB)*omega).norm();
+    gsInfo <<"Resnor abs " << resnor << ", resnor rel " << resnor/resNorInit << std::endl;
+    if (resnor < 1e-6 || resnor/resNorInit < 1e-6)
+        converged = true;
+
+
     gsInfo << "Omega " << omega << std::endl;
 }
 
@@ -92,11 +89,12 @@ int main(int argc, char* argv[])
     std::string filenameFlowPart = ELAST_DATA_DIR"/flappingBeam_flowPart.xml";
     std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRef = 3; // number of h-refinements
+    index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
     index_t numPlotPoints = 1000;
     real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
-    real_t meanVelocity = 0.;
+    real_t meanVelocity = 1.;
     bool subgrid = false;
     real_t densityFluid = 1.0e3;
     real_t densitySolid = 1.0e4;
@@ -108,8 +106,9 @@ int main(int argc, char* argv[])
     real_t meshStiff = 2.; // local stiffening for ALE
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the one-way fluid-structure interaction solver in 2D.");
+    gsCmdLine cmd("Testing the two-way fluid-structure interaction solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
+    cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
     cmd.addInt("p","plot","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
@@ -260,7 +259,7 @@ int main(int argc, char* argv[])
     gsStopwatch clock;
 
     //=============================================//
-                   // Warming up //
+                   // Initial condtions //
     //=============================================//
 
     // we will change Dirichlet DoFs for warming up, so we save them here for later
@@ -276,6 +275,7 @@ int main(int argc, char* argv[])
     nsTimeSolver.setFixedDofs(nsAssembler.allFixedDofs());
     nsTimeSolver.initialize();
 
+
     // plotting initial condition
     nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velocity,pressure);
     elAssembler.constructSolution(gsMatrix<>::Zero(elAssembler.numDofs(),1),displacement);
@@ -288,6 +288,10 @@ int main(int argc, char* argv[])
         plotDeformation(geoALE,ALE,"flappingBeam_FSI2_ALE",collectionALE,0);
     }
     validation(file,nsAssembler,0.,velocity,pressure,displacement);
+
+    //=============================================//
+                   // Warming up  //
+    //=============================================//
 
     clock.restart();
     index_t numWUS = index_t(warmUpTimeSpan/warmUpTimeStep);
@@ -308,6 +312,11 @@ int main(int argc, char* argv[])
         }
         validation(file,nsAssembler,(i+1)*warmUpTimeStep,velocity,pressure,displacement);
     }
+
+    //=============================================//
+                   // Calm down  //
+    //=============================================//
+
     index_t numCDS = 3;
     gsInfo << "Flow calm-down...\n";
     for (index_t i = 0; i < numCDS; ++i)
@@ -337,6 +346,8 @@ int main(int argc, char* argv[])
     alePatches.push_back(std::pair<index_t,index_t>(5,2));
 
     elTimeSolver.initialize();
+
+
     clock.restart();
     gsInfo << "FSI...\n";
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
@@ -356,26 +367,34 @@ int main(int argc, char* argv[])
 
         gsMultiPatch<> dispOldOld, dispNew,dispDiff;
         real_t omega = 0.1;
+        real_t resNorInit;
 
-        while (numIter < 1)
+        while (numIter < 4 && !converged)
         {
             // BEAM
             if (numIter > 0)
                 elTimeSolver.recoverState();
             elAssembler.constructSolution(elTimeSolver.displacementVector(),dispDiff);
             elTimeSolver.makeTimeStep(timeStep);
-            if (numIter == 0)
+            /*if (numIter == 0)
             {
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispOldOld);
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
             }
             else if (numIter == 1)
+            {
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
+                gsMatrix<> vecA, vecB;
+                formVector(dispOldOld,vecA);
+                formVector(displacement,vecB);
+                resNorInit = (vecB-vecA).norm();
+            }
             else
             {
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispNew);
-                aitken(dispOldOld,displacement,dispNew,omega,converged);
-            }
+                aitken(dispOldOld,displacement,dispNew,omega,converged,resNorInit);
+            }*/
+            elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
             dispDiff.patch(0).coefs() = displacement.patch(0).coefs() - dispDiff.patch(0).coefs();
 
             // ALE
@@ -406,7 +425,6 @@ int main(int argc, char* argv[])
             nsAssembler.patches().patch(3).coefs() += ALE.patch(0).coefs();
             nsAssembler.patches().patch(4).coefs() += ALE.patch(1).coefs();
             nsAssembler.patches().patch(5).coefs() += ALE.patch(2).coefs();
-
 
             // FLOW
             nsAssembler.setFixedDofs(3,boundary::south,velocityALE.patch(0).boundary(boundary::south)->coefs());

@@ -230,22 +230,7 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < index_t(warmUpTimeSpan/warmUpTimeStep); ++i)
     {
         bar.display(i+1,index_t(warmUpTimeSpan/warmUpTimeStep));
-        if (i < 7)
-        {
-            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i+1)/14))/2);
-            massAssembler.setFixedDofs(assembler.allFixedDofs());
-        }
-        else if (i < 14)
-        {
-            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI/2))/2);
-            massAssembler.setFixedDofs(assembler.allFixedDofs());
-        }
-        else
-        {
-            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(i-6)/14))/2);
-            massAssembler.setFixedDofs(assembler.allFixedDofs());
-        }
-        //assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
+        assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
         timeSolver.makeTimeStep(warmUpTimeStep);
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
         if (numPlotPoints > 0)
