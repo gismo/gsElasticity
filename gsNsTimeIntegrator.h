@@ -86,7 +86,7 @@ protected:
     gsSparseMatrix<T> m_matrix;
     /// RHS vector of the linear system to solve
     gsMatrix<T> m_rhs;
-    gsMatrix<T> oldResidual;
+    gsMatrix<T> constRHS;
 
     /// time step length
     T tStep, oldTimeStep;
