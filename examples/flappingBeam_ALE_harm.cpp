@@ -3,13 +3,14 @@
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
 ///
 /// There is no flow in the benchmark. The flow domain deformation is driven by a freely oscillating beam.
-/// The ALE mapping is computed using the linear elasticity method with Jacobian-based local stiffening.
+/// The ALE mapping is computed using the harmonic extension method with Jacobian-based local stiffening.
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
 #include <gsElasticity/gsMassAssembler.h>
+#include <gsElasticity/gsElPoissonAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
 
@@ -29,17 +30,15 @@ int main(int argc, char* argv[])
     real_t densitySolid = 1.0e3;
     real_t timeStep = 0.01;
     real_t timeSpan = 0.91;
-    real_t poissonsRatioMesh = 0.3;
     real_t stiffDegree = 2.3;
     bool stop = true;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the steady fluid-structure interaction solver in 2D.");
+    gsCmdLine cmd("Testing the ALE mapping construction in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications for the fluid",numUniRef);
     cmd.addInt("p","plot","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
-    cmd.addReal("m","mesh","Pois ratio for mesh",poissonsRatioMesh);
     cmd.addReal("l","load","Gravity loading acting on the beam",loading);
     cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
     cmd.addSwitch("b","break","Break the simulation if the mesh becomes locally inverted",stop);
@@ -76,7 +75,7 @@ int main(int argc, char* argv[])
 
     // source function, rhs
     gsConstantFunction<> gBeam(0.,loading*densitySolid,2);
-    gsConstantFunction<> gALE(0.,0.,2);
+    gsConstantFunction<> gALE(0.,2);
     // boundary conditions: beam
     gsBoundaryConditions<> bcInfoBeam;
     for (index_t d = 0; d < 2; ++d)
@@ -84,8 +83,7 @@ int main(int argc, char* argv[])
     // boundary conditions: flow mesh, set zero dirichlet on the entire boundary
     gsBoundaryConditions<> bcInfoALE;
     for (auto it = geoALE.bBegin(); it != geoALE.bEnd(); ++it)
-        for (index_t d = 0; d < 2; ++d)
-            bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+        bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -111,7 +109,7 @@ int main(int argc, char* argv[])
              // Setting output and auxilary //
     //=============================================//
 
-    gsMultiPatch<> displacement,ALE;
+    gsMultiPatch<> displacement,ALEXi,ALEEta;
     // isogeometric fields (geometry + solution)
     gsField<> displacementField(geoBeam,displacement);
     // creating a container to plot all fields to one Paraview file
@@ -173,32 +171,56 @@ int main(int argc, char* argv[])
         interfaceNew[1] = displacement.patch(0).boundary(boundary::south)->coefs();
         interfaceNew[2] = displacement.patch(0).boundary(boundary::east)->coefs();
 
-        // ALE
-        gsElasticityAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,gALE);
-        aleAssembler.options().setReal("PoissonsRatio",poissonsRatioMesh);
+        // ALE Xi direction
+        gsElPoissonAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,gALE);
         aleAssembler.options().setReal("LocalStiff",stiffDegree);
-        aleAssembler.setFixedDofs(3,boundary::south,interfaceNew[0]-interfaceNow[0]);
-        aleAssembler.setFixedDofs(4,boundary::north,interfaceNew[1]-interfaceNow[1]);
-        aleAssembler.setFixedDofs(5,boundary::west,interfaceNew[2]-interfaceNow[2]);
+        aleAssembler.setFixedDofs(3,boundary::south,interfaceNew[0].col(0)-interfaceNow[0].col(0));
+        aleAssembler.setFixedDofs(4,boundary::north,interfaceNew[1].col(0)-interfaceNow[1].col(0));
+        aleAssembler.setFixedDofs(5,boundary::west,interfaceNew[2].col(0)-interfaceNow[2].col(0));
+        aleAssembler.assemble();
+
+#ifdef GISMO_WITH_PARDISO
+        gsSparseSolver<>::PardisoLDLT solverALEXi(aleAssemblerXi.matrix());
+        gsVector<> solVector = solverALEXi.solve(aleAssemblerXi.rhs());
+#else
+        gsSparseSolver<>::SimplicialLDLT solverALEXi(aleAssembler.matrix());
+        gsVector<> solVectorXi = solverALEXi.solve(aleAssembler.rhs());
+#endif
+
+        // construct ALE update
+        gsMultiPatch<> aleUpdateXi;
+        aleAssembler.constructSolution(solVectorXi,aleUpdateXi);
+        if (i == 0)
+            aleAssembler.constructSolution(solVectorXi,ALEXi);
+
+        // ALE Eta direction
+        aleAssembler.setFixedDofs(3,boundary::south,interfaceNew[0].col(1)-interfaceNow[0].col(1));
+        aleAssembler.setFixedDofs(4,boundary::north,interfaceNew[1].col(1)-interfaceNow[1].col(1));
+        aleAssembler.setFixedDofs(5,boundary::west,interfaceNew[2].col(1)-interfaceNow[2].col(1));
         aleAssembler.assemble();
 #ifdef GISMO_WITH_PARDISO
         gsSparseSolver<>::PardisoLDLT solverALE(aleAssembler.matrix());
         gsVector<> solVector = solverALE.solve(aleAssembler.rhs());
 #else
-        gsSparseSolver<>::SimplicialLDLT solverALE(aleAssembler.matrix());
-        gsVector<> solVector = solverALE.solve(aleAssembler.rhs());
+        gsSparseSolver<>::SimplicialLDLT solverALEEta(aleAssembler.matrix());
+        gsVector<> solVectorEta = solverALEEta.solve(aleAssembler.rhs());
 #endif
         // construct ALE update
-        gsMultiPatch<> aleUpdate;
-        aleAssembler.constructSolution(solVector,aleAssembler.allFixedDofs(),aleUpdate);
+        gsMultiPatch<> aleUpdateEta;
+        aleAssembler.constructSolution(solVectorEta,aleUpdateEta);
         if (i == 0)
-            aleAssembler.constructSolution(solVector,aleAssembler.allFixedDofs(),ALE);
+            aleAssembler.constructSolution(solVectorEta,ALEEta);
+
         // apply new deformation to the ALE domain
         for (index_t p = 0; p < geoALE.nPatches(); ++p)
         {
             if (i > 0)
-                ALE.patch(p).coefs() += aleUpdate.patch(p).coefs();
-            geoALE.patch(p).coefs() += aleUpdate.patch(p).coefs();
+            {
+                ALEXi.patch(p).coefs() += aleUpdateXi.patch(p).coefs();
+                ALEEta.patch(p).coefs() += aleUpdateEta.patch(p).coefs();
+            }
+            geoALE.patch(p).coefs().col(0) += aleUpdateXi.patch(p).coefs();
+            geoALE.patch(p).coefs().col(1) += aleUpdateEta.patch(p).coefs();
         }
 
         interfaceNow = interfaceNew;
@@ -210,8 +232,11 @@ int main(int argc, char* argv[])
         }
 
         real_t aleNorm = 0.;
-        for (index_t p = 0; p < ALE.nPatches(); ++p)
-            aleNorm += pow(ALE.patch(p).coefs().norm(),2);
+        for (index_t p = 0; p < ALEXi.nPatches(); ++p)
+        {
+            aleNorm += pow(ALEXi.patch(p).coefs().norm(),2);
+            aleNorm += pow(ALEEta.patch(p).coefs().norm(),2);
+        }
 
         file << timeStep*(i+1) << " " << sqrt(aleNorm) << std::endl;
     }
