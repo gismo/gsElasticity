@@ -180,8 +180,8 @@ int main(int argc, char* argv[])
         aleAssembler.assemble();
 
 #ifdef GISMO_WITH_PARDISO
-        gsSparseSolver<>::PardisoLDLT solverALEXi(aleAssemblerXi.matrix());
-        gsVector<> solVector = solverALEXi.solve(aleAssemblerXi.rhs());
+        gsSparseSolver<>::PardisoLDLT solverALEXi(aleAssembler.matrix());
+        gsVector<> solVectorXi = solverALEXi.solve(aleAssembler.rhs());
 #else
         gsSparseSolver<>::SimplicialLDLT solverALEXi(aleAssembler.matrix());
         gsVector<> solVectorXi = solverALEXi.solve(aleAssembler.rhs());
@@ -199,8 +199,8 @@ int main(int argc, char* argv[])
         aleAssembler.setFixedDofs(5,boundary::west,interfaceNew[2].col(1)-interfaceNow[2].col(1));
         aleAssembler.assemble();
 #ifdef GISMO_WITH_PARDISO
-        gsSparseSolver<>::PardisoLDLT solverALE(aleAssembler.matrix());
-        gsVector<> solVector = solverALE.solve(aleAssembler.rhs());
+        gsSparseSolver<>::PardisoLDLT solverALEEta(aleAssembler.matrix());
+        gsVector<> solVectorEta = solverALEEta.solve(aleAssembler.rhs());
 #else
         gsSparseSolver<>::SimplicialLDLT solverALEEta(aleAssembler.matrix());
         gsVector<> solVectorEta = solverALEEta.solve(aleAssembler.rhs());

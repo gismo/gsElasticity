@@ -228,7 +228,7 @@ int main(int argc, char* argv[]){
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,0,numPlotPoints);
 
 
-    timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
+    timeSolver.options().setInt("Scheme",time_integration::implicit_linear);
     clock.restart();
     gsInfo << "Running the simulation with a coarse time step to compute an initial solution...\n";
     for (index_t i = 0; i < index_t(warmUpTimeSpan/warmUpTimeStep); ++i)
