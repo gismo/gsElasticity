@@ -72,18 +72,16 @@ void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix
     GISMO_ENSURE(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
                              + " does not belong to the Dirichlet boundary.");
 
-    short_t m_dim = m_pde_ptr->domain().targetDim();
+    short_t m_dim = ddofs.cols();
     gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
     GISMO_ENSURE(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
                  "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
-                 " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
-                 " x " + util::to_string(m_dim));
+                 ". Must be:" + util::to_string(localBIndices.rows()));
 
     for (short_t d = 0; d < m_dim; ++d )
     {
         gsMatrix<unsigned> globalIndices;
         m_system.mapColIndices(localBIndices, patch, globalIndices, d);
-
         for (index_t i = 0; i < globalIndices.rows(); ++i)
             m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
     }
