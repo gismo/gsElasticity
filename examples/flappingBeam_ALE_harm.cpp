@@ -109,7 +109,12 @@ int main(int argc, char* argv[])
              // Setting output and auxilary //
     //=============================================//
 
-    gsMultiPatch<> displacement,ALEXi,ALEEta;
+    gsMultiPatch<> displacement,ALE;
+    for (index_t p =0; p < geoALE.nPatches(); ++p)
+    {
+        ALE.addPatch(geoALE.patch(p).clone());
+        ALE.patch(p).coefs() *= 0;
+    }
     // isogeometric fields (geometry + solution)
     gsField<> displacementField(geoBeam,displacement);
     // creating a container to plot all fields to one Paraview file
@@ -151,12 +156,15 @@ int main(int argc, char* argv[])
                    // Coupled simulation //
     //=============================================//
 
+    gsElasticityAssembler<real_t> helpAss(geoALE,basisALE,bcInfoALE,gBeam);
+
     clock.restart();
     gsInfo << "Running...\n";
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
     {
         bar.display(i+1,index_t(timeSpan/timeStep));
-        index_t bad = checkGeometry(geoALE);
+//        index_t bad = checkGeometry(geoALE);
+        index_t bad = helpAss.checkSolution(ALE);
         if (bad != -1 && stop)
         {
             gsInfo << "\n Bad patch: " << bad << std::endl;
@@ -190,8 +198,6 @@ int main(int argc, char* argv[])
         // construct ALE update
         gsMultiPatch<> aleUpdateXi;
         aleAssembler.constructSolution(solVectorXi,aleUpdateXi);
-        if (i == 0)
-            aleAssembler.constructSolution(solVectorXi,ALEXi);
 
         // ALE Eta direction
         aleAssembler.setFixedDofs(3,boundary::south,interfaceNew[0].col(1)-interfaceNow[0].col(1));
@@ -208,19 +214,14 @@ int main(int argc, char* argv[])
         // construct ALE update
         gsMultiPatch<> aleUpdateEta;
         aleAssembler.constructSolution(solVectorEta,aleUpdateEta);
-        if (i == 0)
-            aleAssembler.constructSolution(solVectorEta,ALEEta);
 
         // apply new deformation to the ALE domain
         for (index_t p = 0; p < geoALE.nPatches(); ++p)
         {
-            if (i > 0)
-            {
-                ALEXi.patch(p).coefs() += aleUpdateXi.patch(p).coefs();
-                ALEEta.patch(p).coefs() += aleUpdateEta.patch(p).coefs();
-            }
-            geoALE.patch(p).coefs().col(0) += aleUpdateXi.patch(p).coefs();
-            geoALE.patch(p).coefs().col(1) += aleUpdateEta.patch(p).coefs();
+            ALE.patch(p).coefs().col(0) += aleUpdateXi.patch(p).coefs();
+            ALE.patch(p).coefs().col(1) += aleUpdateEta.patch(p).coefs();
+            //geoALE.patch(p).coefs().col(0) += aleUpdateXi.patch(p).coefs();
+            //geoALE.patch(p).coefs().col(1) += aleUpdateEta.patch(p).coefs();
         }
 
         interfaceNow = interfaceNew;
@@ -228,15 +229,13 @@ int main(int argc, char* argv[])
         if (numPlotPoints > 0)
         {
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,i+1,numPlotPoints);
-            plotGeometry(geoALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
+            //plotGeometry(geoALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
+            plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
         }
 
         real_t aleNorm = 0.;
-        for (index_t p = 0; p < ALEXi.nPatches(); ++p)
-        {
-            aleNorm += pow(ALEXi.patch(p).coefs().norm(),2);
-            aleNorm += pow(ALEEta.patch(p).coefs().norm(),2);
-        }
+        for (index_t p = 0; p < ALE.nPatches(); ++p)
+            aleNorm += pow(ALE.patch(p).coefs().norm(),2);
 
         file << timeStep*(i+1) << " " << sqrt(aleNorm) << std::endl;
     }
