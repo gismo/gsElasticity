@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
     real_t timeSpan = 0.91;
     real_t stiffDegree = 2.3;
     bool stop = true;
+    index_t type = 0;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the ALE mapping construction in 2D.");
@@ -42,6 +43,7 @@ int main(int argc, char* argv[])
     cmd.addReal("l","load","Gravity loading acting on the beam",loading);
     cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
     cmd.addSwitch("b","break","Break the simulation if the mesh becomes locally inverted",stop);
+    cmd.addInt("y","type","Type",type);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -157,14 +159,17 @@ int main(int argc, char* argv[])
     //=============================================//
 
     gsElasticityAssembler<real_t> helpAss(geoALE,basisALE,bcInfoALE,gBeam);
+    index_t bad;
 
     clock.restart();
     gsInfo << "Running...\n";
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
     {
         bar.display(i+1,index_t(timeSpan/timeStep));
-//        index_t bad = checkGeometry(geoALE);
-        index_t bad = helpAss.checkSolution(ALE);
+        if (type == 0)
+            bad = checkGeometry(geoALE);
+        else
+            bad = helpAss.checkSolution(ALE);
         if (bad != -1 && stop)
         {
             gsInfo << "\n Bad patch: " << bad << std::endl;
@@ -220,8 +225,11 @@ int main(int argc, char* argv[])
         {
             ALE.patch(p).coefs().col(0) += aleUpdateXi.patch(p).coefs();
             ALE.patch(p).coefs().col(1) += aleUpdateEta.patch(p).coefs();
-            //geoALE.patch(p).coefs().col(0) += aleUpdateXi.patch(p).coefs();
-            //geoALE.patch(p).coefs().col(1) += aleUpdateEta.patch(p).coefs();
+            if (type == 0)
+            {
+                geoALE.patch(p).coefs().col(0) += aleUpdateXi.patch(p).coefs();
+                geoALE.patch(p).coefs().col(1) += aleUpdateEta.patch(p).coefs();
+            }
         }
 
         interfaceNow = interfaceNew;
@@ -229,8 +237,10 @@ int main(int argc, char* argv[])
         if (numPlotPoints > 0)
         {
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,i+1,numPlotPoints);
-            //plotGeometry(geoALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
-            plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
+            if (type == 0)
+                plotGeometry(geoALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
+            else
+                plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
         }
 
         real_t aleNorm = 0.;
