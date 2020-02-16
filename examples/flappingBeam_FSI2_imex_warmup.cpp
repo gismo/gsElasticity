@@ -60,23 +60,24 @@ void formVector(const gsMultiPatch<> & disp, gsMatrix<> & vector)
 }
 
 
-void aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB, gsMultiPatch<> & dispC, real_t & omega,bool & converged, real_t & resNorInit)
+void aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB,gsMultiPatch<> & dispB2, gsMultiPatch<> & dispC, real_t & omega,bool & converged, real_t & resNorInit)
 {
-    gsMatrix<> vecA,vecB,vecC;
+    gsMatrix<> vecA,vecB,vecB2,vecC;
     formVector(dispA,vecA);
     formVector(dispB,vecB);
+    formVector(dispB2,vecB2);
     formVector(dispC,vecC);
 
 
-    omega = -1*omega*((vecB-vecA).transpose()*(vecC-vecA))(0,0)/((vecC-vecA).transpose()*(vecC-vecA))(0,0);
+    omega = -1*omega*((vecB2-vecA).transpose()*(vecC-vecB -vecB2+vecA))(0,0)/((vecC-vecB -vecB2+vecA).transpose()*(vecC-vecB -vecB2+vecA))(0,0);
     dispA.patch(0).coefs() = dispB.patch(0).coefs();
     dispB.patch(0).coefs() += omega*(dispC.patch(0).coefs()-dispB.patch(0).coefs());
+    dispB2.patch(0).coefs() = dispC.patch(0).coefs();
 
     real_t resnor = ((vecC-vecB)*omega).norm();
     gsInfo <<"Resnor abs " << resnor << ", resnor rel " << resnor/resNorInit << std::endl;
-    if (resnor < 1e-6 || resnor/resNorInit < 1e-6)
+    if (resnor < 1e-12 || resnor/resNorInit < 1e-6)
         converged = true;
-
 
     gsInfo << "Omega " << omega << std::endl;
 }
@@ -95,7 +96,6 @@ int main(int argc, char* argv[])
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
     real_t meanVelocity = 1.;
-    bool subgrid = false;
     real_t densityFluid = 1.0e3;
     real_t densitySolid = 1.0e4;
     real_t timeStep = 0.01;
@@ -104,6 +104,7 @@ int main(int argc, char* argv[])
     real_t warmUpTimeStep = 0.1;
     real_t meshPR = 0.4; // poisson ratio for ALE
     real_t meshStiff = 2.; // local stiffening for ALE
+    index_t numIter = 4;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the two-way fluid-structure interaction solver in 2D.");
@@ -114,6 +115,7 @@ int main(int argc, char* argv[])
     cmd.addReal("s","step","Time step",timeStep);
     cmd.addReal("m","mesh","Poisson's ratio for ALE",meshPR);
     cmd.addReal("j","stiff","Local stiffening for ALE",meshStiff);
+    cmd.addInt("i","iter","Num iters",numIter);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -358,32 +360,33 @@ int main(int argc, char* argv[])
         if (aleAssembler.checkSolution(ALE) != -1)
             break;
 
-        index_t numIter = 0;
+        index_t iter = 0;
         bool converged = false;
 
         elTimeSolver.saveState();
         aleNewton.saveState();
         nsTimeSolver.saveState();
 
-        gsMultiPatch<> dispOldOld, dispNew,dispDiff;
+        gsMultiPatch<> dispOldOld, dispNew,dispDiff, dispGuess;
         real_t omega = 0.1;
         real_t resNorInit;
 
-        while (numIter < 4 && !converged)
+        while (iter < numIter && !converged)
         {
             // BEAM
-            if (numIter > 0)
+            if (iter > 0)
                 elTimeSolver.recoverState();
             elAssembler.constructSolution(elTimeSolver.displacementVector(),dispDiff);
             elTimeSolver.makeTimeStep(timeStep);
-            /*if (numIter == 0)
+            if (iter == 0)
             {
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispOldOld);
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
             }
-            else if (numIter == 1)
+            else if (iter == 1)
             {
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
+                elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispGuess);
                 gsMatrix<> vecA, vecB;
                 formVector(dispOldOld,vecA);
                 formVector(displacement,vecB);
@@ -392,13 +395,13 @@ int main(int argc, char* argv[])
             else
             {
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispNew);
-                aitken(dispOldOld,displacement,dispNew,omega,converged,resNorInit);
-            }*/
-            elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
+                aitken(dispOldOld,displacement,dispGuess,dispNew,omega,converged,resNorInit);
+            }
+            //elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
             dispDiff.patch(0).coefs() = displacement.patch(0).coefs() - dispDiff.patch(0).coefs();
 
             // ALE
-            if (numIter > 0)
+            if (iter > 0)
                 aleNewton.recoverState();
             gsMultiPatch<> oldALE;
             aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),oldALE);
@@ -430,7 +433,7 @@ int main(int argc, char* argv[])
             nsAssembler.setFixedDofs(3,boundary::south,velocityALE.patch(0).boundary(boundary::south)->coefs());
             nsAssembler.setFixedDofs(4,boundary::north,velocityALE.patch(1).boundary(boundary::north)->coefs());
             nsAssembler.setFixedDofs(5,boundary::west,velocityALE.patch(2).boundary(boundary::west)->coefs());
-            if (numIter > 0)
+            if (iter > 0)
                 nsTimeSolver.recoverState();
             nsTimeSolver.makeTimeStepFSI2(timeStep,velocityALE,alePatches);
             nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velocity,pressure);
@@ -446,7 +449,7 @@ int main(int argc, char* argv[])
             gsInfo << "Drag: " << force.at(0) << std::endl;
             gsInfo << "Lift: " << force.at(1) << std::endl;
 
-            ++numIter;
+            ++iter;
         }
 
         if (numPlotPoints > 0)

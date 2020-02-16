@@ -52,7 +52,11 @@ void gsNsTimeIntegrator<T>::initialize()
     if (solVector.rows() != stiffAssembler.numDofs())
         solVector.setZero(stiffAssembler.numDofs(),1);
 
-    stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
+    if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
+        stiffAssembler.options().setInt("Assembly",ns_assembly::newton_next);
+    if (m_options.getInt("Scheme") == time_integration::implicit_linear)
+        stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
+
     stiffAssembler.assemble(solVector,m_ddof);
 
     oldSolVector = solVector;
@@ -188,6 +192,45 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     T theta = m_options.getReal("Theta");
     index_t numDofsVel = massAssembler.numDofs();
 
+    ALE = false;
+
+    constRHS = tStep*(1-theta)*stiffAssembler.rhs();
+    constRHS.middleRows(0,numDofsVel).noalias() -= tStep*(1-theta)*stiffAssembler.matrix().block(0,0,numDofsVel,numDofsVel)*solVector.middleRows(0,numDofsVel);
+    constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel);
+    constRHS.middleRows(0,numDofsVel).noalias() -= massAssembler.rhs();
+    massAssembler.setFixedDofs(stiffAssembler.allFixedDofs());
+    massAssembler.assemble();
+    constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.rhs();
+
+    gsIterative<T> solver(*this,solVector,m_ddof);
+    solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
+    solver.options().setInt("Solver",linear_solver::LU);
+    solver.options().setInt("IterType",iteration_type::next);
+    solver.options().setReal("AbsTol",m_options.getReal("AbsTol"));
+    solver.options().setReal("RelTol",m_options.getReal("RelTol"));
+    solver.solve();
+
+    solVector = solver.solution();
+    m_ddof = stiffAssembler.allFixedDofs();
+}
+
+template <class T>
+void gsNsTimeIntegrator<T>::makeTimeStepFSI3(T timeStep,gsMultiPatch<T> & velocityALE,
+                                             std::vector<std::pair<index_t,index_t> > & patches)
+{
+    tStep = timeStep;
+    stiffAssembler.options().setInt("Assembly",ns_assembly::newton_next);
+    T theta = m_options.getReal("Theta");
+    index_t numDofsVel = massAssembler.numDofs();
+
+    ALE = true;
+    aleVelocity.clear();
+    for (index_t p = 0; p < velocityALE.nPatches();++p)
+        aleVelocity.addPatch(velocityALE.patch(p).clone());
+    alePatches.clear();
+    for (auto it : patches)
+        alePatches.push_back(it);
+
     constRHS = tStep*(1-theta)*stiffAssembler.rhs();
     constRHS.middleRows(0,numDofsVel).noalias() -= tStep*(1-theta)*stiffAssembler.matrix().block(0,0,numDofsVel,numDofsVel)*solVector.middleRows(0,numDofsVel);
     constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel);
@@ -214,7 +257,16 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
                                      bool assembleMatrix)
 {
     T theta = m_options.getReal("Theta");
-    stiffAssembler.assemble(solutionVector,fixedDoFs,assembleMatrix);
+    if (!ALE)
+        stiffAssembler.assemble(solutionVector,fixedDoFs,assembleMatrix);
+    else
+    {
+        gsMultiPatch<T> velocity, pressure;
+        stiffAssembler.constructSolution(solutionVector,fixedDoFs,velocity,pressure);
+        for (auto &it : alePatches)
+            velocity.patch(it.first).coefs() -= aleVelocity.patch(it.second).coefs();
+        stiffAssembler.assemble(velocity,pressure);
+    }
 
     m_system.matrix() = tStep*stiffAssembler.matrix();
     index_t numDofsVel = massAssembler.numDofs();
@@ -249,7 +301,7 @@ void gsNsTimeIntegrator<T>::recoverState()
     massAssembler.setRHS(massRhsSaved);
     stiffAssembler.setMatrix(stiffMatrixSaved);
     stiffAssembler.setRHS(stiffRhsSaved);
-    ddofsSaved = m_ddof;
+    m_ddof = ddofsSaved;
 }
 
 

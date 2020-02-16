@@ -58,6 +58,9 @@ public:
     void makeTimeStepFSI2(T timeStep,gsMultiPatch<T> & velocityALE,
                           std::vector<std::pair<index_t,index_t> > & patches);
 
+    void makeTimeStepFSI3(T timeStep,gsMultiPatch<T> & velocityALE,
+                          std::vector<std::pair<index_t,index_t> > & patches);
+
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs,
@@ -103,6 +106,10 @@ protected:
     gsMatrix<T> stiffRhsSaved;
     gsSparseMatrix<T> stiffMatrixSaved;
     std::vector<gsMatrix<T> > ddofsSaved;
+
+    bool ALE;
+    gsMultiPatch<T> aleVelocity;
+    std::vector<std::pair<index_t,index_t> > alePatches;
 
 };
 
