@@ -61,10 +61,10 @@ void formResidual(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMatrix<
 }
 
 void aitkenRelaxation(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMatrix<> > & interfaceNow,
-                      std::vector<gsMatrix<> > & interfaceNew, real_t & omega)
+                      std::vector<gsMatrix<> > & interfaceGuess, std::vector<gsMatrix<> > & interfaceNew, real_t & omega)
 {
     gsMatrix<> residualOld,residualNew;
-    formResidual(interfaceOld,interfaceNow,residualOld);
+    formResidual(interfaceOld,interfaceGuess,residualOld);
     formResidual(interfaceNow,interfaceNew,residualNew);
 
     omega = -1.*omega*(residualOld.transpose()*(residualNew-residualOld))(0,0) /
@@ -73,6 +73,7 @@ void aitkenRelaxation(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMat
     for (index_t i = 0; i < index_t(interfaceOld.size()); ++i)
     {
         interfaceOld[i] = interfaceNow[i];
+        interfaceGuess[i] = interfaceNew[i];
         interfaceNow[i] += omega*(interfaceNew[i]-interfaceNow[i]);
     }
 }
@@ -106,8 +107,8 @@ int main(int argc, char* argv[]){
     bool subgrid = false;
     real_t densityFluid = 1000.;
     real_t densitySolid = 1000.;
-    real_t absTol = 1e-6;
-    real_t relTol = 1e-6;
+    real_t absTol = 1e-10;
+    real_t relTol = 1e-10;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
@@ -282,7 +283,7 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     // containers for interface displacement DoFs
-    std::vector<gsMatrix<> > interfaceOld, interfaceNow, interfaceNew;
+    std::vector<gsMatrix<> > interfaceOld, interfaceNow, interfaceNew, interfaceGuess;
     // push zeros to the old interface
     interfaceOld.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
     interfaceOld.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
@@ -323,9 +324,13 @@ int main(int argc, char* argv[]){
         if (iter == 0)
         {
             interfaceNow.clear();
+            interfaceGuess.clear();
             interfaceNow.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
             interfaceNow.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
             interfaceNow.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
+            interfaceGuess.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
+            interfaceGuess.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
+            interfaceGuess.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
             omega = 1.;
         }
         else
@@ -334,7 +339,7 @@ int main(int argc, char* argv[]){
             interfaceNew.push_back(displacement.patch(0).boundary(boundary::north)->coefs());
             interfaceNew.push_back(displacement.patch(0).boundary(boundary::south)->coefs());
             interfaceNew.push_back(displacement.patch(0).boundary(boundary::east)->coefs());
-            aitkenRelaxation(interfaceOld,interfaceNow,interfaceNew,omega);
+            aitkenRelaxation(interfaceOld,interfaceNow,interfaceGuess,interfaceNew,omega);
         }
 
         // 4. compute ALE displacement

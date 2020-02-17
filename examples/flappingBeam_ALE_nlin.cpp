@@ -54,8 +54,8 @@ int main(int argc, char* argv[])
     gsReadFile<>(filenameALE, geoFlowFull);
     // this is a copy of the flow domain with only the first 6 patches.
     gsMultiPatch<> geoALE;
-    for (index_t p = 0; p < 6; ++p)
-        geoALE.addPatch(geoFlowFull.patch(p).clone());
+    for (index_t p = 0; p < 3; ++p)
+        geoALE.addPatch(geoFlowFull.patch(p+3).clone());
     geoALE.computeTopology();
 
     // creating bases
@@ -146,9 +146,9 @@ int main(int argc, char* argv[])
     }
 
     std::vector<gsMatrix<> > interfaceNow, interfaceNew;
-    interfaceNow.push_back(ALE.patch(3).boundary(boundary::south)->coefs());
-    interfaceNow.push_back(ALE.patch(4).boundary(boundary::north)->coefs());
-    interfaceNow.push_back(ALE.patch(5).boundary(boundary::west)->coefs());
+    interfaceNow.push_back(ALE.patch(0).boundary(boundary::south)->coefs());
+    interfaceNow.push_back(ALE.patch(1).boundary(boundary::north)->coefs());
+    interfaceNow.push_back(ALE.patch(2).boundary(boundary::west)->coefs());
     interfaceNew = interfaceNow;
 
     elTimeSolver.initialize();
@@ -157,34 +157,34 @@ int main(int argc, char* argv[])
                    // Coupled simulation //
     //=============================================//
 
-    clock.restart();
     gsInfo << "Running...\n";
+    real_t timeALE = 0.;
+    real_t timeBeam = 0.;
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
     {
         bar.display(i+1,index_t(timeSpan/timeStep));
-        index_t bad = aleAssembler.checkSolution(ALE);
-        if (bad != -1)
-        {
-            gsInfo << "\n Bad patch: " << bad << std::endl;
-            break;
-        }
-
         // BEAM
+        clock.restart();
+
         elTimeSolver.makeTimeStep(timeStep);
         elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
+        timeBeam += clock.stop();
 
         interfaceNew[0] = displacement.patch(0).boundary(boundary::north)->coefs();
         interfaceNew[1] = displacement.patch(0).boundary(boundary::south)->coefs();
         interfaceNew[2] = displacement.patch(0).boundary(boundary::east)->coefs();
 
         // ALE
-        aleAssembler.setFixedDofs(3,boundary::south,interfaceNew[0]-interfaceNow[0]);
-        aleAssembler.setFixedDofs(4,boundary::north,interfaceNew[1]-interfaceNow[1]);
-        aleAssembler.setFixedDofs(5,boundary::west,interfaceNew[2]-interfaceNow[2]);
+        clock.restart();
+        aleAssembler.setFixedDofs(0,boundary::south,interfaceNew[0]-interfaceNow[0]);
+        aleAssembler.setFixedDofs(1,boundary::north,interfaceNew[1]-interfaceNow[1]);
+        aleAssembler.setFixedDofs(2,boundary::west,interfaceNew[2]-interfaceNow[2]);
         aleNewton.reset();
         aleNewton.solve();
         // construct ALE
         aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),ALE);
+        index_t bad = aleAssembler.checkSolution(ALE);
+        timeALE += clock.stop();
 
         interfaceNow = interfaceNew;
 
@@ -199,9 +199,16 @@ int main(int argc, char* argv[])
             aleNorm += pow(ALE.patch(p).coefs().norm(),2);
 
         file << timeStep*(i+1) << " " << sqrt(aleNorm) << std::endl;
+
+        if (bad != -1)
+        {
+            gsInfo << "\n Bad patch: " << bad << std::endl;
+            break;
+        }
+
     }
 
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
+    gsInfo << "ALE time: " << timeALE << "s, beam time: " << timeBeam << "s.\n";
     //=============================================//
                    // Final touches //
     //=============================================//

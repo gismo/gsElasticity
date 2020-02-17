@@ -297,8 +297,10 @@ int main(int argc, char* argv[])
 
     elTimeSolver.initialize();
 
+    real_t timeALE = 0.;
+    real_t timeFlow = 0.;
+    real_t timeBeam = 0.;
 
-    clock.restart();
     gsInfo << "FSI...\n";
     index_t bad;
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
@@ -334,6 +336,8 @@ int main(int argc, char* argv[])
         while (iter < numIter && !converged)
         {
             // BEAM
+            clock.restart();
+
             if (iter > 0)
                 elTimeSolver.recoverState();
             elAssembler.constructSolution(elTimeSolver.displacementVector(),dispDiff);
@@ -359,7 +363,11 @@ int main(int argc, char* argv[])
             }
             //elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
             dispDiff.patch(0).coefs() = displacement.patch(0).coefs() - dispDiff.patch(0).coefs();
+            timeBeam += clock.stop();
+
             // ALE
+            clock.restart();
+
             // undo last ALE
             if (iter > 0)
                 for (index_t p = 0; p < 3; ++p)
@@ -420,8 +428,12 @@ int main(int argc, char* argv[])
                 velocityALE.patch(p).coefs().col(0) = xiUpdate.patch(p).coefs()/timeStep;
                 velocityALE.patch(p).coefs().col(1) = etaUpdate.patch(p).coefs()/timeStep;
             }
+            timeALE += clock.stop();
+
 
             // FLOW
+            clock.restart();
+
             nsAssembler.setFixedDofs(3,boundary::south,velocityALE.patch(0).boundary(boundary::south)->coefs());
             nsAssembler.setFixedDofs(4,boundary::north,velocityALE.patch(1).boundary(boundary::north)->coefs());
             nsAssembler.setFixedDofs(5,boundary::west,velocityALE.patch(2).boundary(boundary::west)->coefs());
@@ -429,6 +441,7 @@ int main(int argc, char* argv[])
                 nsTimeSolver.recoverState();
             nsTimeSolver.makeTimeStepFSI2(timeStep,velocityALE,alePatches);
             nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velocity,pressure);
+            timeFlow += clock.stop();
 
             std::vector<std::pair<index_t, boxSide> > bdrySides;
             bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
@@ -454,7 +467,7 @@ int main(int argc, char* argv[])
         validation(file,nsAssembler,(i+1)*timeStep,velocity,pressure,displacement);
     }
 
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
+    gsInfo << "Time ALE: " << timeALE << "s, time flow: " << timeFlow << "s, time beam: " << timeBeam << "s.\n";
     //=============================================//
                    // Final touches //
     //=============================================//

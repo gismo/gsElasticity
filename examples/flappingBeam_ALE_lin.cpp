@@ -58,8 +58,8 @@ int main(int argc, char* argv[])
     gsReadFile<>(filenameALE, geoFlowFull);
     // this is a copy of the flow domain with only the first 6 patches.
     gsMultiPatch<> geoALE;
-    for (index_t p = 0; p < 6; ++p)
-        geoALE.addPatch(geoFlowFull.patch(p).clone());
+    for (index_t p = 0; p < 3; ++p)
+        geoALE.addPatch(geoFlowFull.patch(p+3).clone());
     geoALE.computeTopology();
 
     // creating bases
@@ -157,26 +157,21 @@ int main(int argc, char* argv[])
     gsElasticityAssembler<real_t> helpAss(geoALE,basisALE,bcInfoALE,gALE);
     helpAss.constructSolution(gsMatrix<>::Zero(helpAss.numDofs(),1),helpAss.allFixedDofs(),ALE);
 
-    clock.restart();
+    real_t timeALE = 0.;
+    real_t timeBeam = 0.;
     gsInfo << "Running...\n";
     index_t bad;
     for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
     {
         bar.display(i+1,index_t(timeSpan/timeStep));
-        if (type == 0)
-            bad = checkGeometry(geoALE);
-        else
-            bad = helpAss.checkSolution(ALE);
-        if (bad != -1 && stop)
-        {
-            gsInfo << "\n Bad patch: " << bad << std::endl;
-            break;
-        }
 
         // BEAM
+        clock.restart();
         elTimeSolver.makeTimeStep(timeStep);
         elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
+        timeBeam += clock.stop();
 
+        clock.restart();
         interfaceNew[0] = displacement.patch(0).boundary(boundary::north)->coefs();
         interfaceNew[1] = displacement.patch(0).boundary(boundary::south)->coefs();
         interfaceNew[2] = displacement.patch(0).boundary(boundary::east)->coefs();
@@ -185,9 +180,9 @@ int main(int argc, char* argv[])
         gsElasticityAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,gALE);
         aleAssembler.options().setReal("PoissonsRatio",poissonsRatioMesh);
         aleAssembler.options().setReal("LocalStiff",stiffDegree);
-        aleAssembler.setFixedDofs(3,boundary::south,interfaceNew[0]-interfaceNow[0]);
-        aleAssembler.setFixedDofs(4,boundary::north,interfaceNew[1]-interfaceNow[1]);
-        aleAssembler.setFixedDofs(5,boundary::west,interfaceNew[2]-interfaceNow[2]);
+        aleAssembler.setFixedDofs(0,boundary::south,interfaceNew[0]-interfaceNow[0]);
+        aleAssembler.setFixedDofs(1,boundary::north,interfaceNew[1]-interfaceNow[1]);
+        aleAssembler.setFixedDofs(2,boundary::west,interfaceNew[2]-interfaceNow[2]);
         aleAssembler.assemble();
 #ifdef GISMO_WITH_PARDISO
         gsSparseSolver<>::PardisoLDLT solverALE(aleAssembler.matrix());
@@ -206,8 +201,14 @@ int main(int argc, char* argv[])
             if (type == 0)
                 geoALE.patch(p).coefs() += aleUpdate.patch(p).coefs();
         }
-
+        if (type == 0)
+            bad = checkGeometry(geoALE);
+        else
+            bad = helpAss.checkSolution(ALE);
         interfaceNow = interfaceNew;
+
+        timeALE += clock.stop();
+
 
         if (numPlotPoints > 0)
         {
@@ -223,9 +224,16 @@ int main(int argc, char* argv[])
             aleNorm += pow(ALE.patch(p).coefs().norm(),2);
 
         file << timeStep*(i+1) << " " << sqrt(aleNorm) << std::endl;
+
+        if (bad != -1 && stop)
+        {
+            gsInfo << "\n Bad patch: " << bad << std::endl;
+            break;
+        }
+
     }
 
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
+    gsInfo << "ALE time: " << timeALE << "s, beam time: " << timeBeam << "s.\n";
     //=============================================//
                    // Final touches //
     //=============================================//
