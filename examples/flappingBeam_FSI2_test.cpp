@@ -74,7 +74,7 @@ void aitkenRelaxation(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMat
     omega = -1.*omega*(residualOld.transpose()*(residualNew-residualOld))(0,0) /
             pow((residualNew-residualOld).norm(),2);
 
-    for (index_t i = 0; i < interfaceOld.size(); ++i)
+    for (size_t i = 0; i < interfaceOld.size(); ++i)
     {
         interfaceOld[i] = interfaceNow[i];
         interfaceNow[i] += omega*(interfaceNew[i]-interfaceNow[i]);
@@ -106,11 +106,11 @@ int main(int argc, char* argv[])
     real_t viscosity = 0.001;
     real_t meanVelocity = 1;
     bool subgrid = true;
-    bool supg = false;
+    //bool supg = false;
     real_t densityFluid = 1.0e3;
     real_t densitySolid = 1.0e4;
-    real_t absTol = 1e-6;
-    real_t relTol = 1e-6;
+    //real_t absTol = 1e-6;
+    //real_t relTol = 1e-6;
     real_t timeStep = 0.001;
     real_t timeSpan = 5.;
     real_t warmUpTimeSpan = 3.;

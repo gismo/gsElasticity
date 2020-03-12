@@ -73,7 +73,7 @@ void aitkenRelaxation(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMat
     omega = -1.*omega*(residualOld.transpose()*(residualNew-residualOld))(0,0) /
             pow((residualNew-residualOld).norm(),2);
 
-    for (index_t i = 0; i < interfaceOld.size(); ++i)
+    for (size_t i = 0; i != interfaceOld.size(); ++i)
     {
         interfaceOld[i] = interfaceNow[i];
         interfaceNow[i] += omega*(interfaceNew[i]-interfaceNow[i]);
@@ -371,7 +371,7 @@ int main(int argc, char* argv[])
         {
             if (iter > 0)
             {
-                /*for (index_t p = 0; p < 3; ++p)
+                for (index_t p = 0; p < 3; ++p)
                 {
                     nsAssembler.patches().patch(p+3).coefs() -= updateALE.patch(p).coefs()*timeStep;
                     ALE.patch(p).coefs() -= updateALE.patch(p).coefs()*timeStep;

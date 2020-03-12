@@ -44,8 +44,8 @@ public:
           velocity(velocity_),
           pressure(pressure_),
           velALE(ALEvelocity),
-          patchesALE(alepatches),
           ALE(false),
+          patchesALE(alepatches),
           assembleMatrix(assembleMatrix_) {}
 
 
@@ -115,7 +115,7 @@ public:
         // evaluate pressure grads
         if (supg)
             pressure.patch(patch).deriv_into(quNodes,pressureGrads);
-        for (index_t p = 0; p < patchesALE.size(); ++p)
+        for (size_t p = 0; p < patchesALE.size(); ++p)
             if (patchesALE[p].first == patch)
             {
                 mdALE.flags = NEED_VALUE;
