@@ -16,7 +16,8 @@
 using namespace gismo;
 
 void validation(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler, real_t time,
-                const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure,const gsMultiPatch<> & displacement)
+                const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure,const gsMultiPatch<> & displacement,
+                const gsMultiPatch<> & ALE, real_t timeAle, real_t timeFlow, real_t timeBeam)
 {
     // computing force acting on the surface of the cylinder
     std::vector<std::pair<index_t, boxSide> > bdrySides;
@@ -35,8 +36,13 @@ void validation(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler, re
     vel << 0.,0.5;
     vel = velocity.patch(5).eval(vel);
 
+    real_t aleNorm = 0.;
+    for (index_t p = 0; p < ALE.nPatches(); ++p)
+        aleNorm += pow(ALE.patch(p).coefs().norm(),2);
+
     ofs << time << " " << force(0,0) << " " << force(1,0) << " "
-        << disp(0,0) << " " << disp(1,0) << " " << vel(0,0) << " " << vel(1,0) << std::endl;
+        << disp(0,0) << " " << disp(1,0) << " " << vel(0,0) << " " << vel(1,0) << " " << sqrt(aleNorm) << " "
+        << timeAle << " " << timeFlow << " " << timeBeam << " " << timeAle+timeBeam+timeFlow << std::endl;
 }
 
 void formVector(const gsMultiPatch<> & disp, gsMatrix<> & vector)
@@ -91,7 +97,7 @@ int main(int argc, char* argv[])
     std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
-    index_t numPlotPoints = 1000;
+    index_t numPlotPoints = 0.;
     real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t viscosity = 0.001;
@@ -99,11 +105,13 @@ int main(int argc, char* argv[])
     real_t densityFluid = 1.0e3;
     real_t densitySolid = 1.0e4;
     real_t timeStep = 0.01;
-    real_t timeSpan = 1.;
+    real_t timeSpan = 15.;
     real_t meshPR = 0.4; // poisson ratio for ALE
-    real_t meshStiff = 2.; // local stiffening for ALE
-    index_t numIter = 4;
+    real_t meshStiff = 2.5; // local stiffening for ALE
+    index_t numIter = 10;
     index_t type = 0;
+    real_t thetaF = 0.5;
+    real_t thetaS = 1.;
 
 
     // minimalistic user interface for terminal
@@ -117,6 +125,8 @@ int main(int argc, char* argv[])
     cmd.addReal("j","stiff","Local stiffening for ALE",meshStiff);
     cmd.addInt("i","iter","Num iters",numIter);
     cmd.addInt("y","type","Type",type);
+    cmd.addReal("a","thetaA","Time integration parameter [0-explicit,1-implicit for flow]",thetaF);
+    cmd.addReal("b","thetaB","Time integration parameter [0-explicit,1-implicit for solid]",thetaS);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -210,6 +220,7 @@ int main(int argc, char* argv[])
     nsMassAssembler.options().setReal("Density",densityFluid);
     gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler);
     nsTimeSolver.options().setInt("Scheme",time_integration::implicit_linear);
+    nsTimeSolver.options().setReal("Theta",thetaF);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
     // elasticity solver: beam
     gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
@@ -220,6 +231,8 @@ int main(int argc, char* argv[])
     elMassAssembler.options().setReal("Density",densitySolid);
     gsElTimeIntegrator<real_t> elTimeSolver(elAssembler,elMassAssembler);
     elTimeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
+    elTimeSolver.options().setReal("Beta",thetaS/2);
+    elTimeSolver.options().setReal("Gamma",thetaS);
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
     // elasticity assembler: flow mesh
     gsElasticityAssembler<real_t> baseAssembler(geoALE,basisALE,bcInfoALE,g);
@@ -283,7 +296,7 @@ int main(int argc, char* argv[])
         //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSI2_ALE",collectionALE,0,numPlotPoints);
         plotDeformation(geoALE,ALE,"flappingBeam_FSI2_ALE",collectionALE,0);
     }
-    validation(file,nsAssembler,0.,velocity,pressure,displacement);
+    validation(file,nsAssembler,0.,velocity,pressure,displacement,ALE,0.,0.,0.);
 
     //=============================================//
                    // Coupled simulation //
@@ -417,6 +430,7 @@ int main(int argc, char* argv[])
                 nsTimeSolver.recoverState();
             nsTimeSolver.makeTimeStepFSI2(timeStep,velocityALE,alePatches);
             nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velocity,pressure);
+            timeFlow += clock.stop();
 
             std::vector<std::pair<index_t, boxSide> > bdrySides;
             bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
@@ -439,7 +453,7 @@ int main(int argc, char* argv[])
             //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSI2_ALE",collectionALE,i+1,numPlotPoints);
             plotDeformation(geoALE,ALE,"flappingBeam_FSI2_ALE",collectionALE,i+1);
         }
-        validation(file,nsAssembler,(i+1)*timeStep,velocity,pressure,displacement);
+        validation(file,nsAssembler,(i+1)*timeStep,velocity,pressure,displacement,ALE,timeALE,timeFlow,timeBeam);
     }
 
     gsInfo << "Time ALE: " << timeALE << "s, time flow: " << timeFlow << "s, time beam: " << timeBeam << "s.\n";

@@ -74,6 +74,7 @@ public:
     void reset();
     /// set all fixed degrees of freedom
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
+    index_t numberIterations() const {return numIterations;}
     void setSolutionVector(const gsMatrix<T> & solutionVector) { solVector = solutionVector; }
     /// save solver state
     void saveState();

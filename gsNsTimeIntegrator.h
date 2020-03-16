@@ -80,6 +80,8 @@ public:
     /// recover solver state from saved state
     void recoverState();
 
+    index_t numberIterations() const { return numIters;}
+
 protected:
     /// assembler object that generates the static system
     gsNsAssembler<T> & stiffAssembler;
@@ -110,6 +112,8 @@ protected:
     bool ALE;
     gsMultiPatch<T> aleVelocity;
     std::vector<std::pair<index_t,index_t> > alePatches;
+
+    index_t numIters = 1;
 
 };
 

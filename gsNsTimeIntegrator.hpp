@@ -125,6 +125,9 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     gsSparseSolver<>::LU solver(m_system.matrix());
     solVector = solver.solve(m_system.rhs());
 #endif
+
+
+    numIters = 1;
 }
 
 template <class T>
@@ -183,6 +186,9 @@ void gsNsTimeIntegrator<T>::makeTimeStepFSI2(T timeStep,gsMultiPatch<T> & veloci
     gsSparseSolver<>::LU solver(m_system.matrix());
     solVector = solver.solve(m_system.rhs());
 #endif
+
+
+    numIters = 1;
 }
 
 template <class T>
@@ -209,6 +215,8 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     solver.options().setReal("AbsTol",m_options.getReal("AbsTol"));
     solver.options().setReal("RelTol",m_options.getReal("RelTol"));
     solver.solve();
+
+    numIters = solver.numberIterations();
 
     solVector = solver.solution();
     m_ddof = stiffAssembler.allFixedDofs();
@@ -246,6 +254,9 @@ void gsNsTimeIntegrator<T>::makeTimeStepFSI3(T timeStep,gsMultiPatch<T> & veloci
     solver.options().setReal("AbsTol",m_options.getReal("AbsTol"));
     solver.options().setReal("RelTol",m_options.getReal("RelTol"));
     solver.solve();
+
+
+    numIters = solver.numberIterations();
 
     solVector = solver.solution();
     m_ddof = stiffAssembler.allFixedDofs();
