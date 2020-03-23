@@ -35,7 +35,11 @@ public:
     /// constructor method. requires a gsNsAssembler for construction of the static linear system
     /// and a gsMassAssembler for the mass matrix
     gsNsTimeIntegrator(gsNsAssembler<T> & stiffAssembler_,
-                       gsMassAssembler<T> & massAssembler_);
+                       gsMassAssembler<T> & massAssembler_,
+                       gsMultiPatch<T> * ALEvelocity = nullptr,
+                       std::vector<std::pair<index_t,index_t> > * ALEpatches = nullptr);
+
+
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -49,17 +53,7 @@ public:
     /// @brief Initialize the solver; execute before computing any time steps
     void initialize();
     /// make a time step according to a chosen scheme
-    void makeTimeStep(T timeStep);
-    /// make a IMEX time step in ALE formulation
-    void makeTimeStepFSI(T timeStep,gsMatrix<T> & solutionVector, gsMatrix<T> & solutionVectorOld,
-                         gsMultiPatch<T> & velocityALE,
-                         std::vector<std::pair<index_t,index_t> > & patches,
-                         gsSparseMatrix<T> & A_n, gsMatrix<T> & rhs_n);
-    void makeTimeStepFSI2(T timeStep,gsMultiPatch<T> & velocityALE,
-                          std::vector<std::pair<index_t,index_t> > & patches);
-
-    void makeTimeStepFSI3(T timeStep,gsMultiPatch<T> & velocityALE,
-                          std::vector<std::pair<index_t,index_t> > & patches);
+    void makeTimeStep(T timeStep, bool ALE = false);
 
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
@@ -109,11 +103,14 @@ protected:
     gsSparseMatrix<T> stiffMatrixSaved;
     std::vector<gsMatrix<T> > ddofsSaved;
 
-    bool ALE;
-    gsMultiPatch<T> aleVelocity;
-    std::vector<std::pair<index_t,index_t> > alePatches;
+    bool flagALE;
 
-    index_t numIters = 1;
+    index_t numIters;
+    /// initialization flag
+    bool initialized = false;
+    gsMultiPatch<T> * velocityALE;
+    std::vector<std::pair<index_t,index_t> > * patchesALE;
+
 
 };
 

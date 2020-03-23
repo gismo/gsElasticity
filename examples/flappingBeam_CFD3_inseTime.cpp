@@ -46,7 +46,7 @@ void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler,
               const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure,
               real_t simTime, real_t compTime, index_t numIters)
 {
-    // computing force acting on the surface of the cylinder
+    // computing force acting on the surface of the submerged structure
     std::vector<std::pair<index_t, boxSide> > bdrySides;
     bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
     bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
@@ -80,15 +80,18 @@ int main(int argc, char* argv[]){
     real_t viscosity = 0.001; // kinematic viscosity
     real_t meanVelocity = 2; // inflow velocity
     real_t density = 1.0e3;
+    // space discretization
     index_t numUniRef = 3;
     index_t numDegElev = 0;
     index_t numBLRef = 1;
     bool subgridOrTaylorHood = false;
+    // time integration
     real_t timeSpan = 10;
     real_t timeStep = 0.01;
     real_t theta = 0.5;
     bool imexOrNewton = false;
     bool warmUp = false;
+    // output
     index_t numPlotPoints = 900;
 
     // minimalistic user interface for terminal
@@ -104,9 +107,11 @@ int main(int argc, char* argv[]){
     cmd.addSwitch("w","warmup","Use large time steps during the first 2 seconds",warmUp);
     cmd.addInt("p","points","Number of sampling points per patch for Paraview (0 = no plotting)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    gsInfo << "Using " << (subgridOrTaylorHood ? "Taylor-Hood " : "subgrid ") << "mixed elements with the "
+           << (imexOrNewton ? "Newton " : "IMEX ") << "time integration scheme.\n";
 
     //=============================================//
-                  // Setting solver //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -129,15 +134,13 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < numBLRef; ++i)
         refineBoundaryLayer(basisVelocity,basisPressure);
     if (!subgridOrTaylorHood)
-    {
-        gsInfo << "Using subgrid mixed element.\n";
         basisVelocity.uniformRefine();
-    }
     else
-    {
-        gsInfo << "Using Taylor-Hood mixed element.\n";
         basisVelocity.degreeElevate();
-    }
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
     gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
@@ -164,6 +167,10 @@ int main(int argc, char* argv[]){
 
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
+
+    //=============================================//
+          // Setting assemblers and solvers //
+    //=============================================//
 
     // creating stiffness assembler
     gsNsAssembler<real_t> assembler(geometry,basisVelocity,basisPressure,bcInfo,g);
@@ -200,7 +207,7 @@ int main(int argc, char* argv[]){
     logFile.open("flappingBeam_CFD3.txt");
 
     gsProgressBar bar;
-    gsStopwatch clock;
+    gsStopwatch iterClock, totalClock;
 
     //=============================================//
                    // Initial conditions //
@@ -209,18 +216,15 @@ int main(int argc, char* argv[]){
     // I change the Dirichlet DoFs for warming up, so I save them here for later
     gsMatrix<> inflowDDoFs;
     assembler.getFixedDofs(0,boundary::west,inflowDDoFs);
-
-    // set all Dirichlet DoFs to zero
     assembler.homogenizeFixedDofs(-1);
-    gsMatrix<> solVector = gsMatrix<>::Zero(assembler.numDofs(),1);
 
     // set initial velocity: zero free and fixed DoFs
-    timeSolver.setSolutionVector(solVector);
+    timeSolver.setSolutionVector(gsMatrix<>::Zero(assembler.numDofs(),1));
     timeSolver.setFixedDofs(assembler.allFixedDofs());
     timeSolver.initialize();
 
     // consruct and plot initial velocity
-    assembler.constructSolution(solVector,timeSolver.allFixedDofs(),velocity,pressure);
+    assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
     writeLog(logFile,assembler,velocity,pressure,0.,0.,0);
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,0,numPlotPoints);
@@ -234,10 +238,11 @@ int main(int argc, char* argv[]){
     real_t compTime = 0.;
 
     gsInfo << "Running the simulation...\n";
+    totalClock.restart();
     while (simTime < timeSpan)
     {
         bar.display(simTime/timeSpan);
-        clock.restart();
+        iterClock.restart();
 
         // change time step for the initial warm-up phase
         real_t tStep = (warmUp && simTime < 2.) ? 0.1 : timeStep;
@@ -246,12 +251,12 @@ int main(int argc, char* argv[]){
             assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(simTime+tStep)/2.))/2);
 
         timeSolver.makeTimeStep(tStep);
-        // construct solution; timeSolver already known the new Dirichlet BC
+        // construct solution; timeSolver already knows the new Dirichlet BC
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
 
         simTime += tStep;
         numTimeStep++;
-        compTime += clock.stop();
+        compTime += iterClock.stop();
 
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,numTimeStep,numPlotPoints);
@@ -262,7 +267,7 @@ int main(int argc, char* argv[]){
                 // Final touches //
     //=============================================//
 
-    gsInfo << "Simulation complete in " << compTime << "s.\n";
+    gsInfo << "Simulation time: " + secToHMS(compTime) << " (total time: " + secToHMS(totalClock.stop()) + ")\n";
 
     if (numPlotPoints > 0)
     {

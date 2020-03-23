@@ -62,6 +62,8 @@ public:
     /// recover solver state from saved state
     void recoverState();
 
+    index_t numberIterations() const { return numIters;}
+
 protected:
     /// time integraton schemes
     gsMatrix<T> implicitLinear();
@@ -102,6 +104,8 @@ protected:
     gsMatrix<T> velVecSaved;
     gsMatrix<T> accVecSaved;
     std::vector<gsMatrix<T> > ddofsSaved;
+
+    index_t numIters;
 };
 
 }

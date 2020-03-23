@@ -50,6 +50,9 @@ public:
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
                           bool assembleMatrix = true) {assemble(assembleMatrix);}
 
+    /// @brief Eliminates new Dirichelt degrees of fredom
+    virtual void eliminateFixedDofs();
+
 protected:
 
     /// Dimension of the problem
@@ -61,6 +64,8 @@ protected:
     using Base::m_options;
     using Base::m_system;
     using Base::m_ddof;
+    // elimination matrix to eliminate Dirichlet degrees of freedom without reassembling the main matrix
+    gsSparseMatrix<T> eliminationMatrix;
 };
 
 } // namespace gismo ends

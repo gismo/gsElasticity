@@ -80,14 +80,46 @@ void gsMassAssembler<T>::refresh()
 template<class T>
 void gsMassAssembler<T>::assemble(bool assembleMatrix)
 {
+    // allocate space for the linear system
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
     m_system.rhs().setZero(Base::numDofs(),1);
 
-    gsVisitorMass<T> visitor(assembleMatrix);
+    // allocate space for the elimination matrix
+    index_t numFixedDofs = 0;
+    for (index_t i = 0; i < m_ddof.size(); ++i)
+        numFixedDofs += m_ddof[i].rows();
+    eliminationMatrix.resize(Base::numDofs(),numFixedDofs);
+    eliminationMatrix.setZero();
+    eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
+
+    gsVisitorMass<T> visitor(eliminationMatrix);
     Base::template push<gsVisitorMass<T> >(visitor);
 
     m_system.matrix().makeCompressed();
+    eliminationMatrix.makeCompressed();
+
+}
+
+template <class T>
+void gsMassAssembler<T>::eliminateFixedDofs()
+{
+    // allocate a vector of fixed degrees of freedom
+    index_t numFixedDofs = 0;
+    for (index_t i = 0; i < m_ddof.size(); ++i)
+        numFixedDofs += m_ddof[i].rows();
+    gsMatrix<T> fixedDofs(numFixedDofs,1);
+
+    // from a vector of fixed degrees of freedom
+    numFixedDofs = 0;
+    for (index_t i = 0; i < m_ddof.size(); ++i)
+    {
+        fixedDofs.middleRows(numFixedDofs,m_ddof[i].rows()) = m_ddof[i];
+        numFixedDofs += m_ddof[i].rows();
+    }
+
+    // eliminate fixed degrees of freedom
+    m_system.rhs() = -1*eliminationMatrix*fixedDofs;
 }
 
 

@@ -25,8 +25,8 @@ template <class T>
 class gsVisitorMass
 {
 public:
-    gsVisitorMass(bool assembleMatrix_) :
-    assembleMatrix(assembleMatrix_) {}
+    gsVisitorMass(gsSparseMatrix<T> & elimMatrix) :
+    elimMat(elimMatrix) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -45,18 +45,15 @@ public:
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
     {
-        if (assembleMatrix)
-        {
-            // store quadrature points of the element for geometry evaluation
-            md.points = quNodes;
-            // NEED_MEASURE to get the Jacobian determinant values for integration
-            md.flags = NEED_MEASURE;
-            // Compute the geometry mapping at the quadrature points
-            geo.computeMap(md);
-            // Evaluate displacement basis functions on the element
-            basisRefs.front().eval_into(quNodes,basisValuesDisp);
-            // find local indices of the displacement basis functions active on the element
-        }
+        // store quadrature points of the element for geometry evaluation
+        md.points = quNodes;
+        // NEED_MEASURE to get the Jacobian determinant values for integration
+        md.flags = NEED_MEASURE;
+        // Compute the geometry mapping at the quadrature points
+        geo.computeMap(md);
+        // Evaluate displacement basis functions on the element
+        basisRefs.front().eval_into(quNodes,basisValuesDisp);
+        // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();
 
@@ -66,18 +63,15 @@ public:
                          const gsVector<T> & quWeights)
     {
         // initialize local matrix and rhs
-        if (assembleMatrix)
+        localMat.setZero(dim*N_D,dim*N_D);
+        for (index_t q = 0; q < quWeights.rows(); ++q)
         {
-            localMat.setZero(dim*N_D,dim*N_D);
-            for (index_t q = 0; q < quWeights.rows(); ++q)
-            {
-                // Multiply quadrature weight by the geometry measure
-                const T weight = density * quWeights[q] * md.measure(q);
+            // Multiply quadrature weight by the geometry measure
+            const T weight = density * quWeights[q] * md.measure(q);
 
-                block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
-                for (short_t d = 0; d < dim; ++d)
-                    localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
-            }
+            block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
+            for (short_t d = 0; d < dim; ++d)
+                localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
         }
     }
 
@@ -96,8 +90,27 @@ public:
         }
         // push to global system
         system.pushToRhs(gsMatrix<T>::Zero(dim*N_D,1),globalIndices,blockNumbers);
-        if (assembleMatrix)
-            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+
+        // push to the elimination system
+        unsigned globalI,globalElimJ;
+        index_t elimSize = 0;
+        for (short_t dJ = 0; dJ < dim; ++dJ)
+        {
+            for (short_t dI = 0; dI < dim; ++dI)
+                for (index_t i = 0; i < N_D; ++i)
+                    if (system.colMapper(dI).is_free_index(globalIndices[dI].at(i)))
+                    {
+                        system.mapToGlobalRowIndex(localIndicesDisp.at(i),patchIndex,globalI,dI);
+                        for (index_t j = 0; j < N_D; ++j)
+                            if (!system.colMapper(dJ).is_free_index(globalIndices[dJ].at(j)))
+                            {
+                                globalElimJ = system.colMapper(dJ).global_to_bindex(globalIndices[dJ].at(j));
+                                elimMat.coeffRef(globalI,elimSize+globalElimJ) += localMat(N_D*dI+i,N_D*dJ+j);
+                            }
+                    }
+            elimSize += eliminatedDofs[dJ].rows();
+        }
     }
 
 protected:
@@ -116,6 +129,8 @@ protected:
     // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
     gsMatrix<T> basisValuesDisp;
     bool assembleMatrix;
+    // elimination matrix to efficiently change Dirichlet degrees of freedom
+    gsSparseMatrix<T> & elimMat;
 
     // all temporary matrices defined here for efficiency
     gsMatrix<T> block;

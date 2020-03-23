@@ -33,6 +33,7 @@ gsElTimeIntegrator<T>::gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssemb
 {
     m_options = defaultOptions();
     m_ddof = stiffAssembler.allFixedDofs();
+    numIters = 1;
 }
 
 template <class T>
@@ -90,6 +91,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
     gsSparseSolver<>::SimplicialLDLT solver(m_matrix);
     return solver.solve(m_rhs);
 #endif
+    numIters = 1;
 }
 
 template <class T>
@@ -99,6 +101,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
     solver.options().setInt("Solver",linear_solver::LDLT);
     solver.solve();
+    numIters = solver.numberIterations();
     return solver.solution();
 }
 

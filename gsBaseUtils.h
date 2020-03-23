@@ -16,6 +16,7 @@
 
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
+#include <gsUtils/gsUtils.h>
 
 namespace gismo
 {
@@ -137,7 +138,7 @@ public:
                 gsInfo << ">";
             else
                 gsInfo << " ";
-        gsInfo << "] " << index_t(progress*100) << " %\r";
+        gsInfo << "] " << (abs(progress - 1.) < 1e-12 ? 100 : index_t(progress*100)) << " %\r";
         gsInfo.flush();
 
         if (abs(progress - 1.) < 1e-12)
@@ -167,5 +168,29 @@ public:
 protected:
     index_t m_width;
 };
+
+template <class T>
+std::string secToHMS(T sec)
+{
+    if (sec < 10)
+        return util::to_string(sec) + "s";
+
+    index_t days = index_t(sec)/(3600*24);
+    index_t residual = index_t(sec)- 3600*24*days;
+    index_t hours = residual/3600;
+    residual -= 3600*hours;
+    index_t minutes = residual/60;
+    residual -= 60*minutes;
+
+    std::string result = util::to_string(residual) + "s";
+    if (minutes > 0)
+        result = util::to_string(minutes) + "m" + result;
+    if (hours > 0)
+        result = util::to_string(hours) + "h" + result;
+    if (days > 0)
+        result = util::to_string(days) + "d" + result;
+
+    return result;
+}
 
 }
