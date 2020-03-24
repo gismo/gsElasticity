@@ -45,6 +45,7 @@ gsMassAssembler<T>::gsMassAssembler(const gsMultiPatch<T> & patches,
         m_bases.push_back(basis);
 
     Base::initialize(pde, m_bases, defaultOptions());
+    assembledFlag = false;
 }
 
 template <class T>
@@ -99,11 +100,13 @@ void gsMassAssembler<T>::assemble(bool assembleMatrix)
     m_system.matrix().makeCompressed();
     eliminationMatrix.makeCompressed();
 
+    assembledFlag = true;
 }
 
 template <class T>
 void gsMassAssembler<T>::eliminateFixedDofs()
 {
+    GISMO_ENSURE(assembledFlag,"Mass matrix not assembled!");
     // allocate a vector of fixed degrees of freedom
     index_t numFixedDofs = 0;
     for (index_t i = 0; i < m_ddof.size(); ++i)

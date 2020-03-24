@@ -19,7 +19,8 @@ void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assemblerFlow,
               const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure,
               const gsMultiPatch<> & displacementBeam, const gsField<> & displacementALE,
               real_t simTime, real_t aleTime, real_t flowTime, real_t beamTime,
-              index_t couplingIter, index_t flowIter, index_t beamIter)
+              index_t couplingIter, index_t flowIter, index_t beamIter,
+              real_t omega, real_t resAbs, real_t resRel)
 {
     // computing force acting on the surface of the submerged structure
     std::vector<std::pair<index_t, boxSide> > bdrySides;
@@ -49,10 +50,12 @@ void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assemblerFlow,
 
     // print: 1-simTime 2-drag 3-lift 4-pressureDiff 5-dispAx 6-dispAy 7-aleNorm
     //        8-aleTime 9-flowTime 10-beamTime 11-couplingIter 12-flowIter 13-beamIter
+    //        14-omega 15-resAbs 16-resRel
     ofs << simTime << " " << force.at(0) << " " << force.at(1) << " " << presFront.at(0)-presBack.at(0) << " "
         << dispA.at(0) << " " << dispA.at(1) << " " << displacementALE.distanceL2(zero) << " "
         << aleTime << " " << flowTime << " " << beamTime << " "
-        << couplingIter << " " << flowIter << " " << beamIter << std::endl;
+        << couplingIter << " " << flowIter << " " << beamIter << " "
+        << omega << " " << resAbs << " " << resRel << std::endl;
 }
 
 void formVector(const gsMultiPatch<> & disp, gsMatrix<> & vector)
@@ -76,7 +79,7 @@ void formVector(const gsMultiPatch<> & disp, gsMatrix<> & vector)
 }
 
 
-void aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB,gsMultiPatch<> & dispB2, gsMultiPatch<> & dispC, real_t & omega,bool & converged, real_t & resNorInit)
+real_t aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB,gsMultiPatch<> & dispB2, gsMultiPatch<> & dispC, real_t & omega,bool & converged, real_t & resNorInit)
 {
     gsMatrix<> vecA,vecB,vecB2,vecC;
     formVector(dispA,vecA);
@@ -96,6 +99,7 @@ void aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB,gsMultiPatch<> & disp
         converged = true;
 
     //gsInfo << "Omega " << omega << std::endl;
+    return resnor;
 }
 
 int main(int argc, char* argv[])
@@ -291,7 +295,9 @@ int main(int argc, char* argv[])
     gsParaviewCollection collectionALE("flappingBeam_FSI2_ALE");
 
     std::ofstream logFile;
-    logFile.open("flappingBeam_FSI2_log.txt");
+    logFile.open("flappingBeam_FSI2.txt");
+    logFile << "# simTime drag lift presDiff dispAx dispAy aleNorm aleTime flowTime"
+            << " beamTime couplingIter flowIter beamIter omega resAbs resRel\n";
 
     gsProgressBar bar;
     gsStopwatch totalClock, iterClock;
@@ -309,8 +315,8 @@ int main(int argc, char* argv[])
     nsTimeSolver.setSolutionVector(gsMatrix<>::Zero(nsAssembler.numDofs(),1));
     nsTimeSolver.setFixedDofs(nsAssembler.allFixedDofs());
 
-    elTimeSolver.setInitialDisplacement(gsMatrix<>::Zero(elAssembler.numDofs(),1));
-    elTimeSolver.setInitialVelocity(gsMatrix<>::Zero(elAssembler.numDofs(),1));
+    elTimeSolver.setDisplacementVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
+    elTimeSolver.setVelocityVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
 
 
     // plotting initial condition
@@ -326,7 +332,7 @@ int main(int argc, char* argv[])
         //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSI2_ALE",collectionALE,0,numPlotPoints);
         plotDeformation(geoALE,dispALE,"flappingBeam_FSI2_ALE",collectionALE,0);
     }
-    writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,0.,0.,0.,0.,0,0,0);
+    writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,0.,0.,0.,0.,0,0,0,1.,0.,0.);
 
     //=============================================//
                    // Coupled simulation //
@@ -339,10 +345,6 @@ int main(int argc, char* argv[])
     real_t timeBeam = 0.;
 
     totalClock.restart();
-
-    nsTimeSolver.initialize();
-    elTimeSolver.initialize();
-
 
     gsInfo << "Running the simulation...\n";
     while (simTime < timeSpan)
@@ -366,8 +368,9 @@ int main(int argc, char* argv[])
         nsTimeSolver.saveState();
 
         gsMultiPatch<> dispOldOld, dispNew,dispDiff, dispGuess;
-        real_t omega = 0.1;
-        real_t resNorInit;
+        real_t omega = 1.;
+        real_t resNorInit = 1.;
+        real_t resAbs = 0.;
 
         while (couplingIter < maxCouplingIter && !converged)
         {
@@ -394,7 +397,7 @@ int main(int argc, char* argv[])
             else
             {
                 elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispNew);
-                aitken(dispOldOld,dispBeam,dispGuess,dispNew,omega,converged,resNorInit);
+                resAbs = aitken(dispOldOld,dispBeam,dispGuess,dispNew,omega,converged,resNorInit);
             }
             //elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
             dispDiff.patch(0).coefs() = dispBeam.patch(0).coefs() - dispDiff.patch(0).coefs();
@@ -457,7 +460,8 @@ int main(int argc, char* argv[])
         }
         writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,
                  simTime,timeALE,timeFlow,timeBeam, couplingIter,
-                 nsTimeSolver.numberIterations(),elTimeSolver.numberIterations());
+                 nsTimeSolver.numberIterations(),elTimeSolver.numberIterations(),
+                 omega,resAbs,resAbs/resNorInit);
     }
 
     //=============================================//
@@ -477,7 +481,7 @@ int main(int argc, char* argv[])
         gsInfo << "Open \"flappingBeam_FSI2_*.pvd\" in Paraview for visualization.\n";
     }
     logFile.close();
-    gsInfo << "Log file created in \"flappingBeam_FSI2_log.txt\".\n";
+    gsInfo << "Log file created in \"flappingBeam_FSI2.txt\".\n";
 
     return 0;
 }

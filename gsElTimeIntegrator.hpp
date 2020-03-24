@@ -21,7 +21,6 @@
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsIterative.h>
 
-
 namespace gismo
 {
 
@@ -31,9 +30,11 @@ gsElTimeIntegrator<T>::gsElTimeIntegrator(gsElasticityAssembler<T> & stiffAssemb
     : stiffAssembler(stiffAssembler_),
       massAssembler(massAssembler_)
 {
+    initialized = false;
     m_options = defaultOptions();
     m_ddof = stiffAssembler.allFixedDofs();
-    numIters = 1;
+    numIters = 0;
+    hasSavedState = false;
 }
 
 template <class T>
@@ -50,22 +51,26 @@ gsOptionList gsElTimeIntegrator<T>::defaultOptions()
 template <class T>
 void gsElTimeIntegrator<T>::initialize()
 {
-    massAssembler.assemble();
-
-    if (dispVector.rows() != stiffAssembler.numDofs())
-        dispVector.setZero(stiffAssembler.numDofs(),1);
-    if (velVector.rows() != stiffAssembler.numDofs())
-        velVector.setZero(stiffAssembler.numDofs(),1);
-
+    GISMO_ENSURE(dispVector.rows() == stiffAssembler.numDofs(),
+                 "No initial conditions provided!");
+    GISMO_ENSURE(velVector.rows() == stiffAssembler.numDofs(),
+                 "No initial conditions provided!");
     stiffAssembler.assemble(dispVector,m_ddof,false);
+    if (!massAssembler.assembled())
+        massAssembler.assemble();
 
     gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
     accVector = solver.solve(stiffAssembler.rhs());
+
+    initialized = true;
 }
 
 template <class T>
 void gsElTimeIntegrator<T>::makeTimeStep(T timeStep)
 {
+    if (!initialized)
+        initialize();
+
     tStep = timeStep;
     gsMatrix<T> newDispVector;
     if (m_options.getInt("Scheme") == time_integration::implicit_linear)
@@ -81,15 +86,15 @@ void gsElTimeIntegrator<T>::makeTimeStep(T timeStep)
 template <class T>
 gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
 {
-    m_matrix = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
-    m_matrix.makeCompressed();
-    m_rhs = massAssembler.matrix()*(alpha1()*dispVector + alpha2()*velVector + alpha3()*accVector) + stiffAssembler.rhs();
+    m_system.matrix() = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
+    m_system.matrix().makeCompressed();
+    m_system.rhs() = massAssembler.matrix()*(alpha1()*dispVector + alpha2()*velVector + alpha3()*accVector) + stiffAssembler.rhs();
 #ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLDLT solver(m_matrix);
-    return solver.solve(m_rhs);
+    gsSparseSolver<>::PardisoLDLT solver(m_system.matrix());
+    return solver.solve(m_system.rhs());
 #else
-    gsSparseSolver<>::SimplicialLDLT solver(m_matrix);
-    return solver.solve(m_rhs);
+    gsSparseSolver<>::SimplicialLDLT solver(m_system.matrix());
+    return solver.solve(m_system.rhs());
 #endif
     numIters = 1;
 }
@@ -111,25 +116,29 @@ bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
                                      bool assembleMatrix)
 {
     stiffAssembler.assemble(solutionVector,fixedDoFs,assembleMatrix);
-    Base::m_system.matrix() = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
-    Base::m_system.matrix().makeCompressed();
-    Base::m_system.rhs() = stiffAssembler.rhs() + massAssembler.matrix()*(alpha1()*(dispVector-solutionVector) + alpha2()*velVector + alpha3()*accVector);
+    m_system.matrix() = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
+    m_system.matrix().makeCompressed();
+    m_system.rhs() = stiffAssembler.rhs() +
+                     massAssembler.matrix()*(alpha1()*(dispVector-solutionVector) + alpha2()*velVector + alpha3()*accVector);
     return true;
 }
 
 template <class T>
 void gsElTimeIntegrator<T>::saveState()
 {
+    if (!initialized)
+        initialize();
     dispVecSaved = dispVector;
     velVecSaved = velVector;
     accVecSaved = accVector;
     ddofsSaved = m_ddof;
+    hasSavedState = true;
 }
 
 template <class T>
 void gsElTimeIntegrator<T>::recoverState()
 {
-    GISMO_ASSERT(dispVecSaved.rows() == dispVector.rows(),"No state saved!");
+    GISMO_ENSURE(hasSavedState,"No state saved!");
     dispVector = dispVecSaved;
     velVector = velVecSaved;
     accVector = accVecSaved;

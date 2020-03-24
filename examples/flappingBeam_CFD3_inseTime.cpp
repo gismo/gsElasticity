@@ -205,6 +205,7 @@ int main(int argc, char* argv[]){
 
     std::ofstream logFile;
     logFile.open("flappingBeam_CFD3.txt");
+    logFile << "# simTime drag lift pressureDiff compTime numIters\n";
 
     gsProgressBar bar;
     gsStopwatch iterClock, totalClock;
@@ -221,7 +222,6 @@ int main(int argc, char* argv[]){
     // set initial velocity: zero free and fixed DoFs
     timeSolver.setSolutionVector(gsMatrix<>::Zero(assembler.numDofs(),1));
     timeSolver.setFixedDofs(assembler.allFixedDofs());
-    timeSolver.initialize();
 
     // consruct and plot initial velocity
     assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);

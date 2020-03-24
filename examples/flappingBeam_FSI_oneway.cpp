@@ -228,12 +228,12 @@ int main(int argc, char* argv[])
     std::map<std::string,const gsField<> *> fieldsBeam;
     fieldsBeam["Displacement"] = &displacementField;
     // paraview collection of time steps
-    gsParaviewCollection collectionFlow("flappingBeam_FSIoneway_flow");
-    gsParaviewCollection collectionBeam("flappingBeam_FSIoneway_beam");
-    gsParaviewCollection collectionALE("flappingBeam_FSIoneway_ALE");
+    gsParaviewCollection collectionFlow("flappingBeam_FSIow_flow");
+    gsParaviewCollection collectionBeam("flappingBeam_FSIow_beam");
+    gsParaviewCollection collectionALE("flappingBeam_FSIow_ALE");
 
     std::ofstream logFile;
-    logFile.open("flappingBeam_FSIoneway_log.txt");
+    logFile.open("flappingBeam_FSIow.txt");
     logFile << "# simTime drag lift pressureDiff dispAx dispAy aleNorm aleTime flowTime beamTime flowIter beamIter\n";
 
     gsProgressBar bar;
@@ -251,11 +251,9 @@ int main(int argc, char* argv[])
     // set initial velocity: zero free and fixed DoFs
     nsTimeSolver.setSolutionVector(gsMatrix<>::Zero(nsAssembler.numDofs(),1));
     nsTimeSolver.setFixedDofs(nsAssembler.allFixedDofs());
-    nsTimeSolver.initialize();
 
-    elTimeSolver.setInitialDisplacement(gsMatrix<>::Zero(elAssembler.numDofs(),1));
-    elTimeSolver.setInitialVelocity(gsMatrix<>::Zero(elAssembler.numDofs(),1));
-    elTimeSolver.initialize();
+    elTimeSolver.setDisplacementVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
+    elTimeSolver.setVelocityVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
 
     // plotting initial condition
     nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
@@ -263,10 +261,10 @@ int main(int argc, char* argv[])
     aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),dispALE);
     if (numPlotPoints > 0)
     {
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSIoneway_flow",collectionFlow,0,numPlotPoints);
-        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSIoneway_beam",collectionBeam,0,numPlotPoints);
-        //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSIoneway_ALE",collectionALE,0,numPlotPoints);
-        plotDeformation(geoALE,dispALE,"flappingBeam_FSIoneway_ALE",collectionALE,0);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSIow_flow",collectionFlow,0,numPlotPoints);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSIow_beam",collectionBeam,0,numPlotPoints);
+        //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSIow_ALE",collectionALE,0,numPlotPoints);
+        plotDeformation(geoALE,dispALE,"flappingBeam_FSIow_ALE",collectionALE,0);
     }
     writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,0.,0.,0.,0.,0,0);
 
@@ -339,10 +337,10 @@ int main(int argc, char* argv[])
 
         if (numPlotPoints > 0)
         {
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSIoneway_flow",collectionFlow,numTimeStep,numPlotPoints);
-            gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSIoneway_beam",collectionBeam,numTimeStep,numPlotPoints);
-            //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSIoneway_ALE",collectionALE,numTimeStep,numPlotPoints);
-            plotDeformation(geoALE,dispALE,"flappingBeam_FSIoneway_ALE",collectionALE,numTimeStep);
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSIow_flow",collectionFlow,numTimeStep,numPlotPoints);
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_FSIow_beam",collectionBeam,numTimeStep,numPlotPoints);
+            //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSIow_ALE",collectionALE,numTimeStep,numPlotPoints);
+            plotDeformation(geoALE,dispALE,"flappingBeam_FSIow_ALE",collectionALE,numTimeStep);
         }
         writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,
                  simTime,timeALE,timeFlow,timeBeam,
@@ -363,10 +361,10 @@ int main(int argc, char* argv[])
         collectionFlow.save();
         collectionBeam.save();
         collectionALE.save();
-        gsInfo << "Open \"flappingBeam_FSIoneway_*.pvd\" in Paraview for visualization.\n";
+        gsInfo << "Open \"flappingBeam_FSIow_*.pvd\" in Paraview for visualization.\n";
     }
     logFile.close();
-    gsInfo << "Log file created in \"flappingBeam_FSIoneway_log.txt\".\n";
+    gsInfo << "Log file created in \"flappingBeam_FSIow.txt\".\n";
 
     return 0;
 }

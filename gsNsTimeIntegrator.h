@@ -39,8 +39,6 @@ public:
                        gsMultiPatch<T> * ALEvelocity = nullptr,
                        std::vector<std::pair<index_t,index_t> > * ALEpatches = nullptr);
 
-
-
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
     /// set intial conditions
@@ -49,69 +47,81 @@ public:
         GISMO_ENSURE(solutionVector.rows() == stiffAssembler.numDofs(),"Wrong size of the solution vector: " + util::to_string(solutionVector.rows()) +
                      ". Must be: " + util::to_string(stiffAssembler.numDofs()));
         solVector = solutionVector;
+        initialized = false;
     }
-    /// @brief Initialize the solver; execute before computing any time steps
-    void initialize();
+    /// set all fixed degrees of freedom
+    virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
+    {
+        Base::setFixedDofs(ddofs);
+        initialized = false;
+    }
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep, bool ALE = false);
-
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs,
                           bool assembleMatrix = true);
 
+    /// returns number of degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
-    /// returns  vector of displacement DoFs
-    const gsMatrix<T> & solutionVector() const {return solVector;}
-    const gsMatrix<T> & SolutionVectorOld() const {return oldSolVector;}
+    /// returns solution vector
+    const gsMatrix<T> & solutionVector() const
+    {
+        GISMO_ENSURE(solVector.rows() == stiffAssembler.numDofs(),
+                     "No initial conditions provided!");
+        return solVector;
+    }
+    /// save solver state
+    void saveState();
+    /// recover solver state from the previously saved state
+    void recoverState();
+    /// number of iterations Newton's method required at the last time step; always 1 for IMEX
+    index_t numberIterations() const { return numIters;}
 
+protected:
+    void initialize();
     /// time integraton schemes
     void implicitLinear();
     void implicitNonlinear();
-
-    /// save solver state
-    void saveState();
-    /// recover solver state from saved state
-    void recoverState();
-
-    index_t numberIterations() const { return numIters;}
 
 protected:
     /// assembler object that generates the static system
     gsNsAssembler<T> & stiffAssembler;
     /// assembler object that generates the mass matrix
     gsMassAssembler<T> & massAssembler;
-    /// Sparse matrix of the linear system to solve
-    gsSparseMatrix<T> m_matrix;
-    /// RHS vector of the linear system to solve
-    gsMatrix<T> m_rhs;
-    gsMatrix<T> constRHS;
-
+    /// initialization flag
+    bool initialized;
     /// time step length
-    T tStep, oldTimeStep;
-    /// vector of displacement DoFs
+    T tStep;
+    /// solution vector
     gsMatrix<T> solVector;
-    gsMatrix<T> oldSolVector;
     using Base::m_system;
     using Base::m_options;
     using Base::m_ddof;
 
+    /// IMEX stuff
+    T oldTimeStep;
+    gsMatrix<T> oldSolVector;
+
+    /// Newton stuff
+    gsMatrix<T> constRHS;
+    index_t numIters;
+
+    /// use ALE shift of the advective velocity
+    bool flagALE;
+    /// ALE velocity
+    gsMultiPatch<T> * velocityALE;
+    /// mapping between the geometry patches and the ALE velocity patches
+    std::vector<std::pair<index_t,index_t> > * patchesALE;
+
+    /// saved state
+    bool hasSavedState;
     gsMatrix<T> velVecSaved;
     gsMatrix<T> oldVecSaved;
     gsMatrix<T> massRhsSaved;
     gsMatrix<T> stiffRhsSaved;
     gsSparseMatrix<T> stiffMatrixSaved;
     std::vector<gsMatrix<T> > ddofsSaved;
-
-    bool flagALE;
-
-    index_t numIters;
-    /// initialization flag
-    bool initialized = false;
-    gsMultiPatch<T> * velocityALE;
-    std::vector<std::pair<index_t,index_t> > * patchesALE;
-
-
 };
 
 }

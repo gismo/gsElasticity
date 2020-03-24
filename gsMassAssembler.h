@@ -52,6 +52,8 @@ public:
 
     /// @brief Eliminates new Dirichelt degrees of fredom
     virtual void eliminateFixedDofs();
+    /// @brief chech if the mass matrix is assembled
+    virtual bool assembled() const {return assembledFlag;}
 
 protected:
 
@@ -66,6 +68,7 @@ protected:
     using Base::m_ddof;
     // elimination matrix to eliminate Dirichlet degrees of freedom without reassembling the main matrix
     gsSparseMatrix<T> eliminationMatrix;
+    bool assembledFlag;
 };
 
 } // namespace gismo ends

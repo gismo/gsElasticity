@@ -34,9 +34,11 @@ gsNsTimeIntegrator<T>::gsNsTimeIntegrator(gsNsAssembler<T> & stiffAssembler_,
       velocityALE(ALEvelocity),
       patchesALE(ALEpatches)
 {
+    initialized = false;
     m_options = defaultOptions();
     m_ddof = stiffAssembler.allFixedDofs();
-    numIters = 1;
+    numIters = 0;
+    hasSavedState = false;
 }
 
 template <class T>
@@ -51,22 +53,18 @@ gsOptionList gsNsTimeIntegrator<T>::defaultOptions()
     return opt;
 }
 
+
+
 template <class T>
 void gsNsTimeIntegrator<T>::initialize()
 {
-    if (solVector.rows() != stiffAssembler.numDofs())
-        solVector.setZero(stiffAssembler.numDofs(),1);
-
-    if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
-        stiffAssembler.options().setInt("Assembly",ns_assembly::newton_next);
-    if (m_options.getInt("Scheme") == time_integration::implicit_linear)
-        stiffAssembler.options().setInt("Assembly",ns_assembly::ossen);
-
+    GISMO_ENSURE(solVector.rows() == stiffAssembler.numDofs(),"No initial conditions provided!");
     stiffAssembler.assemble(solVector,m_ddof);
-
-    oldSolVector = solVector;
     massAssembler.setFixedDofs(m_ddof);
-    massAssembler.assemble();
+    if (!massAssembler.assembled())
+        massAssembler.assemble();
+    // IMEX stuff
+    oldSolVector = solVector;
     oldTimeStep = 1.;
 
     initialized = true;
@@ -75,6 +73,9 @@ void gsNsTimeIntegrator<T>::initialize()
 template <class T>
 void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep, bool ALE)
 {
+    if (!initialized)
+        initialize();
+
     tStep = timeStep;
     flagALE = ALE;
     if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
@@ -111,7 +112,6 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     stiffAssembler.assemble(velocity,pressure);
 
     massAssembler.setFixedDofs(stiffAssembler.allFixedDofs());
-    //massAssembler.assemble(); // need to redo this - only need the rhs with elimated DDOFS
     massAssembler.eliminateFixedDofs();
     // rhs: dt*theta*F_n+1
     m_system.rhs() += tStep*theta*stiffAssembler.rhs();
@@ -127,11 +127,12 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     tempVelocityBlock += massAssembler.matrix();
     tempVelocityBlock.conservativeResize(stiffAssembler.numDofs(),numDofsVel);
     m_system.matrix().leftCols(numDofsVel) += tempVelocityBlock;
-
     m_system.matrix().makeCompressed();
+
     oldSolVector = solVector;
     oldTimeStep = tStep;
     m_ddof = stiffAssembler.allFixedDofs();
+    numIters = 1;
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLU solver(m_system.matrix());
@@ -140,9 +141,6 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     gsSparseSolver<>::LU solver(m_system.matrix());
     solVector = solver.solve(m_system.rhs());
 #endif
-
-
-    numIters = 1;
 }
 
 template <class T>
@@ -157,8 +155,8 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel);
     constRHS.middleRows(0,numDofsVel).noalias() -= massAssembler.rhs();
     massAssembler.setFixedDofs(stiffAssembler.allFixedDofs());
-    massAssembler.assemble();
-    constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.rhs();
+    massAssembler.eliminateFixedDofs();
+        constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.rhs();
 
     gsIterative<T> solver(*this,solVector,m_ddof);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
@@ -168,10 +166,9 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     solver.options().setReal("RelTol",m_options.getReal("RelTol"));
     solver.solve();
 
-    numIters = solver.numberIterations();
-
     solVector = solver.solution();
     m_ddof = stiffAssembler.allFixedDofs();
+    numIters = solver.numberIterations();
 }
 
 template <class T>
@@ -204,18 +201,22 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
 template <class T>
 void gsNsTimeIntegrator<T>::saveState()
 {
+    if (!initialized)
+        initialize();
+
     velVecSaved = solVector;
     oldVecSaved = oldSolVector;
     massRhsSaved = massAssembler.rhs();
     stiffRhsSaved = stiffAssembler.rhs();
     stiffMatrixSaved = stiffAssembler.matrix();
     ddofsSaved = m_ddof;
+    hasSavedState = true;
 }
 
 template <class T>
 void gsNsTimeIntegrator<T>::recoverState()
 {
-    GISMO_ASSERT(velVecSaved.rows() == solVector.rows(),"No state saved!");
+    GISMO_ENSURE(hasSavedState,"No state saved!");
     solVector = velVecSaved;
     oldSolVector = oldVecSaved;
     massAssembler.setRHS(massRhsSaved);

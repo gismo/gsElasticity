@@ -50,12 +50,12 @@ int main(int argc, char* argv[])
     // scanning geometry
     gsMultiPatch<> geoBeam;
     gsReadFile<>(filenameBeam, geoBeam);
-    gsMultiPatch<> geoFlowFull; // this is a full flow geometry
-    gsReadFile<>(filenameALE, geoFlowFull);
+    gsMultiPatch<> geoFlow; // this is a full flow geometry
+    gsReadFile<>(filenameALE, geoFlow);
     // this is a copy of the flow domain with only the first 6 patches.
     gsMultiPatch<> geoALE;
     for (index_t p = 0; p < 3; ++p)
-        geoALE.addPatch(geoFlowFull.patch(p+3).clone());
+        geoALE.addPatch(geoFlow.patch(p+3).clone());
     geoALE.computeTopology();
 
     // creating bases
