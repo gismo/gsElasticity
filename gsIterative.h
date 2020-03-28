@@ -42,6 +42,8 @@ template <class T>
 class gsIterative
 {
 public:
+    typedef memory::shared_ptr<gsIterative> Ptr;
+    typedef memory::unique_ptr<gsIterative> uPtr;
     /// constructor without an initial guess. Assumes a zero initial guess.
     gsIterative(gsBaseAssembler<T> & assembler_);
     /// constructor with an given initial free degrees of freedom.

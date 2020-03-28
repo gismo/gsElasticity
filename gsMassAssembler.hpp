@@ -79,7 +79,7 @@ void gsMassAssembler<T>::refresh()
 }
 
 template<class T>
-void gsMassAssembler<T>::assemble(bool assembleMatrix)
+void gsMassAssembler<T>::assemble()
 {
     // allocate space for the linear system
     m_system.matrix().setZero();

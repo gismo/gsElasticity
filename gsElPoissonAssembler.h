@@ -37,14 +37,15 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the mass matrix
-    virtual void assemble(bool assembleMatrix = true);
+    virtual void assemble();
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
-                          bool assembleMatrix = true) {assemble(assembleMatrix);}
+                          bool assembleMatrix = true) {assemble();}
 
-    virtual void constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & displacement) const;
-
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & displacement) const;
 
 protected:
     using Base::m_pde_ptr;

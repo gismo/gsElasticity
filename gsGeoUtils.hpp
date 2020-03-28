@@ -223,6 +223,46 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
     return corruptedPatch;
 }
 
+
+template <class T>
+index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & displacement)
+{
+    index_t corruptedPatch = -1;
+    gsMapData<T> mdG, mdU;
+    mdG.flags = NEED_DERIV;
+    mdU.flags = NEED_DERIV;
+    gsMatrix<T> points;
+
+    for (size_t p = 0; p < domain.nPatches(); ++p)
+    {
+        gsVector<index_t> numNodes(domain.dim());
+        for (short_t i = 0; i < domain.dim(); ++i)
+            numNodes.at(i) = displacement.basis(p).degree(i)+1;
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+
+        typename gsBasis<T>::domainIter domIt = displacement.basis(p).makeDomainIterator(boundary::none);
+        for (; domIt->good(); domIt->next())
+        {
+            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+            mdG.points = points;
+            mdU.points = points;
+            domain.patch(p).computeMap(mdG);
+            displacement.patch(p).computeMap(mdU);
+            for (index_t q = 0; q < points.cols(); ++q)
+            {
+                gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
+                gsMatrix<T> F = gsMatrix<T>::Identity(domain.dim(),domain.dim()) + physDispJac;
+                if (F.determinant() <= 0)
+                {
+                    gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << F.determinant() << std::endl;
+                    return p;
+                }
+            }
+        }
+    }
+    return corruptedPatch;
+}
+
 template <class T>
 T geometryJacRatio(gsMultiPatch<T> const & domain)
 {
@@ -262,6 +302,68 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
     }
 
     return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
+}
+
+template <class T>
+T displacementJacRatio(const gsMultiPatch<T> & domain,const gsMultiPatch<T> & displacement)
+{
+    std::vector<T> maxs, mins;
+    gsMapData<T> mdG, mdU;
+    mdG.flags = NEED_DERIV;
+    mdU.flags = NEED_DERIV;
+    gsMatrix<T> points;
+    size_t dim = domain.parDim();
+
+    for (size_t p = 0; p < displacement.nPatches(); ++p)
+    {
+        gsVector<index_t> numNodes(domain.dim());
+        for (short_t i = 0; i < domain.dim(); ++i)
+            numNodes.at(i) = displacement.basis(p).degree(i)+1;
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+
+        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
+        for (; domIt->good(); domIt->next())
+        {
+            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+            mdG.points = points;
+            mdU.points = points;
+            domain.patch(p).computeMap(mdG);
+            displacement.patch(p).computeMap(mdU);
+
+            T minJ = (gsMatrix<T>::Identity(dim,dim) + mdU.jacobian(0)*(mdG.jacobian(0).cramerInverse())).determinant();
+            T maxJ = minJ;
+            for (int q = 1; q < points.cols(); ++q)
+            {
+                T J = (gsMatrix<T>::Identity(dim,dim) + mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse())).determinant();
+                if (J > maxJ)
+                    maxJ = J;
+                if (J < minJ)
+                    minJ = J;
+            }
+
+            maxs.push_back(maxJ);
+            mins.push_back(minJ);
+        }
+    }
+
+    return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
+}
+
+template <class T>
+void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
+                       const gsQuadRule<T> & quRule, gsMatrix<T> & points)
+{
+    gsMatrix<T> quadPoints;
+    gsVector<T> tempVector; // temporary argument for the gsQuadrule::mapTo function
+    quRule.mapTo(lower,upper,quadPoints,tempVector);
+
+    gsVector<unsigned> nPoints(quadPoints.rows());
+    for (index_t d = 0; d < quadPoints.rows(); ++d)
+        nPoints.at(d) = 2;
+    gsMatrix<T> corners = gsPointGrid(lower,upper,nPoints);
+
+    points.resize(quadPoints.rows(),quadPoints.cols()+corners.cols());
+    points << quadPoints,corners;
 }
 
 //--------------------------------------------------------------------//

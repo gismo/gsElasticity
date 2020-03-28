@@ -21,6 +21,20 @@
 namespace gismo
 {
 
+/// @brief Specifies method used for mesh deformation in fluid-structure interaction
+struct ale_method
+{
+    enum method
+    {
+        HE = 0,   /// harmonic extension
+        IHE = 1,  /// incremental harmonic extension
+        LE = 2,   /// linear elasticity
+        ILE = 3,  /// incremental linear elasticity
+        TINE = 4, /// tangential incremental nonlinear elasticity (with neo-Hookean law)
+        BHE = 5   /// bi-harmonic extension
+    };
+};
+
 /// @brief Specifies the iteration type used to solve nonlinear systems
 struct ns_assembly
 {

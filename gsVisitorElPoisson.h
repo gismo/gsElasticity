@@ -62,7 +62,7 @@ public:
     {
         // initialize local matrix and rhs
         localMat.setZero(N,N);
-        localRhs.setZero(N,1);
+        localRhs.setZero(N,pde_ptr->numRhs());
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Multiply quadrature weight by the geometry measure
@@ -70,7 +70,7 @@ public:
             const T weightRHS = quWeights[q] * md.measure(q);
             transformGradients(md,q,basisValues[1],physGrad);
             localMat.noalias() += weightMatrix * (physGrad.transpose() * physGrad);
-            localRhs.noalias() += weightRHS * forceValues(0,q) * basisValues[0].col(q) ;
+            localRhs.noalias() += weightRHS * basisValues[0].col(q) * forceValues.col(q);
         }
     }
 

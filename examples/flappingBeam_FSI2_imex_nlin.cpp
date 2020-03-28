@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
     gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
     elAssembler.options().setReal("YoungsModulus",youngsModulus);
     elAssembler.options().setReal("PoissonsRatio",poissonsRatio);
-    elAssembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
+    elAssembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
     gsMassAssembler<real_t> elMassAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
     elMassAssembler.options().setReal("Density",densitySolid);
     gsElTimeIntegrator<real_t> elTimeSolver(elAssembler,elMassAssembler);

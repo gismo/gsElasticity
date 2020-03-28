@@ -38,7 +38,7 @@ public:
                       const gsFunctionSet<T> & temperature_field);
 
     /// @brief Assembles the stiffness matrix and the RHS
-    void assemble();
+    virtual void assemble();
 
     /// @brief Assembles the thermal expanstion contribution to the RHS
     void assembleThermo();

@@ -39,7 +39,7 @@ template <class T>
 gsOptionList gsElPoissonAssembler<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
-    opt.addReal("LocalStiff","Local stiffening",0.);
+    opt.addReal("LocalStiff","Stiffening degree for the Jacobian-based local stiffening",0.);
     return opt;
 }
 
@@ -51,16 +51,16 @@ void gsElPoissonAssembler<T>::refresh()
                          iFace::glue,m_pde_ptr->bc(),m_dofMappers[0],0,true);
 
     m_system = gsSparseSystem<T>(m_dofMappers[0]);
-    m_system.reserve(m_bases[0], m_options, 1);
+    m_system.reserve(m_bases[0], m_options, m_pde_ptr->numRhs());
     Base::computeDirichletDofs(0);
 }
 
 template<class T>
-void gsElPoissonAssembler<T>::assemble(bool assembleMatrix)
+void gsElPoissonAssembler<T>::assemble()
 {
     m_system.matrix().setZero();
-    m_system.reserve(m_bases[0], m_options, 1);
-    m_system.rhs().setZero(Base::numDofs(),1);
+    m_system.reserve(m_bases[0], m_options, m_pde_ptr->numRhs());
+    m_system.rhs().setZero(Base::numDofs(),m_pde_ptr->numRhs());
 
     gsVisitorElPoisson<T> visitor(*m_pde_ptr);
     Base::template push<gsVisitorElPoisson<T> >(visitor);
@@ -69,9 +69,11 @@ void gsElPoissonAssembler<T>::assemble(bool assembleMatrix)
 }
 
 template <class T>
-void gsElPoissonAssembler<T>::constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & result) const
+void gsElPoissonAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
+                                                const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                gsMultiPatch<T> & result) const
 {
-    gsAssembler<T>::constructSolution(solVector,result);
+    Base::constructSolution(solVector,fixedDoFs,result,gsVector<index_t>::Zero(1,1));
 }
 
 }// namespace gismo ends

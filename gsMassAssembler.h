@@ -44,11 +44,11 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the mass matrix
-    virtual void assemble(bool assembleMatrix = true);
+    virtual void assemble();
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
-                          bool assembleMatrix = true) {assemble(assembleMatrix);}
+                          bool assembleMatrix = true) {assemble();}
 
     /// @brief Eliminates new Dirichelt degrees of fredom
     virtual void eliminateFixedDofs();
