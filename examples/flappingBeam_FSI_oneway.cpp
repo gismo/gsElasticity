@@ -77,6 +77,7 @@ int main(int argc, char* argv[])
     real_t meshPR = 0.4; // poisson ratio for ALE
     real_t meshStiff = 2.5; // local stiffening for ALE
     index_t ALEmethod = ale_method::TINE;
+    bool check = true;
     // space discretization
     index_t numUniRef = 3;
     // time integration
@@ -94,6 +95,7 @@ int main(int argc, char* argv[])
     cmd.addReal("m","meanvelocity","Average inflow velocity",meanVelocity);
     cmd.addReal("v","viscosity","Fluid kinematic viscosity",viscosity);
     cmd.addReal("x","chi","Local stiffening degree for ALE",meshStiff);
+    cmd.addSwitch("c","check","Check bijectivity of the ALE displacement field",check);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addReal("t","time","Time span, sec",timeSpan);
@@ -208,6 +210,7 @@ int main(int argc, char* argv[])
     gsALE<real_t> moduleALE(geoALE,dispBeam,interface,ale_method::method(ALEmethod));
     moduleALE.options().setReal("LocalStiff",meshStiff);
     moduleALE.options().setReal("PoissonsRatio",meshPR);
+    moduleALE.options().setSwitch("Check",check);
     gsInfo << "Initialized mesh deformation system with " << moduleALE.numDofs() << " dofs.\n";
 
     //=============================================//
@@ -218,7 +221,7 @@ int main(int argc, char* argv[])
     gsField<> velocityField(nsAssembler.patches(),velFlow);
     gsField<> pressureField(nsAssembler.patches(),presFlow);
     gsField<> displacementField(geoBeam,dispBeam);
-    gsField<> aleField(geoALE,dispBeam);
+    gsField<> aleField(geoALE,dispALE);
 
     // creating containers to plot fields to Paraview files
     std::map<std::string,const gsField<> *> fieldsFlow;
@@ -302,7 +305,6 @@ int main(int argc, char* argv[])
         iterClock.restart();
         index_t badPatch = moduleALE.updateMesh();
         moduleALE.constructSolution(velALE);
-        timeALE += iterClock.stop();
         for (index_t p = 0; p < velALE.nPatches(); ++p)
         {
             // construct ALE difference

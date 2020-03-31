@@ -26,10 +26,10 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                                            const gsVector<index_t> & unknowns) const
 {
     result.clear();
-    if (m_pde_ptr->numRhs() == unknowns.rows()) // each component of the solution is a separate unknown
+    if (unknowns.rows() > 0) // each component of the solution is a separate unknown
         for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
         {
-            const int size  = m_bases[0][p].size();
+            const int size  = m_bases[unknowns[0]][p].size();
             gsMatrix<T> coeffs(size,unknowns.rows());
             for (index_t unk = 0; unk < unknowns.rows(); ++unk)
                 for (index_t i = 0; i < size; ++i)
@@ -41,7 +41,7 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                     }
                     else // eliminated DoF: fill with Dirichlet data
                         coeffs(i,unk) = fixedDoFs[unknowns[unk]]( m_system.colMapper(unknowns[unk]).bindex(i, p),0);
-            result.addPatch(m_bases[0][p].makeGeometry(give(coeffs)));
+            result.addPatch(m_bases[unknowns[0]][p].makeGeometry(give(coeffs)));
         }
     else // all solution components represented by one unknown
     {

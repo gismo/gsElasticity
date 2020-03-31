@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/flappingBeam_flowFull.xml";
+    std::string filename = ELAST_DATA_DIR"/flappingBeam_flow.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numKRef = 0; // number of k-refinements
     index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
