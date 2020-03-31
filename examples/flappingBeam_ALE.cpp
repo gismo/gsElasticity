@@ -17,7 +17,7 @@
 using namespace gismo;
 
 void writeLog(std::ofstream & ofs,
-              const gsMultiPatch<> & displacementBeam, const gsField<> & displacementALE,
+              const gsMultiPatch<> & displacementBeam, const gsMultiPatch<> & geoALE, const gsMultiPatch<> & dispALE,
               real_t simTime, real_t aleTime, real_t beamTime, index_t beamIter)
 {
     // compute displacement of the beam point A
@@ -25,11 +25,8 @@ void writeLog(std::ofstream & ofs,
     dispA << 1.,0.5;
     dispA = displacementBeam.patch(0).eval(dispA);
 
-    // zero function to compute the ale norm
-    gsConstantFunction<> zero(0.,0.,2);
-
     // print: simTime dispAx dispAy aleNorm aleTime beamTime beamIter
-    ofs << simTime << " " << dispA.at(0) << " " << dispA.at(1) << " " << displacementALE.distanceL2(zero)
+    ofs << simTime << " " << dispA.at(0) << " " << dispA.at(1) << " " << normL2(geoALE,dispALE)
         << " " << aleTime << " " << beamTime << " " << beamIter << std::endl;
 }
 
@@ -173,7 +170,7 @@ int main(int argc, char* argv[])
         gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,0,numPlotPoints);
         plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,0);
     }
-    writeLog(logFile,displacement,aleField,0.,0.,0.,0);
+    writeLog(logFile,displacement,geoALE,ALE,0.,0.,0.,0);
 
     //=============================================//
                    // Coupled simulation //
@@ -206,7 +203,7 @@ int main(int argc, char* argv[])
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,i+1,numPlotPoints);
             plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
         }
-        writeLog(logFile,displacement,aleField,timeStep*(i+1),timeALE,timeBeam,elTimeSolver.numberIterations());
+        writeLog(logFile,displacement,geoALE,ALE,timeStep*(i+1),timeALE,timeBeam,elTimeSolver.numberIterations());
 
         // test if any patch is not bijective
         if (badPatch != -1)

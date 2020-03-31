@@ -18,7 +18,7 @@ using namespace gismo;
 
 void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assemblerFlow,
               const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure,
-              const gsMultiPatch<> & displacementBeam, const gsField<> & displacementALE,
+              const gsMultiPatch<> & displacementBeam, const gsMultiPatch<> & geoALE, const gsMultiPatch<> & dispALE,
               real_t simTime, real_t aleTime, real_t flowTime, real_t beamTime,
               index_t flowIter, index_t beamIter)
 {
@@ -45,12 +45,9 @@ void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assemblerFlow,
     dispA << 1.,0.5;
     dispA = displacementBeam.patch(0).eval(dispA);
 
-    // zero function to compute the ale norm
-    gsConstantFunction<> zero(0.,0.,2);
-
     // print: simTime drag lift pressureDiff dispAx dispAy aleNorm aleTime flowTime beamTime flowIter beamIter
-    ofs << simTime << " " << force.at(0) << " " << force.at(1) << " " << presFront.at(0)-presBack.at(0) << " "
-        << dispA.at(0) << " " << dispA.at(1) << " " << displacementALE.distanceL2(zero) << " "
+    ofs << simTime << " " << force.at(0) << " " << force.at(1) <<  " " << presFront.at(0)-presBack.at(0) << " "
+        << dispA.at(0) << " " << dispA.at(1) << " " << normL2(geoALE,dispALE) << " "
         << aleTime << " " << flowTime << " " << beamTime << " " << flowIter << " " << beamIter << std::endl;
 }
 
@@ -268,7 +265,7 @@ int main(int argc, char* argv[])
         //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSIow_ALE",collectionALE,0,numPlotPoints);
         plotDeformation(geoALE,dispALE,"flappingBeam_FSIow_ALE",collectionALE,0);
     }
-    writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,0.,0.,0.,0.,0,0);
+    writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,geoALE,dispALE,0.,0.,0.,0.,0,0);
 
     //=============================================//
                    // Coupled simulation //
@@ -344,7 +341,7 @@ int main(int argc, char* argv[])
             //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSIow_ALE",collectionALE,numTimeStep,numPlotPoints);
             plotDeformation(geoALE,dispALE,"flappingBeam_FSIow_ALE",collectionALE,numTimeStep);
         }
-        writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,
+        writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,geoALE,dispALE,
                  simTime,timeALE,timeFlow,timeBeam,
                  nsTimeSolver.numberIterations(),elTimeSolver.numberIterations());
     }

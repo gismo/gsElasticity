@@ -25,6 +25,9 @@ TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
 
 TEMPLATE_INST index_t checkDisplacement(gsMultiPatch<real_t> const & domain, gsMultiPatch<real_t> const & displacement);
 
+TEMPLATE_INST real_t normL2(gsMultiPatch<real_t> const & domain, gsMultiPatch<real_t> const & solution);
+
+
 TEMPLATE_INST real_t geometryJacRatio(gsMultiPatch<real_t> const & domain);
 
 TEMPLATE_INST real_t displacementJacRatio(gsMultiPatch<real_t> const & domain, gsMultiPatch<real_t> const & displacement);

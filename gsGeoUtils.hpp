@@ -195,29 +195,40 @@ template <class T>
 index_t checkGeometry(gsMultiPatch<T> const & domain)
 {
     index_t corruptedPatch = -1;
-    gsMapData<T> md;
-    md.flags = NEED_DERIV;
-    gsMatrix<T> points;
-
-    for (size_t p = 0; p < domain.nPatches(); ++p)
+    bool continueIt = true;
+    for (size_t p = 0; p < domain.nPatches() && continueIt; ++p)
     {
-        gsVector<index_t> numNodes(domain.dim());
-        for (short_t i = 0; i < domain.dim(); ++i)
-            numNodes.at(i) = domain.basis(p).degree(i)+1;
-        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
-
-        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
-        for (; domIt->good(); domIt->next())
+#pragma omp parallel
         {
-            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
-            md.points = points;
-            domain.patch(p).computeMap(md);
-            for (index_t q = 0; q < points.cols(); ++q)
-                if (md.jacobian(q).determinant() <= 0)
-                {
-                    gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << md.jacobian(q).determinant() << std::endl;
-                    return p;
-                }
+            gsMapData<T> md;
+            md.flags = NEED_DERIV;
+            gsMatrix<T> points;
+
+            gsVector<index_t> numNodes(domain.dim());
+            for (short_t i = 0; i < domain.dim(); ++i)
+                numNodes.at(i) = domain.basis(p).degree(i)+1;
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+
+            typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
+#ifdef _OPENMP
+            const int tid = omp_get_thread_num();
+            const int nt  = omp_get_num_threads();
+            for ( domIt->next(tid); domIt->good() && continueIt; domIt->next(nt) )
+#else
+            for (; domIt->good() && continueIt; domIt->next() )
+#endif
+            {
+                genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+                md.points = points;
+                domain.patch(p).computeMap(md);
+                for (index_t q = 0; q < points.cols() && continueIt; ++q)
+                    if (md.jacobian(q).determinant() <= 0)
+                    {
+                        gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << md.jacobian(q).determinant() << std::endl;
+                        corruptedPatch = p;
+                        continueIt = false;
+                    }
+            }
         }
     }
     return corruptedPatch;
@@ -228,39 +239,91 @@ template <class T>
 index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & displacement)
 {
     index_t corruptedPatch = -1;
-    gsMapData<T> mdG, mdU;
-    mdG.flags = NEED_DERIV;
-    mdU.flags = NEED_DERIV;
-    gsMatrix<T> points;
-
-    for (size_t p = 0; p < domain.nPatches(); ++p)
+    bool continueIt = true;
+    for (size_t p = 0; p < domain.nPatches() && continueIt; ++p)
     {
-        gsVector<index_t> numNodes(domain.dim());
-        for (short_t i = 0; i < domain.dim(); ++i)
-            numNodes.at(i) = displacement.basis(p).degree(i)+1;
-        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
-
-        typename gsBasis<T>::domainIter domIt = displacement.basis(p).makeDomainIterator(boundary::none);
-        for (; domIt->good(); domIt->next())
+#pragma omp parallel
         {
-            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
-            mdG.points = points;
-            mdU.points = points;
-            domain.patch(p).computeMap(mdG);
-            displacement.patch(p).computeMap(mdU);
-            for (index_t q = 0; q < points.cols(); ++q)
+            gsMapData<T> mdG, mdU;
+            mdG.flags = NEED_DERIV;
+            mdU.flags = NEED_DERIV;
+            gsMatrix<T> points;
+
+            gsVector<index_t> numNodes(domain.dim());
+            for (short_t i = 0; i < domain.dim(); ++i)
+                numNodes.at(i) = displacement.basis(p).degree(i)+1;
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+
+            typename gsBasis<T>::domainIter domIt = displacement.basis(p).makeDomainIterator(boundary::none);
+#ifdef _OPENMP
+            const int tid = omp_get_thread_num();
+            const int nt  = omp_get_num_threads();
+            for ( domIt->next(tid); domIt->good() && continueIt; domIt->next(nt) )
+#else
+            for (; domIt->good() && continueIt; domIt->next() )
+#endif
             {
-                gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
-                gsMatrix<T> F = gsMatrix<T>::Identity(domain.dim(),domain.dim()) + physDispJac;
-                if (F.determinant() <= 0)
+                genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+                mdG.points = points;
+                mdU.points = points;
+                domain.patch(p).computeMap(mdG);
+                displacement.patch(p).computeMap(mdU);
+                for (index_t q = 0; q < points.cols() && continueIt; ++q)
                 {
-                    gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << F.determinant() << std::endl;
-                    return p;
+                    gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
+                    gsMatrix<T> F = gsMatrix<T>::Identity(domain.dim(),domain.dim()) + physDispJac;
+                    if (F.determinant() <= 0)
+                    {
+                        gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << F.determinant() << std::endl;
+                        corruptedPatch = p;
+                        continueIt = false;
+                    }
                 }
             }
         }
     }
     return corruptedPatch;
+}
+
+template <class T>
+T normL2(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & solution)
+{
+    T norm = 0;
+    for (size_t p = 0; p < domain.nPatches(); ++p)
+    {
+#pragma omp parallel
+        {
+            gsMapData<T> mdGeo(NEED_MEASURE);
+            gsMatrix<T> values, quNodes;
+            gsVector<T> quWeights;
+
+            gsVector<index_t> numNodes(domain.dim());
+            for (short_t i = 0; i < domain.dim(); ++i)
+                numNodes.at(i) = solution.basis(p).degree(i)+1;
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+
+            typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
+#ifdef _OPENMP
+            const int tid = omp_get_thread_num();
+            const int nt  = omp_get_num_threads();
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+            for (; domIt->good(); domIt->next() )
+#endif
+            {
+                quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+                mdGeo.points = quNodes;
+                domain.patch(p).computeMap(mdGeo);
+                solution.patch(p).eval_into(quNodes,values);
+                T tempNorm = 0;
+                for (index_t q = 0; q < quNodes.cols(); ++q)
+                    tempNorm += mdGeo.measure(q)*quWeights.at(q)*(values.col(q).transpose()*values.col(q))(0,0);
+#pragma omp critical
+                norm += tempNorm;
+            }
+        }
+    }
+    return sqrt(norm);
 }
 
 template <class T>

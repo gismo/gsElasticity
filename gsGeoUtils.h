@@ -57,6 +57,10 @@ index_t checkGeometry(gsMultiPatch<T> const & domain);
 template <class T>
 index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & displacement);
 
+/// @ Compute norm of the isogeometric solution
+template <class T>
+T normL2(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & solution);
+
 /// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant);
 /// samples the Jacobian elementwise at the quadrature points and the corners
 template <class T>
