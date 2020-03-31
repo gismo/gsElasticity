@@ -9,6 +9,7 @@
 #include <gsElasticity/gsNsAssembler.h>
 #include <gsElasticity/gsNsTimeIntegrator.h>
 #include <gsElasticity/gsMassAssembler.h>
+#include <gsElasticity/gsALE.h>
 #include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
@@ -75,6 +76,7 @@ int main(int argc, char* argv[])
     // ALE parameters
     real_t meshPR = 0.4; // poisson ratio for ALE
     real_t meshStiff = 2.5; // local stiffening for ALE
+    index_t ALEmethod = ale_method::TINE;
     // space discretization
     index_t numUniRef = 3;
     // time integration
@@ -92,6 +94,7 @@ int main(int argc, char* argv[])
     cmd.addReal("m","meanvelocity","Average inflow velocity",meanVelocity);
     cmd.addReal("v","viscosity","Fluid kinematic viscosity",viscosity);
     cmd.addReal("x","chi","Local stiffening degree for ALE",meshStiff);
+    cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
@@ -171,11 +174,12 @@ int main(int argc, char* argv[])
     gsBoundaryConditions<> bcInfoBeam;
     for (index_t d = 0; d < 2; ++d)
         bcInfoBeam.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
-    // boundary conditions: flow mesh, set zero dirichlet on the entire boundary
-    gsBoundaryConditions<> bcInfoALE;
-    for (auto it = geoALE.bBegin(); it != geoALE.bEnd(); ++it)
-        for (index_t d = 0; d < 2; ++d)
-            bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+    // FSI sides: flow first, then beam
+    gsInterfaceFSI interface;
+    interface.addSide(0,boundary::south,0,boundary::north);
+    interface.addSide(1,boundary::north,0,boundary::south);
+    interface.addSide(2,boundary::west,0,boundary::east);
+
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -200,16 +204,11 @@ int main(int argc, char* argv[])
     gsElTimeIntegrator<real_t> elTimeSolver(elAssembler,elMassAssembler);
     elTimeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
-    // elasticity assembler: flow mesh
-    gsElasticityAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,gFlow);
-    aleAssembler.options().setReal("PoissonsRatio",meshPR);
-    aleAssembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
-    aleAssembler.options().setReal("LocalStiff",meshStiff);
-    gsIterative<real_t> aleNewton(aleAssembler,gsMatrix<>::Zero(aleAssembler.numDofs(),1),aleAssembler.allFixedDofs());
-    aleNewton.options().setInt("Verbosity",solver_verbosity::none);
-    aleNewton.options().setInt("MaxIters",1);
-    aleNewton.options().setInt("Solver",linear_solver::LDLT);
-    gsInfo << "Initialized elasticity system for ALE with " << aleAssembler.numDofs() << " dofs.\n";
+    // mesh deformation module
+    gsALE<real_t> moduleALE(geoALE,dispBeam,interface,ale_method::method(ALEmethod));
+    moduleALE.options().setReal("LocalStiff",meshStiff);
+    moduleALE.options().setReal("PoissonsRatio",meshPR);
+    gsInfo << "Initialized mesh deformation system with " << moduleALE.numDofs() << " dofs.\n";
 
     //=============================================//
              // Setting output and auxilary //
@@ -258,7 +257,7 @@ int main(int argc, char* argv[])
     // plotting initial condition
     nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
     elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispBeam);
-    aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),dispALE);
+    moduleALE.constructSolution(dispALE);
     if (numPlotPoints > 0)
     {
         gsWriteParaviewMultiPhysicsTimeStep(fieldsFlow,"flappingBeam_FSIow_flow",collectionFlow,0,numPlotPoints);
@@ -283,8 +282,6 @@ int main(int argc, char* argv[])
     while (simTime < timeSpan)
     {
         bar.display(simTime/timeSpan);
-        if (aleAssembler.checkSolution(dispALE) != -1)
-            break;
 
         // change time step for the initial warm-up phase
         real_t tStep = (warmUp && simTime < 2.) ? 0.1 : timeStep;
@@ -303,12 +300,9 @@ int main(int argc, char* argv[])
 
         // ALE
         iterClock.restart();
-        aleAssembler.setFixedDofs(0,boundary::south,dispDiff.patch(0).boundary(boundary::north)->coefs());
-        aleAssembler.setFixedDofs(1,boundary::north,dispDiff.patch(0).boundary(boundary::south)->coefs());
-        aleAssembler.setFixedDofs(2,boundary::west,dispDiff.patch(0).boundary(boundary::east)->coefs());
-        aleNewton.reset();
-        aleNewton.solve();
-        aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),velALE);
+        index_t badPatch = moduleALE.updateMesh();
+        moduleALE.constructSolution(velALE);
+        timeALE += iterClock.stop();
         for (index_t p = 0; p < velALE.nPatches(); ++p)
         {
             // construct ALE difference
@@ -319,8 +313,14 @@ int main(int argc, char* argv[])
             velALE.patch(p).coefs() /= tStep;
         }
         // construct ALE displacement
-        aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),dispALE);
+        moduleALE.constructSolution(dispALE);
         timeALE += iterClock.stop();
+        // test if any patch is not bijective
+        if (badPatch != -1)
+        {
+            gsInfo << "\n Bad patch: " << badPatch << std::endl;
+            break;
+        }
 
         // FLOW
         iterClock.restart();

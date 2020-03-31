@@ -47,6 +47,7 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
         if (methodALE == ale_method::TINE)
         {
         assembler->options().setInt("MaterialLaw",material_law::neo_hooke_ln);
+        assembler->options().setSwitch("Check",false);
         solverNL = typename gsIterative<T>::uPtr(new gsIterative<T>(*assembler,
                                                                     gsMatrix<>::Zero(assembler->numDofs(),1),
                                                                     assembler->allFixedDofs()));
@@ -75,6 +76,7 @@ gsOptionList gsALE<T>::defaultOptions()
     gsOptionList opt;
     opt.addReal("PoissonsRatio","Poisson's ratio of the material (only for elasticity-based methods)",0.4);
     opt.addReal("LocalStiff","Stiffening degree for the Jacobian-based local stiffening",0.);
+    opt.addSwitch("Check","Check bijectivity of the resulting ALE displacement field",true);
     return opt;
 }
 
@@ -115,7 +117,10 @@ index_t gsALE<T>::TINE()
     solverNL->reset();
     solverNL->solve();
     assembler->constructSolution(solverNL->solution(),solverNL->allFixedDofs(),ALEdisp);
-    return checkDisplacement(assembler->patches(),ALEdisp);
+    if (m_options.getSwitch("Check"))
+        return checkDisplacement(assembler->patches(),ALEdisp);
+    else
+        return -1;
 }
 
 template <class T>
@@ -145,7 +150,10 @@ index_t gsALE<T>::ILE()
         ALEdisp.patch(p).coefs() += ALEupdate.patch(p).coefs();
         assembler->patches().patch(p).coefs() += ALEupdate.patch(p).coefs();
     }
-    return checkGeometry(assembler->patches());
+    if (m_options.getSwitch("Check"))
+        return checkGeometry(assembler->patches());
+    else
+        return -1;
 }
 
 template <class T>
@@ -168,7 +176,10 @@ index_t gsALE<T>::LE()
 #endif
 
     assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEdisp);
-    return checkDisplacement(assembler->patches(),ALEdisp);
+    if (m_options.getSwitch("Check"))
+        return checkDisplacement(assembler->patches(),ALEdisp);
+    else
+        return -1;
 }
 
 template <class T>
@@ -190,7 +201,10 @@ index_t gsALE<T>::HE()
 #endif
 
     assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEdisp);
-    return checkDisplacement(assembler->patches(),ALEdisp);
+    if (m_options.getSwitch("Check"))
+        return checkDisplacement(assembler->patches(),ALEdisp);
+    else
+        return -1;
 }
 
 
@@ -220,7 +234,10 @@ index_t gsALE<T>::IHE()
         ALEdisp.patch(p).coefs() += ALEupdate.patch(p).coefs();
         assembler->patches().patch(p).coefs() += ALEupdate.patch(p).coefs();
     }
-    return checkGeometry(assembler->patches());
+    if (m_options.getSwitch("Check"))
+        return checkGeometry(assembler->patches());
+    else
+        return -1;
 }
 
 

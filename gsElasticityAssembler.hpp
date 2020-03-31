@@ -86,6 +86,7 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
     opt.addReal("LocalStiff","Stiffening degree for the Jacobian-based local stiffening",0.);
+    opt.addSwitch("Check","Check bijectivity of the displacement field before matrix assebmly",true);
     return opt;
 }
 
@@ -173,7 +174,8 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
     {
         gsMultiPatch<T> displacement;
         constructSolution(solutionVector,fixedDoFs,displacement);
-        if (m_options.getInt("MaterialLaw") != material_law::saint_venant_kirchhoff)
+        if (m_options.getInt("MaterialLaw") != material_law::saint_venant_kirchhoff &&
+            m_options.getSwitch("Check"))
             if (checkDisplacement(m_pde_ptr->patches(),displacement) != -1)
                 return false;
         assemble(displacement,assembleMatrix);
