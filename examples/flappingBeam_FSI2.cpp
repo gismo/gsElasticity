@@ -9,7 +9,7 @@
 #include <gsElasticity/gsNsAssembler.h>
 #include <gsElasticity/gsNsTimeIntegrator.h>
 #include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsIterative.h>
+#include <gsElasticity/gsALE.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
 
@@ -17,7 +17,7 @@ using namespace gismo;
 
 void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assemblerFlow,
               const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure,
-              const gsMultiPatch<> & displacementBeam, const gsField<> & displacementALE,
+              const gsMultiPatch<> & displacementBeam, const gsMultiPatch<> & geoALE, const gsMultiPatch<> & dispALE,
               real_t simTime, real_t aleTime, real_t flowTime, real_t beamTime,
               index_t couplingIter, index_t flowIter, index_t beamIter,
               real_t omega, real_t resAbs, real_t resRel)
@@ -45,14 +45,11 @@ void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assemblerFlow,
     dispA << 1.,0.5;
     dispA = displacementBeam.patch(0).eval(dispA);
 
-    // zero function to compute the ale norm
-    gsConstantFunction<> zero(0.,0.,2);
-
     // print: 1-simTime 2-drag 3-lift 4-pressureDiff 5-dispAx 6-dispAy 7-aleNorm
     //        8-aleTime 9-flowTime 10-beamTime 11-couplingIter 12-flowIter 13-beamIter
     //        14-omega 15-resAbs 16-resRel
     ofs << simTime << " " << force.at(0) << " " << force.at(1) << " " << presFront.at(0)-presBack.at(0) << " "
-        << dispA.at(0) << " " << dispA.at(1) << " " << displacementALE.distanceL2(zero) << " "
+        << dispA.at(0) << " " << dispA.at(1) << " " << normL2(geoALE,dispALE) << " "
         << aleTime << " " << flowTime << " " << beamTime << " "
         << couplingIter << " " << flowIter << " " << beamIter << " "
         << omega << " " << resAbs << " " << resRel << std::endl;
@@ -122,7 +119,9 @@ int main(int argc, char* argv[])
     real_t densityFluid = 1.0e3;
     // ALE parameters
     real_t meshPR = 0.4; // poisson ratio for ALE
-    real_t meshStiff = 2.5; // local stiffening for ALE
+    real_t meshStiff = 2.5;
+    index_t ALEmethod = ale_method::TINE;
+    bool check = true;
     // space discretization
     index_t numUniRef = 3;
     // time integration
@@ -136,11 +135,12 @@ int main(int argc, char* argv[])
     // output parameters
     index_t numPlotPoints = 0.;
 
-
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the two-way fluid-structure interaction solver in 2D.");
     cmd.addReal("m","mesh","Poisson's ratio for ALE",meshPR);
     cmd.addReal("x","chi","Local stiffening degree for ALE",meshStiff);
+    cmd.addSwitch("c","check","Check bijectivity of the ALE displacement field",check);
+    cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
@@ -228,11 +228,11 @@ int main(int argc, char* argv[])
     bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&fEast);
     bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&fNorth);
 
-    // boundary conditions: flow mesh, set zero dirichlet on the entire boundary
-    gsBoundaryConditions<> bcInfoALE;
-    for (auto it = geoALE.bBegin(); it != geoALE.bEnd(); ++it)
-        for (index_t d = 0; d < 2; ++d)
-            bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+    // beam to ALE interface
+    gsInterfaceFSI interface;
+    interface.addSide(0,boundary::south,0,boundary::north);
+    interface.addSide(1,boundary::north,0,boundary::south);
+    interface.addSide(2,boundary::west,0,boundary::east);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -260,16 +260,12 @@ int main(int argc, char* argv[])
     elTimeSolver.options().setReal("Beta",thetaSolid/2);
     elTimeSolver.options().setReal("Gamma",thetaSolid);
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
-    // elasticity assembler: flow mesh
-    gsElasticityAssembler<real_t> aleAssembler(geoALE,basisALE,bcInfoALE,g);
-    aleAssembler.options().setReal("PoissonsRatio",meshPR);
-    aleAssembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
-    aleAssembler.options().setReal("LocalStiff",meshStiff);
-    gsIterative<real_t> aleNewton(aleAssembler,gsMatrix<>::Zero(aleAssembler.numDofs(),1),aleAssembler.allFixedDofs());
-    aleNewton.options().setInt("Verbosity",solver_verbosity::none);
-    aleNewton.options().setInt("MaxIters",1);
-    aleNewton.options().setInt("Solver",linear_solver::LDLT);
-    gsInfo << "Initialized elasticity system for ALE with " << aleAssembler.numDofs() << " dofs.\n";
+    // mesh deformation module
+    gsALE<real_t> moduleALE(geoALE,dispBeam,interface,ale_method::method(ALEmethod));
+    moduleALE.options().setReal("LocalStiff",meshStiff);
+    moduleALE.options().setReal("PoissonsRatio",meshPR);
+    moduleALE.options().setSwitch("Check",check);
+    gsInfo << "Initialized mesh deformation system with " << moduleALE.numDofs() << " dofs.\n";
 
     //=============================================//
              // Setting output and auxilary //
@@ -318,12 +314,10 @@ int main(int argc, char* argv[])
     elTimeSolver.setDisplacementVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
     elTimeSolver.setVelocityVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
 
-
     // plotting initial condition
     nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
     elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispBeam);
-    aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),dispALE);
-
+    moduleALE.constructSolution(dispALE);
 
     if (numPlotPoints > 0)
     {
@@ -332,7 +326,7 @@ int main(int argc, char* argv[])
         //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSI2_ALE",collectionALE,0,numPlotPoints);
         plotDeformation(geoALE,dispALE,"flappingBeam_FSI2_ALE",collectionALE,0);
     }
-    writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,0.,0.,0.,0.,0,0,0,1.,0.,0.);
+    writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,geoALE,dispALE,0.,0.,0.,0.,0,0,0,1.,0.,0.);
 
     //=============================================//
                    // Coupled simulation //
@@ -350,10 +344,6 @@ int main(int argc, char* argv[])
     while (simTime < timeSpan)
     {
         bar.display(simTime/timeSpan);
-
-        if (aleAssembler.checkSolution(dispALE) != -1)
-            break;
-
         // change time step for the initial warm-up phase
         real_t tStep = (warmUp && simTime < 2.) ? 0.1 : timeStep;
         // smoothly change the inflow boundary condition
@@ -364,7 +354,7 @@ int main(int argc, char* argv[])
         bool converged = false;
 
         elTimeSolver.saveState();
-        aleNewton.saveState();
+        moduleALE.saveState();
         nsTimeSolver.saveState();
 
         gsMultiPatch<> dispOldOld, dispNew,dispDiff, dispGuess;
@@ -405,33 +395,37 @@ int main(int argc, char* argv[])
 
             // ALE
             iterClock.restart();
-            if (couplingIter > 0)
-                aleNewton.recoverState();
-            gsMultiPatch<> oldALE;
-            aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),oldALE);
-            aleAssembler.setFixedDofs(0,boundary::south,dispDiff.patch(0).boundary(boundary::north)->coefs());
-            aleAssembler.setFixedDofs(1,boundary::north,dispDiff.patch(0).boundary(boundary::south)->coefs());
-            aleAssembler.setFixedDofs(2,boundary::west,dispDiff.patch(0).boundary(boundary::east)->coefs());
-            aleNewton.reset();
-            aleNewton.solve();
-            // velocity ALE
-            aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),velALE);
-            for (index_t p = 0; p < velALE.nPatches(); ++p)
-            {
-                velALE.patch(p).coefs() -= oldALE.patch(p).coefs();
-                velALE.patch(p).coefs() /= tStep;
-            }
             // undo last ALE
             nsAssembler.patches().patch(3).coefs() -= dispALE.patch(0).coefs();
             nsAssembler.patches().patch(4).coefs() -= dispALE.patch(1).coefs();
             nsAssembler.patches().patch(5).coefs() -= dispALE.patch(2).coefs();
-            // construct ALE
-            aleAssembler.constructSolution(aleNewton.solution(),aleNewton.allFixedDofs(),dispALE);
-            // apply new ALE
+            // recover ALE at the start of timestep
+            if (couplingIter > 0)
+                moduleALE.recoverState();
+            moduleALE.constructSolution(dispALE);
+            // update
+            index_t badPatch = moduleALE.updateMesh();
+            // construct ALE velocity
+            moduleALE.constructSolution(velALE);
+            for (index_t p = 0; p < velALE.nPatches(); ++p)
+            {
+                velALE.patch(p).coefs() -= dispALE.patch(p).coefs();
+                velALE.patch(p).coefs() /= tStep;
+            }
+            // construct ALE displacement
+            moduleALE.constructSolution(dispALE);
+            // apply new ALE to the flow domain
             nsAssembler.patches().patch(3).coefs() += dispALE.patch(0).coefs();
             nsAssembler.patches().patch(4).coefs() += dispALE.patch(1).coefs();
             nsAssembler.patches().patch(5).coefs() += dispALE.patch(2).coefs();
             timeALE += iterClock.stop();
+
+            // test if any patch is not bijective
+            if (badPatch != -1)
+            {
+                gsInfo << "\n Bad patch: " << badPatch << std::endl;
+                break;
+            }
 
             // FLOW
             iterClock.restart();
@@ -458,7 +452,7 @@ int main(int argc, char* argv[])
             //gsWriteParaviewMultiPhysicsTimeStep(fieldsALE,"flappingBeam_FSI2_ALE",collectionALE,numTimeStep,numPlotPoints);
             plotDeformation(geoALE,dispALE,"flappingBeam_FSI2_ALE",collectionALE,numTimeStep);
         }
-        writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,aleField,
+        writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,geoALE,dispALE,
                  simTime,timeALE,timeFlow,timeBeam, couplingIter,
                  nsTimeSolver.numberIterations(),elTimeSolver.numberIterations(),
                  omega,resAbs,resAbs/resNorInit);

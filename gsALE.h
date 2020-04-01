@@ -16,6 +16,7 @@
 #include <gsIO/gsOptionList.h>
 #include <gsElasticity/gsBaseUtils.h>
 #include <gsCore/gsMultiPatch.h>
+#include <gsElasticity/gsIterative.h>
 
 namespace gismo
 {
@@ -56,6 +57,11 @@ public:
     void constructSolution(gsMultiPatch<T> & solution) const;
     /// update mesh to comply with the current displacement field
     index_t updateMesh();
+    /// save module state
+    void saveState();
+    /// recover module state from saved state
+    void recoverState();
+
 
 protected:
     /// update mesh using Tangential Incremental Nonlinear Elasticity
@@ -86,6 +92,10 @@ protected:
     /// current ALE displacement field
     gsMultiPatch<T> ALEdisp;
 
+
+    /// saved state
+    bool hasSavedState;
+    gsMultiPatch<T> ALEdispSaved;
 };
 
 } // namespace ends

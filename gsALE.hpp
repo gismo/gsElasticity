@@ -30,7 +30,8 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     : disp(displacement),
       fsiInterface(interface),
       methodALE(method),
-      m_options(defaultOptions())
+      m_options(defaultOptions()),
+      hasSavedState(false)
 {
     // create input for the assembler
     gsMultiBasis<T> basis(geometry);
@@ -246,6 +247,30 @@ index_t gsALE<T>::BHE()
 {
     GISMO_NO_IMPLEMENTATION;
     return checkDisplacement(assembler->patches(),ALEdisp);
+}
+
+template <class T>
+void gsALE<T>::saveState()
+{
+    if (methodALE == ale_method::TINE)
+        solverNL->saveState();
+    ALEdispSaved.clear();
+    for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
+        ALEdispSaved.addPatch(ALEdisp.patch(p).clone());
+    hasSavedState = true;
+}
+
+template <class T>
+void gsALE<T>::recoverState()
+{
+    GISMO_ENSURE(hasSavedState,"No state saved!");
+    if (methodALE == ale_method::TINE)
+        solverNL->recoverState();
+    if (methodALE == ale_method::IHE || methodALE == ale_method::ILE)
+        for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
+            assembler->patches().patch(p).coefs() += ALEdispSaved.patch(p).coefs() - ALEdisp.patch(p).coefs();
+    for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
+        ALEdisp.patch(p).coefs() = ALEdispSaved.patch(p).coefs();
 }
 
 } // namespace ends
