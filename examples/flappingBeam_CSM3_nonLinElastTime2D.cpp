@@ -25,7 +25,7 @@ void writeLog(std::ofstream & file, const gsMultiPatch<> & displacement,
 }
 
 int main(int argc, char* argv[]){
-    gsInfo << "Benchmark CSM3: dynamic deformation of an elastic beam.\n";
+    gsInfo << "Benchmark CSM3: dynamic deflection of an elastic beam.\n";
 
     //=====================================//
                 // Input //
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]){
     real_t poissonsRatio = 0.4;
     real_t youngsModulus = 1.4e6;
     real_t density = 1.0e3;
-    real_t gravitationalAcc = 2.0;
+    real_t loading = 2.;
     // space discretization
     index_t numUniRef = 3;
     index_t numDegElev = 0;
@@ -46,8 +46,8 @@ int main(int argc, char* argv[]){
     index_t numPlotPoints = 1000;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Benchmark CSM3: dynamic deformation of an elastic beam.");
-    cmd.addReal("g","graviry","Gravitational acceleration",gravitationalAcc);
+    gsCmdLine cmd("Benchmark CSM3: dynamic deflection of an elastic beam.");
+    cmd.addReal("l","load","Gravitational loading acting on the beam",loading);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
     cmd.addReal("t","time","Time span, sec",timeSpan);
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]){
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
 
     // gravity, rhs
-    gsConstantFunction<> gravity(0.,gravitationalAcc*density,2);
+    gsConstantFunction<> gravity(0.,loading*density,2);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -130,12 +130,11 @@ int main(int argc, char* argv[]){
     timeSolver.setVelocityVector(gsMatrix<>::Zero(assembler.numDofs(),1));
 
     assembler.constructSolution(timeSolver.displacementVector(),displacement);
-
+    writeLog(logFile,displacement,0.,0.,0);
     // plotting initial displacement
     gsParaviewCollection collection("flappingBeam_CSM3");
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CSM3",collection,0,numPlotPoints);
-
 
     //=============================================//
                   // Solving //

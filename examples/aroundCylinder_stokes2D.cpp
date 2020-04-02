@@ -1,10 +1,9 @@
-/// This is the incompressible Navier-Stokes solver benchmark 2D-1 from this project:
+/// This is the incompressible Stokes solver benchmark based on this project:
 /// http://www.featflow.de/en/benchmarks/cfdbenchmarking.html
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsNsAssembler.h>
-#include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -21,35 +20,38 @@ void refineBoundaryLayer(gsMultiBasis<> & velocity, gsMultiBasis<> & pressure)
 }
 
 int main(int argc, char* argv[]){
-    gsInfo << "Benchmark CFD2D1: steady-state flow of an incompressible fluid.\n";
+    gsInfo << "Benchmark 2D-0: steady-state flow of an incompressible super-viscous fluid.\n";
 
     //=====================================//
-                // Input //
+                    // Input //
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/flow_around_cylinder.xml";
-    index_t numUniRef = 3; // number of h-refinements
-    index_t numKRef = 0; // number of k-refinements
-    index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
+    real_t viscosity = 0.001; // kinematic viscosity
+    real_t meanVelocity = 0.2; // inflow velocity
+    real_t density = 1.;
+    // space discretization
+    index_t numUniRef = 3;
+    index_t numDegElev = 0;
+    index_t numBLRef = 1;
+    bool subgridOrTaylorHood = false;
+    // output
     index_t numPlotPoints = 10000;
     bool plotMesh = false;
-    real_t viscosity = 0.001;
-    real_t density = 1.;
-    real_t maxInflow = 0.3;
-    bool subgrid = false;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the Stokes solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
-    cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
+    cmd.addInt("d","degelev","Number of degree elevations",numDegElev);
     cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
+    cmd.addSwitch("e","element","Mixed element: false = subgrid (default), true = Taylor-Hood",subgridOrTaylorHood);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addSwitch("m","mesh","Plot computational mesh",plotMesh);
-    cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    gsInfo << "Using " << (subgridOrTaylorHood ? "Taylor-Hood " : "subgrid ") << "mixed elements.\n";
 
     //=============================================//
-                  // Assembly //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -59,12 +61,10 @@ int main(int argc, char* argv[]){
     // creating bases
     gsMultiBasis<> basisVelocity(geometry);
     gsMultiBasis<> basisPressure(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
+    for (index_t i = 0; i < numDegElev; ++i)
     {
         basisVelocity.degreeElevate();
         basisPressure.degreeElevate();
-        basisVelocity.uniformRefine();
-        basisPressure.uniformRefine();
     }
     for (index_t i = 0; i < numUniRef; ++i)
     {
@@ -75,19 +75,17 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < numBLRef; ++i)
         refineBoundaryLayer(basisVelocity,basisPressure);
     // additional velocity refinement for stable mixed FEM
-    if (subgrid)
-    {
-        gsInfo << "Using subgrid element.\n";
+    if (!subgridOrTaylorHood) // subgrid
         basisVelocity.uniformRefine();
-    }
-    else
-    {
-        gsInfo << "Using Taylor-Hood element.\n";
+    else // Taylor-Hood
         basisVelocity.degreeElevate();
-    }
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // inflow velocity profile U(y) = U_max*y*(H-y)/(H/2)^2; channel height H = 0.41
-    gsFunctionExpr<> inflow(util::to_string(maxInflow) + "*4*y*(0.41-y)/0.41^2",2);
+    gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
@@ -108,38 +106,55 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
+    //=============================================//
+              // Assembling & solving //
+    //=============================================//
+
     // creating assembler
     gsNsAssembler<real_t> assembler(geometry,basisVelocity,basisPressure,bcInfo,g);
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setReal("Density",density);
-    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
-
-    //=============================================//
-                  // Solving //
-    //=============================================//
-
-    // set assembly type: linear system for Newton's method in update formulation
-    assembler.options().setInt("Assembly",ns_assembly::newton_update);
-    // setting Newton's method
-    gsIterative<real_t> solver(assembler);
-    solver.options().setInt("Verbosity",solver_verbosity::all);
-    solver.options().setInt("Solver",linear_solver::LU);
-    // set iterative solver mode: each iteration yields an update to the solution
-    solver.options().setInt("IterType",iteration_type::update);
-
-    gsInfo << "Solving...\n";
+    assembler.options().setInt("DirichletValues",dirichlet::interpolation);
+    gsInfo<<"Assembling...\n";
     gsStopwatch clock;
     clock.restart();
-    solver.solve();
-    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
+    assembler.assemble();
+    gsInfo << "Assembled a system (matrix and load vector) with "
+           << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
-    // solution as two isogeometric fields
+    gsInfo << "Solving...\n";
+    clock.restart();
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver(assembler.matrix());
+    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with PardisoLDLT solver in " << clock.stop() <<"s.\n";
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
+    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
+#endif
+
+    //=============================================//
+                      // Output //
+    //=============================================//
+
+    // constructing solution as an IGA function
     gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(solver.solution(),solver.allFixedDofs(),velocity,pressure);
+    assembler.constructSolution(solVector,velocity,pressure);
 
-    //=============================================//
-                  // Validation //
-    //=============================================//
+    if (numPlotPoints > 0) // visualization
+    {
+        // constructing isogeometric field (geometry + solution)
+        gsField<> velocityField(assembler.patches(),velocity);
+        gsField<> pressureField(assembler.patches(),pressure);
+        // creating a container to plot all fields to one Paraview file
+        std::map<std::string,const gsField<> *> fields;
+        fields["Velocity"] = &velocityField;
+        fields["Pressure"] = &pressureField;
+        gsWriteParaviewMultiPhysics(fields,"aroundCylinder",numPlotPoints,plotMesh);
+        gsInfo << "Open \"aroundCylinder.pvd\" in Paraview for visualization.\n";
+    }
 
     // computing forces acting on the surface of the solid body
     std::vector<std::pair<index_t, boxSide> > bdrySides;
@@ -149,30 +164,16 @@ int main(int argc, char* argv[]){
     bdrySides.push_back(std::pair<index_t,index_t>(3,boxSide(boundary::south)));
     gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
 
-    real_t L = 0.1; // characteristic lenght
-    gsInfo << "Drag: " << force.at(0) << std::endl;
-    gsInfo << "Drag coefficient: " << 2.*force.at(0)/L/pow(maxInflow*2./3.,2) << std::endl;
-    gsInfo << "Lift: " << force.at(1) << std::endl;
-    gsInfo << "Lift coefficient: " << 2.*force.at(1)/L/pow(maxInflow*2./3.,2) << std::endl;
     // evaluating pressure difference at the far front and the far rear points of the cylinder
     gsMatrix<> point(2,1);
-    point << 0.5, 0;                                                                   // this info is hard-cored in the geometry
-    gsInfo << "Pressure difference: " << pressure.patch(0).eval(point)(0,0) -          // far front point
-                                         pressure.patch(2).eval(point)(0,0) << "Pa\n"; // far rear point
+    point << 0.5, 0;
+    real_t pressureFront = pressure.patch(0).eval(point)(0,0);
+    real_t pressureBack = pressure.patch(2).eval(point)(0,0);
+    real_t L = 0.1; // characteristic length
 
-    //=============================================//
-                  // Visualization //
-    //=============================================//
-
-    // constructuin isogeometric field (geometry + solution)
-    gsField<> velocityField(assembler.patches(),velocity);
-    gsField<> pressureField(assembler.patches(),pressure);
-    // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Velocity"] = &velocityField;
-    fields["Pressure"] = &pressureField;
-    gsWriteParaviewMultiPhysics(fields,"aroundCylinder_CFD2D1",numPlotPoints,plotMesh);
-    gsInfo << "Open \"aroundCylinder_CFD2D1.pvd\" in Paraview for visualization.\n";
+    gsInfo << "Drag coefficient: " << 2.*force.at(0)/L/pow(meanVelocity,2) << std::endl;
+    gsInfo << "Lift coefficient: " << 2.*force.at(1)/L/pow(meanVelocity,2) << std::endl;
+    gsInfo << "Pressure difference: " << pressureFront - pressureBack << std::endl;
 
     return 0;
 }

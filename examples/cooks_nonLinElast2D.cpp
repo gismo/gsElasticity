@@ -19,22 +19,22 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/cooks.xml";
-    index_t numUniRef = 4; // number of h-refinements
-    index_t numKRef = 1; // number of k-refinements
-    index_t numPlotPoints = 10000;
     real_t youngsModulus = 240.565e6;
     real_t poissonsRatio = 0.4;
+    index_t numUniRef = 4;
+    index_t numDegElev = 1;
+    index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
-    cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
-    cmd.addInt("s","point","Number of points to plot to Paraview",numPlotPoints);
+    gsCmdLine cmd("This is Cook's membrane benchmark with nonlinear elasticity solver.");
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
+    cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
+    cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
+    cmd.addInt("s","point","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
-                  // Assembly //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -42,15 +42,14 @@ int main(int argc, char* argv[]){
     gsReadFile<>(filename, geometry);
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
-    {
+    for (index_t i = 0; i < numDegElev; ++i)
         basisDisplacement.degreeElevate();
-        basisDisplacement.uniformRefine();
-    }
     for (index_t i = 0; i < numUniRef; ++i)
-    {
         basisDisplacement.uniformRefine();
-    }
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // neumann BC
     gsConstantFunction<> f(0.,625e4,2);
@@ -64,6 +63,10 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
+    //=============================================//
+                  // Solving //
+    //=============================================//
+
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
@@ -76,25 +79,21 @@ int main(int argc, char* argv[]){
     solver.options().setInt("Verbosity",solver_verbosity::all);
     solver.options().setInt("Solver",linear_solver::LDLT);
 
-    //=============================================//
-                  // Solving //
-    //=============================================//
-
     gsInfo << "Solving...\n";
     gsStopwatch clock;
     clock.restart();
     solver.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
-    // solution to the nonlinear problem as an isogeometric displacement field
-    gsMultiPatch<> displacement;
-    assembler.constructSolution(solver.solution(),displacement);
-
     //=============================================//
                   // Output //
     //=============================================//
 
-    if (numPlotPoints)
+    // solution to the nonlinear problem as an isogeometric displacement field
+    gsMultiPatch<> displacement;
+    assembler.constructSolution(solver.solution(),displacement);
+
+    if (numPlotPoints > 0)
     {
         // constructing an IGA field (geometry + solution)
         gsField<> displacementField(assembler.patches(),displacement);
@@ -105,13 +104,12 @@ int main(int argc, char* argv[]){
         gsInfo << "Open \"cooks.pvd\" in Paraview for visualization.\n";
     }
 
-    //=============================================//
-                  // Validation //
-    //=============================================//
-
+    // validation
     gsMatrix<> A(2,1);
     A << 1.,1.;
-    gsInfo << "Y-displacement of the top-right corner: " << displacement.patch(0).eval(A)(1,0) << std::endl;
+    A = displacement.patch(0).eval(A);
+    gsInfo << "X-displacement of the top-right corner: " << A.at(0) << std::endl;
+    gsInfo << "Y-displacement of the top-right corner: " << A.at(1) << std::endl;
 
     return 0;
 }

@@ -178,7 +178,6 @@ int main(int argc, char* argv[])
     interface.addSide(1,boundary::north,0,boundary::south);
     interface.addSide(2,boundary::west,0,boundary::east);
 
-
     //=============================================//
           // Setting assemblers and solvers //
     //=============================================//

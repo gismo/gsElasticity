@@ -18,25 +18,41 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"terrific.xml";
-    index_t numUniRef = 0; // number of h-refinements
-    index_t numKRef = 0; // number of k-refinements
+    real_t youngsModulus = 74e9;
+    real_t poissonsRatio = 0.33;
+    index_t numUniRef = 0;
+    index_t numDegElev = 0;
     index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
+    cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+    //=============================================//
+        // Scanning geometry and creating bases //
+    //=============================================//
+
+    // scanning geometry
+    gsMultiPatch<> geometry;
+    gsReadFile<>(filename, geometry);
+    // creating basis
+    gsMultiBasis<> basis(geometry);
+    for (index_t i = 0; i < numDegElev; ++i)
+        basis.degreeElevate();
+    for (index_t i = 0; i < numUniRef; ++i)
+        basis.uniformRefine();
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // source function, rhs
     gsConstantFunction<> f(0.,0.,0.,3);
     // surface load, neumann BC
     gsConstantFunction<> g(20e6, -14e6, 0,3);
-
-    // material parameters
-    real_t youngsModulus = 74e9;
-    real_t poissonsRatio = 0.33;
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
@@ -52,21 +68,8 @@ int main(int argc, char* argv[]){
     bcInfo.addCondition(14,boundary::north,condition_type::neumann,&g);
 
     //=============================================//
-                  // Assembly //
+              // Assembling & solving //
     //=============================================//
-
-    // scanning geometry
-    gsMultiPatch<> geometry;
-    gsReadFile<>(filename, geometry);
-    // creating basis
-    gsMultiBasis<> basis(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
-    {
-        basis.degreeElevate();
-        basis.uniformRefine();
-    }
-    for (index_t i = 0; i < numUniRef; ++i)
-        basis.uniformRefine();
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
@@ -77,12 +80,8 @@ int main(int argc, char* argv[]){
     gsStopwatch clock;
     clock.restart();
     assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
+    gsInfo << "Assembled a system with "
            << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
-
-    //=============================================//
-                  // Solving //
-    //=============================================//
 
     gsInfo << "Solving...\n";
     clock.restart();
@@ -97,24 +96,23 @@ int main(int argc, char* argv[]){
     gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
 #endif
 
-    // constructing solution as an IGA function
-    gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
-    // constructing an IGA field (geometry + solution)
-    gsField<> solutionField(assembler.patches(),solution);
-
-    // constructing stresses
-    gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
-    gsField<> stressField(assembler.patches(),stresses,true);
-
     //=============================================//
                   // Output //
     //=============================================//
 
-    // creating a container to plot all fields to one Paraview file
+    // constructing solution as an IGA function
+    gsMultiPatch<> solution;
+    assembler.constructSolution(solVector,solution);
+    // constructing stresses
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
+
     if (numPlotPoints > 0)
     {
+        // constructing an IGA field (geometry + solution)
+        gsField<> solutionField(assembler.patches(),solution);
+        gsField<> stressField(assembler.patches(),stresses,true);
+        // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &solutionField;
         fields["Stresses"] = &stressField;

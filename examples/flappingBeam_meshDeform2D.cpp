@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
     cmd.addReal("m","mesh","Pois ratio for mesh",poissonsRatioMesh);
-    cmd.addReal("l","load","Gravity loading acting on the beam",loading);
+    cmd.addReal("l","load","Gravitational loading acting on the beam",loading);
     cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addSwitch("c","check","Check bijectivity of the ALE displacement field",check);

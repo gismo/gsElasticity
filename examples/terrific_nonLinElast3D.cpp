@@ -19,27 +19,43 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"terrific.xml";
-    index_t numUniRef = 0; // number of h-refinements
-    index_t maxNumIteration = 100;
-    real_t tolerance = 1e-12;
-    index_t numPlotPoints = 10000;
+    real_t youngsModulus = 74e9;
+    real_t poissonsRatio = 0.33;
     index_t materialLaw = material_law::saint_venant_kirchhoff;
+    index_t numUniRef = 0;
+    index_t numDegElev = 0;
+    index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
-    cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln",materialLaw);
+    cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
+    cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
+    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+    //=============================================//
+        // Scanning geometry and creating bases //
+    //=============================================//
+
+    // scanning geometry
+    gsMultiPatch<> geometry;
+    gsReadFile<>(filename, geometry);
+    // creating basis
+    gsMultiBasis<> basis(geometry);
+    for (index_t i = 0; i < numDegElev; ++i)
+        basis.degreeElevate();
+    for (index_t i = 0; i < numUniRef; ++i)
+        basis.uniformRefine();
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // source function, rhs
     gsConstantFunction<> f(0.,0.,0.,3);
     // surface load, neumann BC
     gsConstantFunction<> g(15e7, -10.5e7, 0,3);
-
-    // material parameters
-    real_t youngsModulus = 74e9;
-    real_t poissonsRatio = 0.33;
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
@@ -55,16 +71,8 @@ int main(int argc, char* argv[]){
     bcInfo.addCondition(14,boundary::north,condition_type::neumann,&g);
 
     //=============================================//
-                  // Assembly //
+                  // Solving //
     //=============================================//
-
-    // scanning geometry
-    gsMultiPatch<> geometry;
-    gsReadFile<>(filename, geometry);
-    // creating basis
-    gsMultiBasis<> basis(geometry);
-    for (index_t i = 0; i < numUniRef; ++i)
-        basis.uniformRefine();
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
@@ -75,14 +83,10 @@ int main(int argc, char* argv[]){
 
     // setting Newton's method
     gsIterative<real_t> newton(assembler);
-    newton.options().setInt("MaxIters",maxNumIteration);
-    newton.options().setReal("AbsTol",tolerance);
+    newton.options().setInt("MaxIters",50);
+    newton.options().setReal("AbsTol",1e-12);
     newton.options().setInt("Verbosity",solver_verbosity::all);
     newton.options().setInt("Solver",linear_solver::LDLT);
-
-    //=============================================//
-                  // Solving //
-    //=============================================//
 
     gsInfo << "Solving...\n";
     gsStopwatch clock;
@@ -91,19 +95,20 @@ int main(int argc, char* argv[]){
     // make the first iteration by hand to get the linear solution
     newton.compute();
     gsInfo << newton.status() << std::endl;
-    gsMultiPatch<> solutionLinear;
-    assembler.constructSolution(newton.solution(),solutionLinear);
+    gsVector<> linSolVector = newton.solution();
     // continue iterations till convergence
     newton.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
-    // solution to the nonlinear problem as an isogeometric displacement field
-    gsMultiPatch<> solutionNonlinear;
-    assembler.constructSolution(newton.solution(),solutionNonlinear);
-
     //=============================================//
                   // Output //
     //=============================================//
+
+    // solution to the nonlinear problem as an isogeometric displacement field
+    gsMultiPatch<> solutionLinear;
+    assembler.constructSolution(linSolVector,solutionLinear);
+    gsMultiPatch<> solutionNonlinear;
+    assembler.constructSolution(newton.solution(),solutionNonlinear);
 
     if (numPlotPoints > 0)
     {

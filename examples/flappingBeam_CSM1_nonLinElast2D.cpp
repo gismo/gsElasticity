@@ -12,30 +12,31 @@ using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "Benchmark CSM1: steady-state deformation of an elastic beam.\n";
+    gsInfo << "Benchmark CSM1: stationary deflection of an elastic beam.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/flappingBeam_beam.xml";
-    index_t numUniRef = 3; // number of h-refinements
-    index_t numKRef = 0; // number of k-refinements
-    index_t numPlotPoints = 10000;
     real_t poissonsRatio = 0.4;
     real_t youngsModulus = 1.4e6;
     real_t density = 1.0e3;
-    real_t gravitationalAcc = 2.0;
+    real_t loading = 2.;
+    index_t numUniRef = 3;
+    index_t numDegElev = 0;
+    index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Benchmark CSM1: steady-state deformation of an elastic beam.");
+    gsCmdLine cmd("Benchmark CSM1: stationary deflection of an elastic beam.");
+    cmd.addReal("l","load","Gravitational loading acting on the beam",loading);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
+    cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
-                  // Setting solver //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -44,21 +45,26 @@ int main(int argc, char* argv[]){
 
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
-    {
+    for (index_t i = 0; i < numDegElev; ++i)
         basisDisplacement.degreeElevate();
-        basisDisplacement.uniformRefine();
-    }
     for (index_t i = 0; i < numUniRef; ++i)
         basisDisplacement.uniformRefine();
 
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
+
     // boundary conditions
-    gsBoundaryConditions<> bcInfo; // numbers are: patch, function pointer (nullptr) for displacement, displacement component
+    gsBoundaryConditions<> bcInfo;
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
 
     // gravity, rhs
-    gsConstantFunction<> gravity(0.,1*gravitationalAcc*density,2);
+    gsConstantFunction<> gravity(0.,loading*density,2);
+
+    //=============================================//
+                  // Solving //
+    //=============================================//
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,gravity);
@@ -66,10 +72,6 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
-
-    //=============================================//
-                  // Solving //
-    //=============================================//
 
     // setting Newton's method
     gsIterative<real_t> solver(assembler);
@@ -80,31 +82,33 @@ int main(int argc, char* argv[]){
     gsStopwatch clock;
     clock.restart();
     solver.solve();
-    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";  
+
+    //=============================================//
+                      // Output //
+    //=============================================//
 
     // solution as an isogeometric displacement field
     gsMultiPatch<> solution;
     assembler.constructSolution(solver.solution(),solver.allFixedDofs(),solution);
 
-    //=============================================//
-                  // Validation //
-    //=============================================//
+    if (numPlotPoints > 0) // visualization
+    {
+        // constructing an IGA field (geometry + solution)
+        gsField<> displacementField(assembler.patches(),solution);
+        // creating a container to plot all fields to one Paraview file
+        std::map<std::string,const gsField<> *> fields;
+        fields["Displacement"] = &displacementField;
+        gsWriteParaviewMultiPhysics(fields,"flappingBeam_CSM1",numPlotPoints);
+        gsInfo << "Open \"flappingBeam_CSM1.pvd\" in Paraview for visualization.\n";
+    }
 
+    // validation
     gsMatrix<> A(2,1);
-    A << 1,0.5;
-    gsInfo << "Displacement of the point A:\n" << solution.patch(0).eval(A) << std::endl;
-
-    //=============================================//
-                  // Visualization //
-    //=============================================//
-
-    // constructing an IGA field (geometry + solution)
-    gsField<> displacementField(assembler.patches(),solution);
-    // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Displacement"] = &displacementField;
-    gsWriteParaviewMultiPhysics(fields,"flappingBeam_CSM1",numPlotPoints);
-    gsInfo << "Open \"flappingBeam_CSM1.pvd\" in Paraview for visualization.\n";
+    A << 1.,0.5;
+    A = solution.patch(0).eval(A);
+    gsInfo << "X-displacement of the point A: " << A.at(0) << std::endl;
+    gsInfo << "Y-displacement of the point A: " << A.at(1) << std::endl;
 
     return 0;
 }

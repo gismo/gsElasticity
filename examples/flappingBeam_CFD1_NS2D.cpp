@@ -47,29 +47,31 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/flappingBeam_flow.xml";
-    index_t numUniRef = 3; // number of h-refinements
-    index_t numKRef = 0; // number of k-refinements
-    index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
-    real_t viscosity = 0.001;
-    real_t meanVelocity = 0.2;
+    real_t viscosity = 0.001; // kinematic viscosity
+    real_t meanVelocity = 0.2; // inflow velocity
     real_t density = 1.0e3;
-    bool subgrid = false;
+    // space discretization
+    index_t numUniRef = 3;
+    index_t numDegElev = 0;
+    index_t numBLRef = 1;
+    bool subgridOrTaylorHood = false;
+    // output
     index_t numPlotPoints = 10000;
     bool plotMesh = false;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the Stokes solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
-    cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
+    cmd.addInt("d","degelev","Number of degree elevations",numDegElev);
     cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
+    cmd.addSwitch("e","element","Mixed element: false = subgrid (default), true = Taylor-Hood",subgridOrTaylorHood);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addSwitch("m","mesh","Plot computational mesh",plotMesh);
-    cmd.addReal("v","velocity","Mean inflow velocity",meanVelocity);
-    cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    gsInfo << "Using " << (subgridOrTaylorHood ? "Taylor-Hood " : "subgrid ") << "mixed elements.\n";
 
     //=============================================//
-                  // Setting solver //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -79,12 +81,10 @@ int main(int argc, char* argv[]){
     // creating bases
     gsMultiBasis<> basisVelocity(geometry);
     gsMultiBasis<> basisPressure(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
+    for (index_t i = 0; i < numDegElev; ++i)
     {
         basisVelocity.degreeElevate();
         basisPressure.degreeElevate();
-        basisVelocity.uniformRefine();
-        basisPressure.uniformRefine();
     }
     for (index_t i = 0; i < numUniRef; ++i)
     {
@@ -95,16 +95,14 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < numBLRef; ++i)
         refineBoundaryLayer(basisVelocity,basisPressure);
     // additional velocity refinement for stable mixed FEM
-    if (subgrid)
-    {
-        gsInfo << "Using subgrid element.\n";
+    if (!subgridOrTaylorHood) // subgrid
         basisVelocity.uniformRefine();
-    }
-    else
-    {
-        gsInfo << "Using Taylor-Hood element.\n";
+    else // Taylor-Hood
         basisVelocity.degreeElevate();
-    }
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
     gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
@@ -132,6 +130,10 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
+    //=============================================//
+                      // Solving //
+    //=============================================//
+
     // creating assembler
     gsNsAssembler<real_t> assembler(geometry,basisVelocity,basisPressure,bcInfo,g);
     assembler.options().setReal("Viscosity",viscosity);
@@ -139,10 +141,6 @@ int main(int argc, char* argv[]){
     assembler.options().setInt("DirichletValues",dirichlet::interpolation);
     assembler.options().setInt("Assembly",ns_assembly::newton_next);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
-
-    //=============================================//
-                  // Solving //
-    //=============================================//
 
     // setting Newton's method
     gsIterative<real_t> solver(assembler);
@@ -156,13 +154,26 @@ int main(int argc, char* argv[]){
     solver.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
+    //=============================================//
+                      // Output //
+    //=============================================//
+
     // solution as two isogeometric fields
     gsMultiPatch<> velocity, pressure;
     assembler.constructSolution(solver.solution(),solver.allFixedDofs(),velocity,pressure);
 
-    //=============================================//
-                  // Validation //
-    //=============================================//
+    if (numPlotPoints > 0) // visualization
+    {
+        // constructing isogeometric field (geometry + solution)
+        gsField<> velocityField(assembler.patches(),velocity);
+        gsField<> pressureField(assembler.patches(),pressure);
+        // creating a container to plot all fields to one Paraview file
+        std::map<std::string,const gsField<> *> fields;
+        fields["Velocity"] = &velocityField;
+        fields["Pressure"] = &pressureField;
+        gsWriteParaviewMultiPhysics(fields,"flappingBeam_CFD1",numPlotPoints,plotMesh);
+        gsInfo << "Open \"flappingBeam_CFD1.pvd\" in Paraview for visualization.\n";
+    }
 
     // computing forces acting on the surface of the solid body
     std::vector<std::pair<index_t, boxSide> > bdrySides;
@@ -175,20 +186,6 @@ int main(int argc, char* argv[]){
     gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
     gsInfo << "Drag: " << force.at(0) << std::endl;
     gsInfo << "Lift: " << force.at(1) << std::endl;
-
-    //=============================================//
-                  // Visualization //
-    //=============================================//
-
-    // constructuin isogeometric field (geometry + solution)
-    gsField<> velocityField(assembler.patches(),velocity);
-    gsField<> pressureField(assembler.patches(),pressure);
-    // creating a container to plot all fields to one Paraview file
-    std::map<std::string,const gsField<> *> fields;
-    fields["Velocity"] = &velocityField;
-    fields["Pressure"] = &pressureField;
-    gsWriteParaviewMultiPhysics(fields,"flappingBeam_CFD1",numPlotPoints,plotMesh);
-    gsInfo << "Open \"flappingBeam_CFD1.pvd\" in Paraview for visualization.\n";
 
     return 0;
 }

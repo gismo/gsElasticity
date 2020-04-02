@@ -86,13 +86,13 @@ real_t computeResidual(std::vector<gsMatrix<> > & interfaceOld, std::vector<gsMa
 }
 
 int main(int argc, char* argv[]){
-    gsInfo << "Testing the steady fluid-structure interaction solver in 2D.\n";
+    gsInfo << "Testing the steady-state fluid-structure interaction solver in 2D.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
-    std::string filenameFlow = ELAST_DATA_DIR"/flappingBeam_flowFull.xml";
+    std::string filenameFlow = ELAST_DATA_DIR"/flappingBeam_flow.xml";
     std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
     index_t numUniRefFlow = 3; // number of h-refinements for the fluid
     index_t numKRefFlow = 0; // number of k-refinements for the fluid
@@ -111,7 +111,7 @@ int main(int argc, char* argv[]){
     real_t relTol = 1e-10;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the time-dependent Stokes solver in 2D.");
+    gsCmdLine cmd("Testing the steady-state fluid-structure interaction solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement applications for the fluid",numUniRefFlow);
     cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
     cmd.addInt("b","beamrefine","Number of uniform refinement applications for the beam and ALE",numUniRefBeam);
