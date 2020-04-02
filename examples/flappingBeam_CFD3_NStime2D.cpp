@@ -2,7 +2,11 @@
 /// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006
 ///
+/// INSE can be solved the Newton or the semi-implicit (a.k.a. IMEX) time integration schemes
+/// (see the book by Volker John: Finite Element Methods for Incompressible Flow Problems, Springer, 2016).
+///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
+///
 #include <gismo.h>
 #include <gsElasticity/gsNsAssembler.h>
 #include <gsElasticity/gsMassAssembler.h>
@@ -38,10 +42,11 @@ void refineBoundaryLayer(gsMultiBasis<> & velocity, gsMultiBasis<> & pressure)
     pressure.refine(5,boxWest);
 }
 
-void validation(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler, real_t time,
-                const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure)
+void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler,
+              const gsMultiPatch<> & velocity, const gsMultiPatch<> & pressure,
+              real_t simTime, real_t compTime, index_t numIters)
 {
-    // computing force acting on the surface of the cylinder
+    // computing force acting on the surface of the submerged structure
     std::vector<std::pair<index_t, boxSide> > bdrySides;
     bdrySides.push_back(std::pair<index_t,index_t>(0,boxSide(boundary::east)));
     bdrySides.push_back(std::pair<index_t,index_t>(1,boxSide(boundary::south)));
@@ -50,8 +55,18 @@ void validation(std::ofstream & ofs, const gsNsAssembler<real_t> & assembler, re
     bdrySides.push_back(std::pair<index_t,index_t>(4,boxSide(boundary::north)));
     bdrySides.push_back(std::pair<index_t,index_t>(5,boxSide(boundary::west)));
     gsMatrix<> force = assembler.computeForce(velocity,pressure,bdrySides);
-    // print time-drag-lift
-    ofs << time << " " << force.at(0) << " " << force.at(1) << std::endl;
+
+    // compute the pressure difference between the front and the end points of the structure
+    gsMatrix<> A(2,1);
+    A << 1.,0.5;
+    A = pressure.patch(0).eval(A);
+    gsMatrix<> B(2,1);
+    B << 0.,0.5;
+    B = pressure.patch(5).eval(B);
+
+    // print: simTime drag lift pressureDiff compTime numIters
+    ofs << simTime << " " << force.at(0) << " " << force.at(1) << " "
+        << A.at(0)-B.at(0)<< " " << compTime << " " << numIters << std::endl;
 }
 
 int main(int argc, char* argv[]){
@@ -61,40 +76,42 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/flappingBeam_flowFull.xml";
-    index_t numUniRef = 3; // number of h-refinements
-    index_t numKRef = 0; // number of k-refinements
-    index_t numBLRef = 1; // number of additional boundary layer refinements for the fluid
-    real_t viscosity = 0.001;
-    real_t meanVelocity = 2;
+    std::string filename = ELAST_DATA_DIR"/flappingBeam_flow.xml";
+    real_t viscosity = 0.001; // kinematic viscosity
+    real_t meanVelocity = 2; // inflow velocity
     real_t density = 1.0e3;
-    bool subgrid = false;
-    bool supg = false;
+    // space discretization
+    index_t numUniRef = 3;
+    index_t numDegElev = 0;
+    index_t numBLRef = 1;
+    bool subgridOrTaylorHood = false;
+    // time integration
     real_t timeSpan = 10;
     real_t timeStep = 0.01;
-    index_t numPlotPoints = 900;
-    bool validate = true;
-    real_t warmUpTimeSpan = 2.;
-    real_t warmUpTimeStep = 0.1;
     real_t theta = 0.5;
+    bool imexOrNewton = false;
+    bool warmUp = false;
+    // output
+    index_t numPlotPoints = 900;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Benchmark CFD3: transient flow of an incompressible fluid.");
-    cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
-    cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
-    cmd.addInt("l","blayer","Number of additional boundary layer refinements for the fluid",numBLRef);
-    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
-    cmd.addSwitch("g","supg","Use SUPG stabilization (testing)",supg);
+    cmd.addInt("r","refine","Number of uniform h-refinements",numUniRef);
+    cmd.addInt("d","degelev","Number of degree elevations",numDegElev);
+    cmd.addInt("l","blayer","Number of additional h-refinements in the boundary layer",numBLRef);
+    cmd.addSwitch("e","element","Mixed element: false = subgrid (default), true = Taylor-Hood",subgridOrTaylorHood);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step, sec",timeStep);
     cmd.addReal("f","theta","Time integration parameter: 0 - exp.Euler, 1 - imp.Euler, 0.5 - Crank-Nicolson",theta);
-    cmd.addReal("v","velocity","Mean inflow velocity",meanVelocity);
-    cmd.addSwitch("x","validate","Save lift and drag over time to a text file for further analysis",validate);
+    cmd.addSwitch("i","intergration","Time integration scheme: false = IMEX (default), true = Newton",imexOrNewton);
+    cmd.addSwitch("w","warmup","Use large time steps during the first 2 seconds",warmUp);
+    cmd.addInt("p","points","Number of sampling points per patch for Paraview (0 = no plotting)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    gsInfo << "Using " << (subgridOrTaylorHood ? "Taylor-Hood " : "subgrid ") << "mixed elements with the "
+           << (imexOrNewton ? "Newton " : "IMEX ") << "time integration scheme.\n";
 
     //=============================================//
-                  // Setting solver //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -104,32 +121,26 @@ int main(int argc, char* argv[]){
     // creating bases
     gsMultiBasis<> basisVelocity(geometry);
     gsMultiBasis<> basisPressure(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
+    for (index_t i = 0; i < numDegElev; ++i)
     {
         basisVelocity.degreeElevate();
         basisPressure.degreeElevate();
-        basisVelocity.uniformRefine();
-        basisPressure.uniformRefine();
     }
     for (index_t i = 0; i < numUniRef; ++i)
     {
         basisVelocity.uniformRefine();
         basisPressure.uniformRefine();
     }
-    // additional refinement of the boundary layer around the cylinder
     for (index_t i = 0; i < numBLRef; ++i)
         refineBoundaryLayer(basisVelocity,basisPressure);
-    // additional velocity refinement for stable mixed FEM
-    if (subgrid)
-    {
-        gsInfo << "Using subgrid element.\n";
+    if (!subgridOrTaylorHood)
         basisVelocity.uniformRefine();
-    }
     else
-    {
-        gsInfo << "Using Taylor-Hood element.\n";
         basisVelocity.degreeElevate();
-    }
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
     gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
@@ -137,7 +148,7 @@ int main(int argc, char* argv[]){
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,&inflow,0); // x-component
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1); // y-component
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);       // y-component
     for (index_t d = 0; d < 2; ++d)
     {   // no slip conditions
         bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,d);
@@ -157,12 +168,14 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
-    // creating assembler
+    //=============================================//
+          // Setting assemblers and solvers //
+    //=============================================//
+
+    // creating stiffness assembler
     gsNsAssembler<real_t> assembler(geometry,basisVelocity,basisPressure,bcInfo,g);
     assembler.options().setReal("Viscosity",viscosity);
     assembler.options().setReal("Density",density);
-    assembler.options().setInt("DirichletValues",dirichlet::interpolation);
-    assembler.options().setSwitch("SUPG",supg);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // creating mass assembler
@@ -171,9 +184,8 @@ int main(int argc, char* argv[]){
 
     // creating time integrator
     gsNsTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
-    timeSolver.options().setInt("Scheme",time_integration_NS::theta_scheme_linear);
+    timeSolver.options().setInt("Scheme",imexOrNewton ? time_integration::implicit_nonlinear : time_integration::implicit_linear);
     timeSolver.options().setReal("Theta",theta);
-    timeSolver.options().setInt("Verbosity",newton_verbosity::all);
 
     //=============================================//
             // Setting output & auxilary//
@@ -191,80 +203,79 @@ int main(int argc, char* argv[]){
     // paraview collection of time steps
     gsParaviewCollection collection("flappingBeam_CFD3");
 
-    std::ofstream file;
-    if (validate)
-        file.open("flappingBeam_CFD3.txt");
+    std::ofstream logFile;
+    logFile.open("flappingBeam_CFD3.txt");
+    logFile << "# simTime drag lift pressureDiff compTime numIters\n";
 
     gsProgressBar bar;
-    gsStopwatch clock;
+    gsStopwatch iterClock, totalClock;
 
     //=============================================//
-                   // Warming up //
+                   // Initial conditions //
     //=============================================//
 
-    // we will change Dirichlet DoFs for warming up, so we save them here for later
+    // I change the Dirichlet DoFs for warming up, so I save them here for later
     gsMatrix<> inflowDDoFs;
     assembler.getFixedDofs(0,boundary::west,inflowDDoFs);
-
-    // set all Dirichlet DoFs to zero
     assembler.homogenizeFixedDofs(-1);
-    gsMatrix<> solVector = gsMatrix<>::Zero(assembler.numDofs(),1);
 
     // set initial velocity: zero free and fixed DoFs
-    timeSolver.setSolutionVector(solVector);
+    timeSolver.setSolutionVector(gsMatrix<>::Zero(assembler.numDofs(),1));
     timeSolver.setFixedDofs(assembler.allFixedDofs());
-    timeSolver.initialize();
 
     // consruct and plot initial velocity
-    assembler.constructSolution(solVector,assembler.allFixedDofs(),velocity,pressure);
+    assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
+    writeLog(logFile,assembler,velocity,pressure,0.,0.,0);
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,0,numPlotPoints);
-
-    clock.restart();
-    gsInfo << "Running the simulation with a coarse time step to compute an initial solution...\n";
-    for (index_t i = 0; i < index_t(warmUpTimeSpan/warmUpTimeStep); ++i)
-    {
-        bar.display(i+1,index_t(warmUpTimeSpan/warmUpTimeStep));
-        assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*warmUpTimeStep*(i+1)/warmUpTimeSpan))/2);
-        timeSolver.makeTimeStep(warmUpTimeStep);
-        assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
-        if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i+1,numPlotPoints);
-    }
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
 
     //=============================================//
                   // Solving //
     //=============================================//
 
-    gsInfo << "Running the main simulation...\n";
-    clock.restart();
-    for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
+    real_t simTime = 0.;
+    real_t numTimeStep = 0;
+    real_t compTime = 0.;
+
+    gsInfo << "Running the simulation...\n";
+    totalClock.restart();
+    while (simTime < timeSpan)
     {
-        bar.display(i+1,index_t(timeSpan/timeStep));
-        timeSolver.makeTimeStep(timeStep);
+        bar.display(simTime/timeSpan);
+        iterClock.restart();
+
+        // change time step for the initial warm-up phase
+        real_t tStep = (warmUp && simTime < 2.) ? 0.1 : timeStep;
+        // smoothly change the inflow boundary condition
+        if (simTime < 2.)
+            assembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(simTime+tStep)/2.))/2);
+
+        timeSolver.makeTimeStep(tStep);
+        // construct solution; timeSolver already knows the new Dirichlet BC
         assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
+
+        simTime += tStep;
+        numTimeStep++;
+        compTime += iterClock.stop();
+
         if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,i + 1 + index_t(warmUpTimeSpan/warmUpTimeStep),numPlotPoints);
-        if (validate)
-            validation(file,assembler,warmUpTimeSpan + timeStep*(i+1),velocity,pressure);
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CFD3",collection,numTimeStep,numPlotPoints);
+        writeLog(logFile,assembler,velocity,pressure,simTime,compTime,timeSolver.numberIterations());
     }
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
 
     //=============================================//
                 // Final touches //
     //=============================================//
+
+    gsInfo << "Simulation time: " + secToHMS(compTime) << " (total time: " + secToHMS(totalClock.stop()) + ")\n";
 
     if (numPlotPoints > 0)
     {
         collection.save();
         gsInfo << "Open \"flappingBeam_CFD3.pvd\" in Paraview for visualization.\n";
     }
-    if (validate)
-    {
-        file.close();
-        gsInfo << "Drag and lift over time are saved to \"flappingBeam_CFD3.txt\".\n";
-    }
+    logFile.close();
+    gsInfo << "Log file created in \"flappingBeam_CFD3.txt\".\n";
 
     return 0;
 }

@@ -26,32 +26,40 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                                            const gsVector<index_t> & unknowns) const
 {
     result.clear();
-
-    const index_t dim = unknowns.rows();
-    std::vector<gsDofMapper> mappers(dim);
-    for (index_t unk = 0; unk < dim; ++unk)
-        mappers[unk] = m_system.colMapper(unknowns[unk]);
-
-    gsVector<index_t> basisIndices(dim);
-    for (index_t unk = 0; unk < dim; ++unk)
-        basisIndices[unk] = m_system.colBasis(unknowns[unk]);
-
-    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+    if (unknowns.rows() > 0) // each component of the solution is a separate unknown
+        for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+        {
+            const int size  = m_bases[unknowns[0]][p].size();
+            gsMatrix<T> coeffs(size,unknowns.rows());
+            for (index_t unk = 0; unk < unknowns.rows(); ++unk)
+                for (index_t i = 0; i < size; ++i)
+                    if ( m_system.colMapper(unknowns[unk]).is_free(i, p) ) // DoF value is in the solVector
+                    {
+                        unsigned idx;
+                        m_system.mapToGlobalColIndex(i,p,idx,unknowns[unk]);
+                        coeffs(i,unk) = solVector(idx,0);
+                    }
+                    else // eliminated DoF: fill with Dirichlet data
+                        coeffs(i,unk) = fixedDoFs[unknowns[unk]]( m_system.colMapper(unknowns[unk]).bindex(i, p),0);
+            result.addPatch(m_bases[unknowns[0]][p].makeGeometry(give(coeffs)));
+        }
+    else // all solution components represented by one unknown
     {
-        const int size  = m_bases[basisIndices[0]][p].size();
-        gsMatrix<T> coeffs(size,dim);
-        for (index_t unk = 0; unk < dim; ++unk)
+        for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+        {
+            const int size  = m_bases[0][p].size();
+            gsMatrix<T> coeffs(size,m_pde_ptr->numRhs());
             for (index_t i = 0; i < size; ++i)
-                if (mappers[unk].is_free(i, p) ) // DoF value is in the solVector
+                if ( m_system.colMapper(0).is_free(i, p) ) // DoF value is in the solVector
                 {
                     unsigned idx;
-                    m_system.mapToGlobalColIndex(i,p,idx,unknowns[unk]);
-                    coeffs(i,unk) = solVector(idx,0);
+                    m_system.mapToGlobalColIndex(i,p,idx,0);
+                    coeffs.row(i) = solVector.row(idx);
                 }
                 else // eliminated DoF: fill with Dirichlet data
-                    coeffs(i,unk) = fixedDoFs[unknowns[unk]](mappers[unk].bindex(i, p),0);
-
-        result.addPatch(m_bases[basisIndices[0]][p].makeGeometry(give(coeffs)));
+                    coeffs.row(i) = fixedDoFs[0].row(m_system.colMapper(0).bindex(i, p));
+            result.addPatch(m_bases[0][p].makeGeometry(give(coeffs)));
+        }
     }
 }
 
@@ -59,7 +67,7 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
 
 
 template <class T>
-void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs)
+void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs, bool oneUnk)
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -72,21 +80,26 @@ void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix
     GISMO_ENSURE(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
                              + " does not belong to the Dirichlet boundary.");
 
-    short_t m_dim = m_pde_ptr->domain().targetDim();
     gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
-    GISMO_ENSURE(localBIndices.rows() == ddofs.rows() && m_dim == ddofs.cols(),
+    GISMO_ENSURE(localBIndices.rows() == ddofs.rows(),
                  "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
-                 " x " + util::to_string(ddofs.cols()) + ". Must be:" + util::to_string(localBIndices.rows()) +
-                 " x " + util::to_string(m_dim));
+                 ". Must be:" + util::to_string(localBIndices.rows()));
 
-    for (short_t d = 0; d < m_dim; ++d )
+    if (oneUnk)
     {
         gsMatrix<unsigned> globalIndices;
-        m_system.mapColIndices(localBIndices, patch, globalIndices, d);
-
+        m_system.mapColIndices(localBIndices, patch, globalIndices, 0);
         for (index_t i = 0; i < globalIndices.rows(); ++i)
-            m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
+            m_ddof[0].row(m_system.colMapper(0).global_to_bindex(globalIndices(i,0))) = ddofs.row(i);
     }
+    else
+        for (short_t d = 0; d < ddofs.cols(); ++d )
+        {
+            gsMatrix<unsigned> globalIndices;
+            m_system.mapColIndices(localBIndices, patch, globalIndices, d);
+            for (index_t i = 0; i < globalIndices.rows(); ++i)
+                m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
+        }
 }
 
 template <class T>

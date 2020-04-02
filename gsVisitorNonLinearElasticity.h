@@ -49,6 +49,7 @@ public:
         lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
         mu     = E / ( 2. * ( 1. + pr ) );
         forceScaling = options.getReal("ForceScaling");
+        localStiffening = options.getReal("LocalStiff");
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -91,8 +92,8 @@ public:
         // loop over quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
-            // Multiply weight by the geometry measure
-            const T weight = quWeights[q] * md.measure(q);
+
+            const T weightForce = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md,q,basisValuesDisp[1],physGrad);
             // physical jacobian of displacemnt du/dx = du/dxi * dxi/dx
@@ -104,7 +105,9 @@ public:
             // Right Cauchy Green strain, C = F'*F
             RCG = F.transpose() * F;
             // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
-            E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
+            E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));          
+            const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
+
             // Second Piola-Kirchhoff stress tensor
             if (materialLaw == 0) // Saint Venant-Kirchhoff
                 S = lambda*E.trace()*gsMatrix<T>::Identity(dim,dim) + 2*mu*E;
@@ -139,7 +142,7 @@ public:
 
                         for (short_t di = 0; di < dim; ++di)
                             for (short_t dj = 0; dj < dim; ++dj)
-                                localMat(di*N_D+i, dj*N_D+j) += weight * materialTangent(di,dj);
+                                localMat(di*N_D+i, dj*N_D+j) += weightBody * materialTangent(di,dj);
                     }
                 }
                 // Second Piola-Kirchhoff stress tensor as vector
@@ -147,11 +150,11 @@ public:
                 // rhs = -r = force - B*Svec,
                 localResidual = B_i.transpose() * Svec;
                 for (short_t d = 0; d < dim; d++)
-                    localRhs(d*N_D+i) -= weight * localResidual(d);
+                    localRhs(d*N_D+i) -= weightBody * localResidual(d);
             }
             // contribution of volumetric load function to residual/rhs
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_D,N_D).noalias() += weight * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q);
+                localRhs.middleRows(d*N_D,N_D).noalias() += weightForce * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q);
         }
     }
 
@@ -205,6 +208,7 @@ protected:
     // all temporary matrices defined here for efficiency
     gsMatrix<T> C, physGrad, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent;
     gsVector<T> geometricTangentTemp, Svec, localResidual;
+    T localStiffening;
 };
 
 } // namespace gismo

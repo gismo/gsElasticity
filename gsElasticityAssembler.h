@@ -111,13 +111,6 @@ public:
                                  gsPiecewiseFunction<T> & result,
                                  stress_type::type type = stress_type::von_mises) const;
 
-    /// @brief Check whether the displacement field is valid, i.e. J = det(F) > 0;
-    /// return -1 if yes or a number of the first invalid patch
-    virtual index_t checkSolution(const gsMultiPatch<T> & solution) const;
-
-    /// @brief Return minJ/maxJ
-    virtual T solutionJacRatio(const gsMultiPatch<T> & solution) const;
-
 protected:
     /// a custom reserve function to allocate memory for the sparse matrix
     virtual void reserve();
@@ -135,11 +128,6 @@ protected:
     using Base::m_system;
 };
 
-/// @brief Generates a matrix of sampling points for a given parametric element;
-/// includes quadrature points for the element as well as the corner points
-template <class T>
-void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
-                       const gsQuadRule<T> & quRule, gsMatrix<T> & points);
 
 } // namespace gismo ends
 

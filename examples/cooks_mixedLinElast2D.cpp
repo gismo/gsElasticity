@@ -17,26 +17,26 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    //std::string filename = ELAST_DATA_DIR"/lshape.xml";
     std::string filename = ELAST_DATA_DIR"/cooks.xml";
-    index_t numUniRef = 3; // number of h-refinements
-    index_t numKRef = 1; // number of k-refinements
-    index_t numPlotPoints = 10000;
     real_t youngsModulus = 240.565e6;
     real_t poissonsRatio = 0.4;
-    bool subgrid = false;
+    index_t numUniRef = 3;
+    index_t numDegElev = 1;
+    bool subgridOrTaylorHood = false;
+    index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the linear elasticity solver in 2D.");
-    cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
-    cmd.addInt("k","krefine","Number of k refinement applications",numKRef);
-    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
+    gsCmdLine cmd("This is Cook's membrane benchmark with mixed linear elasticity solver.");
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
-    cmd.addSwitch("e","element","True - subgrid, false - TH",subgrid);
+    cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
+    cmd.addInt("d","degelev","Number of degree elevation applications",numDegElev);
+    cmd.addSwitch("e","element","True - subgrid, false - TH",subgridOrTaylorHood);
+    cmd.addInt("s","sample","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    gsInfo << "Using " << (subgridOrTaylorHood ? "Taylor-Hood " : "subgrid ") << "mixed elements.\n";
 
     //=============================================//
-                  // Assembly //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -46,28 +46,25 @@ int main(int argc, char* argv[]){
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
     gsMultiBasis<> basisPressure(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
+    for (index_t i = 0; i < numDegElev; ++i)
     {
         basisDisplacement.degreeElevate();
         basisPressure.degreeElevate();
-        basisDisplacement.uniformRefine();
-        basisPressure.uniformRefine();
     }
     for (index_t i = 0; i < numUniRef; ++i)
     {
         basisDisplacement.uniformRefine();
         basisPressure.uniformRefine();
     }
-    if (subgrid)
-    {
-        gsInfo << "Using subgrid element.\n";
+    // additional displacement refinement for stable mixed FEM
+    if (!subgridOrTaylorHood) // subgrid
         basisDisplacement.uniformRefine();
-    }
-    else
-    {
-        gsInfo << "Using Taylor-Hood element.\n";
+    else  // Taylor-Hood
         basisDisplacement.degreeElevate();
-    }
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // neumann BC
     gsConstantFunction<> f(0.,625e4,2);
@@ -81,6 +78,10 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> g(0.,0.,2);
 
+    //=============================================//
+              // Assembling & solving //
+    //=============================================//
+
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
@@ -90,12 +91,8 @@ int main(int argc, char* argv[]){
     gsStopwatch clock;
     clock.restart();
     assembler.assemble();
-    gsInfo << "Assembled a system (matrix and load vector) with "
+    gsInfo << "Assembled a system with "
            << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
-
-    //=============================================//
-                  // Solving //
-    //=============================================//
 
     gsInfo << "Solving...\n";
     clock.restart();
@@ -110,20 +107,19 @@ int main(int argc, char* argv[]){
     gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
 #endif
 
+    //=============================================//
+                      // Output //
+    //=============================================//
+
     // constructing solution as an IGA function
     gsMultiPatch<> displacement, pressure;
     assembler.constructSolution(solVector,displacement,pressure);
 
-    //=============================================//
-                  // Visualization //
-    //=============================================//
-
-    if (numPlotPoints > 0)
+    if (numPlotPoints > 0) // visualization
     {
         // constructing an IGA field (geometry + solution)
         gsField<> displacementField(assembler.patches(),displacement);
         gsField<> pressureField(assembler.patches(),pressure);
-        gsInfo << "Plotting the output to the Paraview file \"cooks.pvd\"...\n";
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Displacement"] = &displacementField;
@@ -132,13 +128,12 @@ int main(int argc, char* argv[]){
         gsInfo << "Open \"cooks.pvd\" in Paraview for visualization.\n";
     }
 
-    //=============================================//
-                  // Validation //
-    //=============================================//
-
+    // validation
     gsMatrix<> A(2,1);
     A << 1.,1.;
-    gsInfo << "Y-displacement of the top-right corner: " << displacement.patch(0).eval(A)(1,0) << std::endl;
+    A = displacement.patch(0).eval(A);
+    gsInfo << "X-displacement of the top-right corner: " << A.at(0) << std::endl;
+    gsInfo << "Y-displacement of the top-right corner: " << A.at(1) << std::endl;
 
     return 0;
 }

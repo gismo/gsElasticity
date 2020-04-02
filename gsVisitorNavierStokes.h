@@ -60,7 +60,7 @@ public:
         // the same rule is used for the presure
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
-        iterationType = options.getInt("Iteration");
+        assemblyType = options.getInt("Assembly");
         supg = options.getSwitch("SUPG");
         viscosity = options.getReal("Viscosity");
         density = options.getReal("Density");
@@ -128,10 +128,12 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
-        if (iterationType == 0)
+        if (assemblyType == 0)
             assembleOseen(element,quWeights);
-        else if (iterationType == 1)
-            assembleNewton(element,quWeights);
+        else if (assemblyType == 1)
+            assembleNewtonUpdate(element,quWeights);
+        else if (assemblyType == 2)
+            assembleNewtonFull(element,quWeights);
     }
 
     inline void localToGlobal(const int patchIndex,
@@ -151,9 +153,34 @@ public:
         system.mapColIndices(localIndicesPres, patchIndex, globalIndices[dim], dim);
         blockNumbers.at(dim) = dim;
         // push to global system
-        system.pushToRhs(localRhs,globalIndices,blockNumbers);
-        if (assembleMatrix)
-            system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        //system.pushToRhs(localRhs,globalIndices,blockNumbers);
+       // if (assembleMatrix)
+        //    system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+
+        gsVector<size_t> blockNumbersVel(dim);
+        for (short_t d = 0; d < dim; ++d)
+            blockNumbersVel.at(d) = d;
+        gsVector<size_t> blockNumbersPr(1);
+        blockNumbersPr.at(0) = dim;
+
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbersVel,blockNumbersVel);
+        std::vector<gsMatrix<T> > temp = eliminatedDofs;
+        for (index_t i = 0; i < temp.size(); ++i)
+            temp[i].setZero();
+        system.pushToMatrix(localMat.block(0,dim*N_V,dim*N_V+N_P,N_P),globalIndices,temp,blockNumbersVel,blockNumbersPr);
+        system.pushToMatrix(localMat.block(dim*N_V,0,N_P,dim*N_V+N_P),globalIndices,eliminatedDofs,blockNumbersPr,blockNumbersVel);
+        system.pushToMatrix(localMat.block(dim*N_V,dim*N_V,N_P,N_P),globalIndices,temp,blockNumbersPr,blockNumbersPr);
+
+
+        system.pushToRhs(localRhs,globalIndices,blockNumbersVel);
+        system.pushToRhs(localRhs.middleRows(dim*N_V,N_P),globalIndices,blockNumbersPr);
+
+
+
+
+
+
+
     }
 
 protected:
@@ -174,8 +201,8 @@ protected:
         return (diag1+diag2)/2/sqrt(2);
     }
 
-    void assembleNewton(gsDomainIterator<T> & element,
-                        const gsVector<T> & quWeights)
+    void assembleNewtonUpdate(gsDomainIterator<T> & element,
+                              const gsVector<T> & quWeights)
     {
         // Initialize local matrix/rhs
         if (assembleMatrix)                                    // A | D
@@ -288,6 +315,58 @@ protected:
                     localRhs.middleRows(d*N_V,N_V).noalias() -= weight * tau *
                         physJacCurPres.at(d) * advectedPhysGradVel;*/
             }
+        }
+    }
+
+    void assembleNewtonFull(gsDomainIterator<T> & element,
+                            const gsVector<T> & quWeights)
+    {
+        // Initialize local matrix/rhs
+        if (assembleMatrix)                                    // A | D
+            localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
+        localRhs.setZero(dim*N_V + N_P,1);                     // B | 0// roughly estimate h - diameter of the element ( for SUPG)
+        // T h = cellSize(element);
+        // Loop over the quadrature nodes
+        for (index_t q = 0; q < quWeights.rows(); ++q)
+        {
+            // Multiply quadrature weight by the geometry measure
+            const T weight = quWeights[q] * md.measure(q);
+            // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
+            transformGradients(md, q, basisValuesVel[1], physGradVel);
+            // Compute physical Jacobian of the current velocity field
+            physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
+            if (assembleMatrix)
+            {
+                // matrix A: diffusion
+                block = weight*density*viscosity * physGradVel.transpose()*physGradVel;
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) += block.block(0,0,N_V,N_V);
+                // matrix A: advection
+                block = weight*basisValuesVel[0].col(q) * (mdVelocity.values[0].col(q).transpose()*physGradVel);
+                for (short_t d = 0; d < dim; ++d)
+                    localMat.block(d*N_V,d*N_V,N_V,N_V) += density*block.block(0,0,N_V,N_V);
+                // matrix A: reaction
+                block = weight*density*basisValuesVel[0].col(q) * basisValuesVel[0].col(q).transpose();
+                for (short_t di = 0; di < dim; ++di)
+                    for (short_t dj = 0; dj < dim; ++dj)
+                        localMat.block(di*N_V,dj*N_V,N_V,N_V) += physJacCurVel(di,dj)*block.block(0,0,N_V,N_V);
+                // matrices B and D
+                for (short_t d = 0; d < dim; ++d)
+                {
+                    block = weight*basisValuesPres.col(q)*physGradVel.row(d);
+                    localMat.block(dim*N_V,d*N_V,N_P,N_V) -= block.block(0,0,N_P,N_V); // B
+                    localMat.block(d*N_V,dim*N_V,N_V,N_P) -= block.transpose().block(0,0,N_V,N_P); // D
+                }
+            }
+            // rhs: force
+            for (short_t d = 0; d < dim; ++d)
+                localRhs.middleRows(d*N_V,N_V).noalias() += weight *density* forceScaling *
+                    forceValues(d,q) * basisValuesVel[0].col(q);
+            // rhs: residual nonlinear
+            for (short_t d = 0; d < dim; ++d)
+                localRhs.middleRows(d*N_V,N_V).noalias() += weight * density*
+                    (physJacCurVel.row(d) * mdVelocity.values[0].col(q))(0,0) * basisValuesVel[0].col(q);
+
         }
     }
 
@@ -475,8 +554,8 @@ protected:
     const gsPoissonPde<T> * pde_ptr;
     // flag to apply SUPG stabilization
     bool supg;
-    // switch between assembling Newton (true) or Oseen (false) iteration
-    index_t iterationType;
+    // switch between assembling different linear systems (Newton or Oseen iterations)
+    index_t assemblyType;
     index_t patch; // current patch
     // constants: viscosity and the force scaling factor
     T viscosity, forceScaling, density;

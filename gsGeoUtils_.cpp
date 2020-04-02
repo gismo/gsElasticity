@@ -12,6 +12,9 @@ namespace gismo
 
 TEMPLATE_INST void plotGeometry(gsMultiPatch<real_t> const & domain, std::string fileName, index_t numSamples);
 
+TEMPLATE_INST void plotGeometry(const gsMultiPatch<real_t> & domain,std::string const & fileName,
+                                gsParaviewCollection & collection, index_t step);
+
 TEMPLATE_INST void plotDeformation(const gsMultiPatch<real_t> & initDomain, const std::vector<gsMultiPatch<real_t> > & displacements,
                      std::string fileName, index_t numSamplingPoints);
 
@@ -20,7 +23,17 @@ TEMPLATE_INST void plotDeformation(const gsMultiPatch<real_t> & initDomain, cons
 
 TEMPLATE_INST index_t checkGeometry(gsMultiPatch<real_t> const & domain);
 
+TEMPLATE_INST index_t checkDisplacement(gsMultiPatch<real_t> const & domain, gsMultiPatch<real_t> const & displacement);
+
+TEMPLATE_INST real_t normL2(gsMultiPatch<real_t> const & domain, gsMultiPatch<real_t> const & solution);
+
+
 TEMPLATE_INST real_t geometryJacRatio(gsMultiPatch<real_t> const & domain);
+
+TEMPLATE_INST real_t displacementJacRatio(gsMultiPatch<real_t> const & domain, gsMultiPatch<real_t> const & displacement);
+
+TEMPLATE_INST void genSamplingPoints(const gsVector<real_t> & lower, const gsVector<real_t> & upper,
+                                     const gsQuadRule<real_t> & quRule, gsMatrix<real_t> & points);
 
 //-----------------------------------//
 //----------- Modelling -------------//

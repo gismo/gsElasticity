@@ -11,47 +11,52 @@
 
 using namespace gismo;
 
-void validation(std::ofstream & file, real_t time, const gsMultiPatch<> & displacement)
+void writeLog(std::ofstream & file, const gsMultiPatch<> & displacement,
+              real_t simTime, real_t compTime, real_t numIters)
 {
     // evaluating displacement at the point A
     gsMatrix<> point(2,1);
     point << 1., 0.5;
     gsMatrix<> dispA = displacement.patch(0).eval(point);
-    file << time << " " << dispA.at(0) << " " << dispA.at(1) << std::endl;
+
+    // print: simTime dispAx dispAy compTime numIters
+    file << simTime << " " << dispA.at(0) << " " << dispA.at(1) << " "
+         << compTime << " " << numIters << std::endl;
 }
 
 int main(int argc, char* argv[]){
-
-    gsInfo << "Benchmark CSM3: dynamic deformation of an elastic beam.\n";
+    gsInfo << "Benchmark CSM3: dynamic deflection of an elastic beam.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/flappingBeam_beam.xml";
-    index_t numUniRef = 3; // number of h-refinements
-    index_t numKRef = 1; // number of k-refinements
     real_t poissonsRatio = 0.4;
     real_t youngsModulus = 1.4e6;
     real_t density = 1.0e3;
-    real_t gravitationalAcc = 2.0;
+    real_t loading = 2.;
+    // space discretization
+    index_t numUniRef = 3;
+    index_t numDegElev = 0;
+    // time integration
     real_t timeSpan = 2;
     real_t timeStep = 0.01;
+    // output
     index_t numPlotPoints = 1000;
-    bool validate = true;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Benchmark CSM1: steady-state deformation of an elastic beam.");
+    gsCmdLine cmd("Benchmark CSM3: dynamic deflection of an elastic beam.");
+    cmd.addReal("l","load","Gravitational loading acting on the beam",loading);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
-    cmd.addInt("p","points","Number of sampling points to plot to Paraview",numPlotPoints);
+    cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step, sec",timeStep);
-    cmd.addSwitch("x","validate","Save displacement of the point A to a text file for further analysis",validate);
+    cmd.addInt("p","points","Number of sampling points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
-                  // Setting solver //
+        // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
@@ -60,13 +65,14 @@ int main(int argc, char* argv[]){
 
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
-    {
+    for (index_t i = 0; i < numDegElev; ++i)
         basisDisplacement.degreeElevate();
-        basisDisplacement.uniformRefine();
-    }
     for (index_t i = 0; i < numUniRef; ++i)
         basisDisplacement.uniformRefine();
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo; // numbers are: patch, function pointer (nullptr) for displacement, displacement component
@@ -74,7 +80,11 @@ int main(int argc, char* argv[]){
     bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
 
     // gravity, rhs
-    gsConstantFunction<> gravity(0.,-1*gravitationalAcc*density,2);
+    gsConstantFunction<> gravity(0.,loading*density,2);
+
+    //=============================================//
+          // Setting assemblers and solvers //
+    //=============================================//
 
     // creating stiffness assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,gravity);
@@ -90,71 +100,83 @@ int main(int argc, char* argv[]){
     // creating time integrator
     gsElTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
     timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
-    // set initial conditions
-    timeSolver.setInitialDisplacement(gsMatrix<>::Zero(assembler.numDofs(),1));
-    timeSolver.setInitialVelocity(gsMatrix<>::Zero(assembler.numDofs(),1));
-    timeSolver.initialize();
+    timeSolver.options().setInt("Verbosity",solver_verbosity::none);
 
     //=============================================//
             // Setting output & auxilary//
     //=============================================//
 
-    // initial displacement field
+    // displacement field
     gsMultiPatch<> displacement;
-    assembler.constructSolution(gsMatrix<>::Zero(assembler.numDofs(),1),displacement);
 
     // constructing an IGA field (geometry + solution)
     gsField<> dispField(geometry,displacement);
     std::map<std::string,const gsField<> *> fields;
     fields["Displacement"] = &dispField;
 
+    std::ofstream logFile;
+    logFile.open("flappingBeam_CSM3.txt");
+    logFile << "# simTime dispAx dispAy compTime numIters\n";
+
+    gsProgressBar bar;
+    gsStopwatch iterClock, totalClock;
+
+    //=============================================//
+                   // Initial conditions //
+    //=============================================//
+
+    // set initial conditions
+    timeSolver.setDisplacementVector(gsMatrix<>::Zero(assembler.numDofs(),1));
+    timeSolver.setVelocityVector(gsMatrix<>::Zero(assembler.numDofs(),1));
+
+    assembler.constructSolution(timeSolver.displacementVector(),displacement);
+    writeLog(logFile,displacement,0.,0.,0);
     // plotting initial displacement
     gsParaviewCollection collection("flappingBeam_CSM3");
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CSM3",collection,0,numPlotPoints);
 
-    gsProgressBar bar;
-    gsStopwatch clock;
-
-    std::ofstream file;
-    if (validate)
-    {
-        file.open("flappingBeam_CSM3.txt");
-        validation(file,0.,displacement);
-    }
-
     //=============================================//
                   // Solving //
     //=============================================//
 
-    gsInfo << "Running the transient simulation...\n";
-    clock.restart();
-    for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
+    real_t simTime = 0.;
+    real_t numTimeStep = 0;
+    real_t compTime = 0.;
+
+    gsInfo << "Running the simulation...\n";
+    totalClock.restart();
+    while (simTime < timeSpan)
     {
-        bar.display(i+1,index_t(timeSpan/timeStep));
+        bar.display(simTime/timeSpan);
+        iterClock.restart();
+
         timeSolver.makeTimeStep(timeStep);
         assembler.constructSolution(timeSolver.displacementVector(),displacement);
+
+        compTime += iterClock.stop();
+        simTime += timeStep;
+        numTimeStep++;
+
         if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CSM3",collection,i+1,numPlotPoints);
-        if (validate)
-            validation(file,timeStep*(i+1),displacement);
+            gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CSM3",collection,numTimeStep,numPlotPoints);
+        writeLog(logFile,displacement,simTime,compTime,timeSolver.numberIterations());
     }
-    gsInfo << "Complete in " << clock.stop() << "s.\n";
 
     //=============================================//
                 // Final touches //
     //=============================================//
+
+    gsInfo << "Simulation time: " + secToHMS(compTime) << " (total time: " + secToHMS(totalClock.stop()) + ")\n";
 
     if (numPlotPoints > 0)
     {
         collection.save();
         gsInfo << "Open \"flappingBeam_CSM3.pvd\" in Paraview for visualization.\n";
     }
-    if (validate)
-    {
-        file.close();
-        gsInfo << "Displacement of the point A over time is saved to \"flappingBeam_CSM3.txt\".\n";
-    }
+
+    logFile.close();
+    gsInfo << "Log file created in \"flappingBeam_CSM3.txt\".\n";
 
     return 0;
 }

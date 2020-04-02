@@ -12,11 +12,11 @@
     </Basis>
    </Basis>
    <weights>1 
-1
 1 
 1 
 1 
-0.707106781186548  
+1 
+0.707106781186548 
 1 
 1 
 1 
@@ -33,7 +33,6 @@
 0.16464 0.23536 
 </coefs>
  </Geometry>
-
  <Geometry type="TensorNurbs2" id="1">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
@@ -45,11 +44,11 @@
     </Basis>
    </Basis>
    <weights>1 
-0.473603754846685
+0.473603754846685 
 1 
 1 
 1 
-1
+1 
 1 
 1 
 1 
@@ -66,7 +65,6 @@
 0.45 0.41 
 </coefs>
  </Geometry>
-
  <Geometry type="TensorNurbs2" id="2">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
@@ -78,13 +76,13 @@
     </Basis>
    </Basis>
    <weights>1 
-1
 1 
 1 
 1 
-1
 1 
-0.473603754846685
+1 
+1 
+0.473603754846685 
 1 
 </weights>
   </Basis>
@@ -99,8 +97,7 @@
 0.24899 0.19 
 </coefs>
  </Geometry>
-
-<Geometry type="TensorNurbs2" id="3">
+ <Geometry type="TensorNurbs2" id="3">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
     <Basis type="BSplineBasis" index="0">
@@ -111,17 +108,17 @@
     </Basis>
    </Basis>
    <weights>1 
-1
 1 
 1 
 1 
-1
 1 
-1
 1 
-1
-1
-1
+1 
+1 
+1 
+1 
+1 
+1 
 </weights>
   </Basis>
   <coefs geoDim="2">0.24899 0.21 
@@ -138,8 +135,7 @@
 0.8 0.41 
 </coefs>
  </Geometry>
-
-<Geometry type="TensorNurbs2" id="4">
+ <Geometry type="TensorNurbs2" id="4">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
     <Basis type="BSplineBasis" index="0">
@@ -150,17 +146,17 @@
     </Basis>
    </Basis>
    <weights>1 
-1
 1 
 1 
 1 
-1
 1 
-1
 1 
-1
-1
-1
+1 
+1 
+1 
+1 
+1 
+1 
 </weights>
   </Basis>
   <coefs geoDim="2">0.45 0 
@@ -177,7 +173,6 @@
 0.6 0.19 
 </coefs>
  </Geometry>
-
  <Geometry type="TensorNurbs2" id="5">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
@@ -189,11 +184,11 @@
     </Basis>
    </Basis>
    <weights>1 
-1
 1 
 1 
 1 
-1
+1 
+1 
 1 
 1 
 1 
@@ -210,7 +205,6 @@
 0.8 0.41 
 </coefs>
  </Geometry>
-
  <Geometry type="TensorNurbs2" id="6">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
@@ -222,43 +216,42 @@
     </Basis>
    </Basis>
    <weights>1 
-1
-1 
-1 
-1 
-1
 1 
 1 
 1 
 1 
 1 
-1
+1 
+1 
+1 
+1 
+1 
+1 
 1 
 1 
 1 
 </weights>
   </Basis>
-  <coefs geoDim="2">0.8 0.41 
-1.0333 0.41 
-1.5 0.41 
-1.9667 0.41 
-2.2 0.41 
+  <coefs geoDim="2">0.8 0 
+1.0333 0 
+1.5 0 
+1.9667 0 
+2.2 0 
 0.8 0.205 
 1.0333 0.205 
 1.5 0.205 
 1.9667 0.205 
 2.2 0.205 
-0.8 0 
-1.0333 0 
-1.5 0 
-1.9667 0 
-2.2 0 
+0.8 0.41 
+1.0333 0.41 
+1.5 0.41 
+1.9667 0.41 
+2.2 0.41 
 </coefs>
  </Geometry>
-
  <MultiPatch parDim="2" id="7">
   <patches type="id_range">0 6</patches>
-  <interfaces>6 1 5 2 0 1 1 0
+  <interfaces>6 1 5 2 0 1 1 1
 5 3 4 2 1 0 0 1
 5 4 3 2 1 0 1 0
 4 1 2 2 0 1 1 1

@@ -29,6 +29,11 @@ class gsParaviewCollection;
 template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples);
 
+/// plot an isogeometric mesh and add to collection
+template <class T>
+void plotGeometry(const gsMultiPatch<T> & domain, std::string const & fileName,
+                  gsParaviewCollection & collection, index_t step);
+
 /// use all saved displacement fields to plot the all intermediate deformed configurations of the computational domain;
 /// always plots the deformed isoparametric mesh; plots the Jacobian determinant of the deformed configuration if *numSamplingPoints* > 0
 template <class T>
@@ -40,16 +45,38 @@ template <class T>
 void plotDeformation(const gsMultiPatch<T> & initDomain, const gsMultiPatch<T> & displacement,
                      std::string const & fileName, gsParaviewCollection & collection, index_t step);
 
-/// @brief Checks whether configuration is bijective, i.e. det(Jac) > 0;
+/// @brief Checks whether configuration is bijective, i.e. det(Jac(geo)) > 0;
 /// returns -1 if yes or the number of the first invalid patch;
 /// samples the Jacobian elementwise at the quadrature points and the corners
 template <class T>
 index_t checkGeometry(gsMultiPatch<T> const & domain);
 
+/// @brief Checks whether the deformed configuration is bijective, i.e. det(Jac(geo+disp)) > 0;
+/// returns -1 if yes or the number of the first invalid patch;
+/// samples the Jacobian elementwise at the quadrature points and the corners
+template <class T>
+index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & displacement);
+
+/// @ Compute norm of the isogeometric solution
+template <class T>
+T normL2(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & solution);
+
 /// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant);
 /// samples the Jacobian elementwise at the quadrature points and the corners
 template <class T>
 T geometryJacRatio(gsMultiPatch<T> const & domain);
+
+/// @brief Returns min(Jacobian determinant) divided by max(Jacobian determinant) for geo+disp
+/// samples the Jacobian elementwise at the quadrature points and the corners
+template <class T>
+T displacementJacRatio(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & displacement);
+
+/// @brief Generates a matrix of sampling points for a given parametric element;
+/// includes quadrature points for the element as well as the corner points
+template <class T>
+void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
+                       const gsQuadRule<T> & quRule, gsMatrix<T> & points);
+
 
 //-----------------------------------//
 //----------- Modelling--------------//

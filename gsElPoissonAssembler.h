@@ -1,6 +1,6 @@
-/** @file gsMassAssembler.h
+/** @file gsElPoissonAssembler.h
 
-    @brief Provides mass matrix for elasticity systems in 2D plain strain and 3D continua.
+    @brief Provides stiffness matrix for Poisson's equations.
 
     This file is part of the G+Smo library.
 
@@ -9,7 +9,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
         A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
@@ -20,19 +19,13 @@
 namespace gismo
 {
 
-/** @brief Assembles the mass matrix and right-hand side vector for linear and nonlinear elasticity
-           for 2D plain stress and 3D continua. The matrix has a block structure associated with
-           components of the displacement vector, each block corresponding to one component.
-           Supports mixed displacement-pressure formulation.
-*/
-
 template <class T>
-class gsMassAssembler : public gsBaseAssembler<T>
+class gsElPoissonAssembler : public gsBaseAssembler<T>
 {
 public:
     typedef gsBaseAssembler<T> Base;
 
-    gsMassAssembler(const gsMultiPatch<T> & patches,
+    gsElPoissonAssembler(const gsMultiPatch<T> & patches,
                       const gsMultiBasis<T> & basis,
                       const gsBoundaryConditions<T> & bconditions,
                       const gsFunction<T> & body_force);
@@ -50,25 +43,16 @@ public:
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
                           bool assembleMatrix = true) {assemble();}
 
-    /// @brief Eliminates new Dirichelt degrees of fredom
-    virtual void eliminateFixedDofs();
-    /// @brief chech if the mass matrix is assembled
-    virtual bool assembled() const {return assembledFlag;}
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & displacement) const;
 
 protected:
-
-    /// Dimension of the problem
-    /// parametric dim = physical dim = deformation dim
-    short_t m_dim;
-
     using Base::m_pde_ptr;
     using Base::m_bases;
     using Base::m_options;
     using Base::m_system;
     using Base::m_ddof;
-    // elimination matrix to eliminate Dirichlet degrees of freedom without reassembling the main matrix
-    gsSparseMatrix<T> eliminationMatrix;
-    bool assembledFlag;
 };
 
 } // namespace gismo ends

@@ -96,6 +96,36 @@ void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) co
 }
 
 template <class T>
+void gsStiffFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.resize(1,u.cols());
+
+    gsMapData<T> mdGeo;
+    mdGeo.points = u;
+    mdGeo.flags = NEED_DERIV;
+    m_geo.patch(m_patch).computeMap(mdGeo);
+
+    gsMapData<T> mdDisp;
+    mdDisp.points = u;
+    mdDisp.flags = NEED_DERIV;
+    m_disp.patch(m_patch).computeMap(mdDisp);
+
+    for (index_t i = 0; i < u.cols(); ++i)
+    {
+        gsMatrix<T> physDispJac = mdDisp.jacobian(i)*(mdGeo.jacobian(i).cramerInverse());
+        gsMatrix<T> F = gsMatrix<T>::Identity(domainDim(),domainDim()) + physDispJac;
+        // Right Cauchy Green strain, C = F'*F
+        gsMatrix<T> RCG = F.transpose() * F;
+        // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
+        gsMatrix<T> E = 0.5 * (RCG - gsMatrix<T>::Identity(domainDim(),domainDim()));
+        gsMatrix<T> E_dev = E - gsMatrix<T>::Identity(domainDim(),domainDim())*E.trace()/domainDim();
+        T inva = 0.5*(E_dev.trace()*E_dev.trace() - (E_dev*E_dev).trace());
+        //T inva = E_dev.norm();
+        result(0,i) = inva;
+    }
+}
+
+template <class T>
 void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     result.setZero(targetDim(),u.cols());

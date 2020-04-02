@@ -26,12 +26,17 @@ template <class T>
 class gsBaseAssembler : public gsAssembler<T>
 {
 public:
+    typedef memory::shared_ptr<gsBaseAssembler> Ptr;
+    typedef memory::unique_ptr<gsBaseAssembler> uPtr;
+
     /// Assembles the tangential linear system for Newton's method given the current solution
     /// in the form of free and fixed/Dirichelt degrees of freedom.
     /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
                           bool assembleMatrix = true) = 0;
+    /// assembly procedure for linear problems
+    virtual void assemble() {};
 
     /// Returns number of free degrees of freedom
     virtual int numDofs() const { return gsAssembler<T>::numDofs(); }
@@ -42,6 +47,10 @@ public:
                                    gsMultiPatch<T> & result,
                                    const gsVector<index_t> & unknowns) const;
 
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDDofs,
+                                   gsMultiPatch<T> & result) const {};
+
     //--------------------- DIRICHLET BC SHENANIGANS ----------------------------------//
     /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
      *
@@ -50,7 +59,7 @@ public:
      * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
      * to gsBoundaryCondtions container that is passed to the assembler constructor.
      */
-    virtual void setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
+    virtual void setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs, bool oneUnk = false);
 
     /// set all fixed degrees of freedom
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
@@ -58,6 +67,9 @@ public:
     /// get fixed degrees of freedom corresponding to a given part of the bdry.
     /// each column of the resulting matrix correspond to one variable/component of the vector-valued vairable
     virtual void getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs);
+
+    virtual void setRHS(const gsMatrix<T> & rhs) {m_system.rhs() = rhs;}
+    virtual void setMatrix(const gsSparseMatrix<T> & matrix) {m_system.matrix() = matrix;}
 
     //virtual void modifyDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 

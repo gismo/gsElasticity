@@ -1,6 +1,6 @@
-/** @file gsVisitorMass.h
+/** @file gsVisitorElPoisson.h
 
-    @brief Visitor class for the mass matrix assembly for elasticity problems.
+    @brief Visitor class for Poisson's equation.
 
     This file is part of the G+Smo library.
 
@@ -9,7 +9,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
         A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
@@ -22,23 +21,22 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorMass
+class gsVisitorElPoisson
 {
 public:
-    gsVisitorMass(gsSparseMatrix<T> & elimMatrix) :
-    elimMat(elimMatrix) {}
+    gsVisitorElPoisson(const gsPde<T> & pde_)
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_))
+    {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        // parametric dimension of the first displacement component
-        dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
-        density = options.getReal("Density");
+        localStiffening = options.getReal("LocalStiff");
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -48,30 +46,31 @@ public:
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
         // NEED_MEASURE to get the Jacobian determinant values for integration
-        md.flags = NEED_MEASURE;
+        md.flags = NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_VALUE;
         // Compute the geometry mapping at the quadrature points
         geo.computeMap(md);
         // Evaluate displacement basis functions on the element
-        basisRefs.front().eval_into(quNodes,basisValuesDisp);
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValues);
         // find local indices of the displacement basis functions active on the element
-        basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
-        N_D = localIndicesDisp.rows();
-
+        basisRefs.front().active_into(quNodes.col(0),localIndices);
+        N = localIndices.rows();
+        pde_ptr->rhs()->eval_into(md.values[0],forceValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
         // initialize local matrix and rhs
-        localMat.setZero(dim*N_D,dim*N_D);
+        localMat.setZero(N,N);
+        localRhs.setZero(N,pde_ptr->numRhs());
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Multiply quadrature weight by the geometry measure
-            const T weight = density * quWeights[q] * md.measure(q);
-
-            block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
+            const T weightMatrix = quWeights[q] * pow(md.measure(q),1-localStiffening);
+            const T weightRHS = quWeights[q] * md.measure(q);
+            transformGradients(md,q,basisValues[1],physGrad);
+            localMat.noalias() += weightMatrix * (physGrad.transpose() * physGrad);
+            localRhs.noalias() += weightRHS * basisValues[0].col(q) * forceValues.col(q);
         }
     }
 
@@ -80,60 +79,36 @@ public:
                               gsSparseSystem<T> & system)
     {
         // number of unknowns: dim of displacement
-        std::vector< gsMatrix<unsigned> > globalIndices(dim);
-        gsVector<size_t> blockNumbers(dim);
+        std::vector< gsMatrix<unsigned> > globalIndices(1);
+        gsVector<size_t> blockNumbers(1);
         // computes global indices for displacement components
-        for (short_t d = 0; d < dim; ++d)
-        {
-            system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
-            blockNumbers.at(d) = d;
-        }
+        system.mapColIndices(localIndices, patchIndex, globalIndices[0], 0);
+        blockNumbers.at(0) = 0;
         // push to global system
-        system.pushToRhs(gsMatrix<T>::Zero(dim*N_D,1),globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
-
-        // push to the elimination system
-        unsigned globalI,globalElimJ;
-        index_t elimSize = 0;
-        for (short_t dJ = 0; dJ < dim; ++dJ)
-        {
-            for (short_t dI = 0; dI < dim; ++dI)
-                for (index_t i = 0; i < N_D; ++i)
-                    if (system.colMapper(dI).is_free_index(globalIndices[dI].at(i)))
-                    {
-                        system.mapToGlobalRowIndex(localIndicesDisp.at(i),patchIndex,globalI,dI);
-                        for (index_t j = 0; j < N_D; ++j)
-                            if (!system.colMapper(dJ).is_free_index(globalIndices[dJ].at(j)))
-                            {
-                                globalElimJ = system.colMapper(dJ).global_to_bindex(globalIndices[dJ].at(j));
-                                elimMat.coeffRef(globalI,elimSize+globalElimJ) += localMat(N_D*dI+i,N_D*dJ+j);
-                            }
-                    }
-            elimSize += eliminatedDofs[dJ].rows();
-        }
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
     }
 
 protected:
-    // problem info
-    short_t dim;
-    //density
-    T density;
     // geometry mapping
     gsMapData<T> md;
+    const gsPoissonPde<T> * pde_ptr;
     // local components of the global linear system
     gsMatrix<T> localMat;
+    gsMatrix<T> localRhs;
     // local indices (at the current patch) of the displacement basis functions active at the current element
-    gsMatrix<unsigned> localIndicesDisp;
+    gsMatrix<unsigned> localIndices;
     // number of displacement basis functions active at the current element
-    index_t N_D;
+    index_t N;
     // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
-    gsMatrix<T> basisValuesDisp;
-    bool assembleMatrix;
-    // elimination matrix to efficiently change Dirichlet degrees of freedom
-    gsSparseMatrix<T> & elimMat;
+    std::vector<gsMatrix<T> >basisValues;
+    // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
+    gsMatrix<T> forceValues;
 
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> block;
+    gsMatrix<T> physGrad;
+    real_t localStiffening;
+
 };
 
 } // namespace gismo

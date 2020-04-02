@@ -54,7 +54,7 @@ gsOptionList gsNsAssembler<T>::defaultOptions()
     opt.addReal("Density","Density of the fluid",1.);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addSwitch("SUPG","Use SUPG stabilaztion",true);
-    opt.addInt("Iteration","Type of the linear iteration used to solve the nonlinear problem",iteration_type::newton);
+    opt.addInt("Assembly","Type of the linear system to assemble",ns_assembly::newton_update);
     return opt;
 }
 
@@ -219,7 +219,7 @@ void gsNsAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPa
 
 template <class T>
 gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
-                                           const std::vector<std::pair<index_t,boxSide> > & bdrySides) const
+                                           const std::vector<std::pair<index_t,boxSide> > & bdrySides, bool split) const
 {
     // all temporary data structures
     gsMatrix<T> quNodes, pressureValues, physGradJac, sigma;
@@ -231,7 +231,7 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
     gsMapData<T> mdVel(NEED_DERIV);
 
     gsMatrix<T> force;
-    force.setZero(m_dim,1);
+    force.setZero(m_dim, 2);
     const T viscosity = m_options.getReal("Viscosity");
     const T density = m_options.getReal("Density");
 
@@ -264,14 +264,18 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
                 physGradJac = mdVel.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
                 // normal length is the local measure
                 outerNormal(mdGeo,q,it.second,normal);
-                // stress tensor
-                sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim) -
-                        density*viscosity*(physGradJac + physGradJac.transpose());
-                force += quWeights[q] * sigma * normal;
+                // pressure contribution to the stress tensor
+                sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim);
+                force.col(0) += quWeights[q] * sigma * normal;
+                sigma = -1*density*viscosity*(physGradJac + physGradJac.transpose());
+                force.col(1) += quWeights[q] * sigma * normal;
             }
         }
     }
-    return force;
+    if (split)
+        return force;
+    else
+        return force.col(0) + force.col(1);
 }
 
 template <class T>

@@ -92,8 +92,9 @@ public:
     //--------------------- SPECIALS ----------------------------------//
 
      /// compute forces acting on a given part of the boundary (drag and lift)
+     /// if split=true, returns pressure and velocity conrtibution separately
     virtual gsMatrix<T> computeForce(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
-                                     const std::vector<std::pair<index_t,boxSide> > & bdrySides) const;
+                                     const std::vector<std::pair<index_t,boxSide> > & bdrySides, bool split = false) const;
     /// compute forces acting on a given part of the boundary (drag and lift) in the reference fluid configuration
     virtual gsMatrix<T> computeForceALE(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure,
                                         const gsMultiPatch<T> & displacementALE,

@@ -17,21 +17,37 @@ int main(int argc, char* argv[]){
     //=====================================//
 
     std::string filename = ELAST_DATA_DIR"/rotor_2D.xml";
-    index_t numUniRef = 1; // number of h-refinements
-    index_t numKRef = 0; // number of k-refinements
+    real_t fluxValue = 100.; // heat flux on the north boundary
+    real_t thExpCoef = 2e-4; // thermal expansion coeffcient of the material
+    real_t initTemp = 20.; // initial temperature
+    index_t numUniRef = 1;
+    index_t numDegElev = 0;
     index_t numPlotPoints = 10000;
-    real_t fluxValue = 100.;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the thermal expansion solver in 2D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
-    cmd.addInt("k","krefine","Number of degree elevation application",numKRef);
+    cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    // material parameters
-    real_t thExpCoef = 2e-4;
-    real_t initTemp = 20.;
+    //=============================================//
+         // Scanning geometry and creating bases //
+    //=============================================//
+
+    // scanning geometry
+    gsMultiPatch<> geometry;
+    gsReadFile<>(filename, geometry);
+    // creating basis
+    gsMultiBasis<> basis(geometry);
+    for (index_t i = 0; i < numDegElev; ++i)
+        basis.degreeElevate();
+    for (index_t i = 0; i < numUniRef; ++i)
+        basis.uniformRefine();
+
+    //=============================================//
+        // Setting loads and boundary conditions //
+    //=============================================//
 
     // heat source function, rhs for the heat equation
     gsConstantFunction<> heatSource(0.,2);
@@ -57,24 +73,7 @@ int main(int argc, char* argv[]){
     }
 
     //=============================================//
-         // Scanning geometry and creating bases //
-    //=============================================//
-
-    // scanning geometry
-    gsMultiPatch<> geometry;
-    gsReadFile<>(filename, geometry);
-    // creating basis
-    gsMultiBasis<> basis(geometry);
-    for (index_t i = 0; i < numKRef; ++i)
-    {
-        basis.degreeElevate();
-        basis.uniformRefine();
-    }
-    for (index_t i = 0; i < numUniRef; ++i)
-        basis.uniformRefine();
-
-    //=============================================//
-                // Solving temperature //
+           // Assembling & solving temperature //
     //=============================================//
 
     gsStopwatch clock;
@@ -104,7 +103,7 @@ int main(int argc, char* argv[]){
     heatAssembler.constructSolution(solVectorHeat,temperature);
 
     //=============================================//
-             // Solving thermal expansion //
+       // Assembling & solving thermal expansion //
     //=============================================//
 
     // creating assembler
@@ -118,7 +117,6 @@ int main(int argc, char* argv[]){
     gsInfo << "Assembled the elasticity system (matrix and load vector) with "
            << assembler.numDofs() << " dofs in " << clock.stop() << "s.\n";
 
-
     clock.restart();
     gsInfo << "Solving elasticity...\n";
 #ifdef GISMO_WITH_PARDISO
@@ -131,21 +129,19 @@ int main(int argc, char* argv[]){
     gsInfo << "Solved the elasticity system with EigenLDLT solver in " << clock.stop() <<"s.\n";
 #endif
 
+    //=============================================//
+                  // Output //
+    //=============================================//
+
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
     assembler.constructSolution(solVector,solution);
 
-    // constructing an IGA field (geometry + solution)
-    gsField<> solutionField(assembler.patches(),solution);
-    gsField<> heatField(assembler.patches(),temperature);
-
-    //=============================================//
-                  // Visualization //
-    //=============================================//
-
-    // creating a container to plot all fields to one Paraview file
     if (numPlotPoints > 0)
-    {
+    {    
+        // constructing an IGA field (geometry + solution)
+        gsField<> solutionField(assembler.patches(),solution);
+        gsField<> heatField(assembler.patches(),temperature);
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &solutionField;
         fields["Temperature"] = &heatField;

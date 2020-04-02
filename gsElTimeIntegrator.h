@@ -25,8 +25,7 @@ class gsElasticityAssembler;
 template <class T>
 class gsMassAssembler;
 
-/** @brief Time integation for equations of dynamic elasticity. Can perform explicit (with or without mass lamping)
- *         and implicit (linear and nonlinear) time steps.
+/** @brief Time integation for equations of dynamic elasticity with implicit schemes
 */
 template <class T>
 class gsElTimeIntegrator : public gsBaseAssembler<T>
@@ -41,10 +40,22 @@ public:
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
     /// set intial conditions
-    void setInitialDisplacement(const gsMatrix<T> & initialDisplacement) { dispVector = initialDisplacement; }
-    void setInitialVelocity(const gsMatrix<T> & initialVelocity) { velVector = initialVelocity; }
-    /// @brief Initialize the solver; execute before computing any time steps
-    void initialize();
+    void setDisplacementVector(const gsMatrix<T> & displacementVector)
+    {
+        GISMO_ENSURE(displacementVector.rows() == stiffAssembler.numDofs(),
+                     "Wrong size of the displacement vector: " + util::to_string(displacementVector.rows()) +
+                     ". Must be: " + util::to_string(stiffAssembler.numDofs()));
+        dispVector = displacementVector;
+        initialized = false;
+    }
+    void setVelocityVector(const gsMatrix<T> & velocityVector)
+    {
+        GISMO_ENSURE(velocityVector.rows() == stiffAssembler.numDofs(),
+                     "Wrong size of the velocity vector: " + util::to_string(velocityVector.rows()) +
+                     ". Must be: " + util::to_string(stiffAssembler.numDofs()));
+        velVector = velocityVector;
+        initialized = false;
+    }
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
     /// assemble the linear system for the nonlinear solver
@@ -54,15 +65,31 @@ public:
     /// return the number of free degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
     /// returns vector of displacement DoFs
-    const gsMatrix<T> & displacementVector() const {return dispVector;}
+    const gsMatrix<T> & displacementVector() const
+    {
+        GISMO_ENSURE(dispVector.rows() == stiffAssembler.numDofs(),
+                     "No initial conditions provided!");
+        return dispVector;
+    }
     /// returns vector of velocity DoFs
-    const gsMatrix<T> & velocityVector() const {return velVector;}
+    const gsMatrix<T> & velocityVector() const
+    {
+        GISMO_ENSURE(velVector.rows() == stiffAssembler.numDofs(),
+                     "No initial conditions provided!");
+        return velVector;
+    }
+    /// save solver state
+    void saveState();
+    /// recover solver state from saved state
+    void recoverState();
+    /// number of iterations Newton's method required at the last time step
+    index_t numberIterations() const { return numIters;}
 
 protected:
+    void initialize();
     /// time integraton schemes
     gsMatrix<T> implicitLinear();
     gsMatrix<T> implicitNonlinear();
-
     /// time integration scheme coefficients
     T alpha1() {return 1./m_options.getReal("Beta")/pow(tStep,2); }
     T alpha2() {return 1./m_options.getReal("Beta")/tStep; }
@@ -76,11 +103,8 @@ protected:
     gsElasticityAssembler<T> & stiffAssembler;
     /// assembler object that generates the mass matrix
     gsMassAssembler<T> & massAssembler;
-    /// Sparse matrix of the linear system to solve
-    gsSparseMatrix<T> m_matrix;
-    /// RHS vector of the linear system to solve
-    gsMatrix<T> m_rhs;
-
+    /// initialization flag
+    bool initialized;
     /// time step length
     T tStep;
     /// vector of displacement DoFs
@@ -89,9 +113,18 @@ protected:
     gsMatrix<T> velVector;
     /// vector of acceleration DoFs
     gsMatrix<T> accVector;
-
+    using Base::m_system;
     using Base::m_options;
     using Base::m_ddof;
+    /// number of iterations Newton's method took to converge at the last time step
+    index_t numIters;
+
+    /// saved state
+    bool hasSavedState;
+    gsMatrix<T> dispVecSaved;
+    gsMatrix<T> velVecSaved;
+    gsMatrix<T> accVecSaved;
+    std::vector<gsMatrix<T> > ddofsSaved;
 };
 
 }

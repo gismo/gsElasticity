@@ -20,6 +20,7 @@
 #include <gsPde/gsPoissonPde.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsElasticity/gsBaseUtils.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
@@ -84,6 +85,8 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
+    opt.addReal("LocalStiff","Stiffening degree for the Jacobian-based local stiffening",0.);
+    opt.addSwitch("Check","Check bijectivity of the displacement field before matrix assebmly",true);
     return opt;
 }
 
@@ -171,15 +174,17 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
     {
         gsMultiPatch<T> displacement;
         constructSolution(solutionVector,fixedDoFs,displacement);
-        if (checkSolution(displacement) != -1)
-            return false;
+        if (m_options.getInt("MaterialLaw") != material_law::saint_venant_kirchhoff &&
+            m_options.getSwitch("Check"))
+            if (checkDisplacement(m_pde_ptr->patches(),displacement) != -1)
+                return false;
         assemble(displacement,assembleMatrix);
     }
     else // mixed formulation (displacement + pressure)
     {
         gsMultiPatch<T> displacement, pressure;
         constructSolution(solutionVector,fixedDoFs,displacement,pressure);
-        if (checkSolution(displacement) != -1)
+        if (checkDisplacement(m_pde_ptr->patches(),displacement) != -1)
             return false;
         assemble(displacement,pressure,assembleMatrix);
     }
@@ -304,98 +309,6 @@ void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & d
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
         result.addPiecePointer(new gsCauchyStressFunction<T>(m_pde_ptr->domain(),displacement,p,type,lambda,mu));
-}
-
-template <class T>
-index_t gsElasticityAssembler<T>::checkSolution(const gsMultiPatch<T> & solution) const
-{
-    index_t corruptedPatch = -1;
-    gsMapData<T> mdG, mdU;
-    mdG.flags = NEED_DERIV;
-    mdU.flags = NEED_DERIV;
-    gsMatrix<T> points;
-
-    for (size_t p = 0; p < solution.nPatches(); ++p)
-    {
-        gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
-
-        typename gsBasis<T>::domainIter domIt = m_bases[0][p].makeDomainIterator(boundary::none);
-        for (; domIt->good(); domIt->next())
-        {
-            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
-            mdG.points = points;
-            mdU.points = points;
-            m_pde_ptr->domain().patch(p).computeMap(mdG);
-            solution.patch(p).computeMap(mdU);
-            for (index_t q = 0; q < points.cols(); ++q)
-            {
-                gsMatrix<T> physDispJac = mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse());
-                gsMatrix<T> F = gsMatrix<T>::Identity(m_dim,m_dim) + physDispJac;
-                if (F.determinant() <= 0)
-                    return p;
-            }
-        }
-    }
-    return corruptedPatch;
-}
-
-template <class T>
-T gsElasticityAssembler<T>::solutionJacRatio(const gsMultiPatch<T> & solution) const
-{
-    std::vector<T> maxs, mins;
-    gsMapData<T> mdG, mdU;
-    mdG.flags = NEED_DERIV;
-    mdU.flags = NEED_DERIV;
-    gsMatrix<T> points;
-
-    for (size_t p = 0; p < solution.nPatches(); ++p)
-    {
-        gsQuadRule<T> quRule = gsQuadrature::get(m_bases[0][p],m_options);
-
-        typename gsBasis<T>::domainIter domIt = m_bases[0][p].makeDomainIterator(boundary::none);
-        for (; domIt->good(); domIt->next())
-        {
-            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
-            mdG.points = points;
-            mdU.points = points;
-            m_pde_ptr->domain().patch(p).computeMap(mdG);
-            solution.patch(p).computeMap(mdU);
-
-            T minJ = (gsMatrix<T>::Identity(m_dim,m_dim) + mdU.jacobian(0)*(mdG.jacobian(0).cramerInverse())).determinant();
-            T maxJ = minJ;
-            for (int q = 1; q < points.cols(); ++q)
-            {
-                T J = (gsMatrix<T>::Identity(m_dim,m_dim) + mdU.jacobian(q)*(mdG.jacobian(q).cramerInverse())).determinant();
-                if (J > maxJ)
-                    maxJ = J;
-                if (J < minJ)
-                    minJ = J;
-            }
-
-            maxs.push_back(maxJ);
-            mins.push_back(minJ);
-        }
-    }
-
-    return *(std::min_element(mins.begin(),mins.end())) / *(std::max_element(maxs.begin(),maxs.end()));
-}
-
-
-template <class T>
-void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
-                       const gsQuadRule<T> & quRule, gsMatrix<T> & points)
-{
-    gsMatrix<T> quadPoints;
-    gsVector<T> tempVector; // temporary argument for the gsQuadrule::mapTo function
-    quRule.mapTo(lower,upper,quadPoints,tempVector);
-
-    gsVector<unsigned> nPoints(quadPoints.rows());
-    for (index_t d = 0; d < quadPoints.rows(); ++d)
-        nPoints.at(d) = 2;
-    gsMatrix<T> corners = gsPointGrid(lower,upper,nPoints);
-
-    points.resize(quadPoints.rows(),quadPoints.cols()+corners.cols());
-    points << quadPoints,corners;
 }
 
 }// namespace gismo ends
