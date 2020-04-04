@@ -64,15 +64,9 @@ public:
     {
         // initialize local matrix and rhs
         localMat.setZero(dim*N_D,dim*N_D);
-        for (index_t q = 0; q < quWeights.rows(); ++q)
-        {
-            // Multiply quadrature weight by the geometry measure
-            const T weight = density * quWeights[q] * md.measure(q);
-
-            block = weight * basisValuesDisp.col(q) * basisValuesDisp.col(q).transpose();
-            for (short_t d = 0; d < dim; ++d)
-                localMat.block(d*N_D,d*N_D,N_D,N_D) += block.block(0,0,N_D,N_D);
-        }
+        block = density*basisValuesDisp * quWeights.asDiagonal() * md.measures.asDiagonal() * basisValuesDisp.transpose();
+        for (short_t d = 0; d < dim; ++d)
+            localMat.block(d*N_D,d*N_D,N_D,N_D) = block.block(0,0,N_D,N_D);
     }
 
     inline void localToGlobal(const int patchIndex,

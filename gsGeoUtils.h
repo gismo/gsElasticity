@@ -200,3 +200,4 @@ T distance(gsMatrix<T> const & A, gsMatrix<T> const & B,
            index_t i = 0, index_t j = 0, bool cols = false);
 
 } // namespace ends
+

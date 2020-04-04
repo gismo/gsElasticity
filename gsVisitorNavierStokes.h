@@ -153,34 +153,8 @@ public:
         system.mapColIndices(localIndicesPres, patchIndex, globalIndices[dim], dim);
         blockNumbers.at(dim) = dim;
         // push to global system
-        //system.pushToRhs(localRhs,globalIndices,blockNumbers);
-       // if (assembleMatrix)
-        //    system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
-
-        gsVector<size_t> blockNumbersVel(dim);
-        for (short_t d = 0; d < dim; ++d)
-            blockNumbersVel.at(d) = d;
-        gsVector<size_t> blockNumbersPr(1);
-        blockNumbersPr.at(0) = dim;
-
-        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbersVel,blockNumbersVel);
-        std::vector<gsMatrix<T> > temp = eliminatedDofs;
-        for (index_t i = 0; i < temp.size(); ++i)
-            temp[i].setZero();
-        system.pushToMatrix(localMat.block(0,dim*N_V,dim*N_V+N_P,N_P),globalIndices,temp,blockNumbersVel,blockNumbersPr);
-        system.pushToMatrix(localMat.block(dim*N_V,0,N_P,dim*N_V+N_P),globalIndices,eliminatedDofs,blockNumbersPr,blockNumbersVel);
-        system.pushToMatrix(localMat.block(dim*N_V,dim*N_V,N_P,N_P),globalIndices,temp,blockNumbersPr,blockNumbersPr);
-
-
-        system.pushToRhs(localRhs,globalIndices,blockNumbersVel);
-        system.pushToRhs(localRhs.middleRows(dim*N_V,N_P),globalIndices,blockNumbersPr);
-
-
-
-
-
-
-
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
+        system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
     }
 
 protected:

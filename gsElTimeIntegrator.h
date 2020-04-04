@@ -128,3 +128,7 @@ protected:
 };
 
 }
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsElTimeIntegrator.hpp)
+#endif

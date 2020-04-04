@@ -37,7 +37,7 @@ gsNsAssembler<T>::gsNsAssembler(gsMultiPatch<T> const & patches,
     gsPiecewiseFunction<T> rightHandSides;
     rightHandSides.addPiece(body_force);
     typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rightHandSides) );
-    // same as above
+
     m_dim = body_force.targetDim();
     for (short_t d = 0; d < m_dim; ++d)
         m_bases.push_back(basisVel);
@@ -88,10 +88,7 @@ void gsNsAssembler<T>::refresh()
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
-    gsVector<unsigned> dims;
-    dims.setOnes(m_bases.size());
-    m_system = gsSparseSystem<T>(m_dofMappers, dims);
-
+    m_system = gsSparseSystem<T>(m_dofMappers, gsVector<T>::Ones(m_bases.size()));
     reserve();
 
     for (unsigned d = 0; d < m_bases.size(); ++d)

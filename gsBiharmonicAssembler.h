@@ -1,6 +1,6 @@
-/** @file gsElPoissonAssembler.h
+/** @file gsBiharmonicAssembler.h
 
-    @brief Provides stiffness matrix for Poisson's equations.
+    @brief Provides stiffness matrix for bi-harmonic equation.
 
     This file is part of the G+Smo library.
 
@@ -20,15 +20,16 @@ namespace gismo
 {
 
 template <class T>
-class gsElPoissonAssembler : public gsBaseAssembler<T>
+class gsBiharmonicAssembler : public gsBaseAssembler<T>
 {
 public:
     typedef gsBaseAssembler<T> Base;
 
-    gsElPoissonAssembler(const gsMultiPatch<T> & patches,
-                         const gsMultiBasis<T> & basis,
-                         const gsBoundaryConditions<T> & bconditions,
-                         const gsFunction<T> & body_force);
+    /// @brief This assebmler uses mixed finite elements. BasisA is for the main variable, basisB for the auxiliary
+    gsBiharmonicAssembler(const gsMultiPatch<T> & patches,
+                          const gsMultiBasis<T> & basis,
+                          const gsBoundaryConditions<T> & bconditions,
+                          const gsFunction<T> & body_force);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -45,7 +46,11 @@ public:
 
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
-                                   gsMultiPatch<T> & displacement) const;
+                                   gsMultiPatch<T> & solututionMain, gsMultiPatch<T> & solututionAux) const;
+
+protected:
+    /// a custom reserve function to allocate memory for the sparse matrix
+    virtual void reserve();
 
 protected:
     using Base::m_pde_ptr;
@@ -58,5 +63,6 @@ protected:
 } // namespace gismo ends
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsElPoissonAssembler.hpp)
+#include GISMO_HPP_HEADER(gsElMassAssembler.hpp)
 #endif
+

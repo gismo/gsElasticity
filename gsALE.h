@@ -99,3 +99,7 @@ protected:
 };
 
 } // namespace ends
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsALE.hpp)
+#endif

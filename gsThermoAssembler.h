@@ -59,3 +59,7 @@ protected:
 
 }; // class definition ends
 } // namespace ends
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsThermoAssembler.hpp)
+#endif

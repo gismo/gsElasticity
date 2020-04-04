@@ -175,5 +175,7 @@ int main(int argc, char* argv[]){
     gsInfo << "Lift coefficient: " << 2.*force.at(1)/L/pow(meanVelocity,2) << std::endl;
     gsInfo << "Pressure difference: " << pressureFront - pressureBack << std::endl;
 
+    gsInfo << solVector.middleRows(4831,5593).norm() << std::endl;
+
     return 0;
 }

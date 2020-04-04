@@ -18,6 +18,7 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElPoissonAssembler.h>
+#include <gsElasticity/gsBiharmonicAssembler.h>
 #include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsGeoUtils.h>
 
@@ -61,6 +62,11 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     else if (methodALE == ale_method::HE || methodALE == ale_method::IHE)
     {
         assembler = typename gsBaseAssembler<T>::uPtr(new gsElPoissonAssembler<T>(geometry,basis,bcInfo,rhs));
+        assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
+    }
+    else if (methodALE == ale_method::BHE)
+    {
+        assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfo,rhs));
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
     }
     else
@@ -245,8 +251,26 @@ index_t gsALE<T>::IHE()
 template <class T>
 index_t gsALE<T>::BHE()
 {
-    GISMO_NO_IMPLEMENTATION;
-    return checkDisplacement(assembler->patches(),ALEdisp);
+    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
+    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
+                                fsiInterface.fluidSides[i].side(),
+                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs(),true);
+    assembler->assemble();
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
+    gsMatrix<> solVector = solver.solve(assembler->rhs());
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler->matrix());
+    gsMatrix<> solVector = solver.solve(assembler->rhs());
+#endif
+
+    assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEdisp);
+    if (m_options.getSwitch("Check"))
+        return checkDisplacement(assembler->patches(),ALEdisp);
+    else
+        return -1;
 }
 
 template <class T>

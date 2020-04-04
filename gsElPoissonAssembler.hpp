@@ -1,4 +1,4 @@
-/** @file gsElMassAssembler.hpp
+/** @file gsElPoissonAssembler.hpp
 
     @brief Provides stiffness matrix for Poisson's equation.
 
