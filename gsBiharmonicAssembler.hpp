@@ -51,7 +51,7 @@ void gsBiharmonicAssembler<T>::refresh()
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
-    m_system = gsSparseSystem<T>(m_dofMappers, gsVector<T>::Ones(2));
+    m_system = gsSparseSystem<T>(m_dofMappers, gsVector<unsigned>::Ones(2));
     reserve();
     Base::computeDirichletDofs(0);
     Base::computeDirichletDofs(1);
@@ -91,11 +91,11 @@ void gsBiharmonicAssembler<T>::assemble()
 //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
 template <class T>
-void gsBiharmonicAssembler<T>::constructSolutionMain(const gsMatrix<T> & solVector,
-                                                     const std::vector<gsMatrix<T> > & fixedDoFs,
-                                                     gsMultiPatch<T> & solutionMain) const
+void gsBiharmonicAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
+                                                 const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                 gsMultiPatch<T> & solution) const
 {
-    Base::constructSolution(solVector,fixedDoFs,solutionMain,gsVector<index_t>::Zero(1));
+    Base::constructSolution(solVector,fixedDoFs,solution,gsVector<index_t>::Zero(1));
 }
 
 template <class T>
@@ -111,7 +111,7 @@ void gsBiharmonicAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                                                  const std::vector<gsMatrix<T> > & fixedDoFs,
                                                  gsMultiPatch<T> & solutionMain, gsMultiPatch<T> & solutionAux) const
 {
-    constructSolutionMain(solVector,fixedDoFs,solutionMain);
+    constructSolution(solVector,fixedDoFs,solutionMain);
     constructSolutionAux(solVector,fixedDoFs,solutionAux);
 }
 

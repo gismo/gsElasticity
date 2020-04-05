@@ -53,6 +53,7 @@ protected:
     using Base::m_options;
     using Base::m_system;
     using Base::m_ddof;
+    using Base::eliminationMatrix;
 };
 
 } // namespace gismo ends

@@ -32,6 +32,7 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
       fsiInterface(interface),
       methodALE(method),
       m_options(defaultOptions()),
+      initialized(false),
       hasSavedState(false)
 {
     // create input for the assembler
@@ -66,7 +67,10 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     }
     else if (methodALE == ale_method::BHE)
     {
-        assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfo,rhs));
+        gsBoundaryConditions<T> bcInfo2;
+        for (auto it = geometry.bBegin(); it != geometry.bEnd(); ++it)
+            bcInfo2.addCondition(it->patch,it->side(),condition_type::dirichlet,0);
+        assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfo2,rhs));
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
     }
     else
@@ -97,8 +101,23 @@ void gsALE<T>::constructSolution(gsMultiPatch<T> & solution) const
 }
 
 template <class T>
+void gsALE<T>::initialize()
+{
+    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
+    if (methodALE == ale_method::LE || methodALE == ale_method::ILE)
+        assembler->options().setReal("PoissonsRatio",m_options.getReal("PoissonsRatio"));
+    if (methodALE == ale_method::LE || methodALE == ale_method::HE || methodALE == ale_method::BHE)
+        assembler->assemble();
+
+    initialized = true;
+}
+
+template <class T>
 index_t gsALE<T>::updateMesh()
 {
+    if (!initialized)
+        initialize();
+
     switch (methodALE)
     {
         case ale_method::TINE: return TINE(); break;
@@ -114,8 +133,6 @@ index_t gsALE<T>::updateMesh()
 template <class T>
 index_t gsALE<T>::TINE()
 {
-    assembler->options().setReal("PoissonsRatio",m_options.getReal("PoissonsRatio"));
-    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
     for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
@@ -133,8 +150,6 @@ index_t gsALE<T>::TINE()
 template <class T>
 index_t gsALE<T>::ILE()
 {
-    assembler->options().setReal("PoissonsRatio",m_options.getReal("PoissonsRatio"));
-    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
     for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
@@ -166,8 +181,6 @@ index_t gsALE<T>::ILE()
 template <class T>
 index_t gsALE<T>::LE()
 {
-    assembler->options().setReal("PoissonsRatio",m_options.getReal("PoissonsRatio"));
-    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
     for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
@@ -192,12 +205,11 @@ index_t gsALE<T>::LE()
 template <class T>
 index_t gsALE<T>::HE()
 {
-    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
     for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs(),true);
-    assembler->assemble();
+    assembler->eliminateFixedDofs();
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
@@ -218,7 +230,6 @@ index_t gsALE<T>::HE()
 template <class T>
 index_t gsALE<T>::IHE()
 {
-    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
     for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
@@ -251,7 +262,6 @@ index_t gsALE<T>::IHE()
 template <class T>
 index_t gsALE<T>::BHE()
 {
-    assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
     for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
@@ -259,10 +269,10 @@ index_t gsALE<T>::BHE()
     assembler->assemble();
 
 #ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
+    gsSparseSolver<>::PardisoLU solver(assembler->matrix());
     gsMatrix<> solVector = solver.solve(assembler->rhs());
 #else
-    gsSparseSolver<>::SimplicialLDLT solver(assembler->matrix());
+    gsSparseSolver<>::LU solver(assembler->matrix());
     gsMatrix<> solVector = solver.solve(assembler->rhs());
 #endif
 

@@ -56,8 +56,7 @@ void gsElTimeIntegrator<T>::initialize()
     GISMO_ENSURE(velVector.rows() == stiffAssembler.numDofs(),
                  "No initial conditions provided!");
     stiffAssembler.assemble(dispVector,m_ddof,false);
-    if (!massAssembler.assembled())
-        massAssembler.assemble();
+    massAssembler.assemble();
 
     gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
     accVector = solver.solve(stiffAssembler.rhs());

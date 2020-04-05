@@ -47,9 +47,9 @@ public:
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
     /// @brief construct the solution of the equation
-    virtual void constructSolutionMain(const gsMatrix<T> & solVector,
-                                       const std::vector<gsMatrix<T> > & fixedDoFs,
-                                       gsMultiPatch<T> & solutionMain) const;
+    virtual void constructSolution(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & solution) const;
 
     /// @brief construct the Laplacian of the solution
     virtual void constructSolutionAux(const gsMatrix<T> & solVector,

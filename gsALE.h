@@ -64,6 +64,7 @@ public:
 
 
 protected:
+    void initialize();
     /// update mesh using Tangential Incremental Nonlinear Elasticity
     index_t TINE();
     /// update mesh using Incremental Linear Elasticity
@@ -91,6 +92,8 @@ protected:
     typename gsIterative<T>::uPtr solverNL;
     /// current ALE displacement field
     gsMultiPatch<T> ALEdisp;
+    /// initialization flag
+    bool initialized;
 
 
     /// saved state

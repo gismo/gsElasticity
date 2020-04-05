@@ -56,7 +56,7 @@ public:
         initialized = false;
     }
     /// make a time step according to a chosen scheme
-    void makeTimeStep(T timeStep, bool ALE = false);
+    void makeTimeStep(T timeStep);
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs,
@@ -107,8 +107,6 @@ protected:
     gsMatrix<T> constRHS;
     index_t numIters;
 
-    /// use ALE shift of the advective velocity
-    bool flagALE;
     /// ALE velocity
     gsMultiPatch<T> * velocityALE;
     /// mapping between the geometry patches and the ALE velocity patches

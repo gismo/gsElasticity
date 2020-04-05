@@ -24,8 +24,9 @@ template <class T>
 class gsVisitorElPoisson
 {
 public:
-    gsVisitorElPoisson(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_))
+    gsVisitorElPoisson(const gsPde<T> & pde_, gsSparseMatrix<T> & elimMatrix)
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          elimMat(elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -87,6 +88,20 @@ public:
         // push to global system
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
+
+        // push to the elimination matrix
+        unsigned globalI, globalElimJ;
+        for (index_t i = 0; i < N; ++i)
+            if (system.colMapper(0).is_free_index(globalIndices[0].at(i)))
+            {
+                system.mapToGlobalRowIndex(localIndices.at(i),patchIndex,globalI,0);
+                for (index_t j = 0; j < N; ++j)
+                    if (!system.colMapper(0).is_free_index(globalIndices[0].at(j)))
+                    {
+                        globalElimJ = system.colMapper(0).global_to_bindex(globalIndices[0].at(j));
+                        elimMat.coeffRef(globalI,globalElimJ) += localMat(i,j);
+                    }
+            }
     }
 
 protected:
@@ -104,6 +119,8 @@ protected:
     std::vector<gsMatrix<T> >basisValues;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+    // elimination matrix to efficiently change Dirichlet degrees of freedom
+    gsSparseMatrix<T> & elimMat;
 
     // all temporary matrices defined here for efficiency
     gsMatrix<T> physGrad;

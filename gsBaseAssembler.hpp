@@ -108,7 +108,7 @@ void gsBaseAssembler<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
 }
 
 template <class T>
-void gsBaseAssembler<T>::getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs)
+void gsBaseAssembler<T>::getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs) const
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -134,6 +134,31 @@ void gsBaseAssembler<T>::getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & 
             ddofs(i,d) = m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0);
     }
 
+}
+
+template <class T>
+index_t gsBaseAssembler<T>::numFixedDofs() const
+{
+    index_t nFixedDofs = 0;
+    for (index_t i = 0; i < m_ddof.size(); ++i)
+        nFixedDofs += m_ddof[i].rows();
+    return nFixedDofs;
+}
+
+template <class T>
+void gsBaseAssembler<T>::eliminateFixedDofs()
+{
+    // allocate a vector of fixed degrees of freedom
+    gsMatrix<T> fixedDofs(numFixedDofs(),m_system.rhs().cols());
+    // from a vector of fixed degrees of freedom
+    index_t nFixedDofs = 0;
+    for (index_t i = 0; i < m_ddof.size(); ++i)
+    {
+        fixedDofs.middleRows(nFixedDofs,m_ddof[i].rows()) = m_ddof[i];
+        nFixedDofs += m_ddof[i].rows();
+    }
+    // eliminate fixed degrees of freedom
+    m_system.rhs() = -1*eliminationMatrix*fixedDofs;
 }
 
 }// namespace gismo ends

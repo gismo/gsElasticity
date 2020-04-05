@@ -88,7 +88,7 @@ void gsNsAssembler<T>::refresh()
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
-    m_system = gsSparseSystem<T>(m_dofMappers, gsVector<T>::Ones(m_bases.size()));
+    m_system = gsSparseSystem<T>(m_dofMappers, gsVector<unsigned>::Ones(m_bases.size()));
     reserve();
 
     for (unsigned d = 0; d < m_bases.size(); ++d)

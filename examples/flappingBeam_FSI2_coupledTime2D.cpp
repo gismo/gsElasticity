@@ -247,6 +247,7 @@ int main(int argc, char* argv[])
     gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler,&velALE,&patchesALE);
     nsTimeSolver.options().setInt("Scheme",imexOrNewton ? time_integration::implicit_nonlinear : time_integration::implicit_linear);
     nsTimeSolver.options().setReal("Theta",thetaFluid);
+    nsTimeSolver.options().setSwitch("ALE",true);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
     // elasticity solver: beam
     gsElasticityAssembler<real_t> elAssembler(geoBeam,basisDisplacement,bcInfoBeam,g);
@@ -396,9 +397,11 @@ int main(int argc, char* argv[])
             // ALE
             iterClock.restart();
             // undo last ALE
-            nsAssembler.patches().patch(3).coefs() -= dispALE.patch(0).coefs();
-            nsAssembler.patches().patch(4).coefs() -= dispALE.patch(1).coefs();
-            nsAssembler.patches().patch(5).coefs() -= dispALE.patch(2).coefs();
+            for (index_t p = 0; p < 3; ++p)
+            {
+                nsAssembler.patches().patch(p+3).coefs() -= dispALE.patch(p).coefs();
+                nsMassAssembler.patches().patch(p+3).coefs() -= dispALE.patch(p).coefs();
+            }
             // recover ALE at the start of timestep
             if (couplingIter > 0)
                 moduleALE.recoverState();
@@ -415,9 +418,11 @@ int main(int argc, char* argv[])
             // construct ALE displacement
             moduleALE.constructSolution(dispALE);
             // apply new ALE to the flow domain
-            nsAssembler.patches().patch(3).coefs() += dispALE.patch(0).coefs();
-            nsAssembler.patches().patch(4).coefs() += dispALE.patch(1).coefs();
-            nsAssembler.patches().patch(5).coefs() += dispALE.patch(2).coefs();
+            for (index_t p = 0; p < 3; ++p)
+            {
+                nsAssembler.patches().patch(p+3).coefs() += dispALE.patch(p).coefs();
+                nsMassAssembler.patches().patch(p+3).coefs() += dispALE.patch(p).coefs();
+            }
             timeALE += iterClock.stop();
 
             // test if any patch is not bijective
@@ -434,7 +439,7 @@ int main(int argc, char* argv[])
             nsAssembler.setFixedDofs(5,boundary::west,velALE.patch(2).boundary(boundary::west)->coefs());
             if (couplingIter > 0)
                 nsTimeSolver.recoverState();
-            nsTimeSolver.makeTimeStep(tStep,true);
+            nsTimeSolver.makeTimeStep(tStep);
             nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
             timeFlow += iterClock.stop();
 

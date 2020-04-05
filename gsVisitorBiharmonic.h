@@ -37,6 +37,8 @@ public:
         // a quadrature rule is defined by the basis for the auxiliary variable.
         // the same rule is used for the main variable
         rule = gsQuadrature::get(basisRefs.back(), options);
+        // saving necessary info
+        localStiffening = options.getReal("LocalStiff");
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -74,19 +76,20 @@ public:
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
             // Multiply quadrature weight by the geometry measure
-            const T weight = quWeights[q] * md.measure(q);
+            const T weightMatrix = quWeights[q] * pow(md.measure(q),1-localStiffening);
+            const T weightRHS = quWeights[q] * md.measure(q);
             // Compute physical gradients of the basis functions at q as a 1 x numActiveFunction matrix
             transformGradients(md, q, basisValuesAux[1], physGradAux);
             transformGradients(md, q, basisValuesMain[1], physGradMain);
             // matrix A
-            block = weight * basisValuesAux[0].col(q) * basisValuesAux[0].col(q).transpose();
+            block = weightMatrix * basisValuesAux[0].col(q) * basisValuesAux[0].col(q).transpose();
             localMat.block(N_M,N_M,N_A,N_A) += block.block(0,0,N_A,N_A);
             // matrix B
-            block = weight * physGradAux.transpose()*physGradMain; // N_A x N_M
+            block = weightMatrix * physGradAux.transpose()*physGradMain; // N_A x N_M
             localMat.block(0,N_M,N_M,N_A) += block.block(0,0,N_A,N_M).transpose();
             localMat.block(N_M,0,N_A,N_M) += block.block(0,0,N_A,N_M);
             // rhs contribution
-            localRhs.middleRows(0,N_M).noalias() += weight * basisValuesMain[0].col(q) * forceValues.col(q).transpose();
+            localRhs.middleRows(0,N_M).noalias() += weightRHS * basisValuesMain[0].col(q) * forceValues.col(q).transpose();
         }
     }
 
@@ -129,6 +132,7 @@ protected:
     gsMatrix<T> forceValues;
     // all temporary matrices defined here for efficiency
     gsMatrix<T> block, physGradMain, physGradAux;
+    real_t localStiffening;
 };
 
 } // namespace gismo

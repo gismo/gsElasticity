@@ -50,10 +50,9 @@ gsOptionList gsNsTimeIntegrator<T>::defaultOptions()
     opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",solver_verbosity::none);
     opt.addReal("AbsTol","Absolute tolerance for the convergence cretiria",1e-10);
     opt.addReal("RelTol","Relative tolerance for the stopping criteria",1e-7);
+    opt.addSwitch("ALE","ALE deformation is applied to the flow domain",false);
     return opt;
 }
-
-
 
 template <class T>
 void gsNsTimeIntegrator<T>::initialize()
@@ -61,8 +60,7 @@ void gsNsTimeIntegrator<T>::initialize()
     GISMO_ENSURE(solVector.rows() == stiffAssembler.numDofs(),"No initial conditions provided!");
     stiffAssembler.assemble(solVector,m_ddof);
     massAssembler.setFixedDofs(m_ddof);
-    if (!massAssembler.assembled())
-        massAssembler.assemble();
+    massAssembler.assemble();
     // IMEX stuff
     oldSolVector = solVector;
     oldTimeStep = 1.;
@@ -71,13 +69,12 @@ void gsNsTimeIntegrator<T>::initialize()
 }
 
 template <class T>
-void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep, bool ALE)
+void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
 {
     if (!initialized)
         initialize();
 
     tStep = timeStep;
-    flagALE = ALE;
     if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
         implicitNonlinear();
     if (m_options.getInt("Scheme") == time_integration::implicit_linear)
@@ -106,13 +103,17 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     gsMultiPatch<T> velocity, pressure;
     stiffAssembler.constructSolution(solVector + tStep/oldTimeStep*(solVector-oldSolVector),
                                      stiffAssembler.allFixedDofs(),velocity,pressure);
-    if (flagALE)
+    if (m_options.getSwitch("ALE"))
         for (auto &it : *patchesALE)
             velocity.patch(it.first).coefs() -= velocityALE->patch(it.second).coefs();
     stiffAssembler.assemble(velocity,pressure);
 
     massAssembler.setFixedDofs(stiffAssembler.allFixedDofs());
-    massAssembler.eliminateFixedDofs();
+    if (m_options.getSwitch("ALE"))
+        massAssembler.assemble();
+    else
+        massAssembler.eliminateFixedDofs();
+
     // rhs: dt*theta*F_n+1
     m_system.rhs() += tStep*theta*stiffAssembler.rhs();
     // rhs: -M_FD*u_DDOFS_n+1
@@ -155,8 +156,11 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.matrix()*solVector.middleRows(0,numDofsVel);
     constRHS.middleRows(0,numDofsVel).noalias() -= massAssembler.rhs();
     massAssembler.setFixedDofs(stiffAssembler.allFixedDofs());
-    massAssembler.eliminateFixedDofs();
-        constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.rhs();
+    if (m_options.getSwitch("ALE"))
+        massAssembler.assemble();
+    else
+        massAssembler.eliminateFixedDofs();
+    constRHS.middleRows(0,numDofsVel).noalias() += massAssembler.rhs();
 
     gsIterative<T> solver(*this,solVector,m_ddof);
     solver.options().setInt("Verbosity",m_options.getInt("Verbosity"));
@@ -180,7 +184,7 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
 
     gsMultiPatch<T> velocity, pressure;
     stiffAssembler.constructSolution(solutionVector,fixedDoFs,velocity,pressure);
-    if (flagALE)
+    if (m_options.getSwitch("ALE"))
         for (auto &it : *patchesALE)
             velocity.patch(it.first).coefs() -= velocityALE->patch(it.second).coefs();
     stiffAssembler.assemble(velocity,pressure);

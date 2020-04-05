@@ -45,7 +45,6 @@ gsMassAssembler<T>::gsMassAssembler(const gsMultiPatch<T> & patches,
         m_bases.push_back(basis);
 
     Base::initialize(pde, m_bases, defaultOptions());
-    assembledFlag = false;
 }
 
 template <class T>
@@ -84,11 +83,7 @@ void gsMassAssembler<T>::assemble()
     m_system.reserve(m_bases[0], m_options, 1);
     m_system.rhs().setZero(Base::numDofs(),1);
 
-    // allocate space for the elimination matrix
-    index_t numFixedDofs = 0;
-    for (index_t i = 0; i < m_ddof.size(); ++i)
-        numFixedDofs += m_ddof[i].rows();
-    eliminationMatrix.resize(Base::numDofs(),numFixedDofs);
+    eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
     eliminationMatrix.setZero();
     eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
 
@@ -97,30 +92,6 @@ void gsMassAssembler<T>::assemble()
 
     m_system.matrix().makeCompressed();
     eliminationMatrix.makeCompressed();
-
-    assembledFlag = true;
-}
-
-template <class T>
-void gsMassAssembler<T>::eliminateFixedDofs()
-{
-    GISMO_ENSURE(assembledFlag,"Mass matrix not assembled!");
-    // allocate a vector of fixed degrees of freedom
-    index_t numFixedDofs = 0;
-    for (index_t i = 0; i < m_ddof.size(); ++i)
-        numFixedDofs += m_ddof[i].rows();
-    gsMatrix<T> fixedDofs(numFixedDofs,1);
-
-    // from a vector of fixed degrees of freedom
-    numFixedDofs = 0;
-    for (index_t i = 0; i < m_ddof.size(); ++i)
-    {
-        fixedDofs.middleRows(numFixedDofs,m_ddof[i].rows()) = m_ddof[i];
-        numFixedDofs += m_ddof[i].rows();
-    }
-
-    // eliminate fixed degrees of freedom
-    m_system.rhs() = -1*eliminationMatrix*fixedDofs;
 }
 
 

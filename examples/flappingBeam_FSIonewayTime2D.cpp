@@ -306,6 +306,7 @@ int main(int argc, char* argv[])
             velALE.patch(p).coefs() -= dispALE.patch(p).coefs();
             // update flow geo
             nsAssembler.patches().patch(p+3).coefs() += velALE.patch(p).coefs();
+            nsMassAssembler.patches().patch(p+3).coefs() += velALE.patch(p).coefs();
             // construct ALE velocity
             velALE.patch(p).coefs() /= tStep;
         }
@@ -324,7 +325,7 @@ int main(int argc, char* argv[])
         nsAssembler.setFixedDofs(3,boundary::south,velALE.patch(0).boundary(boundary::south)->coefs());
         nsAssembler.setFixedDofs(4,boundary::north,velALE.patch(1).boundary(boundary::north)->coefs());
         nsAssembler.setFixedDofs(5,boundary::west,velALE.patch(2).boundary(boundary::west)->coefs());
-        nsTimeSolver.makeTimeStep(tStep,true);
+        nsTimeSolver.makeTimeStep(tStep);
         nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
         timeFlow += iterClock.stop();
 

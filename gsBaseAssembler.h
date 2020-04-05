@@ -66,18 +66,27 @@ public:
 
     /// get fixed degrees of freedom corresponding to a given part of the bdry.
     /// each column of the resulting matrix correspond to one variable/component of the vector-valued vairable
-    virtual void getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs);
+    virtual void getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs) const;
+
+    /// get the size of the Dirichlet vector for elimination
+    virtual index_t numFixedDofs() const;
+    /// @brief Eliminates new Dirichelt degrees of fredom
+    virtual void eliminateFixedDofs();
+
+    //virtual void modifyDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
+
+    //--------------------- OTHER ----------------------------------//
 
     virtual void setRHS(const gsMatrix<T> & rhs) {m_system.rhs() = rhs;}
     virtual void setMatrix(const gsSparseMatrix<T> & matrix) {m_system.matrix() = matrix;}
-
-    //virtual void modifyDirichletDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs);
 
 protected:
     using gsAssembler<T>::m_pde_ptr;
     using gsAssembler<T>::m_bases;
     using gsAssembler<T>::m_system;
     using gsAssembler<T>::m_ddof;
+
+    gsSparseMatrix<T> eliminationMatrix;
 };
 
 } // namespace ends
