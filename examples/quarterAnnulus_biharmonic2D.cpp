@@ -15,72 +15,57 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"unitSquare.xml";
     index_t numUniRef = 4;
     index_t numDegElev = 0;
     index_t numPlotPoints = 10000;
-    bool subgridOrTaylorHood = false;
 
     // minimalistic user interface for terminal
-    gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
+    gsCmdLine cmd("Testing the biharmonic equation solver in 3D.");
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
-    cmd.addSwitch("e","element","Mixed element: false = subgrid (default), true = Taylor-Hood",subgridOrTaylorHood);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-    gsInfo << "Using " << (subgridOrTaylorHood ? "Taylor-Hood " : "subgrid ") << "mixed elements.\n";
 
     //=============================================//
         // Scanning geometry and creating bases //
     //=============================================//
 
     // scanning geometry
-    gsMultiPatch<> geometry;
-    gsReadFile<>(filename, geometry);
-    // creating basis
-    gsMultiBasis<> basisMain(geometry);
-    gsMultiBasis<> basisAux(geometry);
+    gsMultiPatch<> geometry( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );// creating basis
+    gsMultiBasis<> basis(geometry);
     for (index_t i = 0; i < numDegElev; ++i)
-    {
-        basisMain.degreeElevate();
-        basisAux.degreeElevate();
-    }
+        basis.degreeElevate();
     for (index_t i = 0; i < numUniRef; ++i)
-    {
-        basisMain.uniformRefine();
-        basisAux.uniformRefine();
-    }
-    // additional velocity refinement for stable mixed FEM
-    //if (!subgridOrTaylorHood) // subgrid
-    //    basisMain.uniformRefine();
-    //else // Taylor-Hood
-    //    basisAux.degreeElevate();
-
+        basis.uniformRefine();
     //=============================================//
         // Setting loads and boundary conditions //
     //=============================================//
 
-    // source function, rhs
-    gsConstantFunction<> f(-1.,2);
+    gsFunctionExpr<> source  ("-64*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",
+                              "0",2);
+    gsFunctionExpr<> laplace ("-4*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",
+                              "-4*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)/4",
+                            "(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)/4",2);
     // surface load, neumann BC
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    bcInfo.addCondition(0,boundary::south,condition_type::dirichlet,0,0);
-    bcInfo.addCondition(0,boundary::north,condition_type::dirichlet,0,0);
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0);
-    //bcInfo.addCondition(0,boundary::south,condition_type::dirichlet,0,1);
-    //bcInfo.addCondition(0,boundary::north,condition_type::dirichlet,0,1);
-    //bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
-    //bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
+    bcInfo.addCondition(0,boundary::south,condition_type::dirichlet,&solVal,0);
+    bcInfo.addCondition(0,boundary::north,condition_type::dirichlet,&solVal,0);
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,&solVal,0);
+    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,&solVal,0);
+    bcInfo.addCondition(0,boundary::south,condition_type::dirichlet,&laplace,1);
+    bcInfo.addCondition(0,boundary::north,condition_type::dirichlet,&laplace,1);
+    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,&laplace,1);
+    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,&laplace,1);
 
     //=============================================//
               // Assembling & solving //
     //=============================================//
 
     // creating assembler
-    gsBiharmonicAssembler<real_t> assembler(geometry,basisMain,basisAux,bcInfo,f);
+    gsBiharmonicAssembler<real_t> assembler(geometry,basis,bcInfo,source);
     gsInfo<<"Assembling...\n";
     gsStopwatch clock;
     clock.restart();
@@ -112,14 +97,18 @@ int main(int argc, char* argv[]){
     if (numPlotPoints > 0) // visualization
     {
         // constructing isogeometric field (geometry + solution)
-        gsField<> mainField(assembler.patches(),solutionMain);
-        gsField<> auxField(assembler.patches(),solutionAux);
+        gsField<> mainField(geometry,solutionMain);
+        gsField<> auxField(geometry,solutionAux);
+        gsField<> mainAnalytical(geometry,solVal,false);
+        gsField<> auxAnalytical(geometry,laplace,false);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Main"] = &mainField;
         fields["Auxiliary"] = &auxField;
-        gsWriteParaviewMultiPhysics(fields,"biharmonic",numPlotPoints);
-        gsInfo << "Open \"biharmonic.pvd\" in Paraview for visualization.\n";
+        fields["MainAnalytical"] = &mainAnalytical;
+        fields["AuxiliaryAnalytical"] = &auxAnalytical;
+        gsWriteParaviewMultiPhysics(fields,"biharmonicAnn",numPlotPoints);
+        gsInfo << "Open \"biharmonicAnn.pvd\" in Paraview for visualization.\n";
     }
 
     return 0;

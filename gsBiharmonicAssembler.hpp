@@ -72,7 +72,7 @@ void gsBiharmonicAssembler<T>::reserve()
             deg = m_bases[0][0].degree(d);
 
     index_t numElPerColumn = pow((bdA*deg+bdB),dim)*2;
-    m_system.reserve(numElPerColumn*(1+bdO),1);
+    m_system.reserve(numElPerColumn*(1+bdO),m_pde_ptr->numRhs());
 }
 
 template<class T>

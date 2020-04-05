@@ -68,7 +68,7 @@ public:
     {
         // Initialize local matrix/rhs                  // 0 | B^T = L
         localMat.setZero(N_M + N_A, N_M + N_A);         // --|--    matrix structure
-        localRhs.setZero(N_M + N_A,1);                  // B | A   = 0
+        localRhs.setZero(N_M + N_A,pde_ptr->numRhs());  // B | A   = 0
 
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -86,7 +86,7 @@ public:
             localMat.block(0,N_M,N_M,N_A) += block.block(0,0,N_A,N_M).transpose();
             localMat.block(N_M,0,N_A,N_M) += block.block(0,0,N_A,N_M);
             // rhs contribution
-            localRhs.middleRows(0,N_M).noalias() += weight * forceValues(0,q) * basisValuesMain[0].col(q);
+            localRhs.middleRows(0,N_M).noalias() += weight * basisValuesMain[0].col(q) * forceValues.col(q).transpose();
         }
     }
 

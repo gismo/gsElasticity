@@ -70,7 +70,7 @@ public:
             const T weightRHS = quWeights[q] * md.measure(q);
             transformGradients(md,q,basisValues[1],physGrad);
             localMat.noalias() += weightMatrix * (physGrad.transpose() * physGrad);
-            localRhs.noalias() += weightRHS * basisValues[0].col(q) * forceValues.col(q);
+            localRhs.noalias() += weightRHS * basisValues[0].col(q) * forceValues.col(q).transpose();
         }
     }
 
