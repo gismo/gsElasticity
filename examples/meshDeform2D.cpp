@@ -118,9 +118,12 @@ int main(int argc, char* argv[])
     for (index_t i = 0; i < numSteps; ++i)
     {
         bar.display(i+1,numSteps);
+        // deform mesh to match the current bdry displacement
         meshDeformer.updateMesh();
+        // save the displacement
         displacements.push_back(gsMultiPatch<>());
         meshDeformer.constructSolution(displacements.back());
+        // increase the bdry displacement for the next step
         bdryDisplacement.patch(0).coefs() *= 1.*(i+2)/(i+1);
     }
 

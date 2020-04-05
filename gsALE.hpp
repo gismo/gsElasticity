@@ -44,20 +44,24 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     gsConstantFunction<T> rhs(gsVector<>::Zero(geometry.parDim()),geometry.parDim());
 
     // define assembler according to the method
-    if (methodALE == ale_method::TINE || methodALE == ale_method::ILE || methodALE == ale_method::LE)
+    if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK || methodALE == ale_method::ILE || methodALE == ale_method::LE)
     {
         assembler = typename gsBaseAssembler<T>::uPtr(new gsElasticityAssembler<T>(geometry,basis,bcInfo,rhs));
-        if (methodALE == ale_method::TINE)
+        if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
         {
-        assembler->options().setInt("MaterialLaw",material_law::neo_hooke_ln);
-        assembler->options().setSwitch("Check",false);
-        solverNL = typename gsIterative<T>::uPtr(new gsIterative<T>(*assembler,
-                                                                    gsMatrix<>::Zero(assembler->numDofs(),1),
-                                                                    assembler->allFixedDofs()));
-        solverNL->options().setInt("Verbosity",solver_verbosity::none);
-        solverNL->options().setInt("MaxIters",1);
-        solverNL->options().setInt("Solver",linear_solver::LDLT);
+            assembler->options().setSwitch("Check",false);
+            solverNL = typename gsIterative<T>::uPtr(new gsIterative<T>(*assembler,
+                                                                        gsMatrix<>::Zero(assembler->numDofs(),1),
+                                                                        assembler->allFixedDofs()));
+            solverNL->options().setInt("Verbosity",solver_verbosity::none);
+            solverNL->options().setInt("MaxIters",1);
+            solverNL->options().setInt("Solver",linear_solver::LDLT);
         }
+        if (methodALE == ale_method::TINE)
+            assembler->options().setInt("MaterialLaw",material_law::neo_hooke_ln);
+        if (methodALE == ale_method::TINE_StVK)
+            assembler->options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
+
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),1),assembler->allFixedDofs(),ALEdisp);
     }
     else if (methodALE == ale_method::HE || methodALE == ale_method::IHE)
@@ -65,7 +69,7 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
         assembler = typename gsBaseAssembler<T>::uPtr(new gsElPoissonAssembler<T>(geometry,basis,bcInfo,rhs));
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
     }
-    else if (methodALE == ale_method::BHE)
+    else if (methodALE == ale_method::BHE || methodALE == ale_method::IBHE)
     {
         gsBoundaryConditions<T> bcInfoBHE;
         for (auto it = geometry.bBegin(); it != geometry.bEnd(); ++it)
@@ -104,7 +108,7 @@ template <class T>
 void gsALE<T>::initialize()
 {
     assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
-    if (methodALE == ale_method::LE || methodALE == ale_method::ILE)
+    if (methodALE == ale_method::LE || methodALE == ale_method::ILE || methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
         assembler->options().setReal("PoissonsRatio",m_options.getReal("PoissonsRatio"));
     if (methodALE == ale_method::LE || methodALE == ale_method::HE || methodALE == ale_method::BHE)
         assembler->assemble(true);
@@ -120,13 +124,15 @@ index_t gsALE<T>::updateMesh()
 
     switch (methodALE)
     {
-        case ale_method::TINE: return TINE(); break;
-        case ale_method::ILE: return ILE(); break;
-        case ale_method::LE: return LE(); break;
-        case ale_method::HE: return HE(); break;
-        case ale_method::IHE: return IHE(); break;
-        case ale_method::BHE: return BHE(); break;
-        default: return -1;
+    case ale_method::HE: return HE(); break;
+    case ale_method::IHE: return IHE(); break;
+    case ale_method::LE: return LE(); break;
+    case ale_method::ILE: return ILE(); break;
+    case ale_method::TINE: return TINE(); break;
+    case ale_method::TINE_StVK: return TINE(); break;
+    case ale_method::BHE: return BHE(); break;
+    case ale_method::IBHE: return IHE(); break;
+    default: return -1;
     }
 }
 template <class T>
@@ -288,7 +294,7 @@ index_t gsALE<T>::BHE()
 template <class T>
 void gsALE<T>::saveState()
 {
-    if (methodALE == ale_method::TINE)
+    if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
         solverNL->saveState();
     ALEdispSaved.clear();
     for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
@@ -300,7 +306,7 @@ template <class T>
 void gsALE<T>::recoverState()
 {
     GISMO_ENSURE(hasSavedState,"No state saved!");
-    if (methodALE == ale_method::TINE)
+    if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
         solverNL->recoverState();
     if (methodALE == ale_method::IHE || methodALE == ale_method::ILE)
         for (index_t p = 0; p < ALEdisp.nPatches(); ++p)

@@ -30,8 +30,10 @@ struct ale_method
         IHE = 1,  /// incremental harmonic extension
         LE = 2,   /// linear elasticity
         ILE = 3,  /// incremental linear elasticity
-        TINE = 4, /// tangential incremental nonlinear elasticity (with neo-Hookean law)
-        BHE = 5   /// bi-harmonic extension
+        TINE = 4, /// tangential incremental nonlinear elasticity (with the neo-Hookean law)
+        TINE_StVK = 5, /// tangential incremental nonlinear elasticity (with the St.Venant-Kirchhoff law)
+        BHE = 6,   /// bi-harmonic extension
+        IBHE = 7,   /// incremental bi-harmonic extension
     };
 };
 
