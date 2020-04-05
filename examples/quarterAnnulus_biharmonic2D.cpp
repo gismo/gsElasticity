@@ -77,11 +77,11 @@ int main(int argc, char* argv[]){
     clock.restart();
 
 #ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLU solver(assembler.matrix());
+    gsSparseSolver<>::PardisoLDLT solver(assembler.matrix());
     gsVector<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with PardisoLU solver in " << clock.stop() <<"s.\n";
 #else
-    gsSparseSolver<>::LU solver(assembler.matrix());
+    gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
     gsVector<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with EigenLU solver in " << clock.stop() <<"s.\n";
 #endif

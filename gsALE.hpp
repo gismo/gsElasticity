@@ -67,10 +67,10 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     }
     else if (methodALE == ale_method::BHE)
     {
-        gsBoundaryConditions<T> bcInfo2;
+        gsBoundaryConditions<T> bcInfoBHE;
         for (auto it = geometry.bBegin(); it != geometry.bEnd(); ++it)
-            bcInfo2.addCondition(it->patch,it->side(),condition_type::dirichlet,0);
-        assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfo2,rhs));
+            bcInfoBHE.addCondition(it->patch,it->side(),condition_type::dirichlet,0);
+        assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfoBHE,rhs));
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
     }
     else
@@ -271,10 +271,10 @@ index_t gsALE<T>::BHE()
     assembler->eliminateFixedDofs();
 
 #ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLU solver(assembler->matrix());
+    gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
     gsMatrix<> solVector = solver.solve(assembler->rhs());
 #else
-    gsSparseSolver<>::LU solver(assembler->matrix());
+    gsSparseSolver<>::SimplicialLDLT solver(assembler->matrix());
     gsMatrix<> solVector = solver.solve(assembler->rhs());
 #endif
 

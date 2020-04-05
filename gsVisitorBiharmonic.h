@@ -25,14 +25,9 @@ class gsVisitorBiharmonic
 {
 public:
 
-    gsVisitorBiharmonic(const gsPde<T> & pde_)
+    gsVisitorBiharmonic(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          elimMat(nullptr)
-    {}
-
-    gsVisitorBiharmonic(const gsPde<T> & pde_, gsSparseMatrix<T> & elimMatrix)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          elimMat(&elimMatrix)
+          elimMat(elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,

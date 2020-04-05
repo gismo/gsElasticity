@@ -152,18 +152,17 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
             eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
             eliminationMatrix.setZero();
             eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
+        }
 
-            gsVisitorLinearElasticity<T> visitor(*m_pde_ptr,eliminationMatrix);
-            Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+        Base::template push<gsVisitorLinearElasticity<T> >(visitor);
 
+        if (saveEliminationMatrix)
+        {
             Base::rhsWithZeroDDofs = m_system.rhs();
             eliminationMatrix.makeCompressed();
         }
-        else
-        {
-            gsVisitorLinearElasticity<T> visitor(*m_pde_ptr);
-            Base::template push<gsVisitorLinearElasticity<T> >(visitor);
-        }
+
     }
     else // mixed formulation (displacement + pressure)
     {

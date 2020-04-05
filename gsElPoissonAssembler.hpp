@@ -67,20 +67,18 @@ void gsElPoissonAssembler<T>::assemble(bool saveEliminationMatrix)
         eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
         eliminationMatrix.setZero();
         eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
+    }
 
-        gsVisitorElPoisson<T> visitor(*m_pde_ptr,eliminationMatrix);
-        Base::template push<gsVisitorElPoisson<T> >(visitor);
+    gsVisitorElPoisson<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+    Base::template push<gsVisitorElPoisson<T> >(visitor);
 
+    m_system.matrix().makeCompressed();
+
+    if (saveEliminationMatrix)
+    {
         Base::rhsWithZeroDDofs = m_system.rhs();
         eliminationMatrix.makeCompressed();
     }
-    else
-    {
-        gsVisitorElPoisson<T> visitor(*m_pde_ptr);
-        Base::template push<gsVisitorElPoisson<T> >(visitor);
-    }
-
-    m_system.matrix().makeCompressed();
 }
 
 template <class T>

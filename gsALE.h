@@ -77,6 +77,7 @@ protected:
     index_t IHE();
     /// update mesh using Bi-Harmonic Extension
     index_t BHE();
+
 protected:
     /// outer displacement field that drives the mesh deformation
     const gsMultiPatch<T> & disp;

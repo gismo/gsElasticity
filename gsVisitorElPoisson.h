@@ -24,14 +24,10 @@ template <class T>
 class gsVisitorElPoisson
 {
 public:
-    gsVisitorElPoisson(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          elimMat(nullptr)
-    {}
 
-    gsVisitorElPoisson(const gsPde<T> & pde_, gsSparseMatrix<T> & elimMatrix)
+    gsVisitorElPoisson(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          elimMat(&elimMatrix)
+          elimMat(elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,

@@ -88,20 +88,18 @@ void gsMassAssembler<T>::assemble(bool saveEliminationMatrix)
         eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
         eliminationMatrix.setZero();
         eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
+    }
 
-        gsVisitorMass<T> visitor(eliminationMatrix);
-        Base::template push<gsVisitorMass<T> >(visitor);
+    gsVisitorMass<T> visitor(saveEliminationMatrix ? &eliminationMatrix : nullptr);
+    Base::template push<gsVisitorMass<T> >(visitor);
 
+    m_system.matrix().makeCompressed();
+
+    if (saveEliminationMatrix)
+    {
         Base::rhsWithZeroDDofs = m_system.rhs();
         eliminationMatrix.makeCompressed();
     }
-    else
-    {
-        gsVisitorMass<T> visitor;
-        Base::template push<gsVisitorMass<T> >(visitor);
-    }
-
-    m_system.matrix().makeCompressed();
 }
 
 

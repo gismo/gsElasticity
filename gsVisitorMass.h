@@ -26,11 +26,8 @@ class gsVisitorMass
 {
 public:
 
-    gsVisitorMass() :
-    elimMat(nullptr) {}
-
-    gsVisitorMass(gsSparseMatrix<T> & elimMatrix) :
-    elimMat(&elimMatrix) {}
+    gsVisitorMass(gsSparseMatrix<T> * elimMatrix = nullptr) :
+    elimMat(elimMatrix) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
