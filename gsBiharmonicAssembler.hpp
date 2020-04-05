@@ -88,13 +88,31 @@ void gsBiharmonicAssembler<T>::assemble()
     m_system.matrix().makeCompressed();
 }
 
+//--------------------- SOLUTION CONSTRUCTION ----------------------------------//
+
 template <class T>
-void gsBiharmonicAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
-                                                const std::vector<gsMatrix<T> > & fixedDoFs,
-                                                gsMultiPatch<T> & solutionMain, gsMultiPatch<T> & solutionAux) const
+void gsBiharmonicAssembler<T>::constructSolutionMain(const gsMatrix<T> & solVector,
+                                                     const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                     gsMultiPatch<T> & solutionMain) const
 {
     Base::constructSolution(solVector,fixedDoFs,solutionMain,gsVector<index_t>::Zero(1));
+}
+
+template <class T>
+void gsBiharmonicAssembler<T>::constructSolutionAux(const gsMatrix<T> & solVector,
+                                                    const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                    gsMultiPatch<T> & solutionAux) const
+{
     Base::constructSolution(solVector,fixedDoFs,solutionAux,gsVector<index_t>::Ones(1));
+}
+
+template <class T>
+void gsBiharmonicAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
+                                                 const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                 gsMultiPatch<T> & solutionMain, gsMultiPatch<T> & solutionAux) const
+{
+    constructSolutionMain(solVector,fixedDoFs,solutionMain);
+    constructSolutionAux(solVector,fixedDoFs,solutionAux);
 }
 
 }// namespace gismo ends

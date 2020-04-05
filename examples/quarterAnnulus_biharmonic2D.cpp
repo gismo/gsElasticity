@@ -107,8 +107,8 @@ int main(int argc, char* argv[]){
         fields["Auxiliary"] = &auxField;
         fields["MainAnalytical"] = &mainAnalytical;
         fields["AuxiliaryAnalytical"] = &auxAnalytical;
-        gsWriteParaviewMultiPhysics(fields,"biharmonicAnn",numPlotPoints);
-        gsInfo << "Open \"biharmonicAnn.pvd\" in Paraview for visualization.\n";
+        gsWriteParaviewMultiPhysics(fields,"quarterAnnulus",numPlotPoints);
+        gsInfo << "Open \"quarterAnnulus.pvd\" in Paraview for visualization.\n";
     }
 
     return 0;

@@ -67,9 +67,7 @@ void gsMassAssembler<T>::refresh()
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
-    gsVector<unsigned> dims;
-    dims.setOnes(m_bases.size());
-    m_system = gsSparseSystem<T>(m_dofMappers, dims);
+    m_system = gsSparseSystem<T>(m_dofMappers,gsVector<unsigned>::Ones(m_bases.size()));
 
     m_options.setReal("bdO",m_bases.size()*(1+m_options.getReal("bdO"))-1);
     m_system.reserve(m_bases[0], m_options, 1);

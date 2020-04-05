@@ -73,7 +73,7 @@ void gsElPoissonAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                                                 const std::vector<gsMatrix<T> > & fixedDoFs,
                                                 gsMultiPatch<T> & result) const
 {
-    Base::constructSolution(solVector,fixedDoFs,result,gsVector<index_t>::Zero(0));
+    Base::constructSolution(solVector,fixedDoFs,result,gsVector<index_t>::Zero(1));
 }
 
 }// namespace gismo ends

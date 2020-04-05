@@ -1,6 +1,6 @@
 /** @file gsBiharmonicAssembler.h
 
-    @brief Provides stiffness matrix for bi-harmonic equation.
+    @brief Provides stiffness matrix for bi-harmonic equation in the mixed formulation
 
     This file is part of the G+Smo library.
 
@@ -25,7 +25,7 @@ class gsBiharmonicAssembler : public gsBaseAssembler<T>
 public:
     typedef gsBaseAssembler<T> Base;
 
-    /// @brief This assebmler uses mixed finite elements. BasisA is for the main variable, basisB for the auxiliary
+    /// @brief This assebmler uses mixed finite elements
     gsBiharmonicAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
@@ -37,16 +37,29 @@ public:
     /// @brief Refresh routine to set dof-mappers
     virtual void refresh();
 
-    /// @brief Assembles the mass matrix
+    /// @brief Assembles the matrix
     virtual void assemble();
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
                           bool assembleMatrix = true) {assemble();}
 
+    //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
+
+    /// @brief construct the solution of the equation
+    virtual void constructSolutionMain(const gsMatrix<T> & solVector,
+                                       const std::vector<gsMatrix<T> > & fixedDoFs,
+                                       gsMultiPatch<T> & solutionMain) const;
+
+    /// @brief construct the Laplacian of the solution
+    virtual void constructSolutionAux(const gsMatrix<T> & solVector,
+                                      const std::vector<gsMatrix<T> > & fixedDoFs,
+                                      gsMultiPatch<T> & solutionAux) const;
+
+    /// @brief construct both the solution and the Laplactian
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
-                                   gsMultiPatch<T> & solututionMain, gsMultiPatch<T> & solututionAux) const;
+                                   gsMultiPatch<T> & solutionMain, gsMultiPatch<T> & solutionAux) const;
 
 protected:
     /// a custom reserve function to allocate memory for the sparse matrix

@@ -26,40 +26,31 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                                            const gsVector<index_t> & unknowns) const
 {
     result.clear();
-    if (unknowns.rows() > 0) // each component of the solution is a separate unknown
-        for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
-        {
-            const int size  = m_bases[unknowns[0]][p].size();
-            gsMatrix<T> coeffs(size,unknowns.rows());
-            for (index_t unk = 0; unk < unknowns.rows(); ++unk)
-                for (index_t i = 0; i < size; ++i)
-                    if ( m_system.colMapper(unknowns[unk]).is_free(i, p) ) // DoF value is in the solVector
-                    {
-                        unsigned idx;
-                        m_system.mapToGlobalColIndex(i,p,idx,unknowns[unk]);
-                        coeffs(i,unk) = solVector(idx,0);
-                    }
-                    else // eliminated DoF: fill with Dirichlet data
-                        coeffs(i,unk) = fixedDoFs[unknowns[unk]]( m_system.colMapper(unknowns[unk]).bindex(i, p),0);
-            result.addPatch(m_bases[unknowns[0]][p].makeGeometry(give(coeffs)));
-        }
-    else // all solution components represented by one unknown
+    GISMO_ENSURE(unknowns.rows() > 0, "No unknowns provided!");
+    index_t nRhs = m_system.rhs().cols();
+    unsigned idx;
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
-        for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
+        index_t size  = m_bases[unknowns[0]][p].size();
+        // check that all unknowns have the same basis size
+        for (index_t i = 1; i < unknowns.rows(); ++i)
         {
-            const int size  = m_bases[0][p].size();
-            gsMatrix<T> coeffs(size,m_pde_ptr->numRhs());
-            for (index_t i = 0; i < size; ++i)
-                if ( m_system.colMapper(0).is_free(i, p) ) // DoF value is in the solVector
-                {
-                    unsigned idx;
-                    m_system.mapToGlobalColIndex(i,p,idx,0);
-                    coeffs.row(i) = solVector.row(idx);
-                }
-                else // eliminated DoF: fill with Dirichlet data
-                    coeffs.row(i) = fixedDoFs[0].row(m_system.colMapper(0).bindex(i, p));
-            result.addPatch(m_bases[0][p].makeGeometry(give(coeffs)));
+            GISMO_ENSURE(m_bases[unknowns[i]][p].size() == size,"Unknowns do not have the same size!");
         }
+        gsMatrix<T> coeffs(size,unknowns.rows()*nRhs);
+        for (index_t unk = 0; unk < unknowns.rows(); ++unk)
+            for (index_t i = 0; i < size; ++i)
+                if (m_system.colMapper(unknowns[unk]).is_free(i,p)) // DoF is in the solVector
+                {
+                    m_system.mapToGlobalColIndex(i,p,idx,unknowns[unk]);
+                    coeffs.block(i,unk*nRhs,1,nRhs) = solVector.block(idx,0,1,nRhs);
+                }
+                else // DoF is eliminated; it is the Dirichlet Dofs
+                {
+                    idx = m_system.colMapper(unknowns[unk]).bindex(i, p);
+                    coeffs.block(i,unk*nRhs,1,nRhs) = fixedDoFs[unknowns[unk]].block(idx,0,1,nRhs);
+                }
+        result.addPatch(m_bases[unknowns[0]][p].makeGeometry(give(coeffs)));
     }
 }
 
