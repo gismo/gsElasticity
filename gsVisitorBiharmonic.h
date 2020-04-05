@@ -26,7 +26,13 @@ class gsVisitorBiharmonic
 public:
 
     gsVisitorBiharmonic(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_))
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          elimMat(nullptr)
+    {}
+
+    gsVisitorBiharmonic(const gsPde<T> & pde_, gsSparseMatrix<T> & elimMatrix)
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          elimMat(&elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -108,6 +114,29 @@ public:
         // push to global system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+
+        // push to the elimination system
+        if (elimMat != nullptr)
+        {
+            unsigned globalI,globalElimJ;
+            index_t elimSize = 0;
+            for (short_t dJ = 0; dJ < 2; ++dJ)
+            {
+                for (short_t dI = 0; dI < 2; ++dI)
+                    for (index_t i = 0; i < N_M; ++i)
+                        if (system.colMapper(dI).is_free_index(globalIndices[dI].at(i)))
+                        {
+                            system.mapToGlobalRowIndex(localIndicesMain.at(i),patchIndex,globalI,dI);
+                            for (index_t j = 0; j < N_M; ++j)
+                                if (!system.colMapper(dJ).is_free_index(globalIndices[dJ].at(j)))
+                                {
+                                    globalElimJ = system.colMapper(dJ).global_to_bindex(globalIndices[dJ].at(j));
+                                    elimMat->coeffRef(globalI,elimSize+globalElimJ) += localMat(N_M*dI+i,N_M*dJ+j);
+                                }
+                        }
+                elimSize += eliminatedDofs[dJ].rows();
+            }
+        }
     }
 
 protected:
@@ -133,6 +162,9 @@ protected:
     // all temporary matrices defined here for efficiency
     gsMatrix<T> block, physGradMain, physGradAux;
     real_t localStiffening;
+    // elimination matrix to efficiently change Dirichlet degrees of freedom
+    gsSparseMatrix<T> * elimMat;
+
 };
 
 } // namespace gismo

@@ -76,14 +76,29 @@ void gsBiharmonicAssembler<T>::reserve()
 }
 
 template<class T>
-void gsBiharmonicAssembler<T>::assemble()
+void gsBiharmonicAssembler<T>::assemble(bool saveEliminationMatrix)
 {
     m_system.matrix().setZero();
     reserve();
     m_system.rhs().setZero(Base::numDofs(),m_pde_ptr->numRhs());
 
-    gsVisitorBiharmonic<T> visitor(*m_pde_ptr);
-    Base::template push<gsVisitorBiharmonic<T> >(visitor);
+    if (saveEliminationMatrix)
+    {
+        eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
+        eliminationMatrix.setZero();
+        eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
+
+        gsVisitorBiharmonic<T> visitor(*m_pde_ptr,eliminationMatrix);
+        Base::template push<gsVisitorBiharmonic<T> >(visitor);
+
+        Base::rhsWithZeroDDofs = m_system.rhs();
+        eliminationMatrix.makeCompressed();
+    }
+    else
+    {
+        gsVisitorBiharmonic<T> visitor(*m_pde_ptr);
+        Base::template push<gsVisitorBiharmonic<T> >(visitor);
+    }
 
     m_system.matrix().makeCompressed();
 }

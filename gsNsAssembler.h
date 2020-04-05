@@ -53,7 +53,7 @@ public:
     //--------------------- SYSTEM ASSEMBLY ----------------------------------//
 
     /// @brief Assembly of the linear system for the Stokes problem
-    virtual void assemble();
+    virtual void assemble(bool saveEliminationMatrix = false);
 
     /// Assembles the tangential linear system for Newton's method given the current solution
     /// in the form of free and fixed/Dirichelt degrees of freedom.

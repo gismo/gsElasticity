@@ -36,7 +36,7 @@ public:
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
                           bool assembleMatrix = true) = 0;
     /// assembly procedure for linear problems
-    virtual void assemble() {};
+    virtual void assemble(bool saveEliminationMatrix = false) {};
 
     /// Returns number of free degrees of freedom
     virtual int numDofs() const { return gsAssembler<T>::numDofs(); }
@@ -87,6 +87,7 @@ protected:
     using gsAssembler<T>::m_ddof;
 
     gsSparseMatrix<T> eliminationMatrix;
+    gsMatrix<T> rhsWithZeroDDofs;
 };
 
 } // namespace ends

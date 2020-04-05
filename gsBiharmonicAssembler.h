@@ -38,7 +38,7 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the matrix
-    virtual void assemble();
+    virtual void assemble(bool saveEliminationMatrix = false);
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
@@ -71,6 +71,7 @@ protected:
     using Base::m_options;
     using Base::m_system;
     using Base::m_ddof;
+    using Base::eliminationMatrix;
 };
 
 } // namespace gismo ends

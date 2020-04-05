@@ -76,22 +76,32 @@ void gsMassAssembler<T>::refresh()
 }
 
 template<class T>
-void gsMassAssembler<T>::assemble()
+void gsMassAssembler<T>::assemble(bool saveEliminationMatrix)
 {
     // allocate space for the linear system
     m_system.matrix().setZero();
     m_system.reserve(m_bases[0], m_options, 1);
     m_system.rhs().setZero(Base::numDofs(),1);
 
-    eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
-    eliminationMatrix.setZero();
-    eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
+    if (saveEliminationMatrix)
+    {
+        eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
+        eliminationMatrix.setZero();
+        eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
 
-    gsVisitorMass<T> visitor(eliminationMatrix);
-    Base::template push<gsVisitorMass<T> >(visitor);
+        gsVisitorMass<T> visitor(eliminationMatrix);
+        Base::template push<gsVisitorMass<T> >(visitor);
+
+        Base::rhsWithZeroDDofs = m_system.rhs();
+        eliminationMatrix.makeCompressed();
+    }
+    else
+    {
+        gsVisitorMass<T> visitor;
+        Base::template push<gsVisitorMass<T> >(visitor);
+    }
 
     m_system.matrix().makeCompressed();
-    eliminationMatrix.makeCompressed();
 }
 
 

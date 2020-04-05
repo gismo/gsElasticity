@@ -158,7 +158,7 @@ void gsBaseAssembler<T>::eliminateFixedDofs()
         nFixedDofs += m_ddof[i].rows();
     }
     // eliminate fixed degrees of freedom
-    m_system.rhs() = -1*eliminationMatrix*fixedDofs;
+    m_system.rhs() = rhsWithZeroDDofs - eliminationMatrix*fixedDofs;
 }
 
 }// namespace gismo ends

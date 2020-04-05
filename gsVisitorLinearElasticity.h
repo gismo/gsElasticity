@@ -29,7 +29,13 @@ class gsVisitorLinearElasticity
 public:
 
     gsVisitorLinearElasticity(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_))
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          elimMat(nullptr)
+    {}
+
+    gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> & elimMatrix)
+        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          elimMat(&elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -125,6 +131,29 @@ public:
         // push to global system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+
+        // push to the elimination system
+        if (elimMat != nullptr)
+        {
+            unsigned globalI,globalElimJ;
+            index_t elimSize = 0;
+            for (short_t dJ = 0; dJ < dim; ++dJ)
+            {
+                for (short_t dI = 0; dI < dim; ++dI)
+                    for (index_t i = 0; i < N_D; ++i)
+                        if (system.colMapper(dI).is_free_index(globalIndices[dI].at(i)))
+                        {
+                            system.mapToGlobalRowIndex(localIndicesDisp.at(i),patchIndex,globalI,dI);
+                            for (index_t j = 0; j < N_D; ++j)
+                                if (!system.colMapper(dJ).is_free_index(globalIndices[dJ].at(j)))
+                                {
+                                    globalElimJ = system.colMapper(dJ).global_to_bindex(globalIndices[dJ].at(j));
+                                    elimMat->coeffRef(globalI,elimSize+globalElimJ) += localMat(N_D*dI+i,N_D*dJ+j);
+                                }
+                        }
+                elimSize += eliminatedDofs[dJ].rows();
+            }
+        }
     }
 
 protected:
@@ -147,6 +176,8 @@ protected:
     std::vector<gsMatrix<T> > basisValuesDisp;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+    // elimination matrix to efficiently change Dirichlet degrees of freedom
+    gsSparseMatrix<T> * elimMat;
 
     // all temporary matrices defined here for efficiency
     gsMatrix<T> C, physGrad, B_i, tempK, B_j, K;

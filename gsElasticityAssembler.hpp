@@ -138,7 +138,7 @@ void gsElasticityAssembler<T>::refresh()
 //--------------------- SYSTEM ASSEMBLY ----------------------------------//
 
 template<class T>
-void gsElasticityAssembler<T>::assemble()
+void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
 {
     m_system.matrix().setZero();
     reserve();
@@ -147,8 +147,23 @@ void gsElasticityAssembler<T>::assemble()
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
-        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr);
-        Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+        if (saveEliminationMatrix)
+        {
+            eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
+            eliminationMatrix.setZero();
+            eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
+
+            gsVisitorLinearElasticity<T> visitor(*m_pde_ptr,eliminationMatrix);
+            Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+
+            Base::rhsWithZeroDDofs = m_system.rhs();
+            eliminationMatrix.makeCompressed();
+        }
+        else
+        {
+            gsVisitorLinearElasticity<T> visitor(*m_pde_ptr);
+            Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+        }
     }
     else // mixed formulation (displacement + pressure)
     {

@@ -61,7 +61,7 @@ public:
 
     /// @brief Assembles the stiffness matrix and the RHS for the LINEAR ELASTICITY
     /// set *assembleMatrix* to false to only assemble the RHS;
-    virtual void assemble();
+    virtual void assemble(bool saveEliminationMatrix = false);
 
     /// Assembles the tangential linear system for Newton's method given the current solution
     /// in the form of free and fixed/Dirichelt degrees of freedom.
@@ -126,6 +126,7 @@ protected:
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
+    using Base::eliminationMatrix;
 };
 
 

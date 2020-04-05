@@ -107,7 +107,7 @@ void gsALE<T>::initialize()
     if (methodALE == ale_method::LE || methodALE == ale_method::ILE)
         assembler->options().setReal("PoissonsRatio",m_options.getReal("PoissonsRatio"));
     if (methodALE == ale_method::LE || methodALE == ale_method::HE || methodALE == ale_method::BHE)
-        assembler->assemble();
+        assembler->assemble(true);
 
     initialized = true;
 }
@@ -129,79 +129,6 @@ index_t gsALE<T>::updateMesh()
         default: return -1;
     }
 }
-
-template <class T>
-index_t gsALE<T>::TINE()
-{
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
-        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
-                                fsiInterface.fluidSides[i].side(),
-                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
-                                ALEdisp.patch(fsiInterface.fluidSides[i].patch).boundary(fsiInterface.fluidSides[i].side())->coefs());
-    solverNL->reset();
-    solverNL->solve();
-    assembler->constructSolution(solverNL->solution(),solverNL->allFixedDofs(),ALEdisp);
-    if (m_options.getSwitch("Check"))
-        return checkDisplacement(assembler->patches(),ALEdisp);
-    else
-        return -1;
-}
-
-template <class T>
-index_t gsALE<T>::ILE()
-{
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
-        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
-                                fsiInterface.fluidSides[i].side(),
-                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
-                                ALEdisp.patch(fsiInterface.fluidSides[i].patch).boundary(fsiInterface.fluidSides[i].side())->coefs());
-    assembler->assemble();
-
-#ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
-    gsVector<> solVector = solver.solve(assembler->rhs());
-#else
-    gsSparseSolver<>::SimplicialLDLT solver(assembler->matrix());
-    gsVector<> solVector = solver.solve(assembler->rhs());
-#endif
-
-    gsMultiPatch<T> ALEupdate;
-    assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEupdate);
-    for (index_t p = 0; p < ALEupdate.nPatches(); ++p)
-    {
-        ALEdisp.patch(p).coefs() += ALEupdate.patch(p).coefs();
-        assembler->patches().patch(p).coefs() += ALEupdate.patch(p).coefs();
-    }
-    if (m_options.getSwitch("Check"))
-        return checkGeometry(assembler->patches());
-    else
-        return -1;
-}
-
-template <class T>
-index_t gsALE<T>::LE()
-{
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
-        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
-                                fsiInterface.fluidSides[i].side(),
-                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs());
-    assembler->assemble();
-
-#ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
-    gsVector<> solVector = solver.solve(assembler->rhs());
-#else
-    gsSparseSolver<>::SimplicialLDLT solver(assembler->matrix());
-    gsVector<> solVector = solver.solve(assembler->rhs());
-#endif
-
-    assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEdisp);
-    if (m_options.getSwitch("Check"))
-        return checkDisplacement(assembler->patches(),ALEdisp);
-    else
-        return -1;
-}
-
 template <class T>
 index_t gsALE<T>::HE()
 {
@@ -258,6 +185,81 @@ index_t gsALE<T>::IHE()
         return -1;
 }
 
+template <class T>
+index_t gsALE<T>::LE()
+{
+    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
+                                fsiInterface.fluidSides[i].side(),
+                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs());
+    assembler->eliminateFixedDofs();
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
+    gsVector<> solVector = solver.solve(assembler->rhs());
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler->matrix());
+    gsVector<> solVector = solver.solve(assembler->rhs());
+#endif
+
+    assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEdisp);
+    if (m_options.getSwitch("Check"))
+        return checkDisplacement(assembler->patches(),ALEdisp);
+    else
+        return -1;
+}
+
+
+template <class T>
+index_t gsALE<T>::ILE()
+{
+    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
+                                fsiInterface.fluidSides[i].side(),
+                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
+                                ALEdisp.patch(fsiInterface.fluidSides[i].patch).boundary(fsiInterface.fluidSides[i].side())->coefs());
+    assembler->assemble();
+
+#ifdef GISMO_WITH_PARDISO
+    gsSparseSolver<>::PardisoLDLT solver(assembler->matrix());
+    gsVector<> solVector = solver.solve(assembler->rhs());
+#else
+    gsSparseSolver<>::SimplicialLDLT solver(assembler->matrix());
+    gsVector<> solVector = solver.solve(assembler->rhs());
+#endif
+
+    gsMultiPatch<T> ALEupdate;
+    assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEupdate);
+    for (index_t p = 0; p < ALEupdate.nPatches(); ++p)
+    {
+        ALEdisp.patch(p).coefs() += ALEupdate.patch(p).coefs();
+        assembler->patches().patch(p).coefs() += ALEupdate.patch(p).coefs();
+    }
+    if (m_options.getSwitch("Check"))
+        return checkGeometry(assembler->patches());
+    else
+        return -1;
+}
+
+
+
+template <class T>
+index_t gsALE<T>::TINE()
+{
+    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
+                                fsiInterface.fluidSides[i].side(),
+                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
+                                ALEdisp.patch(fsiInterface.fluidSides[i].patch).boundary(fsiInterface.fluidSides[i].side())->coefs());
+    solverNL->reset();
+    solverNL->solve();
+    assembler->constructSolution(solverNL->solution(),solverNL->allFixedDofs(),ALEdisp);
+    if (m_options.getSwitch("Check"))
+        return checkDisplacement(assembler->patches(),ALEdisp);
+    else
+        return -1;
+}
+
 
 template <class T>
 index_t gsALE<T>::BHE()
@@ -266,7 +268,7 @@ index_t gsALE<T>::BHE()
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs(),true);
-    assembler->assemble();
+    assembler->eliminateFixedDofs();
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLU solver(assembler->matrix());

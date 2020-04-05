@@ -60,7 +60,7 @@ void gsNsTimeIntegrator<T>::initialize()
     GISMO_ENSURE(solVector.rows() == stiffAssembler.numDofs(),"No initial conditions provided!");
     stiffAssembler.assemble(solVector,m_ddof);
     massAssembler.setFixedDofs(m_ddof);
-    massAssembler.assemble();
+    massAssembler.assemble(true);
     // IMEX stuff
     oldSolVector = solVector;
     oldTimeStep = 1.;

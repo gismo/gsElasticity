@@ -98,7 +98,7 @@ void gsNsAssembler<T>::refresh()
 //--------------------- SYSTEM ASSEMBLY ----------------------------------//
 
 template<class T>
-void gsNsAssembler<T>::assemble()
+void gsNsAssembler<T>::assemble(bool saveEliminationMatrix)
 {
     m_system.matrix().setZero();
     reserve();
