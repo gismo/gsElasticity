@@ -1,11 +1,9 @@
 /// This is an example of generating an isogeometric parametrization using mesh deformation technique
-/// with incremental deformation based on nonlinear elasticity (TINE method)
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsGeoUtils.h>
-#include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsIterative.h>
+#include <gsElasticity/gsALE.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -15,7 +13,7 @@ int main(int argc, char* argv[])
     gsInfo << "Generating isogeometric parametrization by mesh deformation in 2D.\n";
 
     //=====================================//
-                // Input //
+                   // Input //
     //=====================================//
 
     // input file with a set of 4 compatible boundary curves ordered "west-east-south-north"
@@ -27,9 +25,9 @@ int main(int argc, char* argv[])
     std::string filenameInit = "";
     /// Deformation options
     index_t numSteps = 5;
-    index_t numIter = 1;
     real_t poissRatio = 0.45;
-    index_t law = material_law::neo_hooke_ln;
+    real_t stiffDegree = 0.;
+    index_t ALEmethod = ale_method::TINE;
     /// Output options
     index_t numPlotPoints = 0;
 
@@ -40,12 +38,12 @@ int main(int argc, char* argv[])
     /// Initial domain options
     cmd.addInt("f","fitDeg","Polynomial degree of the coarse fitting curve",fittingDegree);
     cmd.addInt("c","acp","Number of additional control points above minimal for the coarse fitting curve",numAdditionalPoints);
-    cmd.addString("d","domain","Optional input file with a previously prepaired initial domain",filenameInit);
+    cmd.addString("d","domain","Optional input file with a before-hand prepaired initial domain",filenameInit);
     /// Deformation options
     cmd.addInt("i","iter","Number of incremental loading steps used during deformation",numSteps);
-    cmd.addInt("n","numIter","Number of Newton's iterations at each non-final incremental loading step",numIter);
     cmd.addReal("p","poiss","Poisson's ratio for the elasticity model",poissRatio);
-    cmd.addInt("l","law","Material law used in the material model; 0 - St. Venant-Kirchhoff, 1 - ln-neo-Hooke, 2 - quad-neo-Hooke",law);
+    cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
+    cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     /// Output options
     cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -76,59 +74,56 @@ int main(int argc, char* argv[])
     }
     else
         gsReadFile<>(filenameInit,initGeo);
+    initGeo.computeTopology();
 
     gsInfo << "Initialized a 2D problem with " << initGeo.patch(0).coefsSize() * 2 << " dofs.\n";
 
     //=============================================//
-        // Setting loads and boundary conditions //
+             // Setting output and auxilary //
     //=============================================//
-
-    gsMultiBasis<> basis(initGeo);
-    // first tell assembler to allocate space for Dirichlet DoFs; we specify the values later
-    gsBoundaryConditions<> bcInfo;
-    for (index_t s = 1; s < 5; ++s)
-    {
-        bcInfo.addCondition(0,s,condition_type::dirichlet,0,0);
-        bcInfo.addCondition(0,s,condition_type::dirichlet,0,1);
-    }
-    gsConstantFunction<> g(0.,0.,2);
-
-    //=====================================//
-                // Solving //
-    //=====================================//
-
-    gsElasticityAssembler<real_t> assembler(initGeo,basis,bcInfo,g);
-    assembler.options().setReal("PoissonsRatio",poissRatio);
-    assembler.options().setInt("MaterialLaw",law);
-    gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
-
-    // creating the nonlinear solver
-    gsIterative<real_t> newton(assembler);
-    newton.options().setInt("Verbosity",solver_verbosity::all);
-    newton.options().setInt("MaxIters",numIter);
-    newton.options().setInt("Solver",linear_solver::LDLT);
 
     // container for displacements
     std::vector<gsMultiPatch<> > displacements;
+    gsStopwatch clock;
+    gsProgressBar bar;
+
+    //=============================================//
+             // Setting mesh deformation //
+    //=============================================//
+
+    // MP displacement object that defines bdry displacement; interior can be arbitrary (e.g., Coons patch)
+    gsMultiPatch<> bdryDisplacement;
+    gsCoonsPatch<real_t> coonsPatch(bdry);
+    coonsPatch.compute();
+    bdryDisplacement.addPatch(coonsPatch.result());
+    bdryDisplacement.patch(0).coefs() -= initGeo.patch(0).coefs();
+    bdryDisplacement.patch(0).coefs() /= numSteps;
+    // Boundary sides to deform
+    gsInterfaceFSI interface;
+    interface.addSide(0,boundary::south,0,boundary::south);
+    interface.addSide(0,boundary::north,0,boundary::north);
+    interface.addSide(0,boundary::west,0,boundary::west);
+    interface.addSide(0,boundary::east,0,boundary::east);
+    // mesh deformation object
+    gsALE<real_t> meshDeformer(initGeo,bdryDisplacement,interface,ale_method::method(ALEmethod));
+    meshDeformer.options().setReal("LocalStiff",stiffDegree);
+    meshDeformer.options().setReal("PoissonsRatio",poissRatio);
+
+    //=====================================//
+                  // Deforming //
+    //=====================================//
 
     gsInfo << "Solving...\n";
-    gsStopwatch clock;
     clock.restart();
-
     for (index_t i = 0; i < numSteps; ++i)
     {
-        gsInfo << "Loading: " << index_t(100.*i/numSteps) << "% -> " << index_t(100.*(i+1)/numSteps) << "%\n";
-        // setting Dirichlet DoFs
-        for (index_t s = 1; s < 5; ++s)
-            assembler.setFixedDofs(0,s,(bdry.patch(s-1).coefs() - initGeo.patch(0).boundary(s)->coefs())/numSteps);
-
-        if (i == numSteps-1)
-            newton.options().setInt("MaxIters",50);
-        newton.reset();
-        newton.solve();
+        bar.display(i+1,numSteps);
+        meshDeformer.updateMesh();
         displacements.push_back(gsMultiPatch<>());
-        assembler.constructSolution(newton.solution(),newton.allFixedDofs(),displacements.back());
+        meshDeformer.constructSolution(displacements.back());
+        bdryDisplacement.patch(0).coefs() *= 1.*(i+2)/(i+1);
     }
+
     gsInfo << "Solved in "<< clock.stop() <<"s.\n";
 
     //=====================================//
@@ -139,15 +134,15 @@ int main(int argc, char* argv[])
     filename = filename.substr(0,filename.find_last_of(".\\")); // file name without an extension
     filename = filename.substr(0,filename.find_last_of("_\\"));
 
-    // plotting all intermediate deformed meshes
-    plotDeformation(initGeo,displacements,filename,numPlotPoints);
-    gsInfo << "Open \"" << filename << "_mesh.pvd\" in Paraview for visualization.\n";
     // save initial domain
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
-    initGeo.patch(0).coefs() += displacements.back().patch(0).coefs();
+    // save resulting domain
     gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
     gsWrite(initGeo,filename + "_2D");
+    // plotting all intermediate deformed meshes
+    plotDeformation(initGeo,displacements,filename,numPlotPoints);
+    gsInfo << "Open \"" << filename << "_mesh.pvd\" in Paraview for visualization.\n";
 
     return 0;
 }
