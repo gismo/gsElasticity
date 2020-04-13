@@ -48,6 +48,7 @@ int main(int argc, char* argv[])
     real_t stiffDegree = 2.3;
     index_t ALEmethod = ale_method::TINE;
     bool check = true;
+    index_t numIter = 1;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the steady fluid-structure interaction solver in 2D.");
@@ -60,6 +61,7 @@ int main(int argc, char* argv[])
     cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addSwitch("c","check","Check bijectivity of the ALE displacement field",check);
+    cmd.addInt("i","iter","Number of iterations for nonlinear methods",numIter);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -129,6 +131,7 @@ int main(int argc, char* argv[])
     moduleALE.options().setReal("LocalStiff",stiffDegree);
     moduleALE.options().setReal("PoissonsRatio",poissonsRatioMesh);
     moduleALE.options().setSwitch("Check",check);
+    moduleALE.options().setInt("NumIter",numIter);
     gsInfo << "Initialized mesh deformation system with " << moduleALE.numDofs() << " dofs.\n";
 
     //=============================================//

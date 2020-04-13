@@ -66,22 +66,12 @@ public:
 
 protected:
     void initialize();
-    /// update mesh using Harmonic Extension
-    index_t HE();
-    /// update mesh using Incremental Harmonic Extension
-    index_t IHE();
-    /// update mesh using Linear Elasticity
-    index_t LE();
-    /// update mesh using Incremental Linear Elasticity
-    index_t ILE();
-    /// update mesh using Tangential Incremental Nonlinear Elasticity (with the neo-Hookean law)
-    index_t TINE();
-    /// update mesh using Tangential Incremental Nonlinear Elasticity (with the St.Venant-Kirchhoff law)
-    index_t TINE_StVK();
-    /// update mesh using Bi-Harmonic Extension
-    index_t BHE();
-    /// update mesh using Incremental Bi-Harmonic Extension
-    index_t IBHE();
+    /// update mesh using HE, LE or BHE methods
+    index_t linearMethod();
+    /// update mesh using IHE, ILE or IBHE methods
+    index_t linearIncrementalMethod();
+    /// update mesh using TINE or TINE_StVK methods
+    index_t nonlinearMethod();
 
 protected:
     /// outer displacement field that drives the mesh deformation

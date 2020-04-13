@@ -429,7 +429,7 @@ int main(int argc, char* argv[])
             if (badPatch != -1)
             {
                 gsInfo << "\n Bad patch: " << badPatch << std::endl;
-                break;
+                goto labelend;
             }
 
             // FLOW
@@ -467,6 +467,7 @@ int main(int argc, char* argv[])
                    // Final touches //
     //=============================================//
 
+    labelend:
     gsInfo << "Complete in: " << secToHMS(totalClock.stop())
            << ", ALE time: " << secToHMS(timeALE)
            << ", flow time: " << secToHMS(timeFlow)
