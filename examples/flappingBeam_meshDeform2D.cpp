@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
     elTimeSolver.setDisplacementVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
     elTimeSolver.setVelocityVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
     // constructing initial fields
-    elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
+    elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
     moduleALE.constructSolution(ALE);
     // plotting initial condition
     if (numPlotPoints > 0)
@@ -190,7 +190,7 @@ int main(int argc, char* argv[])
         // BEAM
         iterClock.restart();
         elTimeSolver.makeTimeStep(timeStep);
-        elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
+        elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
         timeBeam += iterClock.stop();
 
         // ALE

@@ -54,6 +54,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
         m_bases.push_back(basis);
 
     Base::initialize(pde, m_bases, defaultOptions());
+    muscleTendon = nullptr;
 }
 
 template<class T>
@@ -61,7 +62,8 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
                                                 gsMultiBasis<T> const & basisDisp,
                                                 gsMultiBasis<T> const & basisPres,
                                                 gsBoundaryConditions<T> const & bconditions,
-                                                const gsFunction<T> & body_force)
+                                                const gsFunction<T> & body_force,
+                                                const gsFunction<T> * muscleTendonRatio)
 {
     // same as above
     gsPiecewiseFunction<T> rightHandSides;
@@ -75,6 +77,8 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
 
     Base::initialize(pde, m_bases, defaultOptions());
     m_options.setInt("MaterialLaw",material_law::neo_hooke_ln);
+
+    muscleTendon = muscleTendonRatio;
 }
 
 template <class T>
@@ -86,7 +90,7 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("ForceScaling","Force scaling parameter",1.);
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
     opt.addReal("LocalStiff","Stiffening degree for the Jacobian-based local stiffening",0.);
-    opt.addSwitch("Check","Check bijectivity of the displacement field before matrix assebmly",true);
+    opt.addSwitch("Check","Check bijectivity of the displacement field before matrix assebmly",false);
     return opt;
 }
 
@@ -178,43 +182,35 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
 
 template <class T>
 bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
-                                        const std::vector<gsMatrix<T> > & fixedDoFs,
-                                        bool assembleMatrix)
+                                        const std::vector<gsMatrix<T> > & fixedDoFs)
 {
-    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
-    {
-        gsMultiPatch<T> displacement;
-        constructSolution(solutionVector,fixedDoFs,displacement);
-        if (m_options.getInt("MaterialLaw") != material_law::saint_venant_kirchhoff &&
-            m_options.getSwitch("Check"))
-            if (checkDisplacement(m_pde_ptr->patches(),displacement) != -1)
-                return false;
-        assemble(displacement,assembleMatrix);
-    }
-    else // mixed formulation (displacement + pressure)
-    {
-        gsMultiPatch<T> displacement, pressure;
-        constructSolution(solutionVector,fixedDoFs,displacement,pressure);
+    gsMultiPatch<T> displacement;
+    constructSolution(solutionVector,fixedDoFs,displacement);
+    if (m_options.getSwitch("Check"))
         if (checkDisplacement(m_pde_ptr->patches(),displacement) != -1)
             return false;
-        assemble(displacement,pressure,assembleMatrix);
+
+    if (m_bases.size() == unsigned(m_dim)) // displacement formulation 
+        assemble(displacement);
+    else // mixed formulation (displacement + pressure)
+    {
+        gsMultiPatch<T> pressure;
+        constructPressure(solutionVector,fixedDoFs,pressure);
+        assemble(displacement,pressure);
     }
     return true;
 }
 
 template<class T>
-void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
-                                        bool assembleMatrix)
+void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
 {
-    if (assembleMatrix)
-    {
-        m_system.matrix().setZero();
-        reserve();
-    }
+
+    m_system.matrix().setZero();
+    reserve();
     m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,assembleMatrix);
+    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
     Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
@@ -225,18 +221,14 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
 
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
-                                        const gsMultiPatch<T> & pressure,
-                                        bool assembleMatrix)
+                                        const gsMultiPatch<T> & pressure)
 {
-    if (assembleMatrix)
-    {
-        m_system.matrix().setZero();
-        reserve();
-    }
+    m_system.matrix().setZero();
+    reserve();
     m_system.rhs().setZero();
 
-    // Compute volumetric integrals and write to the global linear system
-    gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure,assembleMatrix);
+    // Compute volumetric integrals and write to the global linear systemz
+    gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure);
     Base::template push<gsVisitorMixedNonLinearElasticity<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
@@ -246,15 +238,6 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
 }
 
 //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
-
-template <class T>
-void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & result) const
-{
-    gsVector<index_t> unknowns(m_dim);
-    for (short_t d = 0; d < m_dim; ++d)
-        unknowns.at(d) = d;
-    Base::constructSolution(solVector,m_ddof,result,unknowns);
-}
 
 template <class T>
 void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
@@ -269,17 +252,6 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
 
 template <class T>
 void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
-                                                 gsMultiPatch<T>  & displacement, gsMultiPatch<T> & pressure) const
-{
-    GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
-    // construct displacement
-    constructSolution(solVector,displacement);
-    // construct pressure
-    constructPressure(solVector,pressure);
-}
-
-template <class T>
-void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
                                                  const std::vector<gsMatrix<T> > & fixedDoFs,
                                                  gsMultiPatch<T>  & displacement, gsMultiPatch<T> & pressure) const
 {
@@ -287,16 +259,18 @@ void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T>& solVector,
     // construct displacement
     constructSolution(solVector,fixedDoFs,displacement);
     // construct pressure
-    constructPressure(solVector,pressure);
+    constructPressure(solVector,fixedDoFs,pressure);
 }
 
 template <class T>
-void gsElasticityAssembler<T>::constructPressure(const gsMatrix<T>& solVector, gsMultiPatch<T>& pressure) const
+void gsElasticityAssembler<T>::constructPressure(const gsMatrix<T>& solVector,
+                                                 const std::vector<gsMatrix<T> > & fixedDoFs,
+                                                 gsMultiPatch<T>& pressure) const
 {
     GISMO_ENSURE(m_bases.size() == unsigned(m_dim) + 1, "Not a mixed formulation: can't construct pressure.");
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
-    Base::constructSolution(solVector,m_ddof,pressure,unknowns);
+    Base::constructSolution(solVector,fixedDoFs,pressure,unknowns);
 }
 
 //--------------------- SPECIALS ----------------------------------//

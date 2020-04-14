@@ -48,28 +48,38 @@ class gsALE
 public:
     gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement,
           const gsInterfaceFSI & interface, ale_method::method method);
+
     /// default option list. used for initialization
     static gsOptionList defaultOptions();
+
     /// get options list to read or set parameters
     gsOptionList & options() { return m_options; }
+
     /// number of degrees of freedom
     index_t numDofs() const {return assembler->numDofs();}
+
     /// construct ALE displacement field
     void constructSolution(gsMultiPatch<T> & solution) const;
+
     /// update mesh to comply with the current displacement field
     index_t updateMesh();
+
     /// save module state
     void saveState();
+
     /// recover module state from saved state
     void recoverState();
 
 
 protected:
     void initialize();
+
     /// update mesh using HE, LE or BHE methods
     index_t linearMethod();
+
     /// update mesh using IHE, ILE or IBHE methods
     index_t linearIncrementalMethod();
+
     /// update mesh using TINE or TINE_StVK methods
     index_t nonlinearMethod();
 

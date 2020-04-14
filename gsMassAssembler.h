@@ -47,11 +47,9 @@ public:
     virtual void assemble(bool saveEliminationMatrix = false);
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDDoFs,
-                          bool assembleMatrix = true) {assemble();}
+                          const std::vector<gsMatrix<T> > & fixedDDoFs) {assemble();}
 
 protected:
-
     /// Dimension of the problem
     /// parametric dim = physical dim = deformation dim
     short_t m_dim;

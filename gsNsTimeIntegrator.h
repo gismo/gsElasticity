@@ -41,6 +41,7 @@ public:
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
+
     /// set intial conditions
     void setSolutionVector(const gsMatrix<T> & solutionVector)
     {
@@ -55,15 +56,17 @@ public:
         Base::setFixedDofs(ddofs);
         initialized = false;
     }
+
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
+
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs,
-                          bool assembleMatrix = true);
+                          const std::vector<gsMatrix<T> > & fixedDoFs);
 
     /// returns number of degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
+
     /// returns solution vector
     const gsMatrix<T> & solutionVector() const
     {
@@ -71,15 +74,19 @@ public:
                      "No initial conditions provided!");
         return solVector;
     }
+
     /// save solver state
     void saveState();
+
     /// recover solver state from the previously saved state
     void recoverState();
+
     /// number of iterations Newton's method required at the last time step; always 1 for IMEX
     index_t numberIterations() const { return numIters;}
 
 protected:
     void initialize();
+
     /// time integraton schemes
     void implicitLinear();
     void implicitNonlinear();

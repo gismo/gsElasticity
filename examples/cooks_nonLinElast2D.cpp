@@ -91,7 +91,7 @@ int main(int argc, char* argv[]){
 
     // solution to the nonlinear problem as an isogeometric displacement field
     gsMultiPatch<> displacement;
-    assembler.constructSolution(solver.solution(),displacement);
+    assembler.constructSolution(solver.solution(),solver.allFixedDofs(),displacement);
 
     if (numPlotPoints > 0)
     {

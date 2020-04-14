@@ -49,7 +49,8 @@ public:
                           const gsMultiBasis<T> & basisDisp,
                           const gsMultiBasis<T> & basisPres,
                           const gsBoundaryConditions<T> & bconditions,
-                          const gsFunction<T> & body_force);
+                          const gsFunction<T> & body_force,
+                          const gsFunction<T> * muscleTendonRatio = nullptr);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -67,34 +68,25 @@ public:
     /// in the form of free and fixed/Dirichelt degrees of freedom.
     /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs,
-                          bool assembleMatrix = true);
-
+                          const std::vector<gsMatrix<T> > & fixedDoFs);
+protected:
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for displacement formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & displacement,
-                          bool assembleMatrix = true);
+    virtual void assemble(const gsMultiPatch<T> & displacement);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for mixed formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
-                          bool assembleMatrix = true);
+    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure);
 
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
-    /// @brief Construct displacement from computed solution vector
-    virtual void constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & displacement) const;
-
+public:
     /// @brief Construct displacement from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
                                    gsMultiPatch<T> & displacement) const;
-
-    /// @brief Construct displacement and pressure from computed solution vector
-    virtual void constructSolution(const gsMatrix<T> & solVector,
-                                   gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// @brief Construct displacement and pressure from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,
@@ -102,7 +94,9 @@ public:
                                    gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// @ brief Construct pressure from computed solution vector
-    virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
+    virtual void constructPressure(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & pressure) const;
 
     //--------------------- SPECIALS ----------------------------------//
 
@@ -116,10 +110,12 @@ protected:
     virtual void reserve();
 
 protected:
-
     /// Dimension of the problem
     /// parametric dim = physical dim = deformation dim
 	short_t m_dim;
+    /// indicator function for distinguishing between the muscle and tendon in the muscle material;
+    /// not used with other materials
+    const gsFunction<T> * muscleTendon;
 
     using Base::m_pde_ptr;
     using Base::m_bases;

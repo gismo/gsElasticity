@@ -121,8 +121,12 @@ struct material_law
 {
     enum type
     {
-        saint_venant_kirchhoff = 0,  /// S = 2*mu*E + lambda*tr(E)*I
-        neo_hooke_ln           = 1  /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
+        saint_venant_kirchhoff = 0,   /// S = 2*mu*E + lambda*tr(E)*I
+        neo_hooke_ln           = 1,   /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
+        mixed_neo_hooke_ln = 2,       /// S = p*C^-1 + mu*(I-C^-1)
+        mixed_kelvin_voigt_muscle = 3 /// S = p*C^-1 + gamma*[ mu_m*(I-C^-1*tr(C)/3)+ nu_m*C^-1*C'*C^-1 ]
+        ///                                      + (1-gamma)*[ mu_t*(I-C^-1*tr(C)/3)+ nu_t*C^-1*C'*C^-1 ]
+        /// here, gamma in [0,1] is an indicator of muscle tissue; (1-gamma) indicates tendon tissue
     };
 };
 

@@ -39,6 +39,7 @@ public:
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
+
     /// set intial conditions
     void setDisplacementVector(const gsMatrix<T> & displacementVector)
     {
@@ -48,6 +49,7 @@ public:
         dispVector = displacementVector;
         initialized = false;
     }
+
     void setVelocityVector(const gsMatrix<T> & velocityVector)
     {
         GISMO_ENSURE(velocityVector.rows() == stiffAssembler.numDofs(),
@@ -56,14 +58,17 @@ public:
         velVector = velocityVector;
         initialized = false;
     }
+
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
+
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs,
-                          bool assembleMatrix = true);
+                          const std::vector<gsMatrix<T> > & fixedDoFs);
+
     /// return the number of free degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
+
     /// returns vector of displacement DoFs
     const gsMatrix<T> & displacementVector() const
     {
@@ -71,6 +76,7 @@ public:
                      "No initial conditions provided!");
         return dispVector;
     }
+
     /// returns vector of velocity DoFs
     const gsMatrix<T> & velocityVector() const
     {
@@ -78,18 +84,23 @@ public:
                      "No initial conditions provided!");
         return velVector;
     }
+
     /// save solver state
     void saveState();
+
     /// recover solver state from saved state
     void recoverState();
+
     /// number of iterations Newton's method required at the last time step
     index_t numberIterations() const { return numIters;}
 
 protected:
     void initialize();
+
     /// time integraton schemes
     gsMatrix<T> implicitLinear();
     gsMatrix<T> implicitNonlinear();
+
     /// time integration scheme coefficients
     T alpha1() {return 1./m_options.getReal("Beta")/pow(tStep,2); }
     T alpha2() {return 1./m_options.getReal("Beta")/tStep; }

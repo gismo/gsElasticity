@@ -177,8 +177,7 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
 
 template <class T>
 bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
-                                     const std::vector<gsMatrix<T> > & fixedDoFs,
-                                     bool assembleMatrix)
+                                     const std::vector<gsMatrix<T> > & fixedDoFs)
 {
     T theta = m_options.getReal("Theta");
 

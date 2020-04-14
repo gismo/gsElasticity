@@ -369,7 +369,7 @@ int main(int argc, char* argv[])
             iterClock.restart();
             if (couplingIter > 0)
                 elTimeSolver.recoverState();
-            elAssembler.constructSolution(elTimeSolver.displacementVector(),dispDiff);
+            elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispDiff);
             elTimeSolver.makeTimeStep(tStep);
             if (couplingIter == 0)
             {

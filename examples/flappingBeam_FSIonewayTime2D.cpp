@@ -290,9 +290,9 @@ int main(int argc, char* argv[])
         // BEAM
         iterClock.restart();
         gsMultiPatch<> dispDiff;
-        elAssembler.constructSolution(elTimeSolver.displacementVector(),dispDiff);
+        elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispDiff);
         elTimeSolver.makeTimeStep(tStep);
-        elAssembler.constructSolution(elTimeSolver.displacementVector(),dispBeam);
+        elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispBeam);
         dispDiff.patch(0).coefs() = dispBeam.patch(0).coefs() - dispDiff.patch(0).coefs();
         timeBeam += iterClock.stop();
 

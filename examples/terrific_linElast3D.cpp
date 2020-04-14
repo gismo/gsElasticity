@@ -6,6 +6,7 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 using namespace gismo;
 
@@ -102,7 +103,7 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
     // constructing stresses
     gsPiecewiseFunction<> stresses;
     assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);

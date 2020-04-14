@@ -105,7 +105,7 @@ int main(int argc, char* argv[]){
 
     // constructing displacement as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
     // constructing stress tensor
     gsPiecewiseFunction<> stresses;
     assembler.constructCauchyStresses(solution,stresses,stress_type::all_2D);

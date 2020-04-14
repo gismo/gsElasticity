@@ -135,7 +135,7 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
 
     if (numPlotPoints > 0)
     {    
