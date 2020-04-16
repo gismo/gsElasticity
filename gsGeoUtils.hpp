@@ -887,7 +887,7 @@ typename gsGeometry<T>::uPtr genSpring(T springRadius, T springPitch,
                                                        (y == 1 ? 1./sqrt(2) : 1.0) *
                                                        (x%2 ==  1 ? 1.0/sqrt(2) : 1.0);
     // form coefs
-    T h = springPitch/4;
+    T h = springPitch/8;
     T R = springRadius;
     T r = wireRadius;
     gsMatrix<T> coefs;

@@ -51,11 +51,6 @@ int main(int argc, char* argv[]){
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
     gsMultiBasis<> basisPressure(geometry);
-    for (index_t i = 0; i < numUniRefDirX; ++i)
-    {
-        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(0)).knots(0).uniformRefine();
-        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(0)).knots(0).uniformRefine();
-    }
     for (index_t i = 0; i < numDegElev; ++i)
     {
         basisDisplacement.degreeElevate();
@@ -65,6 +60,11 @@ int main(int argc, char* argv[]){
     {
         basisDisplacement.uniformRefine();
         basisPressure.uniformRefine();
+    }
+    for (index_t i = 0; i < numUniRefDirX; ++i)
+    {
+        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(0)).knots(0).uniformRefine();
+        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(0)).knots(0).uniformRefine();
     }
     // additional displacement refinement for stable mixed FEM
     if (!subgridOrTaylorHood) // subgrid

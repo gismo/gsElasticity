@@ -59,7 +59,7 @@ template<class T>
 void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string, const gsField<T> *> fields,
                                 const unsigned patchNum,
                                 std::string const & fn,
-                                unsigned npts);
+                                gsVector<unsigned> npts);
 
 
 /// \brief Utility function to actually write prepaired matrices with data into Paraview file

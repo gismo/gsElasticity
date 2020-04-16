@@ -85,7 +85,13 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
         const gsBasis<> & dom = fields.begin()->second->isParametrized() ?
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
-        gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
+        const gsFunction<> & geometry = fields.begin()->second->patches().patch(i);
+        gsMatrix<> ab = geometry.support();
+        gsVector<> a = ab.col(0);
+        gsVector<> b = ab.col(1);
+        gsVector<unsigned> np = uniformSampleCount(a,b,npts);
+
+        gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), np);
         collection.addPart(fileName + util::to_string(i), ".vts");
 
         if ( mesh )
@@ -116,7 +122,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> field
         const gsBasis<> & dom = fields.begin()->second->isParametrized() ?
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
-        gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), 10);
+        gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
         collection.addPart(fileName + util::to_string(i), ".vts");
 
         if ( mesh )
@@ -143,7 +149,13 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
 
     for ( size_t p = 0; p < numP; ++p)
     {
-        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + util::to_string(time) + "_" + util::to_string(p),npts);
+        const gsFunction<> & geometry = fields.begin()->second->patches().patch(p);
+        gsMatrix<> ab = geometry.support();
+        gsVector<> a = ab.col(0);
+        gsVector<> b = ab.col(1);
+        gsVector<unsigned> np = uniformSampleCount(a,b,npts);
+
+        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + util::to_string(time) + "_" + util::to_string(p),np);
         collection.addTimestep(fileName + util::to_string(time) + "_",p,time,".vts");
     }
 
@@ -153,7 +165,7 @@ template<class T>
 void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T> *> fields,
                                 const unsigned patchNum,
                                 std::string const & fn,
-                                unsigned npts)
+                                gsVector<unsigned> np)
 {
     const gsFunction<> & geometry = fields.begin()->second->patches().patch(patchNum);
     const short_t n = geometry.targetDim();
@@ -162,8 +174,6 @@ void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T
     gsMatrix<> ab = geometry.support();
     gsVector<> a = ab.col(0);
     gsVector<> b = ab.col(1);
-
-    gsVector<unsigned> np = uniformSampleCount(a,b,npts);
     gsMatrix<> pts = gsPointGrid(a,b,np);
 
     gsMatrix<> eval_geo = geometry.eval(pts);
