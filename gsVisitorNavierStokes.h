@@ -48,6 +48,9 @@ public:
         density = options.getReal("Density");
         patch = patchIndex;
         forceScaling = options.getReal("ForceScaling");
+        // resize containers for global indices
+        globalIndices.resize(dim+1);
+        blockNumbers.resize(dim+1);
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -103,9 +106,6 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T> & system)
     {
-        // number of unknowns: dim of velocity + 1 for pressure
-        std::vector< gsMatrix<unsigned> > globalIndices(dim+1);
-        gsVector<size_t> blockNumbers(dim+1);
         // computes global indices for velocity components
         for (short_t d = 0; d < dim; ++d)
         {
@@ -309,6 +309,9 @@ protected:
 
     // all temporary matrices defined here for efficiency
     gsMatrix<T> block, physGradVel, physJacCurVel;
+    // containers for global indices
+    std::vector< gsMatrix<unsigned> > globalIndices;
+    gsVector<size_t> blockNumbers;
 };
 
 } // namespace gismo

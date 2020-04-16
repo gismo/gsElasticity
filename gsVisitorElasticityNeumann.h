@@ -42,6 +42,9 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         forceScaling = options.getReal("ForceScaling");
+        // resize containers for global indices
+        globalIndices.resize(dim);
+        blockNumbers.resize(dim);
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -87,9 +90,6 @@ public:
                                   const std::vector<gsMatrix<T> > & eliminatedDofs,
                                   gsSparseSystem<T> & system)
         {
-            // number of unknowns: dim of displacement
-            std::vector< gsMatrix<unsigned> > globalIndices(dim);
-            gsVector<size_t> blockNumbers(dim);
             // computes global indices for displacement components
             for (short_t d = 0; d < dim; ++d)
             {
@@ -121,6 +121,9 @@ protected:
 
     // all temporary matrices defined here for efficiency
     gsVector<T> unormal;
+    // containers for global indices
+    std::vector< gsMatrix<unsigned> > globalIndices;
+    gsVector<size_t> blockNumbers;
 };
 
 } // namespace gismo

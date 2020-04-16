@@ -104,6 +104,37 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
 }
 
 template<class T>
+void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
+                     gsVector<unsigned> npts, bool mesh, bool ctrlNet)
+{
+    const unsigned numP = fields.begin()->second->patches().nPatches();
+    gsParaviewCollection collection(fn);
+    std::string fileName = fn.substr(fn.find_last_of("/\\")+1); // file name without a path
+
+    for ( unsigned i=0; i < numP; ++i )
+    {
+        const gsBasis<> & dom = fields.begin()->second->isParametrized() ?
+            fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
+
+        gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), 10);
+        collection.addPart(fileName + util::to_string(i), ".vts");
+
+        if ( mesh )
+            {
+                writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
+            collection.addPart(fileName + util::to_string(i) + "_mesh", ".vtp");
+        }
+        if ( ctrlNet ) // Output the control net
+        {
+            writeSingleControlNet(fields.begin()->second->patch(i), fn + util::to_string(i) + "_cnet");
+            collection.addPart(fileName + util::to_string(i) + "_cnet", ".vtp");
+        }
+
+    }
+    collection.save();
+}
+
+template<class T>
 void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
                                          gsParaviewCollection & collection, int time, unsigned npts)
 {

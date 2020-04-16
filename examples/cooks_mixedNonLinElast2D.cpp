@@ -6,6 +6,7 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsIterative.h>
+#include <gsElasticity/gsGeoUtils.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -21,6 +22,7 @@ int main(int argc, char* argv[]){
     std::string filename = ELAST_DATA_DIR"/cooks.xml";
     real_t youngsModulus = 240.565e6;
     real_t poissonsRatio = 0.4;
+    index_t materialLaw = material_law::mixed_neo_hooke_ln;
     index_t numUniRef = 3;
     index_t numDegElev = 1;
     bool subgridOrTaylorHood = false;
@@ -29,6 +31,7 @@ int main(int argc, char* argv[]){
     // minimalistic user interface for terminal
     gsCmdLine cmd("This is Cook's membrane benchmark with mixed nonlinear elasticity solver.");
     cmd.addReal("p","poisson","Poisson's ratio used in the material law",poissonsRatio);
+    cmd.addInt("l","law","Material law: 3 - mixed neo-Hooke-ln, 4 - mixed Kelvin-Voigt",materialLaw);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addInt("d","degelev","Number of degree elevation applications",numDegElev);
     cmd.addSwitch("e","element","Mixed element: false = subgrid (default), true = Taylor-Hood",subgridOrTaylorHood);
@@ -87,6 +90,7 @@ int main(int argc, char* argv[]){
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
+    assembler.options().setInt("MaterialLaw",materialLaw);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
@@ -127,6 +131,11 @@ int main(int argc, char* argv[]){
     A = displacement.patch(0).eval(A);
     gsInfo << "X-displacement of the top-right corner: " << A.at(0) << std::endl;
     gsInfo << "Y-displacement of the top-right corner: " << A.at(1) << std::endl;
+
+    gsMultiPatch<> spring;
+    spring.addPatch(genSpring<real_t>());
+    spring.computeTopology();
+    gsWrite(spring,"spring");
 
     return 0;
 }

@@ -21,6 +21,7 @@
 #include <gsCore/gsFunctionExpr.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsNurbs/gsTensorNurbs.h>
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsQuadrature.h>
 
@@ -857,6 +858,64 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
                                         zKnots);
         return basis.makeGeometry(give(coefs));
     }
+}
+
+template<class T>
+typename gsGeometry<T>::uPtr genSpring(T springRadius, T springPitch,
+                                       T wireRadius, index_t N)
+{
+    // knot vector for the spring guiding line
+    std::vector<T> knots;
+    for (index_t i = 0; i < 3; ++i)
+        knots.push_back(0.);
+    for (index_t i = 0; i < N-1; ++i)
+        for (index_t j = 0; j < 2; ++j)
+            knots.push_back(1./N*(i+1));
+    for (index_t i = 0; i < 3; ++i)
+        knots.push_back(1.);
+    gsKnotVector<T> xKnots(knots,2);
+    // two knot vectors for the cross-section of the spring
+    gsKnotVector<T> yKnots(0.0,1.0,0,3);
+    gsKnotVector<T> zKnots(0.0,1.0,0,3);
+    // form NURBS weights
+    gsMatrix<T> weights;
+    weights.setOnes(9*(2*N+1),1);
+    for (index_t x = 0; x < 2*N+1; ++x)
+        for (index_t y = 0; y < 3; ++y)
+            for (index_t z = 0; z < 3; ++z)
+                weights(z*3*(2*N+1) + y*(2*N+1) + x) = (z == 1 ? 1./sqrt(2) : 1.0) *
+                                                       (y == 1 ? 1./sqrt(2) : 1.0) *
+                                                       (x%2 ==  1 ? 1.0/sqrt(2) : 1.0);
+    // form coefs
+    T h = springPitch/4;
+    T R = springRadius;
+    T r = wireRadius;
+    gsMatrix<T> coefs;
+    coefs.setZero(9*(2*N+1),3);
+    for (index_t i = 0; i < 2*N+1; ++i)
+    {
+        coefs.row(0*3*(2*N+1) + 0*(2*N+1) + i) << cos(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),h*i-1;
+        coefs.row(0*3*(2*N+1) + 1*(2*N+1) + i) << cos(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),h*i-1;
+        coefs.row(0*3*(2*N+1) + 2*(2*N+1) + i) << cos(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),h*i;
+
+        coefs.row(1*3*(2*N+1) + 0*(2*N+1) + i) << cos(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),h*i-1;
+        coefs.row(1*3*(2*N+1) + 1*(2*N+1) + i) << cos(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),h*i;
+        coefs.row(1*3*(2*N+1) + 2*(2*N+1) + i) << cos(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),h*i+1;
+
+        coefs.row(2*3*(2*N+1) + 0*(2*N+1) + i) << cos(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),h*i;
+        coefs.row(2*3*(2*N+1) + 1*(2*N+1) + i) << cos(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),h*i+1;
+        coefs.row(2*3*(2*N+1) + 2*(2*N+1) + i) << cos(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),
+                                                  sin(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),h*i+1;
+    }
+    return gsGeometry<T>::uPtr(new gsTensorNurbs<3,T>(xKnots,yKnots,zKnots,coefs,weights));
 }
 
 //------------------------------------------------------//

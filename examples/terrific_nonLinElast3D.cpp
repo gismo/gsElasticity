@@ -28,7 +28,7 @@ int main(int argc, char* argv[]){
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the linear elasticity solver in 3D.");
-    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - NeoHooke_ln",materialLaw);
+    cmd.addInt("l","law","Material law: 0 - St.V.-K., 1 - neoHookeLn, 2 - neoHookeQuad",materialLaw);
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);

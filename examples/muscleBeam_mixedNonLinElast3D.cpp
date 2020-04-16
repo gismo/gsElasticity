@@ -96,6 +96,7 @@ int main(int argc, char* argv[]){
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulusMuscle);
     assembler.options().setReal("PoissonsRatio",poissonsRatioMuscle);
+    assembler.options().setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method

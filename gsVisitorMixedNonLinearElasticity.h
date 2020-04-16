@@ -45,11 +45,16 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         patch = patchIndex;
+        materialLaw = options.getInt("MaterialLaw");
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
         lambda_inv = ( 1. + pr ) * ( 1. - 2. * pr ) / E / pr ;
         mu     = E / ( 2. * ( 1. + pr ) );
         forceScaling = options.getReal("ForceScaling");
+        I = gsMatrix<T>::Identity(dim,dim);
+        // resize containers for global indices
+        globalIndices.resize(dim+1);
+        blockNumbers.resize(dim+1);
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -102,25 +107,38 @@ public:
             // physical jacobian of displacemnt du/dx = du/dxi * dxi/dx
             physDispJac = mdDisplacement.jacobian(q)*(md.jacobian(q).cramerInverse());
             // deformation gradient F = I + du/dx
-            F = gsMatrix<T>::Identity(dim,dim) + physDispJac;
+            F = I + physDispJac;
             // deformation jacobian J = det(F)
             T J = F.determinant();
             // Right Cauchy Green strain, C = F'*F
             RCG = F.transpose() * F;
-            // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
-            E = 0.5 * (RCG - gsMatrix<T>::Identity(dim,dim));
             // logarithmic neo-Hooke
             GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
             RCGinv = RCG.cramerInverse();
-            // Second Piola-Kirchhoff stress tensor
-            S = (pressureValues.at(q)-mu)*RCGinv + mu*gsMatrix<T>::Identity(dim,dim);
-            // elasticity tensor
-            setC<T>(C,RCGinv,0.,mu-pressureValues.at(q));
+            if (materialLaw == 3) // mixed neo-Hooke-ln
+            {
+                // Second Piola-Kirchhoff stress tensor
+                S = (pressureValues.at(q)-mu)*RCGinv + mu*I;
+                // elasticity tensor
+                symmetricIdentityTensor<T>(C,RCGinv);
+                C *= mu-pressureValues.at(q);
+            }
+            if (materialLaw == 4) // mixed Kelvin-Voigt
+            {
+                T RCGtrace = RCG.trace();
+                // Second Piola-Kirchhoff stress tensor
+                S = (pressureValues.at(q)-mu*RCGtrace/3)*RCGinv + mu*I;
+                // elasticity tensor
+                symmetricIdentityTensor<T>(C,RCGinv);
+                C *= mu*RCGtrace/3-pressureValues.at(q);
+                matrixTraceTensor<T>(Ctemp,RCGinv,I);
+                //C -= .5*mu*Ctemp/3;
+            }
+
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
                 setB<T>(B_i,F,physGradDisp.col(i));
-
                 materialTangentTemp = B_i.transpose() * C;
                 // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
                 geometricTangentTemp = S * physGradDisp.col(i);
@@ -145,9 +163,7 @@ public:
                 localResidual = B_i.transpose() * Svec;
                 for (short_t d = 0; d < dim; d++)
                     localRhs(d*N_D+i) -= weight * localResidual(d);
-
             }
-
             // B-matrix
             divV = F.cramerInverse().transpose() * physGradDisp;
             for (short_t d = 0; d < dim; ++d)
@@ -160,10 +176,8 @@ public:
             if (abs(lambda_inv) > 0)
                 localMat.block(dim*N_D,dim*N_D,N_P,N_P) -=
                         (weight*lambda_inv*basisValuesPres.col(q)*basisValuesPres.col(q).transpose()).block(0,0,N_P,N_P);
-
             // rhs: constraint residual
             localRhs.middleRows(dim*N_D,N_P) += weight*basisValuesPres.col(q)*(lambda_inv*pressureValues.at(q)-log(J));
-
             // rhs: force
             for (short_t d = 0; d < dim; ++d)
                 localRhs.middleRows(d*N_D,N_D).noalias() += weight * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q) ;
@@ -174,9 +188,6 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T> & system)
     {
-        // number of unknowns: dim of displacement + 1 for pressure
-        std::vector< gsMatrix<unsigned> > globalIndices(dim+1);
-        gsVector<size_t> blockNumbers(dim+1);
         // computes global indices for displacement components
         for (short_t d = 0; d < dim; ++d)
         {
@@ -195,6 +206,7 @@ protected:
     // problem info
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
+    index_t materialLaw; // (3: mixed neo-Hooke-ln, 4: mixed Kelvin-Voigt)
     index_t patch; // current patch
     // Lame coefficients and force scaling factor
     T lambda_inv, mu, forceScaling;
@@ -226,8 +238,11 @@ protected:
     gsMatrix<T> pressureValues;
 
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block;
+    gsMatrix<T> C, Ctemp, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block, I;
     gsVector<T> geometricTangentTemp, Svec, localResidual;
+    // containers for global indices
+    std::vector< gsMatrix<unsigned> > globalIndices;
+    gsVector<size_t> blockNumbers;
 };
 
 } // namespace gismo

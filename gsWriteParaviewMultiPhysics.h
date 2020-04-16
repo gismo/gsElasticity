@@ -32,6 +32,11 @@ template<class T>
 void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
                      unsigned npts=NS, bool mesh = false, bool ctrlNet = false);
 
+// same as above, but can specify number of plotting points for each parametric direction (useful for long patches)
+template<class T>
+void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
+                     gsVector<unsigned> npts, bool mesh = false, bool ctrlNet = false);
+
 
 /// \brief Write a file containing several fields defined on the same geometry to ONE paraview file
 /// and adds it as a timestep to a Paraview collection

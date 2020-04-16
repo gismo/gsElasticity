@@ -90,6 +90,9 @@ TEMPLATE_INST gsGeometry<real_t>::uPtr genScrew(gsGeometry<real_t> const & base,
                                                 index_t deg, index_t num, real_t height, real_t pitch,
                                                 real_t x0, real_t y0);
 
+TEMPLATE_INST gsGeometry<real_t>::uPtr genSpring(real_t springRadius, real_t springPitch,
+                                                 real_t wireRadius, index_t numQuarterSegments);
+
 //----------------------------------------//
 //----------- Auxiliary functions --------//
 //----------------------------------------//
