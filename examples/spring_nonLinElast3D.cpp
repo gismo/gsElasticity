@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"spring.xml";
+    std::string filename = ELAST_DATA_DIR"circleMP.xml";
     real_t youngsModulus = 1.0e6;
     real_t poissonsRatio = 0.3;
     index_t materialLaw = material_law::neo_hooke_ln;
@@ -46,6 +46,14 @@ int main(int argc, char* argv[]){
     // scanning geometry
     gsMultiPatch<> geometry;
     gsReadFile<>(filename, geometry);
+
+
+
+
+
+
+
+    /*
     // creating basis
     gsMultiBasis<> basis(geometry);
     for (index_t i = 0; i < numDegElev; ++i)
@@ -130,6 +138,6 @@ int main(int argc, char* argv[]){
         gsWriteParaviewMultiPhysics(fields,"spring",numPlotPoints,plotMesh);
         gsInfo << "Open \"spring.pvd\" in Paraview for visualization.\n";
     }
-
+*/
     return 0;
 }

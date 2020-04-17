@@ -192,6 +192,13 @@ template<class T>
 typename gsGeometry<T>::uPtr genSpring(T springRadius = 6.0, T springPitch = 2.60258,
                                        T wireRadius = 1.0, index_t numQuarterSegments = 12);
 
+
+
+/// @brief generates a 3D NURBS spring using provided geometry as a cross-section
+template<class T>
+typename gsGeometry<T>::uPtr genSpring(T springRadius = 6.0, T springPitch = 2.60258,
+                                       T wireRadius = 1.0, index_t numQuarterSegments = 12);
+
 //----------------------------------------//
 //----------- Auxiliary functions --------//
 //----------------------------------------//
