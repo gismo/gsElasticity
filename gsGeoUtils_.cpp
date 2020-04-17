@@ -35,6 +35,12 @@ TEMPLATE_INST real_t displacementJacRatio(gsMultiPatch<real_t> const & domain, g
 TEMPLATE_INST void genSamplingPoints(const gsVector<real_t> & lower, const gsVector<real_t> & upper,
                                      const gsQuadRule<real_t> & quRule, gsMatrix<real_t> & points);
 
+TEMPLATE_INST real_t patchLength(const gsGeometry<real_t> & geo, short_t dir);
+
+TEMPLATE_INST real_t curveLength(const gsGeometry<real_t> & geo);
+
+TEMPLATE_INST gsVector<unsigned> distributePoints(const gsGeometry<real_t> & geo, unsigned numPoints);
+
 //-----------------------------------//
 //----------- Modelling -------------//
 //-----------------------------------//

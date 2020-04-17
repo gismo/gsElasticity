@@ -18,6 +18,7 @@
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsField.h>
 #include <gsIO/gsWriteParaview.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 
 #define PLOT_PRECISION 11
@@ -85,43 +86,6 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
         const gsBasis<> & dom = fields.begin()->second->isParametrized() ?
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
-        const gsFunction<> & geometry = fields.begin()->second->patches().patch(i);
-        gsMatrix<> ab = geometry.support();
-        gsVector<> a = ab.col(0);
-        gsVector<> b = ab.col(1);
-        gsVector<unsigned> np = uniformSampleCount(a,b,npts);
-
-        gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), np);
-        collection.addPart(fileName + util::to_string(i), ".vts");
-
-        if ( mesh )
-            {
-                writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
-            collection.addPart(fileName + util::to_string(i) + "_mesh", ".vtp");
-        }
-        if ( ctrlNet ) // Output the control net
-        {
-            writeSingleControlNet(fields.begin()->second->patch(i), fn + util::to_string(i) + "_cnet");
-            collection.addPart(fileName + util::to_string(i) + "_cnet", ".vtp");
-        }
-
-    }
-    collection.save();
-}
-
-template<class T>
-void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
-                     gsVector<unsigned> npts, bool mesh, bool ctrlNet)
-{
-    const unsigned numP = fields.begin()->second->patches().nPatches();
-    gsParaviewCollection collection(fn);
-    std::string fileName = fn.substr(fn.find_last_of("/\\")+1); // file name without a path
-
-    for ( unsigned i=0; i < numP; ++i )
-    {
-        const gsBasis<> & dom = fields.begin()->second->isParametrized() ?
-            fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
-
         gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
         collection.addPart(fileName + util::to_string(i), ".vts");
 
@@ -149,13 +113,7 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
 
     for ( size_t p = 0; p < numP; ++p)
     {
-        const gsFunction<> & geometry = fields.begin()->second->patches().patch(p);
-        gsMatrix<> ab = geometry.support();
-        gsVector<> a = ab.col(0);
-        gsVector<> b = ab.col(1);
-        gsVector<unsigned> np = uniformSampleCount(a,b,npts);
-
-        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + util::to_string(time) + "_" + util::to_string(p),np);
+        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + util::to_string(time) + "_" + util::to_string(p),npts);
         collection.addTimestep(fileName + util::to_string(time) + "_",p,time,".vts");
     }
 
@@ -165,15 +123,16 @@ template<class T>
 void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T> *> fields,
                                 const unsigned patchNum,
                                 std::string const & fn,
-                                gsVector<unsigned> np)
+                                unsigned npts)
 {
-    const gsFunction<> & geometry = fields.begin()->second->patches().patch(patchNum);
+    const gsGeometry<> & geometry = fields.begin()->second->patches().patch(patchNum);
     const short_t n = geometry.targetDim();
     const short_t d = geometry.domainDim();
 
     gsMatrix<> ab = geometry.support();
     gsVector<> a = ab.col(0);
     gsVector<> b = ab.col(1);
+    gsVector<unsigned> np = distributePoints<T>(geometry,npts);
     gsMatrix<> pts = gsPointGrid(a,b,np);
 
     gsMatrix<> eval_geo = geometry.eval(pts);

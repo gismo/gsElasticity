@@ -77,6 +77,17 @@ template <class T>
 void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
                        const gsQuadRule<T> & quRule, gsMatrix<T> & points);
 
+/// @brief compute length of a patch in a given parametric direction as a mean of all boundary edges corresponding to this direction
+template <class T>
+T patchLength(const gsGeometry<T> & geo, short_t dir = 0);
+
+/// @brief compute curve length
+template <class T>
+T curveLength(const gsGeometry<T> & geo);
+
+/// @brief distributes sampling points according to the length of the patch in each parametric direction
+template <class T>
+gsVector<unsigned> distributePoints(const gsGeometry<T> & geo, unsigned numPoints);
 
 //-----------------------------------//
 //----------- Modelling--------------//

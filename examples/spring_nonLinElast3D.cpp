@@ -5,6 +5,7 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 using namespace gismo;
 
@@ -24,7 +25,7 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 0;
     index_t numDegElev = 0;
     index_t numUniRefX = 3;
-    index_t numPlotPointsX = 400;
+    index_t numPlotPoints = 10000;
     bool plotMesh = false;
 
     // minimalistic user interface for terminal
@@ -34,7 +35,7 @@ int main(int argc, char* argv[]){
     cmd.addInt("r","refine","Number of uniform refinement application",numUniRef);
     cmd.addInt("x","xrefine","Number of uniform refinement application in the helical direction",numUniRefX);
     cmd.addInt("d","degelev","Number of degree elevation application",numDegElev);
-    cmd.addInt("p","points","Number of points in the helical direction to plot to Paraview",numPlotPointsX);
+    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addSwitch("m","mesh","Plot computational mesh",plotMesh);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -116,7 +117,7 @@ int main(int argc, char* argv[]){
     gsPiecewiseFunction<> stresses;
     assembler.constructCauchyStresses(solutionNonlinear,stresses,stress_type::von_mises);
 
-    if (numPlotPointsX > 0)
+    if (numPlotPoints > 0)
     {
         gsField<> nonlinearSolutionField(geometry,solutionNonlinear);
         gsField<> linearSolutionField(geometry,solutionLinear);
@@ -125,10 +126,8 @@ int main(int argc, char* argv[]){
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation (nonlinElast)"] = &nonlinearSolutionField;
         fields["Deformation (linElast)"] = &linearSolutionField;
-        //fields["VonMises"] = &stressField;
-        gsVector<unsigned> npts(3);
-        npts << numPlotPointsX, 10, 10;
-        gsWriteParaviewMultiPhysics(fields,"spring",npts,plotMesh);
+        fields["VonMises"] = &stressField;
+        gsWriteParaviewMultiPhysics(fields,"spring",numPlotPoints,plotMesh);
         gsInfo << "Open \"spring.pvd\" in Paraview for visualization.\n";
     }
 

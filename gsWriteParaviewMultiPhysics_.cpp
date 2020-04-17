@@ -11,10 +11,6 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<real_t>* > 
                      unsigned npts, bool mesh, bool cnet);
 
 TEMPLATE_INST
-void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<real_t> *> fields, std::string const & fn,
-                     gsVector<unsigned> npts, bool mesh, bool ctrlNet);
-
-TEMPLATE_INST
 void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<real_t> *> fields, std::string const & fn,
                                          gsParaviewCollection & collection, int time, unsigned npts);
 
@@ -22,7 +18,7 @@ TEMPLATE_INST
 void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<real_t>* > fields,
                                 const unsigned patchNum,
                                 std::string const & fn,
-                                gsVector<unsigned> npts);
+                                unsigned npts);
 
 TEMPLATE_INST
 void gsWriteParaviewMultiTPgrid(gsMatrix<real_t> const& points,

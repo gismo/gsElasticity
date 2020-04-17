@@ -36,7 +36,11 @@ void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & r
     gsMatrix<T> dispGrad;
     for (index_t q = 0; q < u.cols(); ++q)
     {
-        dispGrad = mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+        T J = mdGeo.jacobian(q).determinant();
+        if (abs(J) > 1.0e-15)
+            dispGrad = mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+        else
+            dispGrad.setZero(u.rows(),u.rows());
 
         if (domainDim() == 2)
         {

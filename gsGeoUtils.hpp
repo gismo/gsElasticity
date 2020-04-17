@@ -208,7 +208,7 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
             gsVector<index_t> numNodes(domain.dim());
             for (short_t i = 0; i < domain.dim(); ++i)
                 numNodes.at(i) = domain.basis(p).degree(i)+1;
-            gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
 
             typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
 #ifdef _OPENMP
@@ -253,7 +253,7 @@ index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const 
             gsVector<index_t> numNodes(domain.dim());
             for (short_t i = 0; i < domain.dim(); ++i)
                 numNodes.at(i) = displacement.basis(p).degree(i)+1;
-            gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
 
             typename gsBasis<T>::domainIter domIt = displacement.basis(p).makeDomainIterator(boundary::none);
 #ifdef _OPENMP
@@ -301,7 +301,7 @@ T normL2(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & solution)
             gsVector<index_t> numNodes(domain.dim());
             for (short_t i = 0; i < domain.dim(); ++i)
                 numNodes.at(i) = solution.basis(p).degree(i)+1;
-            gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
 
             typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
 #ifdef _OPENMP
@@ -340,7 +340,7 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
         gsVector<index_t> numNodes(domain.dim());
         for (short_t i = 0; i < domain.dim(); ++i)
             numNodes.at(i) = domain.basis(p).degree(i)+1;
-        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
 
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
@@ -383,7 +383,7 @@ T displacementJacRatio(const gsMultiPatch<T> & domain,const gsMultiPatch<T> & di
         gsVector<index_t> numNodes(domain.dim());
         for (short_t i = 0; i < domain.dim(); ++i)
             numNodes.at(i) = displacement.basis(p).degree(i)+1;
-        gsQuadRule<T> quRule = gsQuadrature::get<T>(1,numNodes);
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
 
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
@@ -429,6 +429,125 @@ void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
     points.resize(quadPoints.rows(),quadPoints.cols()+corners.cols());
     points << quadPoints,corners;
 }
+
+template <class T>
+T patchLength(const gsGeometry<T> & geo, short_t dir)
+{
+    GISMO_ENSURE(dir >= 0 && dir <= geo.parDim(),"Invalid parametric direction: " + util::to_string(dir)+
+                                                 ", geometry dimension: " + util::to_string(geo.parDim()));
+    switch (geo.parDim())
+    {
+        case 1: return curveLength<T>(geo);
+        case 2:
+        {
+            switch (dir)
+            {
+                case 0:
+                {
+                    typename gsGeometry<T>::uPtr sideS = geo.boundary(boundary::south);
+                    typename gsGeometry<T>::uPtr sideN = geo.boundary(boundary::north);
+                    return (curveLength<T>(*sideS) + curveLength<T>(*sideN))/2;
+                }
+                case 1:
+                {
+                    typename gsGeometry<T>::uPtr sideW = geo.boundary(boundary::west);
+                    typename gsGeometry<T>::uPtr sideE = geo.boundary(boundary::east);
+                    return (curveLength<T>(*sideW) + curveLength<T>(*sideE))/2;
+                }
+                default: return 0.;
+            }
+        }
+        case 3:
+        {
+            switch (dir)
+            {
+                case 0:
+                {
+                    typename gsGeometry<T>::uPtr sideB = geo.boundary(boundary::back);
+                    typename gsGeometry<T>::uPtr sideF = geo.boundary(boundary::front);
+                    typename gsGeometry<T>::uPtr edgeBS = sideB->boundary(boundary::south);
+                    typename gsGeometry<T>::uPtr edgeBN = sideB->boundary(boundary::north);
+                    typename gsGeometry<T>::uPtr edgeFS = sideF->boundary(boundary::south);
+                    typename gsGeometry<T>::uPtr edgeFN = sideF->boundary(boundary::north);
+                    return (curveLength<T>(*edgeBS) + curveLength<T>(*edgeBN) +
+                            curveLength<T>(*edgeFS) + curveLength<T>(*edgeFN))/4;
+                }
+                case 1:
+                {
+                    typename gsGeometry<T>::uPtr sideB = geo.boundary(boundary::back);
+                    typename gsGeometry<T>::uPtr sideF = geo.boundary(boundary::front);
+                    typename gsGeometry<T>::uPtr edgeBW = sideB->boundary(boundary::west);
+                    typename gsGeometry<T>::uPtr edgeBE = sideB->boundary(boundary::east);
+                    typename gsGeometry<T>::uPtr edgeFW = sideF->boundary(boundary::west);
+                    typename gsGeometry<T>::uPtr edgeFE = sideF->boundary(boundary::east);
+                    return (curveLength<T>(*edgeBW) + curveLength<T>(*edgeBE) +
+                            curveLength<T>(*edgeFW) + curveLength<T>(*edgeFE))/4;
+                }
+                case 2:
+                {
+                    typename gsGeometry<T>::uPtr sideN = geo.boundary(boundary::north);
+                    typename gsGeometry<T>::uPtr sideS = geo.boundary(boundary::south);
+                    typename gsGeometry<T>::uPtr edgeNW = sideN->boundary(boundary::west);
+                    typename gsGeometry<T>::uPtr edgeNE = sideN->boundary(boundary::east);
+                    typename gsGeometry<T>::uPtr edgeSW = sideS->boundary(boundary::west);
+                    typename gsGeometry<T>::uPtr edgeSE = sideS->boundary(boundary::east);
+                    return (curveLength<T>(*edgeNW) + curveLength<T>(*edgeNE) +
+                            curveLength<T>(*edgeSW) + curveLength<T>(*edgeSE))/4;
+                }
+                default: return 0.;
+            }
+        }
+        default: return 0.;
+    }
+}
+
+template <class T>
+T curveLength(const gsGeometry<T> & geo)
+{
+    GISMO_ENSURE(geo.parDim() == 1,"This is not a curve! Dim: " + util::to_string(geo.parDim()));
+    T length = 0.;
+
+    gsVector<index_t> numNodes(1);
+    numNodes << geo.basis().degree(0)+1;
+    gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
+    gsMatrix<T> qPoints;
+    gsVector<T> qWeights;
+    gsMapData<T> md;
+    md.flags = NEED_DERIV;
+
+    typename gsBasis<>::domainIter domIt = geo.basis().makeDomainIterator(boundary::none);
+    for (; domIt->good(); domIt->next())
+    {
+        quRule.mapTo(domIt->lowerCorner(),domIt->upperCorner(),qPoints,qWeights);
+        md.points = qPoints;
+        geo.computeMap(md);
+        for (index_t q = 0; q < qWeights.rows(); ++q)
+            length += qWeights.at(q)*md.jacobian(q).norm();
+    }
+    return length;
+}
+
+template <class T>
+gsVector<unsigned> distributePoints(const gsGeometry<T> & geo, unsigned numPoints)
+{
+    short_t dim = geo.parDim();
+    GISMO_ENSURE(dim >= 1 && dim <= 3,"Invalid patch dimension: " + util::to_string(dim));
+    gsVector<unsigned> numPointsPerDir(dim);
+    gsVector<T> parLengths(dim);
+
+    T volume = 1.;
+    for (short_t d = 0; d < dim; ++d)
+    {
+        parLengths.at(d) = patchLength<T>(geo,d);
+        volume *= parLengths.at(d);
+    }
+
+    T unit = pow(1.0*numPoints/volume,1./geo.parDim());
+    for (short_t d = 0; d < geo.parDim(); ++d)
+        numPointsPerDir.at(d) = math::ceil(unit*parLengths.at(d)) > 1 ? math::ceil(unit*parLengths.at(d)) : 2;
+    return numPointsPerDir;
+}
+
 
 //--------------------------------------------------------------------//
 //------------------------ Modelling ---------------------------------//
