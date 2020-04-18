@@ -410,7 +410,7 @@ int main(int argc, char* argv[])
             index_t badPatch = moduleALE.updateMesh();
             // construct ALE velocity
             moduleALE.constructSolution(velALE);
-            for (index_t p = 0; p < velALE.nPatches(); ++p)
+            for (size_t p = 0; p < velALE.nPatches(); ++p)
             {
                 velALE.patch(p).coefs() -= dispALE.patch(p).coefs();
                 velALE.patch(p).coefs() /= tStep;

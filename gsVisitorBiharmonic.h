@@ -99,8 +99,8 @@ public:
                               gsSparseSystem<T> & system)
     {
         // number of unknowns: 2
-        std::vector< gsMatrix<unsigned> > globalIndices(2);
-        gsVector<size_t> blockNumbers(2);
+        std::vector< gsMatrix<index_t> > globalIndices(2);
+        gsVector<index_t> blockNumbers(2);
         // compute global indices
         system.mapColIndices(localIndicesMain,patchIndex,globalIndices[0],0);
         system.mapColIndices(localIndicesAux,patchIndex,globalIndices[1],1);
@@ -113,7 +113,7 @@ public:
         // push to the elimination system
         if (elimMat != nullptr)
         {
-            unsigned globalI,globalElimJ;
+            index_t globalI,globalElimJ;
             index_t elimSize = 0;
             for (short_t dJ = 0; dJ < 2; ++dJ)
             {
@@ -143,8 +143,8 @@ protected:
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
     // local indices (at the current patch) of basis functions active at the current element
-    gsMatrix<unsigned> localIndicesMain;
-    gsMatrix<unsigned> localIndicesAux;
+    gsMatrix<index_t> localIndicesMain;
+    gsMatrix<index_t> localIndicesAux;
     // number of main and auxiliary basis functions active at the current element
     index_t N_M, N_A;
     // values and derivatives of main basis functions at quadrature points at the current element

@@ -132,7 +132,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
     res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
     GISMO_ENSURE(res == 0, "Problems with deleting files\n");
 
-    for (unsigned s = 0; s < displacements.size(); ++s)
+    for (size_t s = 0; s < displacements.size(); ++s)
     {
         gsInfo << "Step: " << s+1 << "/" << displacements.size() << std::endl;
 
@@ -500,7 +500,7 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
                                               gsBasis<T> const & basis)
 {
     index_t numSamples = params.cols();
-    unsigned num = basis.size();
+    index_t num = basis.size();
     index_t dim = points.rows();
 
     gsSparseMatrix<T> A(num,num);
@@ -508,7 +508,7 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
     b.setZero();
 
     gsMatrix<T> basisValues;
-    gsMatrix<unsigned> activeBasis;
+    gsMatrix<index_t> activeBasis;
 
     basis.eval_into(params,basisValues);
     basis.active_into(params,activeBasis);

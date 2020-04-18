@@ -28,7 +28,7 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
     result.clear();
     GISMO_ENSURE(unknowns.rows() > 0, "No unknowns provided!");
     index_t nRhs = m_system.rhs().cols();
-    unsigned idx;
+    index_t idx;
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p)
     {
         index_t size  = m_bases[unknowns[0]][p].size();
@@ -58,7 +58,7 @@ void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
 
 
 template <class T>
-void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs, bool oneUnk)
+void gsBaseAssembler<T>::setFixedDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs, bool oneUnk)
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -71,26 +71,28 @@ void gsBaseAssembler<T>::setFixedDofs(size_t patch, boxSide side, const gsMatrix
     GISMO_ENSURE(dirBcExists,"Side " + util::to_string(side) + " of patch " + util::to_string(patch)
                              + " does not belong to the Dirichlet boundary.");
 
-    gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
+    gsMatrix<index_t> localBIndices = m_bases[0][patch].boundary(side);
     GISMO_ENSURE(localBIndices.rows() == ddofs.rows(),
                  "Wrong size of a given matrix with Dirichlet DoFs: " + util::to_string(ddofs.rows()) +
                  ". Must be:" + util::to_string(localBIndices.rows()));
 
     if (oneUnk)
     {
-        gsMatrix<unsigned> globalIndices;
+        gsMatrix<index_t> globalIndices;
         m_system.mapColIndices(localBIndices, patch, globalIndices, 0);
         for (index_t i = 0; i < globalIndices.rows(); ++i)
             m_ddof[0].row(m_system.colMapper(0).global_to_bindex(globalIndices(i,0))) = ddofs.row(i);
     }
     else
+    {
+        gsMatrix<index_t> globalIndices;
         for (short_t d = 0; d < ddofs.cols(); ++d )
         {
-            gsMatrix<unsigned> globalIndices;
             m_system.mapColIndices(localBIndices, patch, globalIndices, d);
             for (index_t i = 0; i < globalIndices.rows(); ++i)
                 m_ddof[d](m_system.colMapper(d).global_to_bindex(globalIndices(i,0)),0) = ddofs(i,d);
         }
+    }
 }
 
 template <class T>
@@ -108,7 +110,7 @@ void gsBaseAssembler<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
 }
 
 template <class T>
-void gsBaseAssembler<T>::getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs) const
+void gsBaseAssembler<T>::getFixedDofs(index_t patch, boxSide side, gsMatrix<T> & ddofs) const
 {
     bool dirBcExists = false;
     typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
@@ -122,12 +124,12 @@ void gsBaseAssembler<T>::getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & 
                              + " does not belong to the Dirichlet boundary.");
 
     short_t m_dim = m_pde_ptr->domain().targetDim();
-    gsMatrix<unsigned> localBIndices = m_bases[0][patch].boundary(side);
+    gsMatrix<index_t> localBIndices = m_bases[0][patch].boundary(side);
     ddofs.clear();
     ddofs.resize(localBIndices.rows(),m_dim);
+    gsMatrix<index_t> globalIndices;
     for (short_t d = 0; d < m_dim; ++d )
     {
-        gsMatrix<unsigned> globalIndices;
         m_system.mapColIndices(localBIndices, patch, globalIndices, d);
 
         for (index_t i = 0; i < globalIndices.rows(); ++i)
@@ -140,7 +142,7 @@ template <class T>
 index_t gsBaseAssembler<T>::numFixedDofs() const
 {
     index_t nFixedDofs = 0;
-    for (index_t i = 0; i < m_ddof.size(); ++i)
+    for (size_t i = 0; i < m_ddof.size(); ++i)
         nFixedDofs += m_ddof[i].rows();
     return nFixedDofs;
 }
@@ -152,7 +154,7 @@ void gsBaseAssembler<T>::eliminateFixedDofs()
     gsMatrix<T> fixedDofs(numFixedDofs(),m_system.rhs().cols());
     // from a vector of fixed degrees of freedom
     index_t nFixedDofs = 0;
-    for (index_t i = 0; i < m_ddof.size(); ++i)
+    for (size_t i = 0; i < m_ddof.size(); ++i)
     {
         fixedDofs.middleRows(nFixedDofs,m_ddof[i].rows()) = m_ddof[i];
         nFixedDofs += m_ddof[i].rows();

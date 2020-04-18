@@ -50,7 +50,7 @@ protected:
 protected:
     const gsFunctionSet<T> & m_temperatureField;
     bool assembledElasticity;
-    std::vector<std::pair<int,boxSide> > nonDirichletSides;
+    std::vector<std::pair<index_t,boxSide> > nonDirichletSides;
     //
     gsMatrix<T> elastRhs;
 

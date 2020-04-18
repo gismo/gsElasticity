@@ -55,15 +55,14 @@ void gsThermoAssembler<T>::findNonDirichletSides()
 {
     for (std::vector< patchSide >::iterator side = m_pde_ptr->domain().bBegin(); side != m_pde_ptr->domain().bEnd(); ++side)
     {
-        std::pair<size_t,boxSide> temp(side->patch,side->index());
+        std::pair<index_t,boxSide> temp(side->patch,side->index());
 
         typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
         for ( ; it != m_pde_ptr->bc().dirichletEnd(); ++it )
             if (temp.first == it->patch() && temp.second == it->side())
-                goto exitLabel;
+                return; //!
 
         nonDirichletSides.push_back(temp);
-        exitLabel:;
     }
 }
 

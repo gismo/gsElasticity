@@ -81,8 +81,8 @@ public:
                               gsSparseSystem<T> & system)
     {
         // number of unknowns: dim of displacement
-        std::vector< gsMatrix<unsigned> > globalIndices(1);
-        gsVector<size_t> blockNumbers(1);
+        std::vector< gsMatrix<index_t> > globalIndices(1);
+        gsVector<index_t> blockNumbers(1);
         // computes global indices for displacement components
         system.mapColIndices(localIndices, patchIndex, globalIndices[0], 0);
         blockNumbers.at(0) = 0;
@@ -93,7 +93,7 @@ public:
         // push to the elimination matrix
         if (elimMat != nullptr)
         {
-            unsigned globalI, globalElimJ;
+            index_t globalI, globalElimJ;
             for (index_t i = 0; i < N; ++i)
                 if (system.colMapper(0).is_free_index(globalIndices[0].at(i)))
                 {
@@ -116,7 +116,7 @@ protected:
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
     // local indices (at the current patch) of the displacement basis functions active at the current element
-    gsMatrix<unsigned> localIndices;
+    gsMatrix<index_t> localIndices;
     // number of displacement basis functions active at the current element
     index_t N;
     // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;

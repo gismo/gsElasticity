@@ -42,7 +42,7 @@ public:
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs,
-                          bool assembleMatrix = true) {assemble();}
+                          bool assembleMatrix = true) {assemble(); return true;}
 
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 

@@ -74,7 +74,7 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
     }
     else
-        for (index_t p = 0; p < geometry.nPatches(); ++p)
+        for (size_t p = 0; p < geometry.nPatches(); ++p)
         {
             ALEdisp.addPatch(geometry.patch(p).clone());
             ALEdisp.patch(p).coefs() *= 0.;
@@ -96,7 +96,7 @@ template <class T>
 void gsALE<T>::constructSolution(gsMultiPatch<T> & solution) const
 {
     solution.clear();
-    for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
+    for (size_t p = 0; p < ALEdisp.nPatches(); ++p)
         solution.addPatch(ALEdisp.patch(p).clone());
 }
 
@@ -132,7 +132,7 @@ index_t gsALE<T>::updateMesh()
 template <class T>
 index_t gsALE<T>::HE()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+    for (size_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs(),true);
@@ -157,7 +157,7 @@ index_t gsALE<T>::HE()
 template <class T>
 index_t gsALE<T>::IHE()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+    for (size_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
@@ -174,7 +174,7 @@ index_t gsALE<T>::IHE()
 
     gsMultiPatch<T> ALEupdate;
     assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEupdate);
-    for (index_t p = 0; p < ALEupdate.nPatches(); ++p)
+    for (size_t p = 0; p < ALEupdate.nPatches(); ++p)
     {
         ALEdisp.patch(p).coefs() += ALEupdate.patch(p).coefs();
         assembler->patches().patch(p).coefs() += ALEupdate.patch(p).coefs();
@@ -188,7 +188,7 @@ index_t gsALE<T>::IHE()
 template <class T>
 index_t gsALE<T>::LE()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+    for (size_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs());
@@ -213,7 +213,7 @@ index_t gsALE<T>::LE()
 template <class T>
 index_t gsALE<T>::ILE()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+    for (size_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
@@ -230,7 +230,7 @@ index_t gsALE<T>::ILE()
 
     gsMultiPatch<T> ALEupdate;
     assembler->constructSolution(solVector,assembler->allFixedDofs(),ALEupdate);
-    for (index_t p = 0; p < ALEupdate.nPatches(); ++p)
+    for (size_t p = 0; p < ALEupdate.nPatches(); ++p)
     {
         ALEdisp.patch(p).coefs() += ALEupdate.patch(p).coefs();
         assembler->patches().patch(p).coefs() += ALEupdate.patch(p).coefs();
@@ -246,7 +246,7 @@ index_t gsALE<T>::ILE()
 template <class T>
 index_t gsALE<T>::TINE()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+    for (size_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
@@ -264,7 +264,7 @@ index_t gsALE<T>::TINE()
 template <class T>
 index_t gsALE<T>::BHE()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
+    for (size_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
         assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
                                 fsiInterface.fluidSides[i].side(),
                                 disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs(),true);
@@ -291,7 +291,7 @@ void gsALE<T>::saveState()
     if (methodALE == ale_method::TINE)
         solverNL->saveState();
     ALEdispSaved.clear();
-    for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
+    for (size_t p = 0; p < ALEdisp.nPatches(); ++p)
         ALEdispSaved.addPatch(ALEdisp.patch(p).clone());
     hasSavedState = true;
 }
@@ -303,9 +303,9 @@ void gsALE<T>::recoverState()
     if (methodALE == ale_method::TINE)
         solverNL->recoverState();
     if (methodALE == ale_method::IHE || methodALE == ale_method::ILE)
-        for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
+        for (size_t p = 0; p < ALEdisp.nPatches(); ++p)
             assembler->patches().patch(p).coefs() += ALEdispSaved.patch(p).coefs() - ALEdisp.patch(p).coefs();
-    for (index_t p = 0; p < ALEdisp.nPatches(); ++p)
+    for (size_t p = 0; p < ALEdisp.nPatches(); ++p)
         ALEdisp.patch(p).coefs() = ALEdispSaved.patch(p).coefs();
 }
 
