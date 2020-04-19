@@ -60,9 +60,10 @@ void gsThermoAssembler<T>::findNonDirichletSides()
         typename gsBoundaryConditions<T>::const_iterator it = m_pde_ptr->bc().dirichletBegin();
         for ( ; it != m_pde_ptr->bc().dirichletEnd(); ++it )
             if (temp.first == it->patch() && temp.second == it->side())
-                return; //!
+                goto exitLabel;
 
         nonDirichletSides.push_back(temp);
+		exitLabel:;
     }
 }
 
