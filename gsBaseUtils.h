@@ -143,7 +143,7 @@ public:
     void display(double progress)
     {
         GISMO_ENSURE(progress >= 0. && progress <= 1.,"Invalid progress value! Must be between 0 and 1.");
-        index_t threshold = index_t(progress*m_width);
+        index_t threshold = (index_t)(progress*m_width);
         gsInfo << "[";
         for(index_t i = 0; i < m_width; i++)
             if(i < threshold)
@@ -152,7 +152,7 @@ public:
                 gsInfo << ">";
             else
                 gsInfo << " ";
-        gsInfo << "] " << (abs(progress - 1.) < 1e-12 ? 100 : index_t(progress*100)) << " %\r";
+        gsInfo << "] " << (abs(progress - 1.) < 1e-12 ? 100 : (index_t)(progress*100)) << " %\r";
         gsInfo.flush();
 
         if (abs(progress - 1.) < 1e-12)
@@ -163,7 +163,7 @@ public:
     void display(index_t progress, index_t total)
     {
         GISMO_ENSURE(progress >= 0 && progress <= total && total >= 0,"Invalid progress value!");
-        index_t threshold = index_t(1.*progress*m_width/total);
+        index_t threshold = (index_t)(1.*progress*m_width/total);
         gsInfo << "[";
         for(index_t i = 0; i < m_width; i++)
             if(i < threshold)
@@ -189,8 +189,8 @@ std::string secToHMS(T sec)
     if (sec < 10)
         return util::to_string(sec) + "s";
 
-    index_t days = index_t(sec)/(3600*24);
-    index_t residual = index_t(sec)- 3600*24*days;
+    index_t days = (index_t)(sec)/(3600*24);
+    index_t residual = (index_t)(sec)- 3600*24*days;
     index_t hours = residual/3600;
     residual -= 3600*hours;
     index_t minutes = residual/60;

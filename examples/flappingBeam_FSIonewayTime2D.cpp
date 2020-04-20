@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
         iterClock.restart();
         index_t badPatch = moduleALE.updateMesh();
         moduleALE.constructSolution(velALE);
-        for (index_t p = 0; p < velALE.nPatches(); ++p)
+        for (size_t p = 0; p < velALE.nPatches(); ++p)
         {
             // construct ALE difference
             velALE.patch(p).coefs() -= dispALE.patch(p).coefs();

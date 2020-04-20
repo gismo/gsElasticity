@@ -51,7 +51,7 @@ void gsBiharmonicAssembler<T>::refresh()
         m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
                              iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
 
-    m_system = gsSparseSystem<T>(m_dofMappers, gsVector<unsigned>::Ones(2));
+    m_system = gsSparseSystem<T>(m_dofMappers, gsVector<index_t>::Ones(2));
     reserve();
     Base::computeDirichletDofs(0);
     Base::computeDirichletDofs(1);

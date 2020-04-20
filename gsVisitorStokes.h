@@ -105,8 +105,8 @@ public:
                               gsSparseSystem<T> & system)
     {
         // number of unknowns: dim of velocity + 1 for pressure
-        std::vector< gsMatrix<unsigned> > globalIndices(dim+1);
-        gsVector<size_t> blockNumbers(dim+1);
+        std::vector< gsMatrix<index_t> > globalIndices(dim+1);
+        gsVector<index_t> blockNumbers(dim+1);
         // computes global indices for velocity components
         for (short_t d = 0; d < dim; ++d)
         {
@@ -132,8 +132,8 @@ protected:
     gsMatrix<T> localMat;
     gsMatrix<T> localRhs;
     // local indices (at the current patch) of basis functions active at the current element
-    gsMatrix<unsigned> localIndicesVel;
-    gsMatrix<unsigned> localIndicesPres;
+    gsMatrix<index_t> localIndicesVel;
+    gsMatrix<index_t> localIndicesPres;
     // number of velocity and pressure basis functions active at the current element
     index_t N_V, N_P;
     // values and derivatives of velocity basis functions at quadrature points at the current element

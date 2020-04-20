@@ -88,8 +88,8 @@ public:
                                   gsSparseSystem<T> & system)
         {
             // number of unknowns: dim of displacement
-            std::vector< gsMatrix<unsigned> > globalIndices(dim);
-            gsVector<size_t> blockNumbers(dim);
+            std::vector< gsMatrix<index_t> > globalIndices(dim);
+            gsVector<index_t> blockNumbers(dim);
             // computes global indices for displacement components
             for (short_t d = 0; d < dim; ++d)
             {
@@ -111,7 +111,7 @@ protected:
     // local components of the global linear system
     gsMatrix<T> localRhs;
     // local indices (at the current patch) of the displacement basis functions active at the current element
-    gsMatrix<unsigned> localIndicesDisp;
+    gsMatrix<index_t> localIndicesDisp;
     // number of displacement basis functions active at the current element
     index_t N_D;
     // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;

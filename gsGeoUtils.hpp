@@ -132,7 +132,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
     res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
     GISMO_ENSURE(res == 0, "Problems with deleting files\n");
 
-    for (unsigned s = 0; s < displacements.size(); ++s)
+    for (size_t s = 0; s < displacements.size(); ++s)
     {
         gsInfo << "Step: " << s+1 << "/" << displacements.size() << std::endl;
 
@@ -500,7 +500,7 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
                                               gsBasis<T> const & basis)
 {
     index_t numSamples = params.cols();
-    unsigned num = basis.size();
+    index_t num = basis.size();
     index_t dim = points.rows();
 
     gsSparseMatrix<T> A(num,num);
@@ -508,7 +508,7 @@ typename gsGeometry<T>::uPtr fittingDirichlet(gsMatrix<T> const & params,
     b.setZero();
 
     gsMatrix<T> basisValues;
-    gsMatrix<unsigned> activeBasis;
+    gsMatrix<index_t> activeBasis;
 
     basis.eval_into(params,basisValues);
     basis.active_into(params,activeBasis);
@@ -563,20 +563,20 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
                                                    index_t deg, index_t num, bool xiDir)
 {
     GISMO_ENSURE(A.parDim() == B.parDim(), "Geometries are incompatible: different parametric dimensions: " +
-                                           std::to_string(A.parDim()) + " and " + std::to_string(B.parDim()) + "\n");
+                                           util::to_string(A.parDim()) + " and " + util::to_string(B.parDim()) + "\n");
     short_t pDim = A.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2, "Can only interpolate between curves or surfaces. Given geometries have parametric dimension " +
-                                        std::to_string(pDim) + "\n");
+                                        util::to_string(pDim) + "\n");
     for (index_t d = 0; d < pDim; ++d)
         GISMO_ENSURE(A.degree(d) == B.degree(d), "Geometries are incompatible: different splines degrees in dimension" +
-                                                 std::to_string(d) + ": " + std::to_string(A.degree(d)) +
-                                                 " and " + std::to_string(B.degree(d)) + "\n");
+                                                 util::to_string(d) + ": " + util::to_string(A.degree(d)) +
+                                                 " and " + util::to_string(B.degree(d)) + "\n");
 
     GISMO_ENSURE(A.targetDim() == B.targetDim(), "Geometries are incompatible: different physical dimensions: " +
-                                                 std::to_string(A.targetDim()) + " and " + std::to_string(B.targetDim()) + "\n");
+                                                 util::to_string(A.targetDim()) + " and " + util::to_string(B.targetDim()) + "\n");
     short_t tDim = A.targetDim();
     GISMO_ASSERT(A.coefsSize() == B.coefsSize(), "Geometries are incompatible: different number of control points: " +
-                                                 std::to_string(A.coefsSize()) + " and " + std::to_string(B.coefsSize()) + "\n");
+                                                 util::to_string(A.coefsSize()) + " and " + util::to_string(B.coefsSize()) + "\n");
     index_t baseNum = A.coefsSize();
 
     gsKnotVector<T> newKnots(0.0,1.0, num - deg - 1, deg + 1);

@@ -59,14 +59,14 @@ public:
      * matrix. To allocate space for these DoFs in the assembler, add an empty/zero Dirichlet boundary condition
      * to gsBoundaryCondtions container that is passed to the assembler constructor.
      */
-    virtual void setFixedDofs(size_t patch, boxSide side, const gsMatrix<T> & ddofs, bool oneUnk = false);
+    virtual void setFixedDofs(index_t patch, boxSide side, const gsMatrix<T> & ddofs, bool oneUnk = false);
 
     /// set all fixed degrees of freedom
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
 
     /// get fixed degrees of freedom corresponding to a given part of the bdry.
     /// each column of the resulting matrix correspond to one variable/component of the vector-valued vairable
-    virtual void getFixedDofs(size_t patch, boxSide side, gsMatrix<T> & ddofs) const;
+    virtual void getFixedDofs(index_t patch, boxSide side, gsMatrix<T> & ddofs) const;
 
     /// get the size of the Dirichlet vector for elimination
     virtual index_t numFixedDofs() const;

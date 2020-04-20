@@ -31,7 +31,7 @@ gsIterative<T>::gsIterative(gsBaseAssembler<T> & assembler_)
 {
     solVector.setZero(assembler.numDofs(),1);
     fixedDoFs = assembler.allFixedDofs();
-    for (index_t d = 0; d < index_t(fixedDoFs.size()); ++d)
+    for (index_t d = 0; d < (index_t)(fixedDoFs.size()); ++d)
         fixedDoFs[d].setZero();
     reset();
 }
@@ -162,7 +162,7 @@ bool gsIterative<T>::compute()
         solVector += solutionVector;
         // update fixed degrees fo freedom at the first iteration only (they are zero afterwards)
         if (numIterations == 0)
-            for (index_t d = 0; d < index_t(fixedDoFs.size()); ++d)
+            for (index_t d = 0; d < (index_t)(fixedDoFs.size()); ++d)
                 fixedDoFs[d] += assembler.fixedDofs(d);
     }
     else if (m_options.getInt("IterType") == iteration_type::next)
@@ -213,7 +213,7 @@ void gsIterative<T>::setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
     GISMO_ENSURE(ddofs.size() >= fixedDoFs.size(), "Wrong size of the container with fixed DoFs: " + util::to_string(ddofs.size()) +
                  ". Must be at least: " + util::to_string(fixedDoFs.size()));
 
-    for (short_t d = 0; d < index_t(fixedDoFs.size()); ++d)
+    for (short_t d = 0; d < (short_t)(fixedDoFs.size()); ++d)
     {
         GISMO_ENSURE(fixedDoFs[d].rows() == ddofs[d].rows(),"Wrong number of fixed DoFs for " + util::to_string(d) + "component: " +
                      util::to_string(ddofs[d].rows()) + ". Must be: " + util::to_string(fixedDoFs[d].rows()));

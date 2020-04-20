@@ -159,9 +159,9 @@ int main(int argc, char *argv[])
 
     totalClock.restart();
     gsInfo << "Running the simulation...\n";
-    for (int i = 0; i < index_t(timeSpan/timeStep); ++i)
+    for (int i = 0; i < (index_t)(timeSpan/timeStep); ++i)
     {
-        bar.display(i+1,index_t(timeSpan/timeStep));
+        bar.display(i+1,(index_t)(timeSpan/timeStep));
 
         iterClock.restart();
         // prepairing the matrix for the next time step
