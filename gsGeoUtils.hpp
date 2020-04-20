@@ -563,20 +563,20 @@ typename gsGeometry<T>::uPtr genPatchInterpolation(gsGeometry<T> const & A, gsGe
                                                    index_t deg, index_t num, bool xiDir)
 {
     GISMO_ENSURE(A.parDim() == B.parDim(), "Geometries are incompatible: different parametric dimensions: " +
-                                           std::to_string(A.parDim()) + " and " + std::to_string(B.parDim()) + "\n");
+                                           util::to_string(A.parDim()) + " and " + util::to_string(B.parDim()) + "\n");
     short_t pDim = A.parDim();
     GISMO_ASSERT(pDim == 1 || pDim ==2, "Can only interpolate between curves or surfaces. Given geometries have parametric dimension " +
-                                        std::to_string(pDim) + "\n");
+                                        util::to_string(pDim) + "\n");
     for (index_t d = 0; d < pDim; ++d)
         GISMO_ENSURE(A.degree(d) == B.degree(d), "Geometries are incompatible: different splines degrees in dimension" +
-                                                 std::to_string(d) + ": " + std::to_string(A.degree(d)) +
-                                                 " and " + std::to_string(B.degree(d)) + "\n");
+                                                 util::to_string(d) + ": " + util::to_string(A.degree(d)) +
+                                                 " and " + util::to_string(B.degree(d)) + "\n");
 
     GISMO_ENSURE(A.targetDim() == B.targetDim(), "Geometries are incompatible: different physical dimensions: " +
-                                                 std::to_string(A.targetDim()) + " and " + std::to_string(B.targetDim()) + "\n");
+                                                 util::to_string(A.targetDim()) + " and " + util::to_string(B.targetDim()) + "\n");
     short_t tDim = A.targetDim();
     GISMO_ASSERT(A.coefsSize() == B.coefsSize(), "Geometries are incompatible: different number of control points: " +
-                                                 std::to_string(A.coefsSize()) + " and " + std::to_string(B.coefsSize()) + "\n");
+                                                 util::to_string(A.coefsSize()) + " and " + util::to_string(B.coefsSize()) + "\n");
     index_t baseNum = A.coefsSize();
 
     gsKnotVector<T> newKnots(0.0,1.0, num - deg - 1, deg + 1);
