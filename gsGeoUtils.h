@@ -187,17 +187,11 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
                                       index_t deg, index_t num,
                                       T height, T pitch, T x0 = 0., T y0 = 0.);
 
-/// @brief generates a 3D NURBS spring
-template<class T>
-typename gsGeometry<T>::uPtr genSpring(T springRadius = 6.0, T springPitch = 2.60258,
-                                       T wireRadius = 1.0, index_t numQuarterSegments = 12);
-
-
-
 /// @brief generates a 3D NURBS spring using provided geometry as a cross-section
 template<class T>
-typename gsGeometry<T>::uPtr genSpring(T springRadius = 6.0, T springPitch = 2.60258,
-                                       T wireRadius = 1.0, index_t numQuarterSegments = 12);
+typename gsGeometry<T>::uPtr genSpring(gsGeometry<T> const & crossSection,
+                                       T springRadius = 6.0, T springPitch = 2.60258,
+                                       index_t numQuarterSegments = 12, bool nurbs = false);
 
 //----------------------------------------//
 //----------- Auxiliary functions --------//

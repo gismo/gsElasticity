@@ -132,10 +132,5 @@ int main(int argc, char* argv[]){
     gsInfo << "X-displacement of the top-right corner: " << A.at(0) << std::endl;
     gsInfo << "Y-displacement of the top-right corner: " << A.at(1) << std::endl;
 
-    gsMultiPatch<> spring;
-    spring.addPatch(genSpring<real_t>());
-    spring.computeTopology();
-    gsWrite(spring,"spring");
-
     return 0;
 }

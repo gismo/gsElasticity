@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"circleMP.xml";
+    std::string filename = ELAST_DATA_DIR"springMP.xml";
     real_t youngsModulus = 1.0e6;
     real_t poissonsRatio = 0.3;
     index_t materialLaw = material_law::neo_hooke_ln;
@@ -47,13 +47,6 @@ int main(int argc, char* argv[]){
     gsMultiPatch<> geometry;
     gsReadFile<>(filename, geometry);
 
-
-
-
-
-
-
-    /*
     // creating basis
     gsMultiBasis<> basis(geometry);
     for (index_t i = 0; i < numDegElev; ++i)
@@ -61,7 +54,8 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
     for (index_t i = 0; i < numUniRefX; ++i)
-        static_cast<gsTensorNurbsBasis<3,real_t> &>(basis.basis(0)).knots(0).uniformRefine();
+        for (index_t p = 0; p < geometry.nPatches(); ++p)
+            static_cast<gsTensorBSplineBasis<3,real_t> &>(basis.basis(p)).knots(2).uniformRefine();
 
     //=============================================//
         // Setting loads and boundary conditions //
@@ -74,13 +68,16 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    // Dirichlet BC are imposed separately for every component (coordinate)
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
-    bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,2);
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,0);
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,0,1);
-    bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,&endDisp,2);
+    for (index_t p = 0; p < geometry.nPatches(); ++p)
+    {
+        // Dirichlet BC are imposed separately for every component (coordinate)
+        bcInfo.addCondition(p,boundary::front,condition_type::dirichlet,0,0);
+        bcInfo.addCondition(p,boundary::front,condition_type::dirichlet,0,1);
+        bcInfo.addCondition(p,boundary::front,condition_type::dirichlet,0,2);
+        bcInfo.addCondition(p,boundary::back,condition_type::dirichlet,0,0);
+        bcInfo.addCondition(p,boundary::back,condition_type::dirichlet,0,1);
+        bcInfo.addCondition(p,boundary::back,condition_type::dirichlet,&endDisp,2);
+    }
 
     //=============================================//
                   // Solving //
@@ -138,6 +135,6 @@ int main(int argc, char* argv[]){
         gsWriteParaviewMultiPhysics(fields,"spring",numPlotPoints,plotMesh);
         gsInfo << "Open \"spring.pvd\" in Paraview for visualization.\n";
     }
-*/
+
     return 0;
 }

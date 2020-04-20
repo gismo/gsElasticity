@@ -980,10 +980,18 @@ typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
 }
 
 template<class T>
-typename gsGeometry<T>::uPtr genSpring(T springRadius, T springPitch,
-                                       T wireRadius, index_t N)
+typename gsGeometry<T>::uPtr genSpring(gsGeometry<T> const & crossSection,
+                                       T R, T springPitch,
+                                       index_t N, bool nurbs)
 {
-    // knot vector for the spring guiding line
+    GISMO_ENSURE(crossSection.parDim() == 2, "Wrong dimension of the cross-section: " + util::to_string(crossSection.parDim()));
+
+    // cross-section knot vectors
+    gsKnotVector<T> xKnots = nurbs ? static_cast<const gsTensorNurbsBasis<2,T> &>(crossSection.basis()).knots(0)
+                                   : static_cast<const gsTensorBSplineBasis<2,T> &>(crossSection.basis()).knots(0);
+    gsKnotVector<T> yKnots = nurbs ? static_cast<const gsTensorNurbsBasis<2,T> &>(crossSection.basis()).knots(1)
+                                   : static_cast<const gsTensorBSplineBasis<2,T> &>(crossSection.basis()).knots(1);
+    // knot vector for the helical guiding line
     std::vector<T> knots;
     for (index_t i = 0; i < 3; ++i)
         knots.push_back(0.);
@@ -992,51 +1000,37 @@ typename gsGeometry<T>::uPtr genSpring(T springRadius, T springPitch,
             knots.push_back(1./N*(i+1));
     for (index_t i = 0; i < 3; ++i)
         knots.push_back(1.);
-    gsKnotVector<T> xKnots(knots,2);
-    // two knot vectors for the cross-section of the spring
-    gsKnotVector<T> yKnots(0.0,1.0,0,3);
-    gsKnotVector<T> zKnots(0.0,1.0,0,3);
-    // form NURBS weights
-    gsMatrix<T> weights;
-    weights.setOnes(9*(2*N+1),1);
-    for (index_t x = 0; x < 2*N+1; ++x)
-        for (index_t y = 0; y < 3; ++y)
-            for (index_t z = 0; z < 3; ++z)
-                weights(z*3*(2*N+1) + y*(2*N+1) + x) = (z == 1 ? 1./sqrt(2) : 1.0) *
-                                                       (y == 1 ? 1./sqrt(2) : 1.0) *
-                                                       (x%2 ==  1 ? 1.0/sqrt(2) : 1.0);
-    // form coefs
-    T h = springPitch/8;
-    T R = springRadius;
-    T r = wireRadius;
-    gsMatrix<T> coefs;
-    coefs.setZero(9*(2*N+1),3);
+    gsKnotVector<T> zKnots(knots,2);
+
+    // NURBS weights
+    index_t numP = crossSection.coefs().rows();
+    gsMatrix<T> crossWeights = nurbs ? static_cast<const gsTensorNurbsBasis<2,T> &>(crossSection.basis()).weights()
+                                     : gsMatrix<T>::Ones(numP,1);
+    gsMatrix<T> weights(numP*(2*N+1),1);
+    for (index_t i = 0; i < 2*N+1; ++i)
+        weights.middleRows(i*numP,numP) = crossWeights*(i%2==0 ? 1 : 1./sqrt(2));
+
+    // control points of the cross-section
+    gsMatrix<T> crossCoefs(numP,3);
+    crossCoefs.setZero();
+    crossCoefs.col(0) = crossSection.coefs().col(0);
+    crossCoefs.col(2) = crossSection.coefs().col(1);
+    for (index_t i = 0; i < numP; ++i)
+        crossCoefs(i,0) += R;
+
+    // control points of the spring
+    gsMatrix<T> coefs(numP*(2*N+1),3);
     for (index_t i = 0; i < 2*N+1; ++i)
     {
-        coefs.row(0*3*(2*N+1) + 0*(2*N+1) + i) << cos(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),h*i-1;
-        coefs.row(0*3*(2*N+1) + 1*(2*N+1) + i) << cos(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),h*i-1;
-        coefs.row(0*3*(2*N+1) + 2*(2*N+1) + i) << cos(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),h*i;
-
-        coefs.row(1*3*(2*N+1) + 0*(2*N+1) + i) << cos(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),h*i-1;
-        coefs.row(1*3*(2*N+1) + 1*(2*N+1) + i) << cos(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),h*i;
-        coefs.row(1*3*(2*N+1) + 2*(2*N+1) + i) << cos(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*(R+r)*(i%2 == 1 ? sqrt(2) : 1),h*i+1;
-
-        coefs.row(2*3*(2*N+1) + 0*(2*N+1) + i) << cos(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),h*i;
-        coefs.row(2*3*(2*N+1) + 1*(2*N+1) + i) << cos(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*(R-r)*(i%2 == 1 ? sqrt(2) : 1),h*i+1;
-        coefs.row(2*3*(2*N+1) + 2*(2*N+1) + i) << cos(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),
-                                                  sin(M_PI/4*i)*R*(i%2 == 1 ? sqrt(2) : 1),h*i+1;
+        gsMatrix<T> rotation = Eigen::AngleAxis<T>(-1.0*M_PI/4*i,Eigen::Vector3f(0.,0.,1.)).toRotationMatrix().transpose();
+        gsMatrix<T> scaling = Eigen::DiagonalMatrix<T,3>((i%2 == 0 ? 1. : sqrt(2)),1.,1.);
+        coefs.middleRows(i*numP,numP) = crossCoefs * scaling  * rotation;
+        for (index_t j = 0; j < numP; ++j)
+            coefs(i*numP + j,2) += i*springPitch/8;
     }
-    return gsGeometry<T>::uPtr(new gsTensorNurbs<3,T>(xKnots,yKnots,zKnots,coefs,weights));
-}
 
+    return typename gsGeometry<T>::uPtr(new gsTensorNurbs<3,T>(xKnots,yKnots,zKnots,coefs,weights));
+}
 //------------------------------------------------------//
 //----------------- Auxiliary functions ----------------//
 //------------------------------------------------------//
