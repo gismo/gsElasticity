@@ -180,9 +180,9 @@ int main(int argc, char* argv[])
 
     gsInfo << "Running the simulation...\n";
     totalClock.restart();
-    for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
+    for (index_t i = 0; i < (index_t)(timeSpan/timeStep); ++i)
     {
-        bar.display(i+1,index_t(timeSpan/timeStep));
+        bar.display(i+1,(index_t)(timeSpan/timeStep));
 
         // BEAM
         iterClock.restart();
