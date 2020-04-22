@@ -54,7 +54,6 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
         m_bases.push_back(basis);
 
     Base::initialize(pde, m_bases, defaultOptions());
-    muscleTendon = nullptr;
 }
 
 template<class T>
@@ -62,8 +61,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
                                                 gsMultiBasis<T> const & basisDisp,
                                                 gsMultiBasis<T> const & basisPres,
                                                 gsBoundaryConditions<T> const & bconditions,
-                                                const gsFunction<T> & body_force,
-                                                const gsFunction<T> * muscleTendonRatio)
+                                                const gsFunction<T> & body_force)
 {
     // same as above
     gsPiecewiseFunction<T> rightHandSides;
@@ -76,9 +74,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     m_bases.push_back(basisPres);
 
     Base::initialize(pde, m_bases, defaultOptions());
-    m_options.setInt("MaterialLaw",material_law::neo_hooke_ln);
-
-    muscleTendon = muscleTendonRatio;
+    m_options.setInt("MaterialLaw",material_law::mixed_hooke);
 }
 
 template <class T>
@@ -88,7 +84,7 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addReal("YoungsModulus","Youngs modulus of the material",200e9);
     opt.addReal("PoissonsRatio","Poisson's ratio of the material",0.33);
     opt.addReal("ForceScaling","Force scaling parameter",1.);
-    opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::saint_venant_kirchhoff);
+    opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::hooke);
     opt.addReal("LocalStiff","Stiffening degree for the Jacobian-based local stiffening",0.);
     opt.addSwitch("Check","Check bijectivity of the displacement field before matrix assebmly",false);
     return opt;
@@ -278,22 +274,44 @@ void gsElasticityAssembler<T>::constructPressure(const gsMatrix<T>& solVector,
 template <class T>
 void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                                        gsPiecewiseFunction<T> & result,
-                                                       stress_type::type type) const
+                                                       stress_components::components comp) const
 {
-    // TODO: construct stresses for nonlinear and mixed elasticity
+    if (comp == stress_components::all_2D_vector || comp == stress_components::all_2D_matrix)
+        GISMO_ENSURE(m_dim == 2, "Invalid stress components for a 2D problem");
+    if (comp == stress_components::normal_3D_vector || comp == stress_components::shear_3D_vector ||
+        comp == stress_components::all_3D_matrix)
+        GISMO_ENSURE(m_dim == 3, "Invalid stress type for a 3D problem");
+    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke ||
+                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_ln ||
+                 m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff ||
+                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_quad,
+                 "Pressure field not provided! Can't compute stresses with the chosen material law.");
     result.clear();
-    if (type == stress_type::all_2D)
-        GISMO_ASSERT(m_dim == 2, "Invalid stress type for a 2D problem");
-    if (type == stress_type::normal_3D || type == stress_type::shear_3D)
-        GISMO_ASSERT(m_dim == 3, "Invalid stress type for a 3D problem");
-
-    T E = m_options.getReal("YoungsModulus");
-    T pr = m_options.getReal("PoissonsRatio");
-    T lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
-    T mu     = E / ( 2. * ( 1. + pr ) );
 
     for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
-        result.addPiecePointer(new gsCauchyStressFunction<T>(m_pde_ptr->domain(),displacement,p,type,lambda,mu));
+        result.addPiecePointer(new gsCauchyStressFunction<T>(p,comp,m_options,
+                                                             &(m_pde_ptr->domain()),&displacement));
+}
+
+template <class T>
+void gsElasticityAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,
+                                                       const gsMultiPatch<T> & pressure,
+                                                       gsPiecewiseFunction<T> & result,
+                                                       stress_components::components comp) const
+{
+    if (comp == stress_components::all_2D_vector || comp == stress_components::all_2D_matrix)
+        GISMO_ENSURE(m_dim == 2, "Invalid stress components for a 2D problem");
+    if (comp == stress_components::normal_3D_vector || comp == stress_components::shear_3D_vector ||
+        comp == stress_components::all_3D_matrix)
+        GISMO_ENSURE(m_dim == 3, "Invalid stress type for a 3D problem");
+    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::mixed_neo_hooke_ln ||
+                 m_options.getInt("MaterialLaw") == material_law::mixed_hooke,
+                 "Pressure field is not necessary to compute stresses with the chosen material law.");
+    result.clear();
+
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
+        result.addPiecePointer(new gsCauchyStressFunction<T>(p,comp,m_options,
+                                                             &(m_pde_ptr->domain()), &displacement, &pressure));
 }
 
 }// namespace gismo ends

@@ -16,74 +16,216 @@
 #pragma once
 
 #include <gsElasticity/gsElasticityFunctions.h>
+#include <gsCore/gsFuncData.h>
+#include <gsAssembler/gsAssembler.h>
 
 namespace gismo
 {
-template <class T>
-void gsCauchyStressFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
-{
-    result.setZero(targetDim(),u.cols());
 
-    // NEED_GRAD_TRANSFORM for displacement gradients transformation from parametric to physical domain
+template <class T>
+void gsCauchyStressFunction<T>::linearElastic(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.setZero(targetDim(),outputCols(u.cols()));
+    // evaluating the fields
     gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
     mdGeo.points = u;
-    m_geometry.patch(m_patch).computeMap(mdGeo);
-    // NEED_DERIV for displacement gradients
+    m_geometry->patch(m_patch).computeMap(mdGeo);
     gsMapData<T> mdDisp(NEED_DERIV);
     mdDisp.points = u;
-    m_displacement.patch(m_patch).computeMap(mdDisp);
+    m_displacement->patch(m_patch).computeMap(mdDisp);
+    // define temporary matrices here for efficieny
+    gsMatrix<T> I = gsMatrix<T>::Identity(m_dim,m_dim);
+    gsMatrix<T> sigma,eps,dispGrad;
+    // material parameters
+    T YM = m_options.getReal("YoungsModulus");
+    T PR = m_options.getReal("PoissonsRatio");
+    T lambda = YM * PR / ( ( 1. + PR ) * ( 1. - 2. * PR ) );
+    T mu     = YM / ( 2. * ( 1. + PR ) );
 
-    gsMatrix<T> dispGrad;
     for (index_t q = 0; q < u.cols(); ++q)
     {
-        T J = mdGeo.jacobian(q).determinant();
-        if (abs(J) > 1.0e-15)
-            dispGrad = mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+        // linear strain tensor eps = (gradU+gradU^T)/2
+        if (mdGeo.jacobian(q).determinant() <= 0)
+            gsInfo << "Invalid domain parametrization: J = " << mdGeo.jacobian(q).determinant() <<
+                      " at point (" << u.col(q).transpose() << ") of patch " << m_patch << std::endl;
+        if (abs(mdGeo.jacobian(q).determinant()) > 1e-20)
+           dispGrad = mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
         else
-            dispGrad.setZero(u.rows(),u.rows());
-
-        if (domainDim() == 2)
-        {
-            T s11 = m_lambda * (dispGrad(0,0) + dispGrad(1,1)) + 2 * m_mu * dispGrad(0,0);
-            T s22 = m_lambda * (dispGrad(0,0) + dispGrad(1,1)) + 2 * m_mu * dispGrad(1,1);
-            T s12 = m_mu * (dispGrad(0,1) + dispGrad(1,0));
-
-            if (m_type == stress_type::von_mises)
-                result(0,q) = math::sqrt(s11*s11 + s22*s22 - s11*s22 + 3.*s12*s12);
-            if (m_type == stress_type::all_2D)
-            {
-                result(0,q) = s11;
-                result(1,q) = s22;
-                result(2,q) = s12;
-            }
-        }
-
-        if (domainDim() == 3)
-        {
-            T s11 = m_lambda * (dispGrad(0,0) + dispGrad(1,1) + dispGrad(2,2)) + 2 * m_mu * dispGrad(0,0);
-            T s22 = m_lambda * (dispGrad(0,0) + dispGrad(1,1) + dispGrad(2,2)) + 2 * m_mu * dispGrad(1,1);
-            T s33 = m_lambda * (dispGrad(0,0) + dispGrad(1,1) + dispGrad(2,2)) + 2 * m_mu * dispGrad(2,2);
-            T s12 = m_mu * (dispGrad(0,1) + dispGrad(1,0));
-            T s13 = m_mu * (dispGrad(0,2) + dispGrad(2,0));
-            T s23 = m_mu * (dispGrad(1,2) + dispGrad(2,1));
-            if (m_type == stress_type::von_mises)
-                result(0,q) = math::sqrt(0.5 * ( (s11-s22)*(s11-s22) + (s11-s33)*(s11-s33) + (s22-s33)*(s22-s33) +
-                                                 6 * (s12*s12 + s13*s13 + s23*s23) ) );
-            if (m_type == stress_type::normal_3D)
-            {
-                result(0,q) = s11;
-                result(1,q) = s22;
-                result(2,q) = s33;
-            }
-            if (m_type == stress_type::shear_3D)
-            {
-                result(0,q) = s12;
-                result(1,q) = s13;
-                result(2,q) = s23;
-            }
-        }
+            dispGrad = gsMatrix<T>::Zero(m_dim,m_dim);
+        eps = (dispGrad + dispGrad.transpose())/2;
+        // Cauchy stress tensor
+        sigma = lambda*eps.trace()*I + 2*mu*eps;
+        saveStress(sigma,result,q);
     }
 }
+
+template <class T>
+void gsCauchyStressFunction<T>::nonLinearElastic(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.setZero(targetDim(),outputCols(u.cols()));
+    // evaluating the fields
+    gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
+    mdGeo.points = u;
+    m_geometry->patch(m_patch).computeMap(mdGeo);
+    gsMapData<T> mdDisp(NEED_DERIV);
+    mdDisp.points = u;
+    m_displacement->patch(m_patch).computeMap(mdDisp);
+    // define temporary matrices here for efficieny
+    gsMatrix<T> I = gsMatrix<T>::Identity(m_dim,m_dim);
+    gsMatrix<T> S,sigma,F,C,E;
+    // material parameters
+    T YM = m_options.getReal("YoungsModulus");
+    T PR = m_options.getReal("PoissonsRatio");
+    T lambda = YM * PR / ( ( 1. + PR ) * ( 1. - 2. * PR ) );
+    T mu     = YM / ( 2. * ( 1. + PR ) );
+
+    for (index_t q = 0; q < u.cols(); ++q)
+    {
+        // deformation gradient F = I + gradU*gradGeo^-1
+        if (mdGeo.jacobian(q).determinant() <= 0)
+            gsInfo << "Invalid domain parametrization: J = " << mdGeo.jacobian(q).determinant() <<
+                      " at point (" << u.col(q).transpose() << ") of patch " << m_patch << std::endl;
+        if (abs(mdGeo.jacobian(q).determinant()) > 1e-20)
+            F = I + mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+        else
+            F = I;
+        T J = F.determinant();
+        if (J <= 0)
+            gsInfo << "Invalid displacement field: J = " << J <<
+                      " at point (" << u.col(q).transpose() << ") of patch " << m_patch << std::endl;
+        // Second Piola-Kirchhoff stress tensor
+        if (material_law::law(m_options.getInt("MaterialLaw")) == material_law::saint_venant_kirchhoff)
+        {
+            // Green-Lagrange strain tensor E = 0.5(F^T*F-I)
+            E = (F.transpose() * F - I)/2;
+            S = lambda*E.trace()*I + 2*mu*E;
+        }
+        if (material_law::law(m_options.getInt("MaterialLaw")) == material_law::neo_hooke_ln)
+        {
+            // Right Cauchy Green strain, C = F'*F
+            C = F.transpose() * F;
+            S = (lambda*log(J)-mu)*(C.cramerInverse()) + mu*I;
+        }
+        if (material_law::law(m_options.getInt("MaterialLaw")) == material_law::neo_hooke_quad)
+        {
+            // Right Cauchy Green strain, C = F'*F
+            C = F.transpose() * F;
+            S = (lambda*(J*J-1)/2-mu)*(C.cramerInverse()) + mu*I;
+        }
+        // transformation to Cauchy stress
+        sigma = F*S*F.transpose()/J;
+        saveStress(sigma,result,q);
+    }
+}
+
+template <class T>
+void gsCauchyStressFunction<T>::mixedLinearElastic(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.setZero(targetDim(),outputCols(u.cols()));
+    // evaluating the fields
+    gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
+    mdGeo.points = u;
+    m_geometry->patch(m_patch).computeMap(mdGeo);
+    gsMapData<T> mdDisp(NEED_DERIV);
+    mdDisp.points = u;
+    m_displacement->patch(m_patch).computeMap(mdDisp);
+    gsMatrix<T> presVals;
+    m_pressure->patch(m_patch).eval_into(u,presVals);
+    // define temporary matrices here for efficieny
+    gsMatrix<T> I = gsMatrix<T>::Identity(m_dim,m_dim);
+    gsMatrix<T> sigma,eps,dispGrad;
+    // material parameters
+    T YM = m_options.getReal("YoungsModulus");
+    T PR = m_options.getReal("PoissonsRatio");
+    T mu     = YM / ( 2. * ( 1. + PR ) );
+
+    for (index_t q = 0; q < u.cols(); ++q)
+    {
+        // linear strain tensor eps = (gradU+gradU^T)/2
+        if (mdGeo.jacobian(q).determinant() <= 0)
+            gsInfo << "Invalid domain parametrization: J = " << mdGeo.jacobian(q).determinant() <<
+                      " at point (" << u.col(q).transpose() << ") of patch " << m_patch << std::endl;
+        if (abs(mdGeo.jacobian(q).determinant()) > 1e-20)
+           dispGrad = mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+        else
+            dispGrad = gsMatrix<T>::Zero(m_dim,m_dim);
+        eps = (dispGrad + dispGrad.transpose())/2;
+        // Cauchy stress tensor
+        sigma = presVals.at(q)*I + 2*mu*eps;
+        saveStress(sigma,result,q);
+    }
+}
+
+template <class T>
+void gsCauchyStressFunction<T>::mixedNonLinearElastic(const gsMatrix<T> & u, gsMatrix<T> & result) const
+{
+    result.setZero(targetDim(),outputCols(u.cols()));
+    // evaluating the fields
+    gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
+    mdGeo.points = u;
+    m_geometry->patch(m_patch).computeMap(mdGeo);
+    gsMapData<T> mdDisp(NEED_DERIV);
+    mdDisp.points = u;
+    m_displacement->patch(m_patch).computeMap(mdDisp);
+    gsMatrix<T> presVals;
+    m_pressure->patch(m_patch).eval_into(u,presVals);
+    // define temporary matrices here for efficieny
+    gsMatrix<T> I = gsMatrix<T>::Identity(m_dim,m_dim);
+    gsMatrix<T> S,sigma,F,C,E;
+    // material parameters
+    T YM = m_options.getReal("YoungsModulus");
+    T PR = m_options.getReal("PoissonsRatio");
+    T mu     = YM / ( 2. * ( 1. + PR ) );
+
+    for (index_t q = 0; q < u.cols(); ++q)
+    {
+        if (mdGeo.jacobian(q).determinant() <= 0)
+            gsInfo << "Invalid domain parametrization: J = " << mdGeo.jacobian(q).determinant() <<
+                      " at point (" << u.col(q).transpose() << ") of patch " << m_patch << std::endl;
+        // deformation gradient F = I + gradU*gradGeo^-1
+        if (abs(mdGeo.jacobian(q).determinant()) > 1e-20)
+            F = I + mdDisp.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
+        else
+            F = I;
+        T J = F.determinant();
+        if (J <= 0)
+            gsInfo << "Invalid displacement field: J = " << J <<
+                      " at point (" << u.col(q).transpose() << ") of patch " << m_patch << std::endl;
+        // Second Piola-Kirchhoff stress tensor
+        if (material_law::law(m_options.getInt("MaterialLaw")) == material_law::mixed_neo_hooke_ln)
+        {
+            // Right Cauchy Green strain, C = F'*F
+            C = F.transpose() * F;
+            S = (presVals.at(q)-mu)*(C.cramerInverse()) + mu*I;
+        }
+        // transformation to Cauchy stress
+        sigma = F*S*F.transpose()/J;
+        saveStress(sigma,result,q);
+    }
+}
+
+template <class T>
+void gsCauchyStressFunction<T>::saveStress(const gsMatrix<T> & S, gsMatrix<T> & result, index_t q) const
+{
+    switch (m_type)
+    {
+    case stress_components::von_mises :
+    {
+        if (m_geometry->parDim() == 2)
+            result(0,q) = sqrt( S(0,0)*S(0,0) + S(1,1)*S(1,1) - S(0,0)*S(1,1) + 3*S(0,1)*S(0,1) );
+        if (m_geometry->parDim() == 3)
+            result(0,q) = sqrt(0.5*( pow(S(0,0)-S(1,1),2) + pow(S(0,0)-S(2,2),2) + pow(S(1,1)-S(2,2),2) +
+                                     6 * (pow(S(0,1),2) + pow(S(0,2),2) + pow(S(1,2),2) ) ) );
+        return;
+    }
+    case stress_components::all_2D_vector : result(0,q) = S(0,0); result(1,q) = S(1,1); result(2,q) = S(0,1); return;
+    case stress_components::all_2D_matrix : result.middleCols(q*2,2) = S; return;
+    case stress_components::normal_3D_vector : result(0,q) = S(0,0); result(1,q) = S(1,1); result(2,q) = S(2,2); return;
+    case stress_components::shear_3D_vector : result(0,q) = S(0,1); result(1,q) = S(0,2); result(2,q) = S(1,2); return;
+    case stress_components::all_3D_matrix : result.middleCols(q*3,3) = S; return;
+    }
+}
+
 
 template <class T>
 void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
@@ -97,36 +239,6 @@ void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) co
 
     for (index_t i = 0; i < u.cols(); ++i)
         result(0,i) = mappingData.jacobian(i).determinant();
-}
-
-template <class T>
-void gsStiffFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
-{
-    result.resize(1,u.cols());
-
-    gsMapData<T> mdGeo;
-    mdGeo.points = u;
-    mdGeo.flags = NEED_DERIV;
-    m_geo.patch(m_patch).computeMap(mdGeo);
-
-    gsMapData<T> mdDisp;
-    mdDisp.points = u;
-    mdDisp.flags = NEED_DERIV;
-    m_disp.patch(m_patch).computeMap(mdDisp);
-
-    for (index_t i = 0; i < u.cols(); ++i)
-    {
-        gsMatrix<T> physDispJac = mdDisp.jacobian(i)*(mdGeo.jacobian(i).cramerInverse());
-        gsMatrix<T> F = gsMatrix<T>::Identity(domainDim(),domainDim()) + physDispJac;
-        // Right Cauchy Green strain, C = F'*F
-        gsMatrix<T> RCG = F.transpose() * F;
-        // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
-        gsMatrix<T> E = 0.5 * (RCG - gsMatrix<T>::Identity(domainDim(),domainDim()));
-        gsMatrix<T> E_dev = E - gsMatrix<T>::Identity(domainDim(),domainDim())*E.trace()/domainDim();
-        T inva = 0.5*(E_dev.trace()*E_dev.trace() - (E_dev*E_dev).trace());
-        //T inva = E_dev.norm();
-        result(0,i) = inva;
-    }
 }
 
 template <class T>

@@ -22,11 +22,6 @@
 namespace gismo
 {
 
-
-// ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
-//       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
-//        in the reference configuration, dead-load problem)
-
 /** @brief Assembles the stiffness matrix and the right-hand side vector for linear and nonlinear elasticity
            for 2D plain stress and 3D continua. The matrix and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
@@ -49,8 +44,7 @@ public:
                           const gsMultiBasis<T> & basisDisp,
                           const gsMultiBasis<T> & basisPres,
                           const gsBoundaryConditions<T> & bconditions,
-                          const gsFunction<T> & body_force,
-                          const gsFunction<T> * muscleTendonRatio = nullptr);
+                          const gsFunction<T> & body_force);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -100,10 +94,16 @@ public:
 
     //--------------------- SPECIALS ----------------------------------//
 
-    /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
+    /// @brief Construct Cauchy stresses for evaluation or visualization
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T> & result,
-                                 stress_type::type type = stress_type::von_mises) const;
+                                 stress_components::components component = stress_components::von_mises) const;
+
+    /// @brief Construct Cauchy stresses for evaluation or visualization
+    void constructCauchyStresses(const gsMultiPatch<T> & displacement,
+                                 const gsMultiPatch<T> & pressure,
+                                 gsPiecewiseFunction<T> & result,
+                                 stress_components::components component = stress_components::von_mises) const;
 
 protected:
     /// a custom reserve function to allocate memory for the sparse matrix
@@ -112,10 +112,7 @@ protected:
 protected:
     /// Dimension of the problem
     /// parametric dim = physical dim = deformation dim
-	short_t m_dim;
-    /// indicator function for distinguishing between the muscle and tendon in the muscle material;
-    /// not used with other materials
-    const gsFunction<T> * muscleTendon;
+    short_t m_dim;
 
     using Base::m_pde_ptr;
     using Base::m_bases;

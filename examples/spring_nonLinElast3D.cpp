@@ -120,7 +120,7 @@ int main(int argc, char* argv[]){
     assembler.constructSolution(newton.solution(),newton.allFixedDofs(),solutionNonlinear);
     // constructing stress tensor
     gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solutionNonlinear,stresses,stress_type::von_mises);
+    assembler.constructCauchyStresses(solutionNonlinear,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0)
     {
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]){
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation (nonlinElast)"] = &nonlinearSolutionField;
         fields["Deformation (linElast)"] = &linearSolutionField;
-        fields["VonMises"] = &stressField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"spring",numPlotPoints,plotMesh);
         gsInfo << "Open \"spring.pvd\" in Paraview for visualization.\n";
     }

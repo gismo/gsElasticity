@@ -272,10 +272,14 @@ int main(int argc, char* argv[])
              // Setting output and auxilary //
     //=============================================//
 
+    // beam stress field
+    gsPiecewiseFunction<> stresses;
+
     // isogeometric fields (geometry + solution)
     gsField<> velocityField(nsAssembler.patches(),velFlow);
     gsField<> pressureField(nsAssembler.patches(),presFlow);
     gsField<> displacementField(geoBeam,dispBeam);
+    gsField<> stressField(geoBeam,stresses,true);
     gsField<> aleField(geoALE,dispALE);
 
     // creating a container to plot all fields to one Paraview file
@@ -284,6 +288,7 @@ int main(int argc, char* argv[])
     fieldsFlow["Pressure"] = &pressureField;
     std::map<std::string,const gsField<> *> fieldsBeam;
     fieldsBeam["Displacement"] = &displacementField;
+    fieldsBeam["von Mises"] = &stressField;
     std::map<std::string,const gsField<> *> fieldsALE;
     fieldsALE["ALE"] = &aleField;
     // paraview collection of time steps
@@ -318,6 +323,7 @@ int main(int argc, char* argv[])
     // plotting initial condition
     nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
     elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispBeam);
+    elAssembler.constructCauchyStresses(dispBeam,stresses,stress_components::von_mises);
     moduleALE.constructSolution(dispALE);
 
     if (numPlotPoints > 0)

@@ -26,14 +26,14 @@ struct ale_method
 {
     enum method
     {
-        HE = 0,   /// harmonic extension
-        IHE = 1,  /// incremental harmonic extension
-        LE = 2,   /// linear elasticity
-        ILE = 3,  /// incremental linear elasticity
-        TINE = 4, /// tangential incremental nonlinear elasticity (with the neo-Hookean law)
-        TINE_StVK = 5, /// tangential incremental nonlinear elasticity (with the St.Venant-Kirchhoff law)
-        BHE = 6,   /// bi-harmonic extension
-        IBHE = 7,   /// incremental bi-harmonic extension
+        HE = 0,         /// harmonic extension
+        IHE = 1,        /// incremental harmonic extension
+        LE = 2,         /// linear elasticity
+        ILE = 3,        /// incremental linear elasticity
+        TINE = 4,       /// tangential incremental nonlinear elasticity (with the neo-Hookean law)
+        TINE_StVK = 5,  /// tangential incremental nonlinear elasticity (with the St.Venant-Kirchhoff law)
+        BHE = 6,        /// bi-harmonic extension
+        IBHE = 7,       /// incremental bi-harmonic extension
     };
 };
 
@@ -42,9 +42,9 @@ struct ns_assembly
 {
     enum type
     {
-        ossen = 0,  /// stationary point iteration, 1st order, yields a new solution at each iteration
+        ossen = 0,          /// stationary point iteration, 1st order, yields a new solution at each iteration
         newton_update = 1,  /// newton's method, 2nd order, yields updates to the solution
-        newton_next = 2  /// newton's method, 2nd order, yields a new solution at each iteration
+        newton_next = 2     /// newton's method, 2nd order, yields a new solution at each iteration
     };
 };
 
@@ -53,9 +53,9 @@ struct time_integration
 {
     enum scheme
     {
-        explicit_ = 0,  /// explicit scheme
-        explicit_lumped = 1,  /// explicit scheme with lumped mass matrix
-        implicit_linear = 2,  /// implicit scheme with linear problem (theta-scheme)
+        explicit_ = 0,         /// explicit scheme
+        explicit_lumped = 1,   /// explicit scheme with lumped mass matrix
+        implicit_linear = 2,   /// implicit scheme with linear problem (theta-scheme)
         implicit_nonlinear = 3 /// implicit scheme with nonlinear problem (theta-scheme)
     };
 };
@@ -65,10 +65,10 @@ struct linear_solver
 {
     enum solver
     {
-        LU = 0, // LU decomposition: direct, no matrix requirements, robust but a bit slow, Eigen and Pardiso available
-        LDLT = 1, // Cholesky decomposition pivoting: direct, simmetric positive or negative semidefinite, rather fast, Eigen and Pardiso available
-        CGDiagonal = 2, // Conjugate gradient solver with diagonal (a.k.a. Jacobi) preconditioning: iterative(!), simmetric, Eigen only
-        BiCGSTABDiagonal = 3 // Bi-conjugate gradient stabilized solver with diagonal (a.k.a. Jacobi) preconditioning: iterative(!), no matrix requirements, Eigen only
+        LU = 0,              /// LU decomposition: direct, no matrix requirements, robust but a bit slow, Eigen and Pardiso available
+        LDLT = 1,            /// Cholesky decomposition pivoting: direct, simmetric positive or negative semidefinite, rather fast, Eigen and Pardiso available
+        CGDiagonal = 2,      /// Conjugate gradient solver with diagonal (a.k.a. Jacobi) preconditioning: iterative(!), simmetric, Eigen only
+        BiCGSTABDiagonal = 3 /// Bi-conjugate gradient stabilized solver with diagonal (a.k.a. Jacobi) preconditioning: iterative(!), no matrix requirements, Eigen only
     };
 };
 
@@ -80,7 +80,7 @@ struct solver_verbosity
     {
         none = 0,  /// no output
         some = 1,  /// only essential output
-        all = 2  /// output everything
+        all = 2    /// output everything
     };
 };
 
@@ -90,14 +90,14 @@ struct iteration_type
     enum type
     {
         update = 0, /// each iteration yields an update
-        next = 1 /// each iteration yields a next solution
+        next = 1    /// each iteration yields a next solution
     };
 };
 
 /// @brief Specifies the status of the iterative solver
-enum class solver_status { converged, /// method successfully converged
-                           interrupted, /// solver was interrupted after exceeding the limit of iterations
-                           working, /// solver working
+enum class solver_status { converged,      /// method successfully converged
+                           interrupted,    /// solver was interrupted after exceeding the limit of iterations
+                           working,        /// solver working
                            bad_solution }; /// method was interrupted because the current solution is invalid
 
 /** @brief Specifies the type of stresses to compute
@@ -105,35 +105,39 @@ enum class solver_status { converged, /// method successfully converged
  *         Currently, gsWriteParaview can only plot vector-valued functions with an output dimension up to three.
  *         Therefore it not possible to plot all stress components as components of a single vector-valued function.
 */
-struct stress_type
+struct stress_components
 {
-    enum type
+    enum components
     {
-        von_mises = 0,  /// compute only von Mises stress
-        all_2D    = 1,  /// compute normal and shear stresses in 2D case (s11 s22 s12)
-        normal_3D = 2,  /// compute normal stresses in 3D case (s11 s22 s33)
-        shear_3D  = 3   /// compute shear stresses in 3D case (s12 s13 s23)
+        von_mises = 0,         /// return von Mises stress as a scala
+        all_2D_vector    = 1,  /// return all components of the 2D stress tensor as a 3x1 vector
+                               /// (s11 s22 s12) (useful for Paraview plotting)
+        all_2D_matrix = 2,     /// return all components of the 2D stress tensor as a 2x2 matrix
+        normal_3D_vector = 3,  /// return normal components of the 3D stress tensor as a 3x1 vector
+                               /// (s11 s22 s33) (useful for Paraview plotting)
+        shear_3D_vector  = 4,  /// return shear components of the 3D stress tensor as a 3x1 vector
+                               /// (s12 s13 s23) (useful for Paraview plotting)
+        all_3D_matrix = 5      /// return all components of the 3D stress tensor as a 3x3 matrix
     };
 };
 
 /// @brief Specifies the material law to use
 struct material_law
 {
-    enum type
+    enum law
     {
+        mixed_hooke               = -2, /// sigma = 2*mu*eps + p*I
+        hooke                     = -1, /// sigma = 2*mu*eps + lambda*tr(eps)*I
         saint_venant_kirchhoff    = 0, /// S = 2*mu*E + lambda*tr(E)*I
         neo_hooke_ln              = 1, /// S = lambda*ln(J)*C^-1 + mu*(I-C^-1)
         neo_hooke_quad            = 2, /// S = lambda/2*(J^2-1)C^-1 + mu*(I-C^-1)
-        mixed_neo_hooke_ln        = 3, /// S = p*C^-1 + mu*(I-C^-1),
-        mixed_kelvin_voigt        = 4, /// S = p*C^-1 + mu*(I-C^-1*tr(C)/3)+ nu*C^-1*C'*C^-1
-        mixed_kelvin_voigt_muscle = 5  /// S = p*C^-1 + gamma*[ mu_m*(I-C^-1*tr(C)/3)+ nu_m*C^-1*C'*C^-1 ]
-        ///                                      + (1-gamma)*[ mu_t*(I-C^-1*tr(C)/3)+ nu_t*C^-1*C'*C^-1 ]
-        /// here, gamma in [0,1] is an indicator of muscle tissue; (1-gamma) indicates tendon tissue
+        mixed_neo_hooke_ln        = 3 /// S = p*C^-1 + mu*(I-C^-1)
+        //mixed_kelvin_voigt        = 4 /// S = p*C^-1 + mu*(I-C^-1*tr(C)/3)+ nu*C^-1*C'*C^-1
+        //mixed_kelvin_voigt_muscle = 5  /// S = p*C^-1 + gamma*[ mu_m*(I-C^-1*tr(C)/3)+ nu_m*C^-1*C'*C^-1 ]
+        //                                      + (1-gamma)*[ mu_t*(I-C^-1*tr(C)/3)+ nu_t*C^-1*C'*C^-1 ]
+        // here, gamma in [0,1] is an indicator of muscle tissue; (1-gamma) indicates tendon tissue
     };
 };
-
-/// @brief Specifies the elasticity formulation: pure displacement or mixed displacement-pressure
-enum class elasticity_formulation { displacement, mixed_pressure };
 
 /** @brief Simple progress bar class
  *

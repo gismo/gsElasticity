@@ -93,14 +93,18 @@ int main(int argc, char* argv[]){
     // solution as an isogeometric displacement field
     gsMultiPatch<> solution;
     assembler.constructSolution(solver.solution(),solver.allFixedDofs(),solution);
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(solution,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0) // visualization
     {
         // constructing an IGA field (geometry + solution)
         gsField<> displacementField(assembler.patches(),solution);
+        gsField<> stressField(assembler.patches(),stresses,true);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Displacement"] = &displacementField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"flappingBeam_CSM1",numPlotPoints);
         gsInfo << "Open \"flappingBeam_CSM1.pvd\" in Paraview for visualization.\n";
     }

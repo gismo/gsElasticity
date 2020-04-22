@@ -106,7 +106,7 @@ int main(int argc, char* argv[]){
     assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
     // constructing stresses
     gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
+    assembler.constructCauchyStresses(solution,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0)
     {
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]){
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &solutionField;
-        fields["Stresses"] = &stressField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
         gsInfo << "Open \"terrific.pvd\" in Paraview for visualization.\n";
     }

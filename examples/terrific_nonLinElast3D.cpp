@@ -91,12 +91,6 @@ int main(int argc, char* argv[]){
     gsInfo << "Solving...\n";
     gsStopwatch clock;
     clock.restart();
-
-    // make the first iteration by hand to get the linear solution
-    newton.compute();
-    gsInfo << newton.status() << std::endl;
-    gsVector<> linSolVector = newton.solution();
-    // continue iterations till convergence
     newton.solve();
     gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
@@ -105,19 +99,20 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     // solution to the nonlinear problem as an isogeometric displacement field
-    gsMultiPatch<> solutionLinear;
-    assembler.constructSolution(linSolVector,newton.allFixedDofs(),solutionLinear);
     gsMultiPatch<> solutionNonlinear;
     assembler.constructSolution(newton.solution(),newton.allFixedDofs(),solutionNonlinear);
+    // constructing stresses
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(solutionNonlinear,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0)
     {
         gsField<> nonlinearSolutionField(geometry,solutionNonlinear);
-        gsField<> linearSolutionField(geometry,solutionLinear);
+        gsField<> stressField(assembler.patches(),stresses,true);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
-        fields["Deformation (nonlinElast)"] = &nonlinearSolutionField;
-        fields["Deformation (linElast)"] = &linearSolutionField;
+        fields["Deformation"] = &nonlinearSolutionField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
         gsInfo << "Open \"terrific.pvd\" in Paraview for visualization.\n";
     }

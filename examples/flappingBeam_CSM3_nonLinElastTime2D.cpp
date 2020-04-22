@@ -108,11 +108,14 @@ int main(int argc, char* argv[]){
 
     // displacement field
     gsMultiPatch<> displacement;
-
+    // stress field
+    gsPiecewiseFunction<> stresses;
     // constructing an IGA field (geometry + solution)
     gsField<> dispField(geometry,displacement);
+    gsField<> stressField(assembler.patches(),stresses,true);
     std::map<std::string,const gsField<> *> fields;
     fields["Displacement"] = &dispField;
+    fields["von Mises"] = &stressField;
 
     std::ofstream logFile;
     logFile.open("flappingBeam_CSM3.txt");
@@ -130,6 +133,7 @@ int main(int argc, char* argv[]){
     timeSolver.setVelocityVector(gsMatrix<>::Zero(assembler.numDofs(),1));
 
     assembler.constructSolution(timeSolver.displacementVector(),timeSolver.allFixedDofs(),displacement);
+    assembler.constructCauchyStresses(displacement,stresses,stress_components::von_mises);
     writeLog(logFile,displacement,0.,0.,0);
     // plotting initial displacement
     gsParaviewCollection collection("flappingBeam_CSM3");
@@ -153,6 +157,8 @@ int main(int argc, char* argv[]){
 
         timeSolver.makeTimeStep(timeStep);
         assembler.constructSolution(timeSolver.displacementVector(),timeSolver.allFixedDofs(),displacement);
+
+        //assembler.constructCauchyStresses(displacement,stresses,stress_components::von_mises);
 
         compTime += iterClock.stop();
         simTime += timeStep;

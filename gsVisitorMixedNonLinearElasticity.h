@@ -123,7 +123,7 @@ public:
                 symmetricIdentityTensor<T>(C,RCGinv);
                 C *= mu-pressureValues.at(q);
             }
-            if (materialLaw == 4) // mixed Kelvin-Voigt
+            /*if (materialLaw == 4) // mixed Kelvin-Voigt
             {
                 T RCGtrace = RCG.trace();
                 // Second Piola-Kirchhoff stress tensor
@@ -133,7 +133,7 @@ public:
                 C *= mu*RCGtrace/3-pressureValues.at(q);
                 matrixTraceTensor<T>(Ctemp,RCGinv,I);
                 //C -= .5*mu*Ctemp/3;
-            }
+            }*/
 
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)

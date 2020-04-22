@@ -108,7 +108,7 @@ int main(int argc, char* argv[]){
     assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
     // constructing stress tensor
     gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_type::all_2D);
+    assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
 
     if (numPlotPoints > 0)
     {

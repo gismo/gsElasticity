@@ -114,16 +114,20 @@ int main(int argc, char* argv[]){
     // constructing solution as an IGA function
     gsMultiPatch<> displacement, pressure;
     assembler.constructSolution(solVector,assembler.allFixedDofs(),displacement,pressure);
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0) // visualization
     {
         // constructing an IGA field (geometry + solution)
         gsField<> displacementField(assembler.patches(),displacement);
         gsField<> pressureField(assembler.patches(),pressure);
+        gsField<> stressField(assembler.patches(),stresses,true);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Displacement"] = &displacementField;
         fields["Pressure"] = &pressureField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"cooks",numPlotPoints);
         gsInfo << "Open \"cooks.pvd\" in Paraview for visualization.\n";
     }
