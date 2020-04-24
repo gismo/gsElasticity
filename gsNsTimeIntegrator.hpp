@@ -28,11 +28,11 @@ template <class T>
 gsNsTimeIntegrator<T>::gsNsTimeIntegrator(gsNsAssembler<T> & stiffAssembler_,
                                           gsMassAssembler<T> & massAssembler_,
                                           gsMultiPatch<T> * ALEvelocity,
-                                          std::vector<std::pair<index_t,index_t> > * ALEpatches)
+                                          gsBoundaryInterface * ALEpatches)
     : stiffAssembler(stiffAssembler_),
       massAssembler(massAssembler_),
       velocityALE(ALEvelocity),
-      patchesALE(ALEpatches)
+      interface(ALEpatches)
 {
     initialized = false;
     m_options = defaultOptions();
@@ -104,8 +104,9 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     stiffAssembler.constructSolution(solVector + tStep/oldTimeStep*(solVector-oldSolVector),
                                      stiffAssembler.allFixedDofs(),velocity,pressure);
     if (m_options.getSwitch("ALE"))
-        for (auto &it : *patchesALE)
-            velocity.patch(it.first).coefs() -= velocityALE->patch(it.second).coefs();
+        for (index_t p = 0; p < interface->uniquePatches.size(); ++p)
+            velocity.patch(interface->uniquePatches[p].second).coefs() -=
+                    velocityALE->patch(interface->uniquePatches[p].first).coefs();
     stiffAssembler.assemble(velocity,pressure);
 
     massAssembler.setFixedDofs(stiffAssembler.allFixedDofs());
@@ -184,8 +185,9 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
     gsMultiPatch<T> velocity, pressure;
     stiffAssembler.constructSolution(solutionVector,fixedDoFs,velocity,pressure);
     if (m_options.getSwitch("ALE"))
-        for (auto &it : *patchesALE)
-            velocity.patch(it.first).coefs() -= velocityALE->patch(it.second).coefs();
+        for (index_t p = 0; p < interface->uniquePatches.size(); ++p)
+            velocity.patch(interface->uniquePatches[p].second).coefs() -=
+                    velocityALE->patch(interface->uniquePatches[p].first).coefs();
     stiffAssembler.assemble(velocity,pressure);
 
     m_system.matrix() = tStep*stiffAssembler.matrix();
@@ -200,6 +202,18 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
     m_system.rhs() = tStep*theta*stiffAssembler.rhs() + constRHS;
     return true;
 }
+
+template <class T>
+void gsNsTimeIntegrator<T>::constructSolution(gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const
+{
+    stiffAssembler.constructSolution(solVector,m_ddof,velocity,pressure);
+}
+
+template <class T>
+gsBaseAssembler<T> & gsNsTimeIntegrator<T>::mAssembler() { return massAssembler; }
+
+template <class T>
+gsBaseAssembler<T> & gsNsTimeIntegrator<T>::assembler() { return stiffAssembler; }
 
 template <class T>
 void gsNsTimeIntegrator<T>::saveState()

@@ -17,6 +17,7 @@
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
 #include <gsUtils/gsUtils.h>
+#include <gsCore/gsBoundary.h>
 
 namespace gismo
 {
@@ -137,6 +138,25 @@ struct material_law
         //                                      + (1-gamma)*[ mu_t*(I-C^-1*tr(C)/3)+ nu_t*C^-1*C'*C^-1 ]
         // here, gamma in [0,1] is an indicator of muscle tissue; (1-gamma) indicates tendon tissue
     };
+};
+
+struct GISMO_EXPORT gsBoundaryInterface
+{
+    gsBoundaryInterface() {}
+
+    std::vector<patchSide> sidesA;
+    std::vector<patchSide> sidesB;
+    std::vector<std::pair<index_t,index_t> > uniquePatches;
+
+    void addSide(index_t patchA, boundary::side sideA,
+                 index_t patchB, boundary::side sideB)
+    {
+        sidesA.push_back(patchSide(patchA,sideA));
+        sidesB.push_back(patchSide(patchB,sideB));
+        std::pair<index_t,index_t> pair(patchA,patchB);
+        if (std::find(uniquePatches.begin(), uniquePatches.end(), pair) == uniquePatches.end())
+            uniquePatches.push_back(pair);
+    }
 };
 
 /** @brief Simple progress bar class

@@ -27,9 +27,9 @@ namespace gismo
 
 template <class T>
 gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement,
-                const gsInterfaceFSI & interface, ale_method::method method)
+                const gsBoundaryInterface & interfaceS2M, ale_method::method method)
     : disp(displacement),
-      fsiInterface(interface),
+      interface(interfaceS2M),
       methodALE(method),
       m_options(defaultOptions()),
       initialized(false),
@@ -141,10 +141,10 @@ index_t gsALE<T>::updateMesh()
 template <class T>
 index_t gsALE<T>::linearMethod()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
-        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
-                                fsiInterface.fluidSides[i].side(),
-                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs(),
+    for (index_t i = 0; i < interface.sidesA.size(); ++i)
+        assembler->setFixedDofs(interface.sidesB[i].patch,
+                                interface.sidesB[i].side(),
+                                disp.patch(interface.sidesA[i].patch).boundary(interface.sidesA[i].side())->coefs(),
                                 methodALE == ale_method::LE ? false : true);
     assembler->eliminateFixedDofs();
 
@@ -166,11 +166,11 @@ index_t gsALE<T>::linearMethod()
 template <class T>
 index_t gsALE<T>::linearIncrementalMethod()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
-        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
-                                fsiInterface.fluidSides[i].side(),
-                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
-                                ALEdisp.patch(fsiInterface.fluidSides[i].patch).boundary(fsiInterface.fluidSides[i].side())->coefs(),
+    for (index_t i = 0; i < interface.sidesA.size(); ++i)
+        assembler->setFixedDofs(interface.sidesB[i].patch,
+                                interface.sidesB[i].side(),
+                                disp.patch(interface.sidesA[i].patch).boundary(interface.sidesA[i].side())->coefs() -
+                                ALEdisp.patch(interface.sidesB[i].patch).boundary(interface.sidesB[i].side())->coefs(),
                                 methodALE == ale_method::ILE ? false : true);
     assembler->assemble();
 
@@ -198,11 +198,11 @@ index_t gsALE<T>::linearIncrementalMethod()
 template <class T>
 index_t gsALE<T>::nonlinearMethod()
 {
-    for (index_t i = 0; i < fsiInterface.fluidSides.size(); ++i)
-        assembler->setFixedDofs(fsiInterface.fluidSides[i].patch,
-                                fsiInterface.fluidSides[i].side(),
-                                disp.patch(fsiInterface.solidSides[i].patch).boundary(fsiInterface.solidSides[i].side())->coefs()-
-                                ALEdisp.patch(fsiInterface.fluidSides[i].patch).boundary(fsiInterface.fluidSides[i].side())->coefs());
+    for (index_t i = 0; i < interface.sidesA.size(); ++i)
+        assembler->setFixedDofs(interface.sidesB[i].patch,
+                                interface.sidesB[i].side(),
+                                disp.patch(interface.sidesA[i].patch).boundary(interface.sidesA[i].side())->coefs() -
+                                ALEdisp.patch(interface.sidesB[i].patch).boundary(interface.sidesB[i].side())->coefs());
     solverNL->reset();
     solverNL->solve();
     assembler->constructSolution(solverNL->solution(),solverNL->allFixedDofs(),ALEdisp);

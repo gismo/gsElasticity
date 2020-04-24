@@ -122,6 +122,12 @@ bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
 }
 
 template <class T>
+void gsElTimeIntegrator<T>::constructSolution(gsMultiPatch<T> & solution) const
+{
+    stiffAssembler.constructSolution(dispVector,m_ddof,solution);
+}
+
+template <class T>
 void gsElTimeIntegrator<T>::saveState()
 {
     if (!initialized)

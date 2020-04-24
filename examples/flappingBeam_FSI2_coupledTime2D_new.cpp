@@ -10,6 +10,7 @@
 #include <gsElasticity/gsNsTimeIntegrator.h>
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsALE.h>
+#include <gsElasticity/gsPartitionedFSI.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
 
@@ -53,50 +54,6 @@ void writeLog(std::ofstream & ofs, const gsNsAssembler<real_t> & assemblerFlow,
         << aleTime << " " << flowTime << " " << beamTime << " "
         << couplingIter << " " << flowIter << " " << beamIter << " "
         << omega << " " << resAbs << " " << resRel << std::endl;
-}
-
-void formVector(const gsMultiPatch<> & disp, gsMatrix<> & vector)
-{
-    gsMatrix<> north = disp.patch(0).boundary(boundary::north)->coefs();
-    gsMatrix<> south = disp.patch(0).boundary(boundary::south)->coefs();
-    gsMatrix<> east = disp.patch(0).boundary(boundary::east)->coefs();
-    index_t northSize = north.rows();
-    index_t southSize = south.rows();
-    index_t eastSize = east.rows();
-    index_t totalSize = northSize+southSize+eastSize;
-    index_t dim = north.cols();
-
-    vector.setZero(totalSize*dim,1);
-    for (index_t d = 0; d < dim;++d)
-    {
-        vector.middleRows(totalSize*d,northSize) = north.col(d);
-        vector.middleRows(totalSize*d+northSize,southSize) = south.col(d);
-        vector.middleRows(totalSize*d+northSize+southSize,eastSize) = east.col(d);
-    }
-}
-
-
-real_t aitken(gsMultiPatch<> & dispA, gsMultiPatch<> & dispB,gsMultiPatch<> & dispB2, gsMultiPatch<> & dispC, real_t & omega,bool & converged, real_t & resNorInit)
-{
-    gsMatrix<> vecA,vecB,vecB2,vecC;
-    formVector(dispA,vecA);
-    formVector(dispB,vecB);
-    formVector(dispB2,vecB2);
-    formVector(dispC,vecC);
-
-
-    omega = -1*omega*((vecB2-vecA).transpose()*(vecC-vecB -vecB2+vecA))(0,0)/((vecC-vecB -vecB2+vecA).transpose()*(vecC-vecB -vecB2+vecA))(0,0);
-    dispA.patch(0).coefs() = dispB.patch(0).coefs();
-    dispB.patch(0).coefs() += omega*(dispC.patch(0).coefs()-dispB.patch(0).coefs());
-    dispB2.patch(0).coefs() = dispC.patch(0).coefs();
-
-    real_t resnor = ((vecC-vecB)*omega).norm();
-    //gsInfo <<"Resnor abs " << resnor << ", resnor rel " << resnor/resNorInit << std::endl;
-    if (resnor < 1e-10 || resnor/resNorInit < 1e-6)
-        converged = true;
-
-    //gsInfo << "Omega " << omega << std::endl;
-    return resnor;
 }
 
 int main(int argc, char* argv[])
@@ -163,10 +120,6 @@ int main(int argc, char* argv[])
     for (index_t p = 0; p < 3; ++p)
         geoALE.addPatch(geoFlow.patch(p+3).clone());
     geoALE.computeTopology();
-    // correspondence mapping between the flow and the ALE patches
-    std::vector<std::pair<index_t,index_t> > patchesALE;
-    for (index_t p = 0; p < 3; ++p)
-        patchesALE.push_back(std::pair<index_t,index_t>(p+3,p));
 
     // creating bases
     gsMultiBasis<> basisDisplacement(geoBeam);
@@ -218,6 +171,7 @@ int main(int argc, char* argv[])
     gsBoundaryConditions<> bcInfoBeam;
     for (index_t d = 0; d < 2; ++d)
         bcInfoBeam.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
+    // flow to beam interface
     gsFsiLoad<real_t> fSouth(geoALE,dispALE,1,boundary::north,
                              velFlow,presFlow,4,viscosity,densityFluid);
     gsFsiLoad<real_t> fEast(geoALE,dispALE,2,boundary::west,
@@ -229,10 +183,16 @@ int main(int argc, char* argv[])
     bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&fNorth);
 
     // beam to ALE interface
-    gsInterfaceFSI interface;
-    interface.addSide(0,boundary::south,0,boundary::north);
-    interface.addSide(1,boundary::north,0,boundary::south);
-    interface.addSide(2,boundary::west,0,boundary::east);
+    gsBoundaryInterface interfaceBeam2ALE;
+    interfaceBeam2ALE.addSide(0,boundary::north,0,boundary::south);
+    interfaceBeam2ALE.addSide(0,boundary::south,1,boundary::north);
+    interfaceBeam2ALE.addSide(0,boundary::east,2,boundary::west);
+
+    // ALE to flow bdry interface
+    gsBoundaryInterface interfaceALE2Flow;
+    interfaceALE2Flow.addSide(0,boundary::south,3,boundary::south);
+    interfaceALE2Flow.addSide(1,boundary::north,4,boundary::north);
+    interfaceALE2Flow.addSide(2,boundary::west,5,boundary::west);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -244,7 +204,7 @@ int main(int argc, char* argv[])
     nsAssembler.options().setReal("Density",densityFluid);
     gsMassAssembler<real_t> nsMassAssembler(geoFlow,basisVelocity,bcInfoFlow,g);
     nsMassAssembler.options().setReal("Density",densityFluid);
-    gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler,&velALE,&patchesALE);
+    gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler,&velALE,&interfaceALE2Flow);
     nsTimeSolver.options().setInt("Scheme",imexOrNewton ? time_integration::implicit_nonlinear : time_integration::implicit_linear);
     nsTimeSolver.options().setReal("Theta",thetaFluid);
     nsTimeSolver.options().setSwitch("ALE",true);
@@ -262,11 +222,18 @@ int main(int argc, char* argv[])
     elTimeSolver.options().setReal("Gamma",thetaSolid);
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
     // mesh deformation module
-    gsALE<real_t> moduleALE(geoALE,dispBeam,interface,ale_method::method(ALEmethod));
+    gsALE<real_t> moduleALE(geoALE,dispBeam,interfaceBeam2ALE,ale_method::method(ALEmethod));
     moduleALE.options().setReal("LocalStiff",meshStiff);
     moduleALE.options().setReal("PoissonsRatio",meshPR);
     moduleALE.options().setSwitch("Check",check);
     gsInfo << "Initialized mesh deformation system with " << moduleALE.numDofs() << " dofs.\n";
+    // FSI coupling module
+    gsPartitionedFSI<real_t> moduleFSI(nsTimeSolver,velFlow, presFlow,
+                                       elTimeSolver,dispBeam,
+                                       moduleALE,dispALE,velALE);
+    moduleFSI.options().setInt("MaxIter",maxCouplingIter);
+    moduleFSI.options().setReal("AbsTol",1e-10);
+    moduleFSI.options().setReal("RelTol",1e-6);
 
     //=============================================//
              // Setting output and auxilary //
@@ -274,7 +241,6 @@ int main(int argc, char* argv[])
 
     // beam stress field
     gsPiecewiseFunction<> stresses;
-
     // isogeometric fields (geometry + solution)
     gsField<> velocityField(nsAssembler.patches(),velFlow);
     gsField<> pressureField(nsAssembler.patches(),presFlow);
@@ -282,7 +248,7 @@ int main(int argc, char* argv[])
     gsField<> stressField(geoBeam,stresses,true);
     gsField<> aleField(geoALE,dispALE);
 
-    // creating a container to plot all fields to one Paraview file
+    // creating containers to plot several fields corresponding to the same geometry to one Paraview file
     std::map<std::string,const gsField<> *> fieldsFlow;
     fieldsFlow["Velocity"] = &velocityField;
     fieldsFlow["Pressure"] = &pressureField;
@@ -321,8 +287,8 @@ int main(int argc, char* argv[])
     elTimeSolver.setVelocityVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
 
     // plotting initial condition
-    nsTimeSolver.constructSolution(velFlow,presFlow);
-    elTimeSolver.constructSolution(dispBeam);
+    nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
+    elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispBeam);
     elAssembler.constructCauchyStresses(dispBeam,stresses,stress_components::von_mises);
     moduleALE.constructSolution(dispALE);
 
@@ -357,103 +323,17 @@ int main(int argc, char* argv[])
         if (simTime < 2.)
             nsAssembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(simTime+tStep)/2.))/2);
 
-        index_t couplingIter = 0;
-        bool converged = false;
-
-        elTimeSolver.saveState();
-        moduleALE.saveState();
-        nsTimeSolver.saveState();
-
-        gsMultiPatch<> dispOldOld, dispNew,dispDiff, dispGuess;
-        real_t omega = 1.;
-        real_t resNorInit = 1.;
-        real_t resAbs = 0.;
-
-        while (couplingIter < maxCouplingIter && !converged)
+        if (!moduleFSI.makeTimeStep(tStep))
         {
-            // BEAM
-            iterClock.restart();
-            if (couplingIter > 0)
-                elTimeSolver.recoverState();
-            elTimeSolver.constructSolution(dispDiff);
-            elTimeSolver.makeTimeStep(tStep);
-            if (couplingIter == 0)
-            {
-                elTimeSolver.constructSolution(dispOldOld);
-                elTimeSolver.constructSolution(dispBeam);
-            }
-            else if (couplingIter == 1)
-            {
-                elTimeSolver.constructSolution(dispBeam);
-                elTimeSolver.constructSolution(dispGuess);
-                gsMatrix<> vecA, vecB;
-                formVector(dispOldOld,vecA);
-                formVector(dispBeam,vecB);
-                resNorInit = (vecB-vecA).norm();
-            }
-            else
-            {
-                elTimeSolver.constructSolution(dispNew);
-                resAbs = aitken(dispOldOld,dispBeam,dispGuess,dispNew,omega,converged,resNorInit);
-            }
-            //elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
-            dispDiff.patch(0).coefs() = dispBeam.patch(0).coefs() - dispDiff.patch(0).coefs();
-            timeBeam += iterClock.stop();
-
-            // ALE
-            iterClock.restart();
-            // undo last ALE
-            for (index_t p = 0; p < 3; ++p)
-            {
-                nsAssembler.patches().patch(p+3).coefs() -= dispALE.patch(p).coefs();
-                nsMassAssembler.patches().patch(p+3).coefs() -= dispALE.patch(p).coefs();
-            }
-            // recover ALE at the start of timestep
-            if (couplingIter > 0)
-                moduleALE.recoverState();
-            moduleALE.constructSolution(dispALE);
-            // update
-            index_t badPatch = moduleALE.updateMesh();
-            // construct ALE velocity
-            moduleALE.constructSolution(velALE);
-            for (index_t p = 0; p < velALE.nPatches(); ++p)
-            {
-                velALE.patch(p).coefs() -= dispALE.patch(p).coefs();
-                velALE.patch(p).coefs() /= tStep;
-            }
-            // construct ALE displacement
-            moduleALE.constructSolution(dispALE);
-            // apply new ALE to the flow domain
-            for (index_t p = 0; p < 3; ++p)
-            {
-                nsAssembler.patches().patch(p+3).coefs() += dispALE.patch(p).coefs();
-                nsMassAssembler.patches().patch(p+3).coefs() += dispALE.patch(p).coefs();
-            }
-            timeALE += iterClock.stop();
-
-            // test if any patch is not bijective
-            if (badPatch != -1)
-            {
-                gsInfo << "\n Bad patch: " << badPatch << std::endl;
-                goto labelend;
-            }
-
-            // FLOW
-            iterClock.restart();
-            nsAssembler.setFixedDofs(3,boundary::south,velALE.patch(0).boundary(boundary::south)->coefs());
-            nsAssembler.setFixedDofs(4,boundary::north,velALE.patch(1).boundary(boundary::north)->coefs());
-            nsAssembler.setFixedDofs(5,boundary::west,velALE.patch(2).boundary(boundary::west)->coefs());
-            if (couplingIter > 0)
-                nsTimeSolver.recoverState();
-            nsTimeSolver.makeTimeStep(tStep);
-            nsTimeSolver.constructSolution(velFlow,presFlow);
-            timeFlow += iterClock.stop();
-
-            ++couplingIter;
+            gsInfo << "Invalid ALE mapping. Terminated.\n";
+            break;
         }
 
         // Iteration end
         simTime += tStep;
+        timeALE += moduleFSI.timeALE();
+        timeBeam += moduleFSI.timeEL();
+        timeFlow += moduleFSI.timeNS();
         numTimeStep++;
 
         if (numPlotPoints > 0)
@@ -464,16 +344,15 @@ int main(int argc, char* argv[])
             plotDeformation(geoALE,dispALE,"flappingBeam_FSI2_ALE",collectionALE,numTimeStep);
         }
         writeLog(logFile,nsAssembler,velFlow,presFlow,dispBeam,geoALE,dispALE,
-                 simTime,timeALE,timeFlow,timeBeam, couplingIter,
+                 simTime,timeALE,timeFlow,timeBeam, moduleFSI.numberIterations(),
                  nsTimeSolver.numberIterations(),elTimeSolver.numberIterations(),
-                 omega,resAbs,resAbs/resNorInit);
+                 moduleFSI.aitkenOmega(),moduleFSI.residualNormAbs(),moduleFSI.residualNormRel());
     }
 
     //=============================================//
                    // Final touches //
     //=============================================//
 
-    labelend:
     gsInfo << "Complete in: " << secToHMS(totalClock.stop())
            << ", ALE time: " << secToHMS(timeALE)
            << ", flow time: " << secToHMS(timeFlow)

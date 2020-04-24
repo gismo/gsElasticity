@@ -106,10 +106,10 @@ int main(int argc, char* argv[])
         for (index_t d = 0; d < 2; ++d)
             bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
 
-    gsInterfaceFSI interface;
-    interface.addSide(0,boundary::south,0,boundary::north);
-    interface.addSide(1,boundary::north,0,boundary::south);
-    interface.addSide(2,boundary::west,0,boundary::east);
+    gsBoundaryInterface interfaceBeam2ALE;
+    interfaceBeam2ALE.addSide(0,boundary::north,0,boundary::south);
+    interfaceBeam2ALE.addSide(0,boundary::south,1,boundary::north);
+    interfaceBeam2ALE.addSide(0,boundary::east,2,boundary::west);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
 
     // ALE module with nonlinear elasticity
-    gsALE<real_t> moduleALE(geoALE,displacement,interface,ale_method::method(ALEmethod));
+    gsALE<real_t> moduleALE(geoALE,displacement,interfaceBeam2ALE,ale_method::method(ALEmethod));
     moduleALE.options().setReal("LocalStiff",stiffDegree);
     moduleALE.options().setReal("PoissonsRatio",poissonsRatioMesh);
     moduleALE.options().setSwitch("Check",check);

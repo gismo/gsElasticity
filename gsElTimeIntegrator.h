@@ -94,6 +94,13 @@ public:
     /// number of iterations Newton's method required at the last time step
     index_t numberIterations() const { return numIters;}
 
+    /// construct solution using the stiffness assembler
+    void constructSolution(gsMultiPatch<T> & solution) const;
+
+    /// assemblers' accessors
+    gsBaseAssembler<T> & mAssembler() { return massAssembler; }
+    gsBaseAssembler<T> & assembler() { return stiffAssembler; }
+
 protected:
     void initialize();
 

@@ -27,27 +27,12 @@ class gsBaseAssembler;
 template <class T>
 class gsIterative;
 
-struct GISMO_EXPORT gsInterfaceFSI
-{
-    gsInterfaceFSI() {}
-
-    std::vector<patchSide> fluidSides;
-    std::vector<patchSide> solidSides;
-
-    void addSide(index_t fluidPatch, boundary::side fluidSide,
-                 index_t solidPatch, boundary::side solidSide)
-    {
-        fluidSides.push_back(patchSide(fluidPatch,fluidSide));
-        solidSides.push_back(patchSide(solidPatch,solidSide));
-    }
-};
-
 template <class T>
 class gsALE
 {
 public:
     gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement,
-          const gsInterfaceFSI & interface, ale_method::method method);
+          const gsBoundaryInterface & interfaceStr2Mesh, ale_method::method method);
 
     /// default option list. used for initialization
     static gsOptionList defaultOptions();
@@ -70,6 +55,8 @@ public:
     /// recover module state from saved state
     void recoverState();
 
+    /// get FSI interface container to access patch sides
+    const gsBoundaryInterface & interfaceStr2Mesh() { return interface;}
 
 protected:
     void initialize();
@@ -87,7 +74,7 @@ protected:
     /// outer displacement field that drives the mesh deformation
     const gsMultiPatch<T> & disp;
     /// mapping between patch sides of the fluid and solid
-    const gsInterfaceFSI & fsiInterface;
+    const gsBoundaryInterface & interface;
     /// mesh deformation method
     ale_method::method methodALE;
     /// option list
