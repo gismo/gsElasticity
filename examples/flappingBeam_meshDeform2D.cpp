@@ -107,9 +107,9 @@ int main(int argc, char* argv[])
             bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
 
     gsBoundaryInterface interfaceBeam2ALE;
-    interfaceBeam2ALE.addSide(0,boundary::north,0,boundary::south);
-    interfaceBeam2ALE.addSide(0,boundary::south,1,boundary::north);
-    interfaceBeam2ALE.addSide(0,boundary::east,2,boundary::west);
+    interfaceBeam2ALE.addInterfaceSide(0,boundary::north,0,boundary::south);
+    interfaceBeam2ALE.addInterfaceSide(0,boundary::south,1,boundary::north);
+    interfaceBeam2ALE.addInterfaceSide(0,boundary::east,2,boundary::west);
 
     //=============================================//
           // Setting assemblers and solvers //

@@ -52,112 +52,141 @@ gsOptionList gsPartitionedFSI<T>::defaultOptions()
     opt.addInt("MaxIter","Maximum number of coupling iterations per time step",10);
     opt.addReal("AbsTol","Absolute tolerance for the convergence creterion",1e-10);
     opt.addReal("RelTol","Absolute tolerance for the convergence creterion",1e-6);
+    opt.addInt("Verbosity","Amount of information printed to the terminal: none, some, all",solver_verbosity::none);
     return opt;
 }
 
 template <class T>
 bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
 {
+    // save states of the component solvers at the beginning of the time step
     m_nsSolver.saveState();
     m_elSolver.saveState();
     m_aleSolver.saveState();
-    gsStopwatch clock;
 
+    // reset the solver
     numIter = 0;
-    nsTime = elTime = aleTime = 0.;
     converged = false;
-
-    gsMultiPatch<> dispOldOld, dispNew,dispDiff, dispGuess;
     omega = 1.;
-    absResNorm = 0.;
-    initResNorm = 1.;
+
+    // reset time profiling info
+    gsStopwatch clock;
+    nsTime = elTime = aleTime = 0.;
+
+    gsMultiPatch<> dispOldOld, dispOld, dispOldGuess;
 
     while (numIter < m_options.getInt("MaxIter") && !converged)
     {
-        // Beam
+        // ================== Structure section ================ //
         clock.restart();
-        if (numIter > 0)
+        if (numIter > 0) // recover the solver state from the time step beginning
             m_elSolver.recoverState();
-        m_elSolver.constructSolution(dispDiff);
+
         m_elSolver.makeTimeStep(timeStep);
-        if (numIter == 0)
+
+        if (numIter == 0) // save displacement i-2, no correction
         {
             m_elSolver.constructSolution(dispOldOld);
             m_elSolver.constructSolution(m_displacement);
-            gsMatrix<> vec;
-            formVector(m_displacement,vec);
         }
-        else if (numIter == 1)
+        else if (numIter == 1) // save displacement i-1 as a guess and a corrected solution
         {
+            m_elSolver.constructSolution(dispOld);
+            m_elSolver.constructSolution(dispOldGuess);
             m_elSolver.constructSolution(m_displacement);
-            m_elSolver.constructSolution(dispGuess);
             gsMatrix<> vecA, vecB;
             formVector(dispOldOld,vecA);
             formVector(m_displacement,vecB);
-            initResNorm = (vecB-vecA).norm();
+            absResNorm = initResNorm = (vecB-vecA).norm()/sqrt(vecB.rows());
         }
-        else
+        else // save displacement as a current guess i and apply Aitken relaxation
         {
-            m_elSolver.constructSolution(dispNew);
-            aitken(dispOldOld,m_displacement,dispGuess,dispNew);
+            m_elSolver.constructSolution(m_displacement);
+            aitken(dispOldOld,dispOldGuess,dispOld,m_displacement);
         }
-        for (index_t p = 0; p < dispDiff.nPatches(); ++p)
-            dispDiff.patch(p).coefs() = m_displacement.patch(p).coefs() - dispDiff.patch(p).coefs();
-        elTime += clock.stop();
 
-        // ALE
+        if (numIter > 0 && m_options.getInt("Verbosity") == solver_verbosity::all)
+            gsInfo << numIter << ": absRes " << absResNorm << ", relRes " << absResNorm/initResNorm << std::endl;
+
+
+        elTime += clock.stop();
+        // =================================================================== //
+
+
+        // ============= Flow mesh/ALE section ===================== //
         clock.restart();
-        // undo last ALE
-        for (index_t p = 0; p < m_nsSolver.alePatches().uniquePatches.size(); ++p)
-        {
-            index_t pFlow = m_nsSolver.alePatches().uniquePatches[p].second;
-            index_t pALE = m_nsSolver.alePatches().uniquePatches[p].first;
-            m_nsSolver.assembler().patches().patch(pFlow).coefs() -= m_ALEdisplacment.patch(pALE).coefs();
-            m_nsSolver.mAssembler().patches().patch(pFlow).coefs() -= m_ALEdisplacment.patch(pALE).coefs();
-        }
         // recover ALE at the start of timestep
         if (numIter > 0)
             m_aleSolver.recoverState();
-        m_aleSolver.constructSolution(m_ALEdisplacment);
-        // update
-        index_t badPatch = m_aleSolver.updateMesh();
-        // construct ALE velocity
-        m_aleSolver.constructSolution(m_ALEvelocity);
-        for (index_t p = 0; p < m_ALEvelocity.nPatches(); ++p)
+
+        // undo last ALE deformation of the flow domain
+        for (index_t p = 0; p < m_nsSolver.aleInterface().patches.size(); ++p)
         {
-            m_ALEvelocity.patch(p).coefs() -= m_ALEdisplacment.patch(p).coefs();
-            m_ALEvelocity.patch(p).coefs() /= timeStep;
+            index_t pFlow = m_nsSolver.aleInterface().patches[p].second;
+            index_t pALE = m_nsSolver.aleInterface().patches[p].first;
+            m_nsSolver.assembler().patches().patch(pFlow).coefs() -= m_ALEdisplacment.patch(pALE).coefs();
+            m_nsSolver.mAssembler().patches().patch(pFlow).coefs() -= m_ALEdisplacment.patch(pALE).coefs();
         }
-        // construct ALE displacement
+
+        // save ALE displacement at the beginning of the time step for ALE velocity computation
+        m_aleSolver.constructSolution(m_ALEvelocity);
+        // update ALE
+        if (m_aleSolver.updateMesh() != -1)
+            return false; // if the new ALE deformation is not bijective, stop the simulation
+        // construct new ALE displacement
         m_aleSolver.constructSolution(m_ALEdisplacment);
-        // apply new ALE to the flow domain
-        for (index_t p = 0; p < m_nsSolver.alePatches().uniquePatches.size(); ++p)
+        for (index_t p = 0; p < m_ALEvelocity.nPatches(); ++p)
+            m_ALEvelocity.patch(p).coefs() = (m_ALEdisplacment.patch(p).coefs() - m_ALEvelocity.patch(p).coefs()) / timeStep;
+
+        // apply new ALE deformation to the flow domain
+        for (index_t p = 0; p < m_nsSolver.aleInterface().patches.size(); ++p)
         {
-            index_t pFlow = m_nsSolver.alePatches().uniquePatches[p].second;
-            index_t pALE = m_nsSolver.alePatches().uniquePatches[p].first;
+            index_t pFlow = m_nsSolver.aleInterface().patches[p].second;
+            index_t pALE = m_nsSolver.aleInterface().patches[p].first;
             m_nsSolver.assembler().patches().patch(pFlow).coefs() += m_ALEdisplacment.patch(pALE).coefs();
             m_nsSolver.mAssembler().patches().patch(pFlow).coefs() += m_ALEdisplacment.patch(pALE).coefs();
         }
+
         aleTime += clock.stop();
+        // =================================================================== //
 
-        // test if any patch is not bijective
-        if (badPatch != -1)
-            return false;
 
-        // FLOW
+        // ======================= Flow section ============================== //
         clock.restart();
-        for (index_t p = 0; p < m_nsSolver.alePatches().sidesA.size(); ++p)
-            m_nsSolver.assembler().setFixedDofs(m_nsSolver.alePatches().sidesB[p].patch,m_nsSolver.alePatches().sidesB[p].side(),
-                                                m_ALEvelocity.patch(m_nsSolver.alePatches().sidesA[p].patch).boundary(
-                                                    m_nsSolver.alePatches().sidesA[p].side())->coefs());
-        if (numIter > 0)
+        if (numIter > 0) // recover the solver state from the time step beginning
             m_nsSolver.recoverState();
+
+        // set velocity boundary condition on the FSI interface; velocity comes from the ALE velocity;
+        // FSI inteface info is contained in the Navier-Stokes solver
+        for (index_t p = 0; p < m_nsSolver.aleInterface().sidesA.size(); ++p)
+        {
+            index_t pFlow = m_nsSolver.aleInterface().sidesB[p].patch;
+            boxSide sFlow = m_nsSolver.aleInterface().sidesB[p].side();
+            index_t pALE = m_nsSolver.aleInterface().sidesA[p].patch;
+            boxSide sALE = m_nsSolver.aleInterface().sidesA[p].side();
+            m_nsSolver.assembler().setFixedDofs(pFlow,sFlow,m_ALEvelocity.patch(pALE).boundary(sALE)->coefs());
+        }
+
         m_nsSolver.makeTimeStep(timeStep);
         m_nsSolver.constructSolution(m_velocity,m_pressure);
+
         nsTime += clock.stop();
+        // =================================================================== //
+
 
         ++numIter;
     }
+
+    if (m_options.getInt("Verbosity") != solver_verbosity::none && numIter > 1)
+    {
+        if (converged)
+            gsInfo << "Converged after " << numIter << " iters, absRes "
+                   << absResNorm << ", relRes " << absResNorm/initResNorm << std::endl;
+        else
+            gsInfo << "Terminated after " << numIter << " iters, absRes "
+                   << absResNorm << ", relRes " << absResNorm/initResNorm << std::endl;
+    }
+
     return true;
 }
 
@@ -167,19 +196,19 @@ void gsPartitionedFSI<T>::formVector(const gsMultiPatch<T> & disp, gsMatrix<T> &
     index_t dim = disp.patch(0).parDim();
 
     index_t totalSize = 0;
-    for (index_t i = 0; i < m_aleSolver.interfaceStr2Mesh().sidesA.size(); ++i)
+    for (index_t i = 0; i < m_aleSolver.interface().sidesA.size(); ++i)
     {
-        index_t patch = m_aleSolver.interfaceStr2Mesh().sidesA[i].patch;
-        boxSide side = m_aleSolver.interfaceStr2Mesh().sidesA[i].side();
+        index_t patch = m_aleSolver.interface().sidesA[i].patch;
+        boxSide side = m_aleSolver.interface().sidesA[i].side();
         totalSize += disp.patch(patch).boundary(side)->coefs().rows();
     }
 
     vector.setZero(totalSize*dim,1);
     index_t filledSize = 0;
-    for (index_t i = 0; i < m_aleSolver.interfaceStr2Mesh().sidesA.size(); ++i)
+    for (index_t i = 0; i < m_aleSolver.interface().sidesA.size(); ++i)
     {
-        index_t patch = m_aleSolver.interfaceStr2Mesh().sidesA[i].patch;
-        boxSide side = m_aleSolver.interfaceStr2Mesh().sidesA[i].side();
+        index_t patch = m_aleSolver.interface().sidesA[i].patch;
+        boxSide side = m_aleSolver.interface().sidesA[i].side();
         index_t size = disp.patch(patch).boundary(side)->coefs().rows();
         for (index_t d = 0; d < dim;++d)
         {
@@ -190,24 +219,29 @@ void gsPartitionedFSI<T>::formVector(const gsMultiPatch<T> & disp, gsMatrix<T> &
 }
 
 template <class T>
-void gsPartitionedFSI<T>::aitken(gsMultiPatch<T> & dispA, gsMultiPatch<T> & dispB,
-                                 gsMultiPatch<T> & dispB2, gsMultiPatch<T> & dispC)
+void gsPartitionedFSI<T>::aitken(gsMultiPatch<T> & dispOO, gsMultiPatch<T> & dispOG,
+                                 gsMultiPatch<T> & dispO, gsMultiPatch<T> & dispN)
 {
-    gsMatrix<> vecA,vecB,vecB2,vecC;
-    formVector(dispA,vecA);
-    formVector(dispB,vecB);
-    formVector(dispB2,vecB2);
-    formVector(dispC,vecC);
+    gsMatrix<> vecOO,vecOG,vecO,vecN;
+    formVector(dispOO,vecOO);
+    formVector(dispOG,vecOG);
+    formVector(dispO,vecO);
+    formVector(dispN,vecN);
 
-    omega = -1*omega*((vecB2-vecA).transpose()*(vecC-vecB -vecB2+vecA))(0,0)/((vecC-vecB -vecB2+vecA).transpose()*(vecC-vecB -vecB2+vecA))(0,0);
-    for (index_t p = 0; p < dispA.nPatches(); ++p)
+    gsMatrix<> vecTemp = vecN - vecO - vecOG + vecOO;
+    omega = -1*omega * ((vecOG - vecOO).transpose()*vecTemp)(0,0) /
+            (vecTemp.transpose()*vecTemp)(0,0);
+
+    for (index_t p = 0; p < dispOO.nPatches(); ++p)
     {
-        dispA.patch(p).coefs() = dispB.patch(p).coefs();
-        dispB.patch(p).coefs() += omega*(dispC.patch(p).coefs()-dispB.patch(p).coefs());
-        dispB2.patch(p).coefs() = dispC.patch(p).coefs();
+        dispOO.patch(p).coefs() = dispO.patch(p).coefs();
+        dispOG.patch(p).coefs() = dispN.patch(p).coefs();
+        dispN.patch(p).coefs() = omega * dispN.patch(p).coefs() + (1-omega) * dispO.patch(p).coefs();
+        dispO.patch(p).coefs() = dispN.patch(p).coefs();
     }
-    absResNorm = ((vecC-vecB)*omega).norm();
-    gsInfo << numIter << " " << absResNorm << std::endl;
+
+    formVector(dispN,vecN);
+    absResNorm = ((vecN-vecO)*omega).norm()/sqrt(vecN.rows());
     if (absResNorm < m_options.getReal("AbsTol") || absResNorm/initResNorm < m_options.getReal("RelTol"))
         converged = true;
 }

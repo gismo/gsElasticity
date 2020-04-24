@@ -144,19 +144,22 @@ struct GISMO_EXPORT gsBoundaryInterface
 {
     gsBoundaryInterface() {}
 
+    /// boundary interface sides
     std::vector<patchSide> sidesA;
     std::vector<patchSide> sidesB;
-    std::vector<std::pair<index_t,index_t> > uniquePatches;
+    /// patch-to-patch correspondence
+    std::vector<std::pair<index_t,index_t> > patches;
 
-    void addSide(index_t patchA, boundary::side sideA,
-                 index_t patchB, boundary::side sideB)
+
+    void addInterfaceSide(index_t patchA, boundary::side sideA,
+                          index_t patchB, boundary::side sideB)
     {
         sidesA.push_back(patchSide(patchA,sideA));
         sidesB.push_back(patchSide(patchB,sideB));
-        std::pair<index_t,index_t> pair(patchA,patchB);
-        if (std::find(uniquePatches.begin(), uniquePatches.end(), pair) == uniquePatches.end())
-            uniquePatches.push_back(pair);
     }
+
+    void addPatches(index_t patchA, index_t patchB)
+    { patches.push_back(std::pair<index_t,index_t>(patchA,patchB)); }
 };
 
 /** @brief Simple progress bar class

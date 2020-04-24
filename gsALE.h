@@ -56,7 +56,7 @@ public:
     void recoverState();
 
     /// get FSI interface container to access patch sides
-    const gsBoundaryInterface & interfaceStr2Mesh() { return interface;}
+    const gsBoundaryInterface & interface() { return m_interface;}
 
 protected:
     void initialize();
@@ -74,7 +74,7 @@ protected:
     /// outer displacement field that drives the mesh deformation
     const gsMultiPatch<T> & disp;
     /// mapping between patch sides of the fluid and solid
-    const gsBoundaryInterface & interface;
+    const gsBoundaryInterface & m_interface;
     /// mesh deformation method
     ale_method::method methodALE;
     /// option list

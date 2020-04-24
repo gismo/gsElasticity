@@ -92,7 +92,7 @@ public:
     gsBaseAssembler<T> & assembler();
 
     /// get mapping between the flow domain patches and the ALE mapping patches (if only some patches of the flow domain are deformed)
-    const gsBoundaryInterface & alePatches() const {return *interface;}
+    const gsBoundaryInterface & aleInterface() const {return *interface;}
 
 protected:
     void initialize();
