@@ -241,7 +241,7 @@ protected:
     gsMatrix<T> C, Ctemp, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block, I;
     gsVector<T> geometricTangentTemp, Svec, localResidual;
     // containers for global indices
-    std::vector< gsMatrix<unsigned> > globalIndices;
+    std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<size_t> blockNumbers;
 };
 

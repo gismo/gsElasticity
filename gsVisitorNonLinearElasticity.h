@@ -220,7 +220,7 @@ protected:
     gsVector<T> geometricTangentTemp, Svec, localResidual;
     T localStiffening;
     // containers for global indices
-    std::vector< gsMatrix<unsigned> > globalIndices;
+    std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<size_t> blockNumbers;
 };
 

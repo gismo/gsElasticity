@@ -142,7 +142,7 @@ protected:
     // all temporary matrices defined here for efficiency
     gsMatrix<T> physGrad;
     // containers for global indices
-    std::vector< gsMatrix<unsigned> > globalIndices;
+    std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<size_t> blockNumbers;
 
 }; //class definition ends

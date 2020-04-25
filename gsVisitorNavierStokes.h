@@ -310,7 +310,7 @@ protected:
     // all temporary matrices defined here for efficiency
     gsMatrix<T> block, physGradVel, physJacCurVel;
     // containers for global indices
-    std::vector< gsMatrix<unsigned> > globalIndices;
+    std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<size_t> blockNumbers;
 };
 

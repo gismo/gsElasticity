@@ -122,7 +122,7 @@ protected:
     // all temporary matrices defined here for efficiency
     gsVector<T> unormal;
     // containers for global indices
-    std::vector< gsMatrix<unsigned> > globalIndices;
+    std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<size_t> blockNumbers;
 };
 
