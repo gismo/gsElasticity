@@ -49,6 +49,15 @@ public:
         mu     = E / ( 2. * ( 1. + pr ) );
         forceScaling = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
+        // linear elasticity tensor
+        I = gsMatrix<T>::Identity(dim,dim);
+        matrixTraceTensor<T>(C,I,I);
+        C *= lambda;
+        symmetricIdentityTensor<T>(Ctemp,I);
+        C += mu*Ctemp;
+        // resize containers for global indices
+        globalIndices.resize(dim);
+        blockNumbers.resize(dim);
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -78,8 +87,6 @@ public:
         // initialize local matrix and rhs
         localMat.setZero(dim*N_D,dim*N_D);
         localRhs.setZero(dim*N_D,1);
-        // linear elasticity tensor
-        setC<T>(C,gsMatrix<T>::Identity(dim,dim),lambda,mu);
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
@@ -92,12 +99,12 @@ public:
             for (index_t i = 0; i < N_D; i++)
             {
                 // stiffness matrix K = B_i^T * C * B_j;
-                setB<T>(B_i,gsMatrix<T>::Identity(dim,dim),physGrad.col(i));
+                setB<T>(B_i,I,physGrad.col(i));
                 tempK = B_i.transpose() * C;
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {
-                    setB<T>(B_j,gsMatrix<T>::Identity(dim,dim),physGrad.col(j));
+                    setB<T>(B_j,I,physGrad.col(j));
                     K = tempK * B_j;
                     for (short_t di = 0; di < dim; ++di)
                         for (short_t dj = 0; dj < dim; ++dj)
@@ -114,9 +121,6 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T> & system)
     {
-        // number of unknowns: dim of displacement
-        std::vector< gsMatrix<index_t> > globalIndices(dim);
-        gsVector<index_t> blockNumbers(dim);
         // computes global indices for displacement components
         for (short_t d = 0; d < dim; ++d)
         {
@@ -126,7 +130,6 @@ public:
         // push to global system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
-
         // push to the elimination system
         if (elimMat != nullptr)
         {
@@ -156,7 +159,7 @@ protected:
     short_t dim;
     const gsPoissonPde<T> * pde_ptr;
     // Lame coefficients and force scaling factor
-    T lambda, mu, forceScaling;
+    T lambda, mu, forceScaling, localStiffening;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
@@ -173,11 +176,11 @@ protected:
     gsMatrix<T> forceValues;
     // elimination matrix to efficiently change Dirichlet degrees of freedom
     gsSparseMatrix<T> * elimMat;
-
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, physGrad, B_i, tempK, B_j, K;
-    real_t localStiffening;
-
+    gsMatrix<T> C, Ctemp,physGrad, B_i, tempK, B_j, K, I;
+    // containers for global indices
+    std::vector< gsMatrix<unsigned> > globalIndices;
+    gsVector<size_t> blockNumbers;
 };
 
 } // namespace gismo

@@ -141,7 +141,7 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     gsMultiPatch<> velocity, pressure;
-    assembler.constructSolution(solVector,velocity,pressure);
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),velocity,pressure);
 
     if (numPlotPoints > 0) // visualization
     {

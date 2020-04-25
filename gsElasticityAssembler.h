@@ -22,11 +22,6 @@
 namespace gismo
 {
 
-
-// ToDo: -add second Piola-Kirchhoff stresses for nonlinear elasticity, both NeoHook and St.V.-K.
-//       -add Neumann BC on the deformed configuration (currently Neumann BC is assumed to be set
-//        in the reference configuration, dead-load problem)
-
 /** @brief Assembles the stiffness matrix and the right-hand side vector for linear and nonlinear elasticity
            for 2D plain stress and 3D continua. The matrix and vector have a block structure associated with
            components of the displacement vector, each block corresponding to one component.
@@ -67,34 +62,25 @@ public:
     /// in the form of free and fixed/Dirichelt degrees of freedom.
     /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs,
-                          bool assembleMatrix = true);
-
+                          const std::vector<gsMatrix<T> > & fixedDoFs);
+protected:
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for displacement formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & displacement,
-                          bool assembleMatrix = true);
+    virtual void assemble(const gsMultiPatch<T> & displacement);
 
     /// @ brief Assembles the tangential matrix and the residual for a iteration of Newton's method for mixed formulation;
     /// set *assembleMatrix* to false to only assemble the residual;
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
-    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure,
-                          bool assembleMatrix = true);
+    virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure);
 
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
-    /// @brief Construct displacement from computed solution vector
-    virtual void constructSolution(const gsMatrix<T> & solVector, gsMultiPatch<T> & displacement) const;
-
+public:
     /// @brief Construct displacement from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
                                    gsMultiPatch<T> & displacement) const;
-
-    /// @brief Construct displacement and pressure from computed solution vector
-    virtual void constructSolution(const gsMatrix<T> & solVector,
-                                   gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// @brief Construct displacement and pressure from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,
@@ -102,24 +88,31 @@ public:
                                    gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// @ brief Construct pressure from computed solution vector
-    virtual void constructPressure(const gsMatrix<T> & solVector, gsMultiPatch<T> & pressure) const;
+    virtual void constructPressure(const gsMatrix<T> & solVector,
+                                   const std::vector<gsMatrix<T> > & fixedDoFs,
+                                   gsMultiPatch<T> & pressure) const;
 
     //--------------------- SPECIALS ----------------------------------//
 
-    /// @brief Construct Cauchy stress tensor for visualization (only valid for linear elasticity)
+    /// @brief Construct Cauchy stresses for evaluation or visualization
     void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T> & result,
-                                 stress_type::type type = stress_type::von_mises) const;
+                                 stress_components::components component = stress_components::von_mises) const;
+
+    /// @brief Construct Cauchy stresses for evaluation or visualization
+    void constructCauchyStresses(const gsMultiPatch<T> & displacement,
+                                 const gsMultiPatch<T> & pressure,
+                                 gsPiecewiseFunction<T> & result,
+                                 stress_components::components component = stress_components::von_mises) const;
 
 protected:
     /// a custom reserve function to allocate memory for the sparse matrix
     virtual void reserve();
 
 protected:
-
     /// Dimension of the problem
     /// parametric dim = physical dim = deformation dim
-	short_t m_dim;
+    short_t m_dim;
 
     using Base::m_pde_ptr;
     using Base::m_bases;

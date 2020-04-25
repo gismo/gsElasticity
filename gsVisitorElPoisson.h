@@ -39,6 +39,9 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         localStiffening = options.getReal("LocalStiff");
+        // resize containers for global indices
+        globalIndices.resize(1);
+        blockNumbers.resize(1);
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -80,9 +83,6 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T> & system)
     {
-        // number of unknowns: dim of displacement
-        std::vector< gsMatrix<index_t> > globalIndices(1);
-        gsVector<index_t> blockNumbers(1);
         // computes global indices for displacement components
         system.mapColIndices(localIndices, patchIndex, globalIndices[0], 0);
         blockNumbers.at(0) = 0;
@@ -129,7 +129,9 @@ protected:
     // all temporary matrices defined here for efficiency
     gsMatrix<T> physGrad;
     real_t localStiffening;
-
+    // containers for global indices
+    std::vector< gsMatrix<unsigned> > globalIndices;
+    gsVector<size_t> blockNumbers;
 };
 
 } // namespace gismo

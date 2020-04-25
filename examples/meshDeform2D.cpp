@@ -99,11 +99,11 @@ int main(int argc, char* argv[])
     bdryDisplacement.patch(0).coefs() -= initGeo.patch(0).coefs();
     bdryDisplacement.patch(0).coefs() /= numSteps;
     // Boundary sides to deform
-    gsInterfaceFSI interface;
-    interface.addSide(0,boundary::south,0,boundary::south);
-    interface.addSide(0,boundary::north,0,boundary::north);
-    interface.addSide(0,boundary::west,0,boundary::west);
-    interface.addSide(0,boundary::east,0,boundary::east);
+    gsBoundaryInterface interface;
+    interface.addInterfaceSide(0,boundary::south,0,boundary::south);
+    interface.addInterfaceSide(0,boundary::north,0,boundary::north);
+    interface.addInterfaceSide(0,boundary::west,0,boundary::west);
+    interface.addInterfaceSide(0,boundary::east,0,boundary::east);
     // mesh deformation object
     gsALE<real_t> meshDeformer(initGeo,bdryDisplacement,interface,ale_method::method(ALEmethod));
     meshDeformer.options().setReal("LocalStiff",stiffDegree);
@@ -118,9 +118,12 @@ int main(int argc, char* argv[])
     for (index_t i = 0; i < numSteps; ++i)
     {
         bar.display(i+1,numSteps);
+        // deform mesh to match the current bdry displacement
         meshDeformer.updateMesh();
+        // save the displacement
         displacements.push_back(gsMultiPatch<>());
         meshDeformer.constructSolution(displacements.back());
+        // increase the bdry displacement for the next step
         bdryDisplacement.patch(0).coefs() *= 1.*(i+2)/(i+1);
     }
 

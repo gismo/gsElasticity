@@ -110,10 +110,10 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
     // constructing stress tensor
     gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_type::all_2D);
+    assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
     gsField<> stressField(assembler.patches(),stresses,true);
 
 

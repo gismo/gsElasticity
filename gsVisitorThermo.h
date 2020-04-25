@@ -26,7 +26,7 @@ class gsVisitorThermo
 {
 public:
     gsVisitorThermo(const gsFunctionSet<T> & temperatureField_)
-         : temperatureField(temperatureField_) {}
+        : temperatureField(temperatureField_) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -45,12 +45,15 @@ public:
         T pr = options.getReal("PoissonsRatio");
         lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
         mu     = E / ( 2. * ( 1. + pr ) );
+        // resize containers for global indices
+        globalIndices.resize(dim);
+        blockNumbers.resize(dim);
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
-    {        
+    {
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
         // NEED_VALUE to get points in the physical domain for evaluation of the temperature gradients
@@ -99,21 +102,18 @@ public:
     }
 
     inline void localToGlobal(const int patchIndex,
-                                  const std::vector<gsMatrix<T> > & eliminatedDofs,
-                                  gsSparseSystem<T> & system)
+                              const std::vector<gsMatrix<T> > & eliminatedDofs,
+                              gsSparseSystem<T> & system)
+    {
+        // computes global indices for displacement components
+        for (short_t d = 0; d < dim; ++d)
         {
-            // number of unknowns: dim of displacement
-            std::vector< gsMatrix<index_t> > globalIndices(dim);
-            gsVector<index_t> blockNumbers(dim);
-            // computes global indices for displacement components
-            for (short_t d = 0; d < dim; ++d)
-            {
-                system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
-                blockNumbers.at(d) = d;
-            }
-            // push to global system
-            system.pushToRhs(localRhs,globalIndices,blockNumbers);
+            system.mapColIndices(localIndicesDisp, patchIndex, globalIndices[d], d);
+            blockNumbers.at(d) = d;
         }
+        // push to global system
+        system.pushToRhs(localRhs,globalIndices,blockNumbers);
+    }
 
 protected:
     // problem info
@@ -141,6 +141,9 @@ protected:
 
     // all temporary matrices defined here for efficiency
     gsMatrix<T> physGrad;
+    // containers for global indices
+    std::vector< gsMatrix<unsigned> > globalIndices;
+    gsVector<size_t> blockNumbers;
 
 }; //class definition ends
 

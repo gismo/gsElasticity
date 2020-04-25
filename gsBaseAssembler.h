@@ -33,8 +33,8 @@ public:
     /// in the form of free and fixed/Dirichelt degrees of freedom.
     /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDDoFs,
-                          bool assembleMatrix = true) = 0;
+                          const std::vector<gsMatrix<T> > & fixedDDoFs) = 0;
+
     /// assembly procedure for linear problems
     virtual void assemble(bool saveEliminationMatrix = false) {};
 
@@ -52,6 +52,7 @@ public:
                                    gsMultiPatch<T> & result) const {};
 
     //--------------------- DIRICHLET BC SHENANIGANS ----------------------------------//
+
     /** @brief Set Dirichet degrees of freedom on a given side of a given patch from a given matrix.
      *
      * A usual source of degrees of freedom is another geometry where it is known that the corresponding
@@ -70,6 +71,7 @@ public:
 
     /// get the size of the Dirichlet vector for elimination
     virtual index_t numFixedDofs() const;
+
     /// @brief Eliminates new Dirichelt degrees of fredom
     virtual void eliminateFixedDofs();
 
@@ -78,6 +80,7 @@ public:
     //--------------------- OTHER ----------------------------------//
 
     virtual void setRHS(const gsMatrix<T> & rhs) {m_system.rhs() = rhs;}
+
     virtual void setMatrix(const gsSparseMatrix<T> & matrix) {m_system.matrix() = matrix;}
 
 protected:

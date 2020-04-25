@@ -18,6 +18,7 @@
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsField.h>
 #include <gsIO/gsWriteParaview.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 
 #define PLOT_PRECISION 11
@@ -124,15 +125,14 @@ void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<T
                                 std::string const & fn,
                                 unsigned npts)
 {
-    const gsFunction<> & geometry = fields.begin()->second->patches().patch(patchNum);
+    const gsGeometry<> & geometry = fields.begin()->second->patches().patch(patchNum);
     const short_t n = geometry.targetDim();
     const short_t d = geometry.domainDim();
 
     gsMatrix<> ab = geometry.support();
     gsVector<> a = ab.col(0);
     gsVector<> b = ab.col(1);
-
-    gsVector<unsigned> np = uniformSampleCount(a,b,npts);
+    gsVector<unsigned> np = distributePoints<T>(geometry,npts);
     gsMatrix<> pts = gsPointGrid(a,b,np);
 
     gsMatrix<> eval_geo = geometry.eval(pts);

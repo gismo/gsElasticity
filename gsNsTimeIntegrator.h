@@ -37,10 +37,11 @@ public:
     gsNsTimeIntegrator(gsNsAssembler<T> & stiffAssembler_,
                        gsMassAssembler<T> & massAssembler_,
                        gsMultiPatch<T> * ALEvelocity = nullptr,
-                       std::vector<std::pair<index_t,index_t> > * ALEpatches = nullptr);
+                       gsBoundaryInterface * interfaceALE2Flow = nullptr);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
+
     /// set intial conditions
     void setSolutionVector(const gsMatrix<T> & solutionVector)
     {
@@ -55,15 +56,17 @@ public:
         Base::setFixedDofs(ddofs);
         initialized = false;
     }
+
     /// make a time step according to a chosen scheme
     void makeTimeStep(T timeStep);
+
     /// assemble the linear system for the nonlinear solver
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDoFs,
-                          bool assembleMatrix = true);
+                          const std::vector<gsMatrix<T> > & fixedDoFs);
 
     /// returns number of degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
+
     /// returns solution vector
     const gsMatrix<T> & solutionVector() const
     {
@@ -71,15 +74,29 @@ public:
                      "No initial conditions provided!");
         return solVector;
     }
+
     /// save solver state
     void saveState();
+
     /// recover solver state from the previously saved state
     void recoverState();
+
     /// number of iterations Newton's method required at the last time step; always 1 for IMEX
     index_t numberIterations() const { return numIters;}
 
+    /// construct the solution using the stiffness matrix assembler
+    void constructSolution(gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const;
+
+    /// assemblers' accessors
+    gsBaseAssembler<T> & mAssembler();
+    gsBaseAssembler<T> & assembler();
+
+    /// get mapping between the flow domain patches and the ALE mapping patches (if only some patches of the flow domain are deformed)
+    const gsBoundaryInterface & aleInterface() const {return *interface;}
+
 protected:
     void initialize();
+
     /// time integraton schemes
     void implicitLinear();
     void implicitNonlinear();
@@ -110,7 +127,7 @@ protected:
     /// ALE velocity
     gsMultiPatch<T> * velocityALE;
     /// mapping between the geometry patches and the ALE velocity patches
-    std::vector<std::pair<index_t,index_t> > * patchesALE;
+    gsBoundaryInterface * interface;
 
     /// saved state
     bool hasSavedState;

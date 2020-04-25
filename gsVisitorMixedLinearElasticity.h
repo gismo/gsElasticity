@@ -46,6 +46,10 @@ public:
         lambda_inv = ( 1. + pr ) * ( 1. - 2. * pr ) / E / pr ;
         mu     = E / ( 2. * ( 1. + pr ) );
         forceScaling = options.getReal("ForceScaling");
+        I = gsMatrix<T>::Identity(dim,dim);
+        // resize containers for global indices
+        globalIndices.resize(dim+1);
+        blockNumbers.resize(dim+1);
     }
 
     inline void evaluate(const gsBasisRefs<T> & basisRefs,
@@ -80,7 +84,8 @@ public:
         localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
         localRhs.setZero(dim*N_D + N_P,1);                  // B | C
         // elasticity tensor
-        setC<T>(C,gsMatrix<T>::Identity(dim,dim),0.,mu);
+        symmetricIdentityTensor<T>(C,I);
+        C *= mu;
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
@@ -92,12 +97,12 @@ public:
             // A-matrix: Loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
-                setB<T>(B_i,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(i));
+                setB<T>(B_i,I,physGradDisp.col(i));
                 tempK = B_i.transpose() * C;
                 // Loop over displacement basis functions
                 for (index_t j = 0; j < N_D; j++)
                 {
-                    setB<T>(B_j,gsMatrix<T>::Identity(dim,dim),physGradDisp.col(j));
+                    setB<T>(B_j,I,physGradDisp.col(j));
                     K = tempK * B_j;
 
                     for (short_t di = 0; di < dim; ++di)
@@ -128,9 +133,6 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T> & system)
     {
-        // number of unknowns: dim of displacement + 1 for pressure
-        std::vector< gsMatrix<index_t> > globalIndices(dim+1);
-        gsVector<index_t> blockNumbers(dim+1);
         // computes global indices for displacement components
         for (short_t d = 0; d < dim; ++d)
         {
@@ -171,7 +173,10 @@ protected:
     gsMatrix<T> forceValues;
 
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, physGradDisp, B_i, tempK, B_j, K, block;
+    gsMatrix<T> C, physGradDisp, B_i, tempK, B_j, K, block, I;
+    // containers for global indices
+    std::vector< gsMatrix<unsigned> > globalIndices;
+    gsVector<size_t> blockNumbers;
 };
 
 } // namespace gismo

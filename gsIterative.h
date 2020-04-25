@@ -44,42 +44,60 @@ class gsIterative
 public:
     typedef memory::shared_ptr<gsIterative> Ptr;
     typedef memory::unique_ptr<gsIterative> uPtr;
+
     /// constructor without an initial guess. Assumes a zero initial guess.
     gsIterative(gsBaseAssembler<T> & assembler_);
+
     /// constructor with an given initial free degrees of freedom.
     /// Fixed/Dirichlet degrees of freedom are taken from the assembler.
     /// fixed DoFs are given as a single vector arranged according to the function
     /// gsMatrix<> fixedDoFsAsVector() of gsBaseAssembler
     gsIterative(gsBaseAssembler<T> & assembler_,
              const gsMatrix<T> & initSolutionVector);
+
     /// constructor with an initial guess given as a combination of free and fixed/Dirichlet degrees of freedom.
     /// fixed DoFs are given as a single vector arranged according to the function
     /// gsMatrix<> fixedDoFsAsVector() of gsBaseAssembler
     gsIterative(gsBaseAssembler<T> & assembler_,
              const gsMatrix<T> & initSolutionVector,
              const std::vector<gsMatrix<T> > & initFixedDoFs);
+
     /// default option list. used for initialization
     static gsOptionList defaultOptions();
+
     /// get options list to read or set parameters
     gsOptionList & options() { return m_options; }
+
     /// solution procedure
     void solve();
+
     /// computes update or the next solution
     bool compute();
+
     /// returns the solution vector
     const gsMatrix<T> & solution() const { return solVector; }
+
     /// returns the fixed degrees of freedom
     const std::vector<gsMatrix<T> > & allFixedDofs() const { return fixedDoFs; }
+
     /// return solver status as a string
     std::string status();
+
     /// reset the solver state
     void reset();
+
     /// set all fixed degrees of freedom
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs);
+
+    /// number of iteration that Newton's method took
     index_t numberIterations() const {return numIterations;}
+
+    /// set initial guess
     void setSolutionVector(const gsMatrix<T> & solutionVector) { solVector = solutionVector; }
+
     /// save solver state
     void saveState();
+
     /// recover solver state from saved state
     void recoverState();
 

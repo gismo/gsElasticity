@@ -35,6 +35,12 @@ TEMPLATE_INST real_t displacementJacRatio(gsMultiPatch<real_t> const & domain, g
 TEMPLATE_INST void genSamplingPoints(const gsVector<real_t> & lower, const gsVector<real_t> & upper,
                                      const gsQuadRule<real_t> & quRule, gsMatrix<real_t> & points);
 
+TEMPLATE_INST real_t patchLength(const gsGeometry<real_t> & geo, short_t dir);
+
+TEMPLATE_INST real_t curveLength(const gsGeometry<real_t> & geo);
+
+TEMPLATE_INST gsVector<unsigned> distributePoints(const gsGeometry<real_t> & geo, unsigned numPoints);
+
 //-----------------------------------//
 //----------- Modelling -------------//
 //-----------------------------------//
@@ -89,6 +95,10 @@ TEMPLATE_INST gsGeometry<real_t>::uPtr genCylinder(gsGeometry<real_t> const & ba
 TEMPLATE_INST gsGeometry<real_t>::uPtr genScrew(gsGeometry<real_t> const & base,
                                                 index_t deg, index_t num, real_t height, real_t pitch,
                                                 real_t x0, real_t y0);
+
+TEMPLATE_INST gsGeometry<real_t>::uPtr genSpring(gsGeometry<real_t> const & crossSection,
+                                                 real_t springRadius, real_t springPitch,
+                                                 index_t numQuarterSegments, bool nurbs);
 
 //----------------------------------------//
 //----------- Auxiliary functions --------//

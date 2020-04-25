@@ -27,63 +27,54 @@ class gsBaseAssembler;
 template <class T>
 class gsIterative;
 
-struct GISMO_EXPORT gsInterfaceFSI
-{
-    gsInterfaceFSI() {}
-
-    std::vector<patchSide> fluidSides;
-    std::vector<patchSide> solidSides;
-
-    void addSide(index_t fluidPatch, boundary::side fluidSide,
-                 index_t solidPatch, boundary::side solidSide)
-    {
-        fluidSides.push_back(patchSide(fluidPatch,fluidSide));
-        solidSides.push_back(patchSide(solidPatch,solidSide));
-    }
-};
-
 template <class T>
 class gsALE
 {
 public:
     gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement,
-          const gsInterfaceFSI & interface, ale_method::method method);
+          const gsBoundaryInterface & interfaceStr2Mesh, ale_method::method method);
+
     /// default option list. used for initialization
     static gsOptionList defaultOptions();
+
     /// get options list to read or set parameters
     gsOptionList & options() { return m_options; }
+
     /// number of degrees of freedom
     index_t numDofs() const {return assembler->numDofs();}
+
     /// construct ALE displacement field
     void constructSolution(gsMultiPatch<T> & solution) const;
+
     /// update mesh to comply with the current displacement field
     index_t updateMesh();
+
     /// save module state
     void saveState();
+
     /// recover module state from saved state
     void recoverState();
 
+    /// get FSI interface container to access patch sides
+    const gsBoundaryInterface & interface() { return m_interface;}
 
 protected:
     void initialize();
-    /// update mesh using Tangential Incremental Nonlinear Elasticity
-    index_t TINE();
-    /// update mesh using Incremental Linear Elasticity
-    index_t ILE();
-    /// update mesh using Linear Elasticity
-    index_t LE();
-    /// update mesh using Harmonic Extension
-    index_t HE();
-    /// update mesh using Incremental Harmonic Extension
-    index_t IHE();
-    /// update mesh using Bi-Harmonic Extension
-    index_t BHE();
+
+    /// update mesh using HE, LE or BHE methods
+    index_t linearMethod();
+
+    /// update mesh using IHE, ILE or IBHE methods
+    index_t linearIncrementalMethod();
+
+    /// update mesh using TINE or TINE_StVK methods
+    index_t nonlinearMethod();
 
 protected:
     /// outer displacement field that drives the mesh deformation
     const gsMultiPatch<T> & disp;
     /// mapping between patch sides of the fluid and solid
-    const gsInterfaceFSI & fsiInterface;
+    const gsBoundaryInterface & m_interface;
     /// mesh deformation method
     ale_method::method methodALE;
     /// option list

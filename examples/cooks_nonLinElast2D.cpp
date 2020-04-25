@@ -91,15 +91,19 @@ int main(int argc, char* argv[]){
 
     // solution to the nonlinear problem as an isogeometric displacement field
     gsMultiPatch<> displacement;
-    assembler.constructSolution(solver.solution(),displacement);
+    assembler.constructSolution(solver.solution(),solver.allFixedDofs(),displacement);
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(displacement,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0)
     {
         // constructing an IGA field (geometry + solution)
         gsField<> displacementField(assembler.patches(),displacement);
+        gsField<> stressField(assembler.patches(),stresses,true);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Displacement"] = &displacementField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"cooks",numPlotPoints);
         gsInfo << "Open \"cooks.pvd\" in Paraview for visualization.\n";
     }

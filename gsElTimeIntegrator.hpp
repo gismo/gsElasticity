@@ -55,7 +55,7 @@ void gsElTimeIntegrator<T>::initialize()
                  "No initial conditions provided!");
     GISMO_ENSURE(velVector.rows() == stiffAssembler.numDofs(),
                  "No initial conditions provided!");
-    stiffAssembler.assemble(dispVector,m_ddof,false);
+    stiffAssembler.assemble(dispVector,m_ddof);
     massAssembler.assemble();
 
     gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
@@ -111,15 +111,20 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
 
 template <class T>
 bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
-                                     const std::vector<gsMatrix<T> > & fixedDoFs,
-                                     bool assembleMatrix)
+                                     const std::vector<gsMatrix<T> > & fixedDoFs)
 {
-    stiffAssembler.assemble(solutionVector,fixedDoFs,assembleMatrix);
+    stiffAssembler.assemble(solutionVector,fixedDoFs);
     m_system.matrix() = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
     m_system.matrix().makeCompressed();
     m_system.rhs() = stiffAssembler.rhs() +
                      massAssembler.matrix()*(alpha1()*(dispVector-solutionVector) + alpha2()*velVector + alpha3()*accVector);
     return true;
+}
+
+template <class T>
+void gsElTimeIntegrator<T>::constructSolution(gsMultiPatch<T> & solution) const
+{
+    stiffAssembler.constructSolution(dispVector,m_ddof,solution);
 }
 
 template <class T>

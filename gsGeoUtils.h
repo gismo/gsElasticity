@@ -77,6 +77,17 @@ template <class T>
 void genSamplingPoints(const gsVector<T> & lower, const gsVector<T> & upper,
                        const gsQuadRule<T> & quRule, gsMatrix<T> & points);
 
+/// @brief compute length of a patch in a given parametric direction as a mean of all boundary edges corresponding to this direction
+template <class T>
+T patchLength(const gsGeometry<T> & geo, short_t dir = 0);
+
+/// @brief compute curve length
+template <class T>
+T curveLength(const gsGeometry<T> & geo);
+
+/// @brief distributes sampling points according to the length of the patch in each parametric direction
+template <class T>
+gsVector<unsigned> distributePoints(const gsGeometry<T> & geo, unsigned numPoints);
 
 //-----------------------------------//
 //----------- Modelling--------------//
@@ -175,6 +186,12 @@ template<class T>
 typename gsGeometry<T>::uPtr genScrew(gsGeometry<T> const & base,
                                       index_t deg, index_t num,
                                       T height, T pitch, T x0 = 0., T y0 = 0.);
+
+/// @brief generates a 3D NURBS spring using provided geometry as a cross-section
+template<class T>
+typename gsGeometry<T>::uPtr genSpring(gsGeometry<T> const & crossSection,
+                                       T springRadius = 6.0, T springPitch = 2.60258,
+                                       index_t numQuarterSegments = 12, bool nurbs = false);
 
 //----------------------------------------//
 //----------- Auxiliary functions --------//

@@ -6,6 +6,7 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsGeoUtils.h>
 
 using namespace gismo;
 
@@ -102,10 +103,10 @@ int main(int argc, char* argv[]){
 
     // constructing solution as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
     // constructing stresses
     gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_type::von_mises);
+    assembler.constructCauchyStresses(solution,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0)
     {
@@ -115,7 +116,7 @@ int main(int argc, char* argv[]){
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &solutionField;
-        fields["Stresses"] = &stressField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
         gsInfo << "Open \"terrific.pvd\" in Paraview for visualization.\n";
     }

@@ -51,7 +51,7 @@ protected:
     const gsFunctionSet<T> & m_temperatureField;
     bool assembledElasticity;
     std::vector<std::pair<index_t,boxSide> > nonDirichletSides;
-    //
+    /// elasticity contribution to the rhs; stored separately to efficiently reassemble the thermal contribution
     gsMatrix<T> elastRhs;
 
     using Base::m_pde_ptr;

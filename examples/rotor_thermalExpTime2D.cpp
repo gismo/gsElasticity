@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
     gsVector<> solVectorElast;
     solVectorElast.setZero(elastAssembler.numDofs());
     // constructing solution as an IGA function
-    elastAssembler.constructSolution(solVectorElast,displacement);
+    elastAssembler.constructSolution(solVectorElast,elastAssembler.allFixedDofs(),displacement);
 
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"rotor",collection,0,numPlotPoints);
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
         gsSparseSolver<>::SimplicialLDLT solverElast(elastAssembler.matrix());
         solVectorElast = solverElast.solve(elastAssembler.rhs());
 #endif
-        elastAssembler.constructSolution(solVectorElast,displacement);
+        elastAssembler.constructSolution(solVectorElast,elastAssembler.allFixedDofs(),displacement);
         timeElast += iterClock.stop();
 
         // output

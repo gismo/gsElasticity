@@ -105,10 +105,10 @@ int main(int argc, char* argv[]){
 
     // constructing displacement as an IGA function
     gsMultiPatch<> solution;
-    assembler.constructSolution(solVector,solution);
+    assembler.constructSolution(solVector,assembler.allFixedDofs(),solution);
     // constructing stress tensor
     gsPiecewiseFunction<> stresses;
-    assembler.constructCauchyStresses(solution,stresses,stress_type::all_2D);
+    assembler.constructCauchyStresses(solution,stresses,stress_components::all_2D_vector);
 
     if (numPlotPoints > 0)
     {
@@ -139,6 +139,7 @@ int main(int argc, char* argv[]){
     gsInfo << "XX-stress at the top of the circle: " << res.at(0) << " (computed), " << analytical.at(0) << " (analytical)\n";
     gsInfo << "YY-stress at the top of the circle: " << res.at(1) << " (computed), " << analytical.at(1) << " (analytical)\n";
     gsInfo << "XY-stress at the top of the circle: " << res.at(2) << " (computed), " << analytical.at(2) << " (analytical)\n";
+
 
     return 0;
 }

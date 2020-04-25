@@ -32,7 +32,6 @@ template<class T>
 void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
                      unsigned npts=NS, bool mesh = false, bool ctrlNet = false);
 
-
 /// \brief Write a file containing several fields defined on the same geometry to ONE paraview file
 /// and adds it as a timestep to a Paraview collection
 /// \param fields a map of field pointers

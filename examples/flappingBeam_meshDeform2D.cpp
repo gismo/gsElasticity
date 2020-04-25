@@ -48,6 +48,7 @@ int main(int argc, char* argv[])
     real_t stiffDegree = 2.3;
     index_t ALEmethod = ale_method::TINE;
     bool check = true;
+    index_t numIter = 1;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the steady fluid-structure interaction solver in 2D.");
@@ -60,6 +61,7 @@ int main(int argc, char* argv[])
     cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addSwitch("c","check","Check bijectivity of the ALE displacement field",check);
+    cmd.addInt("i","iter","Number of iterations for nonlinear methods",numIter);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //=============================================//
@@ -104,10 +106,10 @@ int main(int argc, char* argv[])
         for (index_t d = 0; d < 2; ++d)
             bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
 
-    gsInterfaceFSI interface;
-    interface.addSide(0,boundary::south,0,boundary::north);
-    interface.addSide(1,boundary::north,0,boundary::south);
-    interface.addSide(2,boundary::west,0,boundary::east);
+    gsBoundaryInterface interfaceBeam2ALE;
+    interfaceBeam2ALE.addInterfaceSide(0,boundary::north,0,boundary::south);
+    interfaceBeam2ALE.addInterfaceSide(0,boundary::south,1,boundary::north);
+    interfaceBeam2ALE.addInterfaceSide(0,boundary::east,2,boundary::west);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -125,10 +127,11 @@ int main(int argc, char* argv[])
     gsInfo << "Initialized elasticity system with " << elAssembler.numDofs() << " dofs.\n";
 
     // ALE module with nonlinear elasticity
-    gsALE<real_t> moduleALE(geoALE,displacement,interface,ale_method::method(ALEmethod));
+    gsALE<real_t> moduleALE(geoALE,displacement,interfaceBeam2ALE,ale_method::method(ALEmethod));
     moduleALE.options().setReal("LocalStiff",stiffDegree);
     moduleALE.options().setReal("PoissonsRatio",poissonsRatioMesh);
     moduleALE.options().setSwitch("Check",check);
+    moduleALE.options().setInt("NumIter",numIter);
     gsInfo << "Initialized mesh deformation system with " << moduleALE.numDofs() << " dofs.\n";
 
     //=============================================//
@@ -161,7 +164,7 @@ int main(int argc, char* argv[])
     elTimeSolver.setDisplacementVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
     elTimeSolver.setVelocityVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
     // constructing initial fields
-    elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
+    elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
     moduleALE.constructSolution(ALE);
     // plotting initial condition
     if (numPlotPoints > 0)
@@ -187,7 +190,7 @@ int main(int argc, char* argv[])
         // BEAM
         iterClock.restart();
         elTimeSolver.makeTimeStep(timeStep);
-        elAssembler.constructSolution(elTimeSolver.displacementVector(),displacement);
+        elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),displacement);
         timeBeam += iterClock.stop();
 
         // ALE
