@@ -83,6 +83,8 @@ cd /path/to/gismo/build
 source /path/to/intel/compilers_and_libraries/linux/bin/compilervars.sh intel64
 cmake .. -DGISMO_ELASTICITY=ON -DGISMO_WITH_OPENMP=ON -DEIGEN_USE_MKL_ALL=ON -DGISMO_WITH_PARDISO=ON -DPARDISO_USE_MKL=ON -DINTEL_ROOT=/path/to/intel -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc
 ```
+Despite an older version of Pardiso used in MKL, Intel optimization often results in faster performance than if a stand-alone library is used.
+
 Final tip: you can speed up the compilation of G+Smo by specifying the number of threads `make` command uses: 
 ```
 make -j<number of threads to use>
