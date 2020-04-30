@@ -17,6 +17,7 @@
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsElasticity/gsBaseUtils.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {
