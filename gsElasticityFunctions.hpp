@@ -267,17 +267,17 @@ void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
     mdALE.points = paramPoints;
     m_ale.patch(m_patchGeo).computeMap(mdALE);
 
+    gsMatrix<T> I  = gsMatrix<T>::Identity(targetDim(),targetDim());
     for (index_t p = 0; p < paramPoints.cols(); ++p)
     {
         // transform velocity gradients from parametric to reference
         gsMatrix<T> physGradVel = mdVel.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
         // ALE jacobian (identity + physical displacement gradient)
-        gsMatrix<T> physJacALE = gsMatrix<T>::Identity(targetDim(),targetDim()) +
-                mdALE.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
+        gsMatrix<T> physJacALE = I + mdALE.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
         // inverse ALE jacobian
         gsMatrix<T> invJacALE = physJacALE.cramerInverse();
         // ALE stress tensor
-        gsMatrix<T> sigma = pressureValues.at(p)*gsMatrix<T>::Identity(targetDim(),targetDim())
+        gsMatrix<T> sigma = pressureValues.at(p)*I
                             - m_density*m_viscosity*(physGradVel*invJacALE +
                                            invJacALE.transpose()*physGradVel.transpose());
         // stress tensor pull back

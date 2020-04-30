@@ -39,7 +39,7 @@ public:
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
-        rule = gsQuadrature::get(basisRefs.front(), options);
+        rule = gsQuadrature::get(basisRefs.front(), options,patchSide.direction());
         // saving necessary info
         forceScaling = options.getReal("ForceScaling");
         // resize containers for global indices
