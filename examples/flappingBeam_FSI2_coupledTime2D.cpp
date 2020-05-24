@@ -79,7 +79,6 @@ int main(int argc, char* argv[])
     real_t meshPR = 0.4; // poisson ratio for ALE
     real_t meshStiff = 2.5;
     index_t ALEmethod = ale_method::TINE;
-    bool check = true;
     bool oneWay = false;
     // space discretization
     index_t numUniRef = 3;
@@ -100,7 +99,6 @@ int main(int argc, char* argv[])
     cmd.addReal("m","mesh","Poisson's ratio for ALE",meshPR);
     cmd.addReal("l","load","Gravitation acceleration acting on the beam",beamLoad);
     cmd.addReal("x","chi","Local stiffening degree for ALE",meshStiff);
-    cmd.addSwitch("c","check","Check bijectivity of the ALE displacement field",check);
     cmd.addSwitch("o","oneway","Run as a oneway coupled simulation: beam-to-flow",oneWay);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
@@ -249,7 +247,7 @@ int main(int argc, char* argv[])
     gsALE<real_t> moduleALE(geoALE,dispBeam,interfaceBeam2ALE,ale_method::method(ALEmethod));
     moduleALE.options().setReal("LocalStiff",meshStiff);
     moduleALE.options().setReal("PoissonsRatio",meshPR);
-    moduleALE.options().setSwitch("Check",check);
+    moduleALE.options().setSwitch("Check",false);
     gsInfo << "Initialized mesh deformation system with " << moduleALE.numDofs() << " dofs.\n";
     // FSI coupling module
     gsPartitionedFSI<real_t> moduleFSI(nsTimeSolver,velFlow, presFlow,
@@ -346,6 +344,8 @@ int main(int argc, char* argv[])
         // smoothly change the inflow boundary condition
         if (simTime < 2.)
             nsAssembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(M_PI*(simTime+tStep)/2.))/2);
+        if (simTime > 7.)
+            moduleALE.options().setSwitch("Check",true);
 
         if (!moduleFSI.makeTimeStep(tStep))
         {
