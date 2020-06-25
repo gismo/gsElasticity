@@ -144,9 +144,12 @@ int main(int argc, char* argv[])
     // creating a container to plot all fields to one Paraview file
     std::map<std::string,const gsField<> *> fieldsBeam;
     fieldsBeam["Displacement"] = &displacementField;
+    std::map<std::string,const gsField<> *> fieldsAle;
+    fieldsAle["ALE displacement"] = &aleField;
     // paraview collection of time steps
     gsParaviewCollection collectionBeam("flappingBeam_ALE_beam");
-    gsParaviewCollection collectionALE("flappingBeam_ALE_mesh");
+    gsParaviewCollection collectionMesh("flappingBeam_ALE_mesh");
+    gsParaviewCollection collectionALE("flappingBeam_ALE_ale");
 
     gsProgressBar bar;
     gsStopwatch iterClock, totalClock;
@@ -170,7 +173,8 @@ int main(int argc, char* argv[])
     if (numPlotPoints > 0)
     {
         gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,0,numPlotPoints);
-        plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,0);
+        plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionMesh,0);
+        gsWriteParaviewMultiPhysicsTimeStep(fieldsAle,"flappingBeam_ALE_ale",collectionALE,0,numPlotPoints);
     }
     writeLog(logFile,displacement,geoALE,ALE,0.,0.,0.,0);
 
@@ -203,7 +207,8 @@ int main(int argc, char* argv[])
         if (numPlotPoints > 0)
         {
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flappingBeam_ALE_beam",collectionBeam,i+1,numPlotPoints);
-            plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionALE,i+1);
+            plotDeformation(geoALE,ALE,"flappingBeam_ALE_mesh",collectionMesh,i+1);
+            gsWriteParaviewMultiPhysicsTimeStep(fieldsAle,"flappingBeam_ALE_ale",collectionALE,i+1,numPlotPoints);
         }
         writeLog(logFile,displacement,geoALE,ALE,timeStep*(i+1),timeALE,timeBeam,elTimeSolver.numberIterations());
 
@@ -226,6 +231,7 @@ int main(int argc, char* argv[])
     if (numPlotPoints > 0)
     {
         collectionBeam.save();
+        collectionMesh.save();
         collectionALE.save();
         gsInfo << "Open \"flappingBeam_ALE_*.pvd\" in Paraview for visualization.\n";
     }

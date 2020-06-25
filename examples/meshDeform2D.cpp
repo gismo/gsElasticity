@@ -28,6 +28,7 @@ int main(int argc, char* argv[])
     real_t poissRatio = 0.45;
     real_t stiffDegree = 0.;
     index_t ALEmethod = ale_method::TINE;
+    bool check = true;
     /// Output options
     index_t numPlotPoints = 0;
 
@@ -44,6 +45,7 @@ int main(int argc, char* argv[])
     cmd.addReal("p","poiss","Poisson's ratio for the elasticity model",poissRatio);
     cmd.addReal("x","xjac","Stiffening degree for the Jacobian-based local stiffening",stiffDegree);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
+    cmd.addSwitch("k","check","Check bijectivity of the ALE displacement field",check);
     /// Output options
     cmd.addInt("s","sample","Number of points to plot the Jacobain determinant (don't plot if 0)",numPlotPoints);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -66,6 +68,7 @@ int main(int argc, char* argv[])
         gsMultiPatch<> simpleBdry;
         for (size_t p = 0; p < bdry.nPatches(); ++p)
             simpleBdry.addPatch(simplifyCurve(bdry.patch(p),numAdditionalPoints,fittingDegree,1000));
+        gsWrite(simpleBdry,"simplified_bdry.xml");
 
         // creating a coons patch out of simplified boundary curves to serve as an initial domain
         gsCoonsPatch<real_t> coonsPatch(simpleBdry);
@@ -108,6 +111,8 @@ int main(int argc, char* argv[])
     gsALE<real_t> meshDeformer(initGeo,bdryDisplacement,interface,ale_method::method(ALEmethod));
     meshDeformer.options().setReal("LocalStiff",stiffDegree);
     meshDeformer.options().setReal("PoissonsRatio",poissRatio);
+    meshDeformer.options().setSwitch("Check",check);
+
 
     //=====================================//
                   // Deforming //
@@ -119,12 +124,18 @@ int main(int argc, char* argv[])
     {
         bar.display(i+1,numSteps);
         // deform mesh to match the current bdry displacement
-        meshDeformer.updateMesh();
+        index_t badPatch =  meshDeformer.updateMesh();
         // save the displacement
         displacements.push_back(gsMultiPatch<>());
         meshDeformer.constructSolution(displacements.back());
         // increase the bdry displacement for the next step
         bdryDisplacement.patch(0).coefs() *= 1.*(i+2)/(i+1);
+
+        if (badPatch != -1)
+        {
+            gsInfo << "\n Bad patch: " << badPatch << std::endl;
+            break;
+        }
     }
 
     gsInfo << "Solved in "<< clock.stop() <<"s.\n";
@@ -140,12 +151,13 @@ int main(int argc, char* argv[])
     // save initial domain
     gsInfo << "The initial domain is saved to \"" << filename << "_2D_init.xml\".\n";
     gsWrite(initGeo,filename + "_2D_init");
-    // save resulting domain
-    gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
-    gsWrite(initGeo,filename + "_2D");
     // plotting all intermediate deformed meshes
     plotDeformation(initGeo,displacements,filename,numPlotPoints);
     gsInfo << "Open \"" << filename << "_mesh.pvd\" in Paraview for visualization.\n";
+    // save resulting domain
+    gsInfo << "The result of the deformation algorithm is saved to \"" << filename << "_2D.xml\".\n";
+    initGeo.patch(0).coefs() += displacements.back().patch(0).coefs();
+    gsWrite(initGeo,filename + "_2D");
 
     return 0;
 }

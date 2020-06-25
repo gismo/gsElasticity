@@ -112,7 +112,8 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
     if (numSamplingPoints == 0)
         plotJac = false;
 
-    gsInfo << "Step: 0/" << displacements.size() << std::endl;
+    gsProgressBar bar;
+    bar.display(0, displacements.size());
 
     gsField<T> detField(configuration,dets,true);
     std::map<std::string,const gsField<T> *> fields;
@@ -135,7 +136,8 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
 
     for (size_t s = 0; s < displacements.size(); ++s)
     {
-        gsInfo << "Step: " << s+1 << "/" << displacements.size() << std::endl;
+
+        bar.display(s+1, displacements.size());
 
         for (size_t p = 0; p < configuration.nPatches(); ++p)
         {
@@ -223,6 +225,7 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
                 md.points = points;
                 domain.patch(p).computeMap(md);
                 for (index_t q = 0; q < points.cols() && continueIt; ++q)
+
                     if (md.jacobian(q).determinant() <= 0)
                     {
                         gsInfo << "Bad patch: " << p << "\nBad point:\n" << points.col(q) << "\nDet: " << md.jacobian(q).determinant() << std::endl;
