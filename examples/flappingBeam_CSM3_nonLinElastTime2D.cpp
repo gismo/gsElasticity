@@ -132,7 +132,7 @@ int main(int argc, char* argv[]){
     timeSolver.setDisplacementVector(gsMatrix<>::Zero(assembler.numDofs(),1));
     timeSolver.setVelocityVector(gsMatrix<>::Zero(assembler.numDofs(),1));
 
-    assembler.constructSolution(timeSolver.displacementVector(),timeSolver.allFixedDofs(),displacement);
+    timeSolver.constructSolution(displacement);
     assembler.constructCauchyStresses(displacement,stresses,stress_components::von_mises);
     writeLog(logFile,displacement,0.,0.,0);
     // plotting initial displacement
@@ -156,7 +156,7 @@ int main(int argc, char* argv[]){
         iterClock.restart();
 
         timeSolver.makeTimeStep(timeStep);
-        assembler.constructSolution(timeSolver.displacementVector(),timeSolver.allFixedDofs(),displacement);
+        timeSolver.constructSolution(displacement);
 
         //assembler.constructCauchyStresses(displacement,stresses,stress_components::von_mises);
 

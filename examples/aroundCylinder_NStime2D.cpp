@@ -205,7 +205,7 @@ int main(int argc, char* argv[]){
     timeSolver.setFixedDofs(assembler.allFixedDofs());
 
     // consruct and plot initial velocity
-    assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
+    timeSolver.constructSolution(velocity,pressure);
     writeLog(logFile,assembler,velocity,pressure,meanVelocity,0.,0.,0);
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"aroundCylinder",collection,0,numPlotPoints);
@@ -233,7 +233,7 @@ int main(int argc, char* argv[]){
 
         timeSolver.makeTimeStep(tStep);
         // construct solution; timeSolver already knows the new Dirichlet BC
-        assembler.constructSolution(timeSolver.solutionVector(),timeSolver.allFixedDofs(),velocity,pressure);
+        timeSolver.constructSolution(velocity,pressure);
 
         simTime += tStep;
         numTimeStep++;

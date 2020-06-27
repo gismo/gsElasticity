@@ -29,14 +29,14 @@ int main(int argc, char* argv[]){
     real_t loading = 5.0e4;
     // space discretization
     index_t numUniRefDirX = 3;
-    index_t numUniRef = 1;
+    index_t numUniRef = 0;
     index_t numDegElev = 0;
     bool subgridOrTaylorHood = false;
     // time integration
     real_t timeSpan = 1;
-    real_t timeStep = 0.1;
+    real_t timeStep = 0.01;
     // output
-    index_t numPlotPoints = 64000;
+    index_t numPlotPoints = 1000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("This is a muscle fiber benchmark with mixed nonlinear elasticity solver.");
@@ -103,7 +103,6 @@ int main(int argc, char* argv[]){
           // Setting assemblers and solvers //
     //=============================================//
 
-    gsInfo << "Solvers...\n";
     // creating stiffness assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,gravity);
     assembler.options().setReal("YoungsModulus",youngsModulusMuscle);
@@ -118,22 +117,23 @@ int main(int argc, char* argv[]){
     // creating time integrator
     gsElTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
     timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
-    timeSolver.options().setInt("Verbosity",solver_verbosity::all);
+    timeSolver.options().setInt("Verbosity",solver_verbosity::none);
 
     //=============================================//
             // Setting output & auxilary//
     //=============================================//
 
-    gsInfo << "Output...\n";
     // displacement field
-    gsMultiPatch<> displacement;
+    gsMultiPatch<> displacement, pressure;
     // stress field
     gsPiecewiseFunction<> stresses;
     // constructing an IGA field (geometry + solution)
     gsField<> dispField(geometry,displacement);
+    gsField<> presField(geometry,pressure);
     //gsField<> stressField(assembler.patches(),stresses,true);
     std::map<std::string,const gsField<> *> fields;
     fields["Displacement"] = &dispField;
+    fields["Pressure"] = &presField;
     //fields["von Mises"] = &stressField;
 
     //std::ofstream logFile;
@@ -147,20 +147,15 @@ int main(int argc, char* argv[]){
                    // Initial conditions //
     //=============================================//
 
-    gsInfo << "Init conod...\n";
     // set initial conditions
-    gsInfo << "Set disp...\n";
-    timeSolver.setDisplacementVector(gsMatrix<>::Zero(assembler.numDofs(),1));
-    gsInfo << "Set vel...\n";
-    timeSolver.setVelocityVector(gsMatrix<>::Zero(assembler.numDofs(),1));
+    timeSolver.setDisplacementVector(gsMatrix<>::Zero(massAssembler.numDofs(),1));
+    timeSolver.setVelocityVector(gsMatrix<>::Zero(massAssembler.numDofs(),1));
 
-    gsInfo << "Constr...\n";
-    assembler.constructSolution(timeSolver.displacementVector(),timeSolver.allFixedDofs(),displacement);
+    timeSolver.constructSolution(displacement,pressure);
     //assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
     //writeLog(logFile,displacement,0.,0.,0);
     // plotting initial displacement
 
-    gsInfo << "Plot...\n";
     gsParaviewCollection collection("muscleBeam");
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"muscleBeam",collection,0,numPlotPoints);
@@ -177,7 +172,7 @@ int main(int argc, char* argv[]){
 
         timeSolver.makeTimeStep(timeStep);
         // construct solution; timeSolver already knows the new Dirichlet BC
-        assembler.constructSolution(timeSolver.displacementVector(),timeSolver.allFixedDofs(),displacement);
+        timeSolver.constructSolution(displacement,pressure);
 
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"muscleBeam",collection,i+1,numPlotPoints);

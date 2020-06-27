@@ -43,18 +43,18 @@ public:
     /// set intial conditions
     void setDisplacementVector(const gsMatrix<T> & displacementVector)
     {
-        GISMO_ENSURE(displacementVector.rows() == stiffAssembler.numDofs(),
+        GISMO_ENSURE(displacementVector.rows() == massAssembler.numDofs(),
                      "Wrong size of the displacement vector: " + util::to_string(displacementVector.rows()) +
-                     ". Must be: " + util::to_string(stiffAssembler.numDofs()));
-        dispVector = displacementVector;
+                     ". Must be: " + util::to_string(massAssembler.numDofs()));
+        solVector.middleRows(0,massAssembler.numDofs()) = displacementVector;
         initialized = false;
     }
 
     void setVelocityVector(const gsMatrix<T> & velocityVector)
     {
-        GISMO_ENSURE(velocityVector.rows() == stiffAssembler.numDofs(),
+        GISMO_ENSURE(velocityVector.rows() == massAssembler.numDofs(),
                      "Wrong size of the velocity vector: " + util::to_string(velocityVector.rows()) +
-                     ". Must be: " + util::to_string(stiffAssembler.numDofs()));
+                     ". Must be: " + util::to_string(massAssembler.numDofs()));
         velVector = velocityVector;
         initialized = false;
     }
@@ -69,21 +69,14 @@ public:
     /// return the number of free degrees of freedom
     virtual int numDofs() const { return stiffAssembler.numDofs(); }
 
+    /// returns complete solution vector (displacement + possibly pressure)
+    const gsMatrix<T> & solutionVector() const { return solVector; }
+
     /// returns vector of displacement DoFs
-    const gsMatrix<T> & displacementVector() const
-    {
-        GISMO_ENSURE(dispVector.rows() == massAssembler.numDofs(),
-                     "No initial conditions provided!");
-        return dispVector;
-    }
+    //const gsMatrix<T> & displacementVector() const { return solVector.middleRows(0,massAssembler.numDofs()); }
 
     /// returns vector of velocity DoFs
-    const gsMatrix<T> & velocityVector() const
-    {
-        GISMO_ENSURE(velVector.rows() == massAssembler.numDofs(),
-                     "No initial conditions provided!");
-        return velVector;
-    }
+    const gsMatrix<T> & velocityVector() const { return velVector; }
 
     /// save solver state
     void saveState();
@@ -94,8 +87,11 @@ public:
     /// number of iterations Newton's method required at the last time step
     index_t numberIterations() const { return numIters;}
 
-    /// construct solution using the stiffness assembler
-    void constructSolution(gsMultiPatch<T> & solution) const;
+    /// construct displacement using the stiffness assembler
+    void constructSolution(gsMultiPatch<T> & displacement) const;
+
+    /// construct displacement and pressure (if applicable) using the stiffness assembler
+    void constructSolution(gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// assemblers' accessors
     gsBaseAssembler<T> & mAssembler() { return massAssembler; }
@@ -125,8 +121,8 @@ protected:
     bool initialized;
     /// time step length
     T tStep;
-    /// vector of displacement DoFs
-    gsMatrix<T> dispVector;
+    /// vector of displacement DoFs ( + possibly pressure)
+    gsMatrix<T> solVector;
     /// vector of velocity DoFs
     gsMatrix<T> velVector;
     /// vector of acceleration DoFs
@@ -138,7 +134,7 @@ protected:
     index_t numIters;
     /// saved state
     bool hasSavedState;
-    gsMatrix<T> dispVecSaved;
+    gsMatrix<T> solVecSaved;
     gsMatrix<T> velVecSaved;
     gsMatrix<T> accVecSaved;
     std::vector<gsMatrix<T> > ddofsSaved;
