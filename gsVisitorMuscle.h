@@ -51,10 +51,14 @@ public:
         // saving necessary info
         patch = patchIndex;
         materialLaw = options.getInt("MaterialLaw");
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda_inv = ( 1. + pr ) * ( 1. - 2. * pr ) / E / pr ;
-        mu     = E / ( 2. * ( 1. + pr ) );
+        T YM_muscle = options.getReal("MuscleYoungsModulus");
+        T PR_muscle = options.getReal("MusclePoissonsRatio");
+        T YM_tendon = options.getReal("TendonYoungsModulus");
+        T PR_tendon = options.getReal("TendonPoissonsRatio");
+        lambda_inv_muscle = ( 1. + PR_muscle ) * ( 1. - 2. * PR_muscle ) / YM_muscle / PR_muscle ;
+        mu_muscle     = YM_muscle / ( 2. * ( 1. + PR_muscle ) );
+        lambda_inv_tendon = ( 1. + PR_tendon) * ( 1. - 2. * PR_tendon) / YM_tendon / PR_tendon;
+        mu_tendon     = YM_tendon / ( 2. * ( 1. + PR_tendon ) );
         forceScaling = options.getReal("ForceScaling");
         I = gsMatrix<T>::Identity(dim,dim);
         // resize containers for global indices
@@ -94,6 +98,8 @@ public:
         // evaluate pressure; we use eval_into instead of another gsMapData object
         // because it easier for simple value evaluation
         pressure.patch(patch).eval_into(quNodes,pressureValues);
+        // evaluate muscle-tendon distribution
+        muscleTendon.piece(patch).eval_into(quNodes,muscleTendonValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -105,6 +111,9 @@ public:
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
+            // Compute material parameters
+            const T mu = muscleTendonValues.at(q) * mu_muscle + (1-muscleTendonValues.at(q))*mu_tendon;
+            const T lambda_inv = muscleTendonValues.at(q) * lambda_inv_muscle + (1-muscleTendonValues.at(q))*lambda_inv_tendon;
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
@@ -128,18 +137,6 @@ public:
                 symmetricIdentityTensor<T>(C,RCGinv);
                 C *= mu-pressureValues.at(q);
             }
-            /*if (materialLaw == 4) // mixed Kelvin-Voigt
-            {
-                T RCGtrace = RCG.trace();
-                // Second Piola-Kirchhoff stress tensor
-                S = (pressureValues.at(q)-mu*RCGtrace/3)*RCGinv + mu*I;
-                // elasticity tensor
-                symmetricIdentityTensor<T>(C,RCGinv);
-                C *= mu*RCGtrace/3-pressureValues.at(q);
-                matrixTraceTensor<T>(Ctemp,RCGinv,I);
-                //C -= .5*mu*Ctemp/3;
-            }*/
-
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
@@ -216,7 +213,7 @@ protected:
     index_t materialLaw; // (3: mixed neo-Hooke-ln, 4: mixed Kelvin-Voigt)
     index_t patch; // current patch
     // Lame coefficients and force scaling factor
-    T lambda_inv, mu, forceScaling;
+    T lambda_inv_muscle, mu_muscle, lambda_inv_tendon, mu_tendon, forceScaling;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
@@ -243,6 +240,8 @@ protected:
     const gsMultiPatch<T> & pressure;
     // evaluation data of the current pressure field stored as a 1 x numQuadPoints matrix
     gsMatrix<T> pressureValues;
+    // evaluation data of the muscle-tendon distribution stored as a 1 x numQuadPoints matrix
+    gsMatrix<T> muscleTendonValues;
 
     // all temporary matrices defined here for efficiency
     gsMatrix<T> C, Ctemp, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block, I;

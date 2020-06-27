@@ -1,5 +1,5 @@
 /// This is a simple numerical example of modeling a muscle fiber using the nonlinear elasticity solver
-/// in a mixed displacement-pressure formulation. It corresponds to Example 5.1 from the following paper:
+/// in a mixed displacement-pressure formulation. It roughly corresponds to Example 5.1 from the following paper:
 /// M.H.Gfrerer and B.Simeon "Fiber-based modeling and simulation of skeletal muscles" 2020
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
@@ -12,22 +12,20 @@ using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "This is a muscle fiber benchmark with mixed nonlinear elasticity solver.\n";
+    gsInfo << "This is a muscle fiber benchmark with a mixed nonlinear elasticity solver.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/muscleBeam.xml";
-    real_t youngsModulusMuscle = 3.0e5; // shear modulus 1e5;
-    //real_t youngsModulusTendon = 3.0e6; // shear modulus 1e6;
-    real_t poissonsRatioMuscle = 0.5;
-    //real_t poissonsRatioTendon = 0.5;
-    index_t numUniRefDirX = 3;
-    index_t numUniRef = 1;
+    std::string filename = ELAST_DATA_DIR"/muscleBeamMP.xml";
+    real_t youngsModulus = 3.0e5; // shear modulus 1e5;
+    real_t poissonsRatio = 0.5;
+    index_t numUniRefDirX = 4;
+    index_t numUniRef = 0;
     index_t numDegElev = 0;
     bool subgridOrTaylorHood = false;
-    index_t numPlotPoints = 64000;
+    index_t numPlotPoints = 1000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("This is a muscle fiber benchmark with mixed nonlinear elasticity solver.");
@@ -46,7 +44,6 @@ int main(int argc, char* argv[]){
     // scanning geometry
     gsMultiPatch<> geometry;
     gsReadFile<>(filename, geometry);
-    geometry.computeTopology();
 
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
@@ -61,11 +58,12 @@ int main(int argc, char* argv[]){
         basisDisplacement.uniformRefine();
         basisPressure.uniformRefine();
     }
-    for (index_t i = 0; i < numUniRefDirX; ++i)
-    {
-        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(0)).knots(0).uniformRefine();
-        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(0)).knots(0).uniformRefine();
-    }
+    for (size_t p = 0; p < geometry.nPatches(); ++p)
+        for (index_t i = 0; i < numUniRefDirX; ++i)
+        {
+            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(p)).knots(0).uniformRefine();
+            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(p   )).knots(0).uniformRefine();
+        }
     // additional displacement refinement for stable mixed FEM
     if (!subgridOrTaylorHood) // subgrid
         basisDisplacement.uniformRefine();
@@ -78,15 +76,14 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    for (index_t d = 0; d < 3; ++d)
-    {
-        bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,nullptr,d);
-        bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,nullptr,d);
-    }
+    for (size_t p = 0; p < geometry.nPatches(); ++p)
+        for (index_t d = 0; d < 3; ++d)
+        {
+            bcInfo.addCondition(p,boundary::west,condition_type::dirichlet,nullptr,d);
+            bcInfo.addCondition(p,boundary::east,condition_type::dirichlet,nullptr,d);
+        }
     // source function, rhs
     gsConstantFunction<> g(0.,0.,5.0e4,3);
-
-    gsFunctionExpr<> tendonMuscle("16*(1-x)^2*x^2",3);
 
     //=============================================//
                   // Solving //
@@ -94,8 +91,8 @@ int main(int argc, char* argv[]){
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
-    assembler.options().setReal("YoungsModulus",youngsModulusMuscle);
-    assembler.options().setReal("PoissonsRatio",poissonsRatioMuscle);
+    assembler.options().setReal("YoungsModulus",youngsModulus);
+    assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
@@ -117,18 +114,21 @@ int main(int argc, char* argv[]){
     // displacement and pressure as isogeometric fields
     gsMultiPatch<> displacement,pressure;
     assembler.constructSolution(solver.solution(),solver.allFixedDofs(),displacement,pressure);
+    // construct stress field
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
 
     if (numPlotPoints > 0) // visualization
     {
         // constructing an IGA field (geometry + solution)
         gsField<> displacementField(geometry,displacement);
         gsField<> pressureField(geometry,pressure);
-        gsField<> muscleTendonField(geometry,tendonMuscle,true);
+        gsField<> stressField(assembler.patches(),stresses,true);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Displacement"] = &displacementField;
         fields["Pressure"] = &pressureField;
-        fields["Muscle/tendon"] = &muscleTendonField;
+        fields["von Mises"] = &stressField;
         gsWriteParaviewMultiPhysics(fields,"muscleBeam",numPlotPoints);
         gsInfo << "Open \"muscleBeam.pvd\" in Paraview for visualization.\n";
     }

@@ -44,10 +44,10 @@ public:
         // saving necessary info
         patch = patchIndex;
         materialLaw = options.getInt("MaterialLaw");
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
-        mu     = E / ( 2. * ( 1. + pr ) );
+        T YM = options.getReal("YoungsModulus");
+        T PR = options.getReal("PoissonsRatio");
+        lambda = YM * PR / ( ( 1. + PR ) * ( 1. - 2. * PR ) );
+        mu     = YM / ( 2. * ( 1. + PR ) );
         forceScaling = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
         // elasticity tensor

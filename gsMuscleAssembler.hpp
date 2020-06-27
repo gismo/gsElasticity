@@ -79,7 +79,7 @@ void gsMuscleAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displ
                                                    gsPiecewiseFunction<T> & result,
                                                    stress_components::components components) const
 {
-    GISMO_NO_IMPLEMENTATION;
+    Base::constructCauchyStresses(displacement,pressure,result,components);
 }
 
 }// namespace gismo ends

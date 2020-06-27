@@ -1,5 +1,5 @@
-/// This is a simple numerical example of modeling a muscle fiber using the nonlinear elasticity solver
-/// in a mixed displacement-pressure formulation. It corresponds to Example 5.1 from the following paper:
+/// This is a simple numerical example of modeling a dynamic muscle fiber using the nonlinear elasticity solver
+/// in a mixed displacement-pressure formulation. It rougly corresponds to Example 5.1 from the following paper:
 /// M.H.Gfrerer and B.Simeon "Fiber-based modeling and simulation of skeletal muscles" 2020
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
@@ -14,17 +14,15 @@ using namespace gismo;
 
 int main(int argc, char* argv[]){
 
-    gsInfo << "This is a muscle fiber benchmark with mixed nonlinear elasticity solver.\n";
+    gsInfo << "This is a muscle fiber benchmark with a time-dependent mixed nonlinear elasticity solver.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/muscleBeam.xml";
-    real_t youngsModulusMuscle = 3.0e5; // shear modulus 1e5;
-    //real_t youngsModulusTendon = 3.0e6; // shear modulus 1e6;
-    real_t poissonsRatioMuscle = 0.5;
-    //real_t poissonsRatioTendon = 0.5;
+    std::string filename = ELAST_DATA_DIR"/muscleBeamMP.xml";
+    real_t youngsModulus = 3.0e5; // shear modulus 1e5;
+    real_t poissonsRatio = 0.5;
     real_t density = 9e2;
     real_t loading = 5.0e4;
     // space discretization
@@ -57,7 +55,6 @@ int main(int argc, char* argv[]){
     // scanning geometry
     gsMultiPatch<> geometry;
     gsReadFile<>(filename, geometry);
-    geometry.computeTopology();
 
     // creating bases
     gsMultiBasis<> basisDisplacement(geometry);
@@ -72,11 +69,12 @@ int main(int argc, char* argv[]){
         basisDisplacement.uniformRefine();
         basisPressure.uniformRefine();
     }
-    for (index_t i = 0; i < numUniRefDirX; ++i)
-    {
-        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(0)).knots(0).uniformRefine();
-        static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(0)).knots(0).uniformRefine();
-    }
+    for (size_t p = 0; p < geometry.nPatches(); ++p)
+        for (index_t i = 0; i < numUniRefDirX; ++i)
+        {
+            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(p)).knots(0).uniformRefine();
+            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(p)).knots(0).uniformRefine();
+        }
     // additional displacement refinement for stable mixed FEM
     if (!subgridOrTaylorHood) // subgrid
         basisDisplacement.uniformRefine();
@@ -89,15 +87,14 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    for (index_t d = 0; d < 3; ++d)
-    {
-        bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,nullptr,d);
-        bcInfo.addCondition(0,boundary::east,condition_type::dirichlet,nullptr,d);
-    }
+    for (size_t p = 0; p < geometry.nPatches(); ++p)
+        for (index_t d = 0; d < 3; ++d)
+        {
+            bcInfo.addCondition(p,boundary::west,condition_type::dirichlet,nullptr,d);
+            bcInfo.addCondition(p,boundary::east,condition_type::dirichlet,nullptr,d);
+        }
     // source function, rhs
     gsConstantFunction<> gravity(0.,0.,loading,3);
-
-    gsFunctionExpr<> tendonMuscle("16*(1-x)^2*x^2",3);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -105,8 +102,8 @@ int main(int argc, char* argv[]){
 
     // creating stiffness assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,gravity);
-    assembler.options().setReal("YoungsModulus",youngsModulusMuscle);
-    assembler.options().setReal("PoissonsRatio",poissonsRatioMuscle);
+    assembler.options().setReal("YoungsModulus",youngsModulus);
+    assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
@@ -130,15 +127,11 @@ int main(int argc, char* argv[]){
     // constructing an IGA field (geometry + solution)
     gsField<> dispField(geometry,displacement);
     gsField<> presField(geometry,pressure);
-    //gsField<> stressField(assembler.patches(),stresses,true);
+    gsField<> stressField(assembler.patches(),stresses,true);
     std::map<std::string,const gsField<> *> fields;
     fields["Displacement"] = &dispField;
     fields["Pressure"] = &presField;
-    //fields["von Mises"] = &stressField;
-
-    //std::ofstream logFile;
-    //logFile.open("muscleBeam.txt");
-    //logFile << "# simTime dispAx dispAy compTime numIters\n";
+    fields["von Mises"] = &stressField;
 
     gsProgressBar bar;
     gsStopwatch totalClock;
@@ -152,10 +145,9 @@ int main(int argc, char* argv[]){
     timeSolver.setVelocityVector(gsMatrix<>::Zero(massAssembler.numDofs(),1));
 
     timeSolver.constructSolution(displacement,pressure);
-    //assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
-    //writeLog(logFile,displacement,0.,0.,0);
-    // plotting initial displacement
+    assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
 
+    // plotting initial displacement
     gsParaviewCollection collection("muscleBeam");
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"muscleBeam",collection,0,numPlotPoints);
@@ -173,10 +165,10 @@ int main(int argc, char* argv[]){
         timeSolver.makeTimeStep(timeStep);
         // construct solution; timeSolver already knows the new Dirichlet BC
         timeSolver.constructSolution(displacement,pressure);
+        assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
 
         if (numPlotPoints > 0)
             gsWriteParaviewMultiPhysicsTimeStep(fields,"muscleBeam",collection,i+1,numPlotPoints);
-        //writeLog(logFile,assembler,velocity,pressure,simTime,compTime,timeSolver.numberIterations());
     }
 
     //=============================================//
@@ -190,10 +182,6 @@ int main(int argc, char* argv[]){
         collection.save();
         gsInfo << "Open \"muscleBeam.pvd\" in Paraview for visualization.\n";
     }
-
-    //logFile.close();
-    //gsInfo << "Log file created in \"flappingBeam_CSM3.txt\".\n";
-
 
     return 0;
 }

@@ -47,10 +47,10 @@ public:
         // saving necessary info
         patch = patchIndex;
         materialLaw = options.getInt("MaterialLaw");
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda_inv = ( 1. + pr ) * ( 1. - 2. * pr ) / E / pr ;
-        mu     = E / ( 2. * ( 1. + pr ) );
+        T YM = options.getReal("YoungsModulus");
+        T PR = options.getReal("PoissonsRatio");
+        lambda_inv = ( 1. + PR ) * ( 1. - 2. * PR ) / YM / PR ;
+        mu     = YM / ( 2. * ( 1. + PR ) );
         forceScaling = options.getReal("ForceScaling");
         I = gsMatrix<T>::Identity(dim,dim);
         // resize containers for global indices
