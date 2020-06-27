@@ -72,7 +72,7 @@ public:
     /// returns vector of displacement DoFs
     const gsMatrix<T> & displacementVector() const
     {
-        GISMO_ENSURE(dispVector.rows() == stiffAssembler.numDofs(),
+        GISMO_ENSURE(dispVector.rows() == massAssembler.numDofs(),
                      "No initial conditions provided!");
         return dispVector;
     }
@@ -80,7 +80,7 @@ public:
     /// returns vector of velocity DoFs
     const gsMatrix<T> & velocityVector() const
     {
-        GISMO_ENSURE(velVector.rows() == stiffAssembler.numDofs(),
+        GISMO_ENSURE(velVector.rows() == massAssembler.numDofs(),
                      "No initial conditions provided!");
         return velVector;
     }
@@ -136,7 +136,6 @@ protected:
     using Base::m_ddof;
     /// number of iterations Newton's method took to converge at the last time step
     index_t numIters;
-
     /// saved state
     bool hasSavedState;
     gsMatrix<T> dispVecSaved;

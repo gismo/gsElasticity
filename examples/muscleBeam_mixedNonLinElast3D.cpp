@@ -20,9 +20,9 @@ int main(int argc, char* argv[]){
 
     std::string filename = ELAST_DATA_DIR"/muscleBeam.xml";
     real_t youngsModulusMuscle = 3.0e5; // shear modulus 1e5;
-    real_t youngsModulusTendon = 3.0e6; // shear modulus 1e6;
+    //real_t youngsModulusTendon = 3.0e6; // shear modulus 1e6;
     real_t poissonsRatioMuscle = 0.5;
-    real_t poissonsRatioTendon = 0.5;
+    //real_t poissonsRatioTendon = 0.5;
     index_t numUniRefDirX = 3;
     index_t numUniRef = 1;
     index_t numDegElev = 0;

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsElasticity/gsMassAssembler.h>
+#include <gsElasticity/gsBasePde.h>
 
 #include <gsPde/gsPoissonPde.h>
 #include <gsElasticity/gsVisitorMass.h>
@@ -35,7 +36,7 @@ gsMassAssembler<T>::gsMassAssembler(const gsMultiPatch<T> & patches,
     // TUDO: change/remove gsPde from gsAssembler logic
     gsPiecewiseFunction<T> rightHandSides;
     rightHandSides.addPiece(body_force);
-    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rightHandSides) );
+    typename gsPde<T>::Ptr pde( new gsBasePde<T>(patches,bconditions,rightHandSides) );
     // gsAssembler<>::initialize requires a vector of bases, one for each unknown;
     // different bases are used to compute Dirichlet DoFs;
     // but always the first basis is used for the assembly;

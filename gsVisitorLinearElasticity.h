@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/gsBasePde.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -29,7 +30,7 @@ class gsVisitorLinearElasticity
 public:
 
     gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
           elimMat(elimMatrix)
     {}
 
@@ -157,7 +158,7 @@ public:
 protected:
     // problem info
     short_t dim;
-    const gsPoissonPde<T> * pde_ptr;
+    const gsBasePde<T> * pde_ptr;
     // Lame coefficients and force scaling factor
     T lambda, mu, forceScaling, localStiffening;
     // geometry mapping
@@ -180,7 +181,7 @@ protected:
     gsMatrix<T> C, Ctemp,physGrad, B_i, tempK, B_j, K, I;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
-    gsVector<size_t> blockNumbers;
+    gsVector<index_t> blockNumbers;
 };
 
 } // namespace gismo

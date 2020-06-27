@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/gsBasePde.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -29,7 +30,7 @@ class gsVisitorMixedNonLinearElasticity
 public:
     gsVisitorMixedNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_,
                                       const gsMultiPatch<T> & pressure_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
           displacement(displacement_),
           pressure(pressure_){}
 
@@ -205,7 +206,7 @@ public:
 protected:
     // problem info
     short_t dim;
-    const gsPoissonPde<T> * pde_ptr;
+    const gsBasePde<T> * pde_ptr;
     index_t materialLaw; // (3: mixed neo-Hooke-ln, 4: mixed Kelvin-Voigt)
     index_t patch; // current patch
     // Lame coefficients and force scaling factor
@@ -242,7 +243,7 @@ protected:
     gsVector<T> geometricTangentTemp, Svec, localResidual;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
-    gsVector<size_t> blockNumbers;
+    gsVector<index_t> blockNumbers;
 };
 
 } // namespace gismo

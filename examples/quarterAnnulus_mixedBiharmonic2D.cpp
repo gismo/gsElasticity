@@ -41,12 +41,9 @@ int main(int argc, char* argv[]){
         // Setting loads and boundary conditions //
     //=============================================//
 
-    gsFunctionExpr<> source  ("-64*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",
-                              "0",2);
-    gsFunctionExpr<> laplace ("-4*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",
-                              "-4*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)/4",
-                            "(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)/4",2);
+    gsFunctionExpr<> source  ("-64*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> laplace ("-4*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)/4",2);
     // surface load, neumann BC
 
     // boundary conditions
@@ -78,11 +75,11 @@ int main(int argc, char* argv[]){
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLDLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsMatrix<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with PardisoLU solver in " << clock.stop() <<"s.\n";
 #else
     gsSparseSolver<>::SimplicialLDLT solver(assembler.matrix());
-    gsVector<> solVector = solver.solve(assembler.rhs());
+    gsMatrix<> solVector = solver.solve(assembler.rhs());
     gsInfo << "Solved the system with EigenLU solver in " << clock.stop() <<"s.\n";
 #endif
 

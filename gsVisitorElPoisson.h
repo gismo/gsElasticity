@@ -131,7 +131,7 @@ protected:
     real_t localStiffening;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
-    gsVector<size_t> blockNumbers;
+    gsVector<index_t> blockNumbers;
 };
 
 } // namespace gismo

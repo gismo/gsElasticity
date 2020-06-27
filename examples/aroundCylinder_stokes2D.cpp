@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
     real_t meanVelocity = 0.2; // inflow velocity
     real_t density = 1.;
     // space discretization
-    index_t numUniRef = 3;
+    index_t numUniRef = 1;
     index_t numDegElev = 0;
     index_t numBLRef = 1;
     bool subgridOrTaylorHood = false;
@@ -174,8 +174,6 @@ int main(int argc, char* argv[]){
     gsInfo << "Drag coefficient: " << 2.*force.at(0)/L/pow(meanVelocity,2) << std::endl;
     gsInfo << "Lift coefficient: " << 2.*force.at(1)/L/pow(meanVelocity,2) << std::endl;
     gsInfo << "Pressure difference: " << pressureFront - pressureBack << std::endl;
-
-    gsInfo << solVector.middleRows(4831,5593).norm() << std::endl;
 
     return 0;
 }

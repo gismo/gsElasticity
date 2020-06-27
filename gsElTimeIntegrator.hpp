@@ -55,13 +55,18 @@ void gsElTimeIntegrator<T>::initialize()
                  "No initial conditions provided!");
     GISMO_ENSURE(velVector.rows() == stiffAssembler.numDofs(),
                  "No initial conditions provided!");
-    stiffAssembler.assemble(dispVector,m_ddof);
+    //stiffAssembler.assemble(dispVector,m_ddof);
+    gsInfo << "init\n";
+    stiffAssembler.assemble(gsMatrix<>::Zero(stiffAssembler.numDofs(),1),stiffAssembler.allFixedDofs());
+    gsInfo << "init2\n";
     massAssembler.assemble();
-
+gsInfo << "acc\n";
     gsSparseSolver<>::SimplicialLDLT solver(massAssembler.matrix());
-    accVector = solver.solve(stiffAssembler.rhs());
+    gsInfo << "accSolve\n";
+    accVector = solver.solve(stiffAssembler.rhs().middleRows(0,massAssembler.numDofs()));
 
     initialized = true;
+    gsInfo << "initDone\n";
 }
 
 template <class T>
@@ -106,7 +111,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
     solver.options().setInt("Solver",linear_solver::LDLT);
     solver.solve();
     numIters = solver.numberIterations();
-    return solver.solution();
+    return solver.solution().middleRows(0,massAssembler.numDofs());
 }
 
 template <class T>
@@ -114,10 +119,26 @@ bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
                                      const std::vector<gsMatrix<T> > & fixedDoFs)
 {
     stiffAssembler.assemble(solutionVector,fixedDoFs);
-    m_system.matrix() = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
-    m_system.matrix().makeCompressed();
-    m_system.rhs() = stiffAssembler.rhs() +
-                     massAssembler.matrix()*(alpha1()*(dispVector-solutionVector) + alpha2()*velVector + alpha3()*accVector);
+    if (massAssembler.numDofs() == stiffAssembler.numDofs())
+    {   // displacement formulation
+        m_system.matrix() = alpha1()*massAssembler.matrix() + stiffAssembler.matrix();
+        m_system.matrix().makeCompressed();
+        m_system.rhs() = stiffAssembler.rhs() +
+                         massAssembler.matrix()*(alpha1()*(dispVector-solutionVector) + alpha2()*velVector + alpha3()*accVector);
+    }
+    else
+    {   // displacement-pressure formulation
+        m_system.matrix() = stiffAssembler.matrix();
+        gsSparseMatrix<T> tempMassBlock = alpha1()*massAssembler.matrix();
+        tempMassBlock.conservativeResize(stiffAssembler.numDofs(),massAssembler.numDofs());
+        m_system.matrix().leftCols(massAssembler.numDofs()) += tempMassBlock;
+        m_system.matrix().makeCompressed();
+        m_system.rhs() = stiffAssembler.rhs();
+        m_system.rhs().middleRows(0,massAssembler.numDofs()) +=
+                massAssembler.matrix()*(alpha1()*(dispVector-solutionVector.middleRows(0,massAssembler.numDofs()))
+                                        + alpha2()*velVector + alpha3()*accVector);
+    }
+
     return true;
 }
 
