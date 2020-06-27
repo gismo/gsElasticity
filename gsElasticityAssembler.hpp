@@ -17,7 +17,6 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 
-#include <gsPde/gsPoissonPde.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsElasticity/gsBaseUtils.h>
 #include <gsElasticity/gsGeoUtils.h>

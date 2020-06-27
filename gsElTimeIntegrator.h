@@ -138,6 +138,9 @@ protected:
     gsMatrix<T> velVecSaved;
     gsMatrix<T> accVecSaved;
     std::vector<gsMatrix<T> > ddofsSaved;
+    /// temporary objects for memory efficiency
+    gsMatrix<T> newSolVector, oldVelVector, dispVectorDiff;
+    gsSparseMatrix<T> tempMassBlock;
 };
 
 }

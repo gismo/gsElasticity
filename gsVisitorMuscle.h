@@ -1,6 +1,8 @@
-/** @file gsVisitorMixedNonLinearElasticity.h
+/** @file gsVisitorMuscle.h
 
-    @brief Visitor class for volumetric integration of the mixed nonlinear elasticity system.
+    @brief Visitor class for the nonlinear elasticity solver with a muscle material.
+    The material model is based on the paper by M.H.Gfrerer and B.Simeon
+    "Fiber-based modeling and simulation of skeletal muscles"
 
     This file is part of the G+Smo library.
 
@@ -9,7 +11,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
         A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
@@ -25,12 +26,15 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorMixedNonLinearElasticity
+class gsVisitorMuscle
 {
 public:
-    gsVisitorMixedNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_,
-                                      const gsMultiPatch<T> & pressure_)
+    gsVisitorMuscle(const gsPde<T> & pde_,
+                    const gsPiecewiseFunction<T> & muscleTendon_,
+                    const gsMultiPatch<T> & displacement_,
+                    const gsMultiPatch<T> & pressure_)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+          muscleTendon(muscleTendon_),
           displacement(displacement_),
           pressure(pressure_){}
 
@@ -116,11 +120,26 @@ public:
             // logarithmic neo-Hooke
             GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
             RCGinv = RCG.cramerInverse();
-            // Second Piola-Kirchhoff stress tensor
-            S = (pressureValues.at(q)-mu)*RCGinv + mu*I;
-            // elasticity tensor
-            symmetricIdentityTensor<T>(C,RCGinv);
-            C *= mu-pressureValues.at(q);
+            if (materialLaw == 3) // mixed neo-Hooke-ln
+            {
+                // Second Piola-Kirchhoff stress tensor
+                S = (pressureValues.at(q)-mu)*RCGinv + mu*I;
+                // elasticity tensor
+                symmetricIdentityTensor<T>(C,RCGinv);
+                C *= mu-pressureValues.at(q);
+            }
+            /*if (materialLaw == 4) // mixed Kelvin-Voigt
+            {
+                T RCGtrace = RCG.trace();
+                // Second Piola-Kirchhoff stress tensor
+                S = (pressureValues.at(q)-mu*RCGtrace/3)*RCGinv + mu*I;
+                // elasticity tensor
+                symmetricIdentityTensor<T>(C,RCGinv);
+                C *= mu*RCGtrace/3-pressureValues.at(q);
+                matrixTraceTensor<T>(Ctemp,RCGinv,I);
+                //C -= .5*mu*Ctemp/3;
+            }*/
+
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
@@ -192,6 +211,8 @@ protected:
     // problem info
     short_t dim;
     const gsBasePde<T> * pde_ptr;
+    // distribution of the tendon and muscle tissue; given in the parametric domain
+    const gsPiecewiseFunction<T> & muscleTendon;
     index_t materialLaw; // (3: mixed neo-Hooke-ln, 4: mixed Kelvin-Voigt)
     index_t patch; // current patch
     // Lame coefficients and force scaling factor

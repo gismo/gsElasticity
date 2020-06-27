@@ -18,7 +18,6 @@
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsBasePde.h>
 
-#include <gsPde/gsPoissonPde.h>
 #include <gsElasticity/gsVisitorMass.h>
 
 namespace gismo

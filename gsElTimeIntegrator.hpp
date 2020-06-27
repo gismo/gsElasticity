@@ -68,13 +68,12 @@ void gsElTimeIntegrator<T>::makeTimeStep(T timeStep)
         initialize();
 
     tStep = timeStep;
-    gsMatrix<T> newSolVector;
     if (m_options.getInt("Scheme") == time_integration::implicit_linear)
         newSolVector = implicitLinear();
     if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
         newSolVector = implicitNonlinear();
-    gsMatrix<T> oldVelVector = velVector;
-    gsMatrix<T> dispVectorDiff = (newSolVector - solVector).middleRows(0,massAssembler.numDofs());
+    oldVelVector = velVector;
+    dispVectorDiff = (newSolVector - solVector).middleRows(0,massAssembler.numDofs());
     velVector = alpha4()*dispVectorDiff + alpha5()*oldVelVector + alpha6()*accVector;
     accVector = alpha1()*dispVectorDiff - alpha2()*oldVelVector - alpha3()*accVector;
     solVector = newSolVector;
@@ -93,7 +92,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
     else
     {   // displacement-pressure formulation
         m_system.matrix() = stiffAssembler.matrix();
-        gsSparseMatrix<T> tempMassBlock = alpha1()*massAssembler.matrix();
+        tempMassBlock = alpha1()*massAssembler.matrix();
         tempMassBlock.conservativeResize(stiffAssembler.numDofs(),massAssembler.numDofs());
         m_system.matrix().leftCols(massAssembler.numDofs()) += tempMassBlock;
         m_system.matrix().makeCompressed();
@@ -139,7 +138,7 @@ bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
     else
     {   // displacement-pressure formulation
         m_system.matrix() = stiffAssembler.matrix();
-        gsSparseMatrix<T> tempMassBlock = alpha1()*massAssembler.matrix();
+        tempMassBlock = alpha1()*massAssembler.matrix();
         tempMassBlock.conservativeResize(stiffAssembler.numDofs(),massAssembler.numDofs());
         m_system.matrix().leftCols(massAssembler.numDofs()) += tempMassBlock;
         m_system.matrix().makeCompressed();
