@@ -143,17 +143,21 @@ public:
             fiberDirPhys /= fiberDirPhys.norm();
             // dyadic product of the fiber direction
             M = fiberDirPhys * fiberDirPhys.transpose();
-            //gsInfo << "M\n" <<M << std::endl;
-            //gsInfo << "S\n" <<S << std::endl;
-            //gsInfo << "Mstre\n" <<M*maxMuscleStress * alpha << std::endl;
-
-
             // active stress scaled with the time activation parameter
-            S += M * maxMuscleStress * alpha * muscleTendonValues.at(q);
+            T fiberStretch = sqrt((M*RCG).trace());
+            T ratioInExp = (fiberStretch/optFiberStretch-1)/deltaW;
+            T megaExp = exp(-1*pow(abs(ratioInExp),powerNu));
+            S += M * maxMuscleStress * alpha * muscleTendonValues.at(q)/ pow(fiberStretch,2) * megaExp;
             /// active stress contribution - end
             // elasticity tensor
             symmetricIdentityTensor<T>(C,RCGinv);
             C *= mu-pressureValues.at(q);
+            /// active stress contribution - start
+
+            matrixTraceTensor<T>(Ctemp,M,M);
+            C += -1*Ctemp*alpha*maxMuscleStress*megaExp/pow(fiberStretch,3)* muscleTendonValues.at(q)*
+                    (2 + powerNu*pow(ratioInExp,powerNu-1)/deltaW/optFiberStretch);
+            /// active stress contribution - end
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
