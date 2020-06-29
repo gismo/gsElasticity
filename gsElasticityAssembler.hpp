@@ -146,6 +146,8 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
+        GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke,
+                     "Material law not specified OR not supported!");
         if (saveEliminationMatrix)
         {
             eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
@@ -165,6 +167,8 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
     }
     else // mixed formulation (displacement + pressure)
     {
+        GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::mixed_hooke,
+                     "Material law not specified OR not supported!");
         gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr);
         Base::template push<gsVisitorMixedLinearElasticity<T> >(visitor);
     }
@@ -199,7 +203,10 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
 {
-
+    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff ||
+                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_ln ||
+                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_quad,
+                 "Material law not specified OR not supported!");
     m_system.matrix().setZero();
     reserve();
     m_system.rhs().setZero();
@@ -218,6 +225,9 @@ template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
                                         const gsMultiPatch<T> & pressure)
 {
+    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::mixed_neo_hooke_ln,
+                 "Material law not specified OR not supported!");
+    m_options.setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
     m_system.matrix().setZero();
     reserve();
     m_system.rhs().setZero();

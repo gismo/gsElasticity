@@ -21,15 +21,19 @@ int main(int argc, char* argv[]){
     std::string filename = ELAST_DATA_DIR"/muscleBeamMP.xml";
     real_t youngsModulus = 3.0e5; // shear modulus 1e5;
     real_t poissonsRatio = 0.5;
+    real_t density = 9e2;
+    real_t gravityAcc = -9.8;
+    // spatial discretization
     index_t numUniRefDirX = 4;
     index_t numUniRef = 0;
     index_t numDegElev = 0;
     bool subgridOrTaylorHood = false;
+    // output
     index_t numPlotPoints = 1000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("This is a muscle fiber benchmark with mixed nonlinear elasticity solver.");
-    cmd.addInt("x","xrefine","Number of uniform refinement along the beam axis",numUniRef);
+    cmd.addInt("x","xrefine","Number of uniform refinement along the beam axis",numUniRefDirX);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addInt("d","degelev","Number of degree elevation applications",numDegElev);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgridOrTaylorHood);
@@ -83,17 +87,16 @@ int main(int argc, char* argv[]){
             bcInfo.addCondition(p,boundary::east,condition_type::dirichlet,nullptr,d);
         }
     // source function, rhs
-    gsConstantFunction<> g(0.,0.,5.0e4,3);
+    gsConstantFunction<> gravity(0.,0.,gravityAcc*density,3);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
-    // creating assembler
-    gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,g);
+    // creating assembler for the displacement-pressure formulation
+    gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,gravity);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    assembler.options().setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method

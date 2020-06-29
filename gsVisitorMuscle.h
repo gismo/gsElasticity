@@ -31,10 +31,12 @@ class gsVisitorMuscle
 public:
     gsVisitorMuscle(const gsPde<T> & pde_,
                     const gsPiecewiseFunction<T> & muscleTendon_,
+                    const gsVector<T> & fiberDir_,
                     const gsMultiPatch<T> & displacement_,
                     const gsMultiPatch<T> & pressure_)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
           muscleTendon(muscleTendon_),
+          fiberDir(fiberDir_),
           displacement(displacement_),
           pressure(pressure_){}
 
@@ -50,7 +52,6 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         patch = patchIndex;
-        materialLaw = options.getInt("MaterialLaw");
         T YM_muscle = options.getReal("MuscleYoungsModulus");
         T PR_muscle = options.getReal("MusclePoissonsRatio");
         T YM_tendon = options.getReal("TendonYoungsModulus");
@@ -60,6 +61,11 @@ public:
         lambda_inv_tendon = ( 1. + PR_tendon) * ( 1. - 2. * PR_tendon) / YM_tendon / PR_tendon;
         mu_tendon     = YM_tendon / ( 2. * ( 1. + PR_tendon ) );
         forceScaling = options.getReal("ForceScaling");
+        maxMuscleStress = options.getReal("MaxMuscleStress");
+        optFiberStretch = options.getReal("OptFiberStretch");
+        deltaW = options.getReal("DeltaW");
+        powerNu = options.getReal("PowerNu");
+        alpha = options.getReal("Alpha"); // activation parameter
         I = gsMatrix<T>::Identity(dim,dim);
         // resize containers for global indices
         globalIndices.resize(dim+1);
@@ -129,14 +135,25 @@ public:
             // logarithmic neo-Hooke
             GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
             RCGinv = RCG.cramerInverse();
-            if (materialLaw == 3) // mixed neo-Hooke-ln
-            {
-                // Second Piola-Kirchhoff stress tensor
-                S = (pressureValues.at(q)-mu)*RCGinv + mu*I;
-                // elasticity tensor
-                symmetricIdentityTensor<T>(C,RCGinv);
-                C *= mu-pressureValues.at(q);
-            }
+            // Second Piola-Kirchhoff stress tensor, passive part
+            S = (pressureValues.at(q)-mu)*RCGinv + mu*I;
+            /// active stress contribution - start
+            // fiber direction in the physical domain
+            fiberDirPhys = md.jacobian(q)*fiberDir;
+            fiberDirPhys /= fiberDirPhys.norm();
+            // dyadic product of the fiber direction
+            M = fiberDirPhys * fiberDirPhys.transpose();
+            //gsInfo << "M\n" <<M << std::endl;
+            //gsInfo << "S\n" <<S << std::endl;
+            //gsInfo << "Mstre\n" <<M*maxMuscleStress * alpha << std::endl;
+
+
+            // active stress scaled with the time activation parameter
+            S += M * maxMuscleStress * alpha * muscleTendonValues.at(q);
+            /// active stress contribution - end
+            // elasticity tensor
+            symmetricIdentityTensor<T>(C,RCGinv);
+            C *= mu-pressureValues.at(q);
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
@@ -210,10 +227,13 @@ protected:
     const gsBasePde<T> * pde_ptr;
     // distribution of the tendon and muscle tissue; given in the parametric domain
     const gsPiecewiseFunction<T> & muscleTendon;
-    index_t materialLaw; // (3: mixed neo-Hooke-ln, 4: mixed Kelvin-Voigt)
+    // orientation of muscle fibers in the parametric domain
+    const gsVector<T> & fiberDir;
     index_t patch; // current patch
     // Lame coefficients and force scaling factor
     T lambda_inv_muscle, mu_muscle, lambda_inv_tendon, mu_tendon, forceScaling;
+    // Active response parameters
+    T maxMuscleStress, optFiberStretch, deltaW, powerNu, alpha;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
@@ -244,8 +264,8 @@ protected:
     gsMatrix<T> muscleTendonValues;
 
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, Ctemp, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block, I;
-    gsVector<T> geometricTangentTemp, Svec, localResidual;
+    gsMatrix<T> C, Ctemp, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block, I, M;
+    gsVector<T> geometricTangentTemp, Svec, localResidual, fiberDirPhys;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;

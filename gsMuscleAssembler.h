@@ -35,7 +35,8 @@ public:
                       const gsMultiBasis<T> & basisPres,
                       const gsBoundaryConditions<T> & bconditions,
                       const gsFunction<T> & body_force,
-                      const gsPiecewiseFunction<T> & tendonMuscleDistribution);
+                      const gsPiecewiseFunction<T> & tendonMuscleDistribution,
+                      const gsVector<T> & fiberDirection);
 
     //--------------------- SYSTEM ASSEMBLY ----------------------------------//
 
@@ -58,6 +59,7 @@ protected:
     using Base::m_pde_ptr;
     using Base::m_system;
     gsPiecewiseFunction<T> const & muscleTendon;
+    gsVector<T> const & fiberDir;
 };
 
 

@@ -46,7 +46,6 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         patch = patchIndex;
-        materialLaw = options.getInt("MaterialLaw");
         T YM = options.getReal("YoungsModulus");
         T PR = options.getReal("PoissonsRatio");
         lambda_inv = ( 1. + PR ) * ( 1. - 2. * PR ) / YM / PR ;
@@ -192,7 +191,6 @@ protected:
     // problem info
     short_t dim;
     const gsBasePde<T> * pde_ptr;
-    index_t materialLaw; // (3: mixed neo-Hooke-ln, 4: mixed Kelvin-Voigt)
     index_t patch; // current patch
     // Lame coefficients and force scaling factor
     T lambda_inv, mu, forceScaling;

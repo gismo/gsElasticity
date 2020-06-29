@@ -31,15 +31,22 @@ gsMuscleAssembler<T>::gsMuscleAssembler(gsMultiPatch<T> const & patches,
                                         gsMultiBasis<T> const & basisPres,
                                         gsBoundaryConditions<T> const & bconditions,
                                         gsFunction<T> const & body_force,
-                                        gsPiecewiseFunction<T> const & muscleTendorDistribution)
+                                        gsPiecewiseFunction<T> const & muscleTendorDistribution,
+                                        const gsVector<T> & fiberDirection)
     : gsElasticityAssembler<T>(patches,basisDisp,basisPres,bconditions,body_force),
-      muscleTendon(muscleTendorDistribution)
+      muscleTendon(muscleTendorDistribution),
+      fiberDir(fiberDirection)
 {
 
     m_options.addReal("MuscleYoungsModulus","Youngs modulus of the muscle tissue",3.0e5);
     m_options.addReal("TendonYoungsModulus","Youngs modulus of the tendon tissue",3.0e6);
     m_options.addReal("MusclePoissonsRatio","Poisson's ratio of the muscle tissue",0.5);
     m_options.addReal("TendonPoissonsRatio","Poisson's ratio of the tendon tissue",0.5);
+    m_options.addReal("MaxMuscleStress","Maximum stress produced at the optimal fiber stretch",3.0e5);
+    m_options.addReal("OptFiberStretch","Optimal fiber stretch",1.3);
+    m_options.addReal("DeltaW","Shape parameter of the active reponse function",0.3);
+    m_options.addReal("PowerNu","Shape parameter of the active reponse function",4.0);
+    m_options.addReal("Alpha","Activation parameter of the active muscle response",0.);
 }
 
 //--------------------- SYSTEM ASSEMBLY ----------------------------------//
@@ -60,7 +67,7 @@ bool gsMuscleAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
     m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear systemz
-    gsVisitorMuscle<T> visitor(*m_pde_ptr,muscleTendon,displacement,pressure);
+    gsVisitorMuscle<T> visitor(*m_pde_ptr,muscleTendon,fiberDir,displacement,pressure);
     Base::template push<gsVisitorMuscle<T> >(visitor);
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
