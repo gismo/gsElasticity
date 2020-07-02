@@ -31,10 +31,10 @@ gsMuscleAssembler<T>::gsMuscleAssembler(gsMultiPatch<T> const & patches,
                                         gsMultiBasis<T> const & basisPres,
                                         gsBoundaryConditions<T> const & bconditions,
                                         gsFunction<T> const & body_force,
-                                        gsPiecewiseFunction<T> const & muscleTendorDistribution,
+                                        gsPiecewiseFunction<T> const & muscleTendonDistribution,
                                         const gsVector<T> & fiberDirection)
     : gsElasticityAssembler<T>(patches,basisDisp,basisPres,bconditions,body_force),
-      muscleTendon(muscleTendorDistribution),
+      muscleTendon(muscleTendonDistribution),
       fiberDir(fiberDirection)
 {
 
@@ -47,6 +47,8 @@ gsMuscleAssembler<T>::gsMuscleAssembler(gsMultiPatch<T> const & patches,
     m_options.addReal("DeltaW","Shape parameter of the active reponse function",0.3);
     m_options.addReal("PowerNu","Shape parameter of the active reponse function",4.0);
     m_options.addReal("Alpha","Activation parameter of the active muscle response",0.);
+
+    m_options.setInt("MaterialLaw",material_law::muscle);
 }
 
 //--------------------- SYSTEM ASSEMBLY ----------------------------------//
@@ -84,9 +86,18 @@ template<class T>
 void gsMuscleAssembler<T>::constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                                    const gsMultiPatch<T> & pressure,
                                                    gsPiecewiseFunction<T> & result,
-                                                   stress_components::components components) const
+                                                   stress_components::components comp) const
 {
-    Base::constructCauchyStresses(displacement,pressure,result,components);
+    if (comp == stress_components::all_2D_vector || comp == stress_components::all_2D_matrix)
+        GISMO_ENSURE(Base::m_dim == 2, "Invalid stress components for a 2D problem");
+    if (comp == stress_components::normal_3D_vector || comp == stress_components::shear_3D_vector ||
+        comp == stress_components::all_3D_matrix)
+        GISMO_ENSURE(Base::m_dim == 3, "Invalid stress type for a 3D problem");
+    result.clear();
+
+    for (size_t p = 0; p < m_pde_ptr->domain().nPatches(); ++p )
+        result.addPiecePointer(new gsCauchyStressFunction<T>(p,comp,m_options,
+                                                             &(m_pde_ptr->domain()), &displacement, &pressure));
 }
 
 }// namespace gismo ends

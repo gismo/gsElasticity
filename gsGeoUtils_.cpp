@@ -100,6 +100,8 @@ TEMPLATE_INST gsGeometry<real_t>::uPtr genSpring(gsGeometry<real_t> const & cros
                                                  real_t springRadius, real_t springPitch,
                                                  index_t numQuarterSegments, bool nurbs);
 
+TEMPLATE_INST void genMuscleMP(gsGeometry<real_t> const & muscleSurface, gsMultiPatch<real_t> & result);
+
 //----------------------------------------//
 //----------- Auxiliary functions --------//
 //----------------------------------------//

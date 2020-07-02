@@ -192,12 +192,8 @@ void gsCauchyStressFunction<T>::mixedNonLinearElastic(const gsMatrix<T> & u, gsM
             gsInfo << "Invalid displacement field: J = " << J <<
                       " at point (" << u.col(q).transpose() << ") of patch " << m_patch << std::endl;
         // Second Piola-Kirchhoff stress tensor
-        if (material_law::law(m_options.getInt("MaterialLaw")) == material_law::mixed_neo_hooke_ln)
-        {
-            // Right Cauchy Green strain, C = F'*F
-            C = F.transpose() * F;
-            S = (presVals.at(q)-mu)*(C.cramerInverse()) + mu*I;
-        }
+        C = F.transpose() * F;
+        S = (presVals.at(q)-mu)*(C.cramerInverse()) + mu*I;
         // transformation to Cauchy stress
         sigma = F*S*F.transpose()/J;
         saveStress(sigma,result,q);

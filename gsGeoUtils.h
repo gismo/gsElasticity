@@ -193,6 +193,9 @@ typename gsGeometry<T>::uPtr genSpring(gsGeometry<T> const & crossSection,
                                        T springRadius = 6.0, T springPitch = 2.60258,
                                        index_t numQuarterSegments = 12, bool nurbs = false);
 
+template<class T>
+void genMuscleMP(gsGeometry<T> const & muscleSurface, gsMultiPatch<T> & result);
+
 //----------------------------------------//
 //----------- Auxiliary functions --------//
 //----------------------------------------//

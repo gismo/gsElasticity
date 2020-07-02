@@ -1034,6 +1034,13 @@ typename gsGeometry<T>::uPtr genSpring(gsGeometry<T> const & crossSection,
 
     return typename gsGeometry<T>::uPtr(new gsTensorNurbs<3,T>(xKnots,yKnots,zKnots,coefs,weights));
 }
+
+template<class T>
+void genMuscleMP(gsGeometry<T> const & muscleSurface, gsMultiPatch<T> & result)
+{
+    gsInfo << "yoyo";
+}
+
 //------------------------------------------------------//
 //----------------- Auxiliary functions ----------------//
 //------------------------------------------------------//

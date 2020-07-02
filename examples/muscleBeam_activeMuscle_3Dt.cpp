@@ -34,6 +34,8 @@ int main(int argc, char* argv[]){
     real_t powerNu = 4.0;           // another shape parameter of the active reponse function
     // 1 = muscle, 0 = tendon
     gsFunctionExpr<> tendonMuscleSinglePatch("16*(1-x)^2*x^2",3);
+    real_t prestress = 30;          // prestress applied at the ends of the muscle beam
+
     // direction of muscle fibers in the parametric domain
     gsVector<> fiberDirection(3);
     fiberDirection << 1.,0.,0.;
@@ -57,6 +59,7 @@ int main(int argc, char* argv[]){
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step, sec",timeStep);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addReal("m","maxStress","Maximum stress produced at the optimal fiber stretch",maxMuscleStress);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     gsInfo << "Using " << (subgridOrTaylorHood ? "Taylor-Hood " : "subgrid ") << "mixed elements.\n";
 
@@ -98,20 +101,24 @@ int main(int argc, char* argv[]){
         // Setting loads and boundary conditions //
     //=============================================//
 
+    gsConstantFunction<> prestressLeft(-1*prestress,0.,0.,3);
+    gsConstantFunction<> prestressRight(prestress,0.,0.,3);
+
     // boundary conditions
     gsBoundaryConditions<> bcInfo; 
     for (size_t p = 0; p < geometry.nPatches(); ++p)
-        for (index_t d = 0; d < 3; ++d)
-        {
-            bcInfo.addCondition(p,boundary::west,condition_type::dirichlet,nullptr,d);
-            bcInfo.addCondition(p,boundary::east,condition_type::dirichlet,nullptr,d);
-        }
+    {
+        bcInfo.addCondition(p,boundary::west,condition_type::neumann,&prestressLeft);
+        bcInfo.addCondition(p,boundary::east,condition_type::neumann,&prestressRight);
+    }
     // source function, rhs
     gsConstantFunction<> gravity(0.,0.,gravityAcc*density,3);
 
     gsPiecewiseFunction<> tendonMuscleDistribution;
     for (size_t p = 0; p < geometry.nPatches(); ++p)
         tendonMuscleDistribution.addPiece(tendonMuscleSinglePatch);
+
+
 
     //=============================================//
           // Setting assemblers and solvers //
