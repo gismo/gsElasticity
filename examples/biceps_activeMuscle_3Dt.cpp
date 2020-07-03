@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/bicepsRight.xml";
+    std::string filename = ELAST_DATA_DIR"/bicepsLeft.xml";
 
     // scanning geometry
     gsMultiPatch<> geometry;
@@ -25,6 +25,11 @@ int main(int argc, char* argv[]){
 
     gsMultiPatch<> muscleMP;
     genMuscleMP(geometry.patch(0),muscleMP);
+    gsWrite(muscleMP,"bicepsLeftMP");
+
+    plotGeometry(muscleMP,"muscleJacLeft",100000);
+
+
 
     return 0;
 }

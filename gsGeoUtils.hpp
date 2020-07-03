@@ -24,6 +24,7 @@
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsQuadrature.h>
+#include <gsModeling/gsCoonsPatch.h>
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
@@ -789,27 +790,22 @@ typename gsGeometry<T>::uPtr genLine(index_t deg, index_t num,
 {
     GISMO_ENSURE(num - deg - 1 >= 0,"Too few DoFs\n");
     GISMO_ENSURE(A.cols() == B.cols(),"Points have different dimensions\n");
-    gsKnotVector<T> knots(0.0,1.0, num - deg - 1, deg + 1);
-    gsBSplineBasis<T> basis(knots);
 
+    gsKnotVector<T> knotsCoarse(0.0,1.0, 0, 2);
     index_t dim = A.cols();
-    gsMatrix<T> coefs(num,dim);
+    gsMatrix<T> coefs(2,dim);
+    coefs.row(0) = A.row(iA);
+    coefs.row(1) = B.row(iB);
+    // gen simplest possible Bspline line
+    typename gsBSpline<T>::uPtr line1 = typename gsBSpline<T>::uPtr(new gsBSpline<T>(knotsCoarse,coefs));
+    // refine it
+    for (index_t i = 0; i < deg - 1; ++i)
+        line1->degreeElevate();
+    gsKnotVector<T> knotsFine(0.0,1.0, num - deg - 1, deg + 1);
+    for (index_t i = 0; i < num - deg - 1; ++i)
+        line1->insertKnot(knotsFine.at(i+deg+1));
 
-    T part = 1./(num-deg);
-    T pos = 0.;
-    for (index_t i = 0; i < num; ++i)
-    {
-        if (i < deg)
-            pos += part/deg*i;
-        else if (deg <= i && i < num-deg )
-            pos += part;
-        else
-            pos += part/deg*(num-i);
-
-        coefs.row(i) = combine(A,B,pos,iA,iB).row(0);
-    }
-
-    return basis.makeGeometry(give(coefs));
+    return line1;
 }
 
 template<class T>
@@ -1038,7 +1034,160 @@ typename gsGeometry<T>::uPtr genSpring(gsGeometry<T> const & crossSection,
 template<class T>
 void genMuscleMP(gsGeometry<T> const & muscleSurface, gsMultiPatch<T> & result)
 {
-    gsInfo << "yoyo";
+    index_t innerDim = 2;
+
+    gsMultiPatch<T> temp;
+    temp.addPatch(muscleSurface.clone());
+    static_cast<gsTensorBSpline<2,T> &>(temp.patch(0)).insertKnot(
+                static_cast<const gsTensorBSplineBasis<2,T> &>(muscleSurface.basis()).knots(1).at(4),1);
+    static_cast<gsTensorBSpline<2,T> &>(temp.patch(0)).insertKnot(
+                static_cast<const gsTensorBSplineBasis<2,T> &>(muscleSurface.basis()).knots(1).at(4),1);
+    static_cast<gsTensorBSpline<2,T> &>(temp.patch(0)).insertKnot(0.5,1);
+    static_cast<gsTensorBSpline<2,T> &>(temp.patch(0)).insertKnot(0.5,1);
+    static_cast<gsTensorBSpline<2,T> &>(temp.patch(0)).insertKnot(
+                static_cast<const gsTensorBSplineBasis<2,T> &>(muscleSurface.basis()).knots(1).at(7),1);
+    static_cast<gsTensorBSpline<2,T> &>(temp.patch(0)).insertKnot(
+                static_cast<const gsTensorBSplineBasis<2,T> &>(muscleSurface.basis()).knots(1).at(7),1);
+
+    std::vector<T> knotsEtaShort;
+    for (index_t i = 0; i < 4; ++i)
+        knotsEtaShort.push_back(0.);
+    for (index_t i = 0; i < 4; ++i)
+        knotsEtaShort.push_back(1.);
+    gsKnotVector<T> knotVectorEtaShort(knotsEtaShort,3);
+
+    std::vector<T> knotsEtaLong;
+    for (index_t i = 0; i < 4; ++i)
+        knotsEtaLong.push_back(0.);
+    knotsEtaLong.push_back(0.5);
+    for (index_t i = 0; i < 4; ++i)
+        knotsEtaLong.push_back(1.);
+    gsKnotVector<T> knotVectorEtaLong(knotsEtaLong,3);
+
+    std::vector<T> knotsInner;
+    for (index_t i = 0; i < innerDim+1; ++i)
+        knotsInner.push_back(0.);
+    for (index_t i = 0; i < innerDim+1; ++i)
+        knotsInner.push_back(1.);
+    gsKnotVector<T> knotVectorInner(knotsInner,innerDim);
+
+    gsTensorBSplineBasis<3,T> basis1(static_cast<const gsTensorBSplineBasis<2,T> &>(temp.basis(0)).knots(0),
+                                     knotVectorEtaShort,knotVectorInner);
+    gsTensorBSplineBasis<3,T> basis2(static_cast<const gsTensorBSplineBasis<2,T> &>(temp.basis(0)).knots(0),
+                                     knotVectorEtaLong,knotVectorInner);
+    gsTensorBSplineBasis<3,T> basis3(static_cast<const gsTensorBSplineBasis<2,T> &>(temp.basis(0)).knots(0),
+                                     knotVectorEtaShort,knotVectorInner);
+    gsTensorBSplineBasis<3,T> basis4(static_cast<const gsTensorBSplineBasis<2,T> &>(temp.basis(0)).knots(0),
+                                     knotVectorEtaLong,knotVectorInner);
+    gsTensorBSplineBasis<3,T> basis5(static_cast<const gsTensorBSplineBasis<2,T> &>(temp.basis(0)).knots(0),
+                                     knotVectorEtaShort,knotVectorEtaLong);
+
+    gsMatrix<T> coefs1(7*4*(innerDim+1),3);
+    gsMatrix<T> coefs2(7*5*(innerDim+1),3);
+    gsMatrix<T> coefs3(7*4*(innerDim+1),3);
+    gsMatrix<T> coefs4(7*5*(innerDim+1),3);
+    gsMatrix<T> coefs5(7*4*5,3);
+    for (index_t i = 0; i < 7; ++i)
+    {   // for each cross-section
+        // compute four corners of the interior hub-patch
+        gsMatrix<T> cornerA = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),1./3.,0*7+i,7*7+i); // right 1/3 left 1/3
+        gsMatrix<T> cornerC = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),2./3.,0*7+i,7*7+i); // right 3/5 left 2/3
+        gsMatrix<T> cornerB = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),1./3.,3*7+i,10*7+i); // right 2/5 left 1/3
+        gsMatrix<T> cornerD = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),2./3.,3*7+i,10*7+i); // right 2/3 left 2/3
+
+        if (i == 0) // only for the left
+        {
+            cornerB = combine(cornerB,cornerC,0.5);
+            cornerD = combine(cornerD,cornerC,0.5);
+        }
+
+        // gen patch1
+        gsMultiPatch<T> patch1Curves;
+        patch1Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerA,0*7+i));
+        patch1Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerB,3*7+i));
+        gsMatrix<T> bdryABcoefs(4,3);
+        for (index_t j = 0; j < 4; ++j)
+            bdryABcoefs.row(j) = temp.patch(0).coefs().row(j*7+i);
+        patch1Curves.addPatch(typename gsGeometry<T>::uPtr(new gsBSpline<T>(knotVectorEtaShort,bdryABcoefs)));
+        patch1Curves.addPatch(genLine(3,4,cornerA,cornerB));
+        gsCoonsPatch<T> coonsPatch1(patch1Curves);
+        coonsPatch1.compute();
+
+        for (index_t j = 0; j < 4; ++j)
+            for (index_t k = 0; k < innerDim+1; ++k)
+                coefs1.row(k*4*7+j*7+(6-i)) = coonsPatch1.result().coefs().row(k*4+j);
+
+        // gen patch2
+        gsMultiPatch<T> patch2Curves;
+        patch2Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerB,3*7+i));
+        patch2Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerC,7*7+i));
+        gsMatrix<T> bdryBCcoefs(5,3);
+        for (index_t j = 0; j < 5; ++j)
+            bdryBCcoefs.row(j) = temp.patch(0).coefs().row((j+3)*7+i);
+        patch2Curves.addPatch(typename gsGeometry<T>::uPtr(new gsBSpline<T>(knotVectorEtaLong,bdryBCcoefs)));
+        patch2Curves.addPatch(genLine(3,5,cornerB,cornerC));
+        gsCoonsPatch<T> coonsPatch2(patch2Curves);
+        coonsPatch2.compute();
+
+        for (index_t j = 0; j < 5; ++j)
+            for (index_t k = 0; k < innerDim+1; ++k)
+                coefs2.row(k*5*7+j*7+(6-i)) = coonsPatch2.result().coefs().row(k*5+j);
+
+        // gen patch3
+        gsMultiPatch<T> patch3Curves;
+        patch3Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerC,7*7+i));
+        patch3Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerD,10*7+i));
+        gsMatrix<T> bdryCDcoefs(4,3);
+        for (index_t j = 0; j < 4; ++j)
+            bdryCDcoefs.row(j) = temp.patch(0).coefs().row((j+7)*7+i);
+        patch3Curves.addPatch(typename gsGeometry<T>::uPtr(new gsBSpline<T>(knotVectorEtaShort,bdryCDcoefs)));
+        patch3Curves.addPatch(genLine(3,4,cornerC,cornerD));
+        gsCoonsPatch<T> coonsPatch3(patch3Curves);
+        coonsPatch3.compute();
+
+        for (index_t j = 0; j < 4; ++j)
+            for (index_t k = 0; k < innerDim+1; ++k)
+                coefs3.row(k*4*7+j*7+(6-i)) = coonsPatch3.result().coefs().row(k*4+j);
+
+        // gen patch4
+        gsMultiPatch<T> patch4Curves;
+        patch4Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerD,10*7+i));
+        patch4Curves.addPatch(genLine(innerDim,innerDim+1,temp.patch(0).coefs(),cornerA,14*7+i));
+        gsMatrix<T> bdryDAcoefs(5,3);
+        for (index_t j = 0; j < 5; ++j)
+            bdryDAcoefs.row(j) = temp.patch(0).coefs().row((j+10)*7+i);
+        patch4Curves.addPatch(typename gsGeometry<T>::uPtr(new gsBSpline<T>(knotVectorEtaLong,bdryDAcoefs)));
+        patch4Curves.addPatch(genLine(3,5,cornerD,cornerA));
+        gsCoonsPatch<T> coonsPatch4(patch4Curves);
+        coonsPatch4.compute();
+
+        for (index_t j = 0; j < 5; ++j)
+            for (index_t k = 0; k < innerDim+1; ++k)
+                coefs4.row(k*5*7+j*7+(6-i)) = coonsPatch4.result().coefs().row(k*5+j);
+
+        // gen patch5
+        gsMultiPatch<T> patch5Curves;
+        patch5Curves.addPatch(genLine(3,5,cornerA,cornerD));
+        patch5Curves.addPatch(genLine(3,5,cornerB,cornerC));
+        patch5Curves.addPatch(genLine(3,4,cornerA,cornerB));
+        patch5Curves.addPatch(genLine(3,4,cornerD,cornerC));
+
+        gsCoonsPatch<T> coonsPatch5(patch5Curves);
+        coonsPatch5.compute();
+
+        for (index_t j = 0; j < 4; ++j)
+            for (index_t k = 0; k < 5; ++k)
+                coefs5.row(k*4*7+j*7+(6-i)) = coonsPatch5.result().coefs().row(k*4+j);
+
+    }
+
+    result.addPatch(basis1.makeGeometry(coefs1));
+    result.addPatch(basis2.makeGeometry(coefs2));
+    result.addPatch(basis3.makeGeometry(coefs3));
+    result.addPatch(basis4.makeGeometry(coefs4));
+    result.addPatch(basis5.makeGeometry(coefs5));
+
+    result.computeTopology();
 }
 
 //------------------------------------------------------//
