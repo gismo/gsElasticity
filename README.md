@@ -6,6 +6,10 @@ gsElasticity is a **submodule of G+Smo** which has started as a collection of no
 
 <img src="../media/images/terrific.png" width="500">   
 
+------------------  Active muscle behavior  ----------------------------------------------------
+
+<img src="../media/images/muscle.png" width="600">   
+
 ------------------  Fluid-structure interaction in 2D  ---------------------------------------------------------------
 
 <img src="../media/images/FSI.png" width="450">
