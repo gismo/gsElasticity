@@ -143,7 +143,7 @@ int main(int argc, char* argv[]){
     // creating time integrator
     gsElTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
     timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
-    timeSolver.options().setInt("Verbosity",solver_verbosity::all);
+    timeSolver.options().setInt("Verbosity",solver_verbosity::none);
 
     //=============================================//
             // Setting output & auxilary//
