@@ -22,6 +22,7 @@ gsElasticity currently includes the following solvers for 2D and 3D multi-patch 
   * implicit time integration with Newmark method
   * pure displacement and mixed displacement-pressure formulations
   * thermal expansion
+  * active muscle behavior
 * Incompressible Navier-Stokes solver
   * Stokes equation
   * stationary INSE
