@@ -43,11 +43,8 @@ int main(int argc, char* argv[]){
     index_t numUniRef = 0;
     index_t numDegElev = 0;
     bool subgridOrTaylorHood = false;
-    // time integration
-    real_t timeSpan = 2;
-    real_t timeStep = 0.1;
     // output
-    index_t numPlotPoints = 100000;
+    index_t numPlotPoints = 10000;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("This is a simulation of active muscle behavior.");
@@ -55,8 +52,6 @@ int main(int argc, char* argv[]){
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addInt("d","degelev","Number of degree elevation applications",numDegElev);
     cmd.addSwitch("e","element","True - subgrid, false - TH",subgridOrTaylorHood);
-    cmd.addReal("t","time","Time span, sec",timeSpan);
-    cmd.addReal("s","step","Time step, sec",timeStep);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addReal("m","maxStress","Maximum stress produced at the optimal fiber stretch",maxMuscleStress);
     cmd.addSwitch("left","Simulate left biceps head (default - right)",rightOrLeft);
@@ -102,8 +97,11 @@ int main(int argc, char* argv[]){
         // Setting loads and boundary conditions //
     //=============================================//
 
-    // boundary conditions: none
+    // boundary conditions
     gsBoundaryConditions<> bcInfo;
+    for (size_t p = 0; p < geometry.nPatches(); ++p)
+        for (index_t d = 0; d < 3; ++d)
+            bcInfo.addCondition(p,rightOrLeft ? boundary::left : boundary::right,condition_type::dirichlet,nullptr,d);
     // source function, rhs
     gsConstantFunction<> gravity(0.,0.,gravityAcc*density,3);
 
@@ -125,84 +123,48 @@ int main(int argc, char* argv[]){
     assembler.options().setReal("OptFiberStretch",optFiberStretch);
     assembler.options().setReal("DeltaW",deltaW);
     assembler.options().setReal("PowerNu",powerNu);
+    assembler.options().setReal("Alpha",1.);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
-
-    // creating mass assembler
-    gsMassAssembler<real_t> massAssembler(geometry,basisDisplacement,bcInfo,gravity);
-    massAssembler.options().setReal("Density",density);
-
-    // creating time integrator
-    gsElTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
-    timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
-    timeSolver.options().setInt("Verbosity",solver_verbosity::none);
-
-    //=============================================//
-            // Setting output & auxilary//
-    //=============================================//
-
-    // displacement field
-    gsMultiPatch<> displacement, pressure;
-    // stress field
-    gsPiecewiseFunction<> stresses;
-    // constructing an IGA field (geometry + solution)
-    gsField<> dispField(geometry,displacement);
-    gsField<> presField(geometry,pressure);
-    gsField<> muscleTendonField(geometry,tendonMuscleDistribution,true);
-    gsField<> stressField(assembler.patches(),stresses,true);
-    std::map<std::string,const gsField<> *> fields;
-    fields["Displacement"] = &dispField;
-    fields["Pressure"] = &presField;
-    fields["Muscle/tendon"] = &muscleTendonField;
-    fields["von Mises"] = &stressField;
-
-    gsProgressBar bar;
-    gsStopwatch totalClock;
-
-    //=============================================//
-                   // Initial conditions //
-    //=============================================//
-
-    // set initial conditions
-    timeSolver.setDisplacementVector(gsMatrix<>::Zero(massAssembler.numDofs(),1));
-    timeSolver.setVelocityVector(gsMatrix<>::Zero(massAssembler.numDofs(),1));
-
-    timeSolver.constructSolution(displacement,pressure);
-    assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
-
-    // plotting initial displacement
-    gsParaviewCollection collection(rightOrLeft ? "bicepsRight" : "bicepsLeft");
-    if (numPlotPoints > 0)
-        gsWriteParaviewMultiPhysicsTimeStep(fields,rightOrLeft ? "bicepsRight" : "bicepsLeft",collection,0,numPlotPoints);
 
     //=============================================//
                   // Solving //
     //=============================================//
 
-    gsInfo << "Running the simulation...\n";
-    totalClock.restart();
-    for (index_t i = 0; i < index_t(timeSpan/timeStep); ++i)
-    {
-        bar.display(i+1,index_t(timeSpan/timeStep));
+    // setting Newton's method
+    gsIterative<real_t> solver(assembler);
+    solver.options().setInt("Verbosity",solver_verbosity::all);
+    solver.options().setInt("Solver",linear_solver::LDLT);
 
-        assembler.options().setReal("Alpha",(1-cos(M_PI*(i+1)*timeStep))/2);
-        timeSolver.makeTimeStep(timeStep);
-        // construct solution; timeSolver already knows the new Dirichlet BC
-        timeSolver.constructSolution(displacement,pressure);
-        assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
-
-        if (numPlotPoints > 0)
-            gsWriteParaviewMultiPhysicsTimeStep(fields,rightOrLeft ? "bicepsRight" : "bicepsLeft",collection,i+1,numPlotPoints);
-    }
+    gsInfo << "Solving...\n";
+    gsStopwatch clock;
+    clock.restart();
+    solver.solve();
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     //=============================================//
-                // Final touches //
+                    // Output //
     //=============================================//
 
-    gsInfo << "Simulation time: " + secToHMS(totalClock.stop()) + "\n";
+    // displacement as an isogeometric displacement field
+    gsMultiPatch<> displacement,pressure;
+    assembler.constructSolution(solver.solution(),solver.allFixedDofs(),displacement,pressure);
+    gsPiecewiseFunction<> stresses;
+    assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
 
-    if (numPlotPoints > 0)
+    if (numPlotPoints > 0) // visualization
     {
-        collection.save();
+        // constructing an IGA field (geometry + solution)
+        gsField<> displacementField(assembler.patches(),displacement);
+        gsField<> pressureField(assembler.patches(),pressure);
+        gsField<> stressField(assembler.patches(),stresses,true);
+        gsField<> muscleTendonField(geometry,tendonMuscleDistribution,true);
+        // creating a container to plot all fields to one Paraview file
+        std::map<std::string,const gsField<> *> fields;
+        fields["Displacement"] = &displacementField;
+        fields["Pressure"] = &pressureField;
+        fields["von Mises"] = &stressField;
+        fields["Muscle/tendon"] = &muscleTendonField;
+        gsWriteParaviewMultiPhysics(fields,rightOrLeft ? "bicepsRight" : "bicepsLeft",numPlotPoints);
         gsInfo << "Open \" " << (rightOrLeft ? "bicepsRight" : "bicepsLeft")
                << ".pvd\" in Paraview for visualization.\n";
     }
