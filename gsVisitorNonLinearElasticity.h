@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/gsBasePde.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -28,7 +29,7 @@ class gsVisitorNonLinearElasticity
 {
 public:
     gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
           displacement(displacement_) { }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -43,10 +44,10 @@ public:
         // saving necessary info
         patch = patchIndex;
         materialLaw = options.getInt("MaterialLaw");
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
-        mu     = E / ( 2. * ( 1. + pr ) );
+        T YM = options.getReal("YoungsModulus");
+        T PR = options.getReal("PoissonsRatio");
+        lambda = YM * PR / ( ( 1. + PR ) * ( 1. - 2. * PR ) );
+        mu     = YM / ( 2. * ( 1. + PR ) );
         forceScaling = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
         // elasticity tensor
@@ -192,7 +193,7 @@ protected:
     // problem info
     short_t dim;
     index_t patch; // current patch
-    const gsPoissonPde<T> * pde_ptr;
+    const gsBasePde<T> * pde_ptr;
     index_t materialLaw; // (0: St. Venant-Kirchhoff, 1: ln neo-Hooke, 2: quad neo-Hooke)
     // Lame coefficients and force scaling factor
     T lambda, mu, forceScaling;
@@ -221,7 +222,7 @@ protected:
     T localStiffening;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
-    gsVector<size_t> blockNumbers;
+    gsVector<index_t> blockNumbers;
 };
 
 } // namespace gismo

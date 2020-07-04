@@ -16,7 +16,7 @@
 
 #include <gsElasticity/gsNsAssembler.h>
 
-#include <gsPde/gsPoissonPde.h>
+#include <gsElasticity/gsBasePde.h>
 #include <gsUtils/gsPointGrid.h>
 
 // Element visitors
@@ -36,7 +36,7 @@ gsNsAssembler<T>::gsNsAssembler(gsMultiPatch<T> const & patches,
     // comment: same problems as in gsElasticityAssembler
     gsPiecewiseFunction<T> rightHandSides;
     rightHandSides.addPiece(body_force);
-    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rightHandSides) );
+    typename gsPde<T>::Ptr pde( new gsBasePde<T>(patches,bconditions,rightHandSides) );
 
     m_dim = body_force.targetDim();
     for (short_t d = 0; d < m_dim; ++d)

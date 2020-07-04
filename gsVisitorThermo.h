@@ -143,7 +143,7 @@ protected:
     gsMatrix<T> physGrad;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
-    gsVector<size_t> blockNumbers;
+    gsVector<index_t> blockNumbers;
 
 }; //class definition ends
 

@@ -17,10 +17,10 @@
 
 #include <gsElasticity/gsElasticityAssembler.h>
 
-#include <gsPde/gsPoissonPde.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsElasticity/gsBaseUtils.h>
 #include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/gsBasePde.h>
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
@@ -40,11 +40,10 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
 {
     // Originally concieved as a meaningful class, now gsPde is just a container for
     // the domain, boundary conditions and the right-hand side;
-    // any derived class can surve this purpuse, for example gsPoissonPde;
     // TUDO: change/remove gsPde from gsAssembler logic
     gsPiecewiseFunction<T> rightHandSides;
     rightHandSides.addPiece(body_force);
-    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rightHandSides) );
+    typename gsPde<T>::Ptr pde( new gsBasePde<T>(patches,bconditions,rightHandSides) );
     // gsAssembler<>::initialize requires a vector of bases, one for each unknown;
     // different bases are used to compute Dirichlet DoFs;
     // but always the first basis is used for the assembly;
@@ -66,7 +65,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
     // same as above
     gsPiecewiseFunction<T> rightHandSides;
     rightHandSides.addPiece(body_force);
-    typename gsPde<T>::Ptr pde( new gsPoissonPde<T>(patches,bconditions,rightHandSides) );
+    typename gsPde<T>::Ptr pde( new gsBasePde<T>(patches,bconditions,rightHandSides) );
     // same as above
     m_dim = body_force.targetDim();
     for (short_t d = 0; d < m_dim; ++d)
@@ -147,6 +146,8 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
+        GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke,
+                     "Material law not specified OR not supported!");
         if (saveEliminationMatrix)
         {
             eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
@@ -166,6 +167,8 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
     }
     else // mixed formulation (displacement + pressure)
     {
+        GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::mixed_hooke,
+                     "Material law not specified OR not supported!");
         gsVisitorMixedLinearElasticity<T> visitor(*m_pde_ptr);
         Base::template push<gsVisitorMixedLinearElasticity<T> >(visitor);
     }
@@ -200,7 +203,10 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
 {
-
+    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff ||
+                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_ln ||
+                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_quad,
+                 "Material law not specified OR not supported!");
     m_system.matrix().setZero();
     reserve();
     m_system.rhs().setZero();
@@ -219,6 +225,9 @@ template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
                                         const gsMultiPatch<T> & pressure)
 {
+    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::mixed_neo_hooke_ln,
+                 "Material law not specified OR not supported!");
+    m_options.setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
     m_system.matrix().setZero();
     reserve();
     m_system.rhs().setZero();

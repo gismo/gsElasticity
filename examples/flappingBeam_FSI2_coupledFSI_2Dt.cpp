@@ -310,8 +310,8 @@ int main(int argc, char* argv[])
     elTimeSolver.setVelocityVector(gsMatrix<>::Zero(elAssembler.numDofs(),1));
 
     // plotting initial condition
-    nsAssembler.constructSolution(nsTimeSolver.solutionVector(),nsTimeSolver.allFixedDofs(),velFlow,presFlow);
-    elAssembler.constructSolution(elTimeSolver.displacementVector(),elTimeSolver.allFixedDofs(),dispBeam);
+    nsTimeSolver.constructSolution(velFlow,presFlow);
+    elTimeSolver.constructSolution(dispBeam);
     elAssembler.constructCauchyStresses(dispBeam,stresses,stress_components::von_mises);
     moduleALE.constructSolution(dispALE);
 

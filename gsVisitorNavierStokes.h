@@ -18,6 +18,8 @@
 #include <gsCore/gsFuncData.h>
 #include <algorithm>
 
+#include <gsElasticity/gsBasePde.h>
+
 namespace gismo
 {
 
@@ -28,7 +30,7 @@ public:
 
     gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
                           const gsMultiPatch<T> & pressure_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
           velocity(velocity_),
           pressure(pressure_) {}
 
@@ -269,7 +271,7 @@ protected:
 protected:
     // problem info
     short_t dim;
-    const gsPoissonPde<T> * pde_ptr;
+    const gsBasePde<T> * pde_ptr;
     // switch between assembling different linear systems (Newton or Oseen iterations)
     index_t assemblyType;
     index_t patch; // current patch
@@ -311,7 +313,7 @@ protected:
     gsMatrix<T> block, physGradVel, physJacCurVel;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
-    gsVector<size_t> blockNumbers;
+    gsVector<index_t> blockNumbers;
 };
 
 } // namespace gismo

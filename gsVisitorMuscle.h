@@ -1,6 +1,8 @@
-/** @file gsVisitorMixedNonLinearElasticity.h
+/** @file gsVisitorMuscle.h
 
-    @brief Visitor class for volumetric integration of the mixed nonlinear elasticity system.
+    @brief Visitor class for the nonlinear elasticity solver with a muscle material.
+    The material model is based on the paper by M.H.Gfrerer and B.Simeon
+    "Fiber-based modeling and simulation of skeletal muscles"
 
     This file is part of the G+Smo library.
 
@@ -9,7 +11,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
         A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
@@ -25,12 +26,17 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorMixedNonLinearElasticity
+class gsVisitorMuscle
 {
 public:
-    gsVisitorMixedNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_,
-                                      const gsMultiPatch<T> & pressure_)
+    gsVisitorMuscle(const gsPde<T> & pde_,
+                    const gsPiecewiseFunction<T> & muscleTendon_,
+                    const gsVector<T> & fiberDir_,
+                    const gsMultiPatch<T> & displacement_,
+                    const gsMultiPatch<T> & pressure_)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+          muscleTendon(muscleTendon_),
+          fiberDir(fiberDir_),
           displacement(displacement_),
           pressure(pressure_){}
 
@@ -46,11 +52,20 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         patch = patchIndex;
-        T YM = options.getReal("YoungsModulus");
-        T PR = options.getReal("PoissonsRatio");
-        lambda_inv = ( 1. + PR ) * ( 1. - 2. * PR ) / YM / PR ;
-        mu     = YM / ( 2. * ( 1. + PR ) );
+        T YM_muscle = options.getReal("MuscleYoungsModulus");
+        T PR_muscle = options.getReal("MusclePoissonsRatio");
+        T YM_tendon = options.getReal("TendonYoungsModulus");
+        T PR_tendon = options.getReal("TendonPoissonsRatio");
+        lambda_inv_muscle = ( 1. + PR_muscle ) * ( 1. - 2. * PR_muscle ) / YM_muscle / PR_muscle ;
+        mu_muscle     = YM_muscle / ( 2. * ( 1. + PR_muscle ) );
+        lambda_inv_tendon = ( 1. + PR_tendon) * ( 1. - 2. * PR_tendon) / YM_tendon / PR_tendon;
+        mu_tendon     = YM_tendon / ( 2. * ( 1. + PR_tendon ) );
         forceScaling = options.getReal("ForceScaling");
+        maxMuscleStress = options.getReal("MaxMuscleStress");
+        optFiberStretch = options.getReal("OptFiberStretch");
+        deltaW = options.getReal("DeltaW");
+        powerNu = options.getReal("PowerNu");
+        alpha = options.getReal("Alpha"); // activation parameter
         I = gsMatrix<T>::Identity(dim,dim);
         // resize containers for global indices
         globalIndices.resize(dim+1);
@@ -89,6 +104,8 @@ public:
         // evaluate pressure; we use eval_into instead of another gsMapData object
         // because it easier for simple value evaluation
         pressure.patch(patch).eval_into(quNodes,pressureValues);
+        // evaluate muscle-tendon distribution
+        muscleTendon.piece(patch).eval_into(quNodes,muscleTendonValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -100,6 +117,9 @@ public:
         // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
+            // Compute material parameters
+            const T mu = muscleTendonValues.at(q) * mu_muscle + (1-muscleTendonValues.at(q))*mu_tendon;
+            const T lambda_inv = muscleTendonValues.at(q) * lambda_inv_muscle + (1-muscleTendonValues.at(q))*lambda_inv_tendon;
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
@@ -115,11 +135,29 @@ public:
             // logarithmic neo-Hooke
             GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
             RCGinv = RCG.cramerInverse();
-            // Second Piola-Kirchhoff stress tensor
+            // Second Piola-Kirchhoff stress tensor, passive part
             S = (pressureValues.at(q)-mu)*RCGinv + mu*I;
+            /// active stress contribution - start
+            // fiber direction in the physical domain
+            fiberDirPhys = md.jacobian(q)*fiberDir;
+            fiberDirPhys /= fiberDirPhys.norm();
+            // dyadic product of the fiber direction
+            M = fiberDirPhys * fiberDirPhys.transpose();
+            // active stress scaled with the time activation parameter
+            T fiberStretch = sqrt((M*RCG).trace());
+            T ratioInExp = (fiberStretch/optFiberStretch-1)/deltaW;
+            T megaExp = exp(-1*pow(abs(ratioInExp),powerNu));
+            S += M * maxMuscleStress * alpha * muscleTendonValues.at(q)/ pow(fiberStretch,2) * megaExp;
+            /// active stress contribution - end
             // elasticity tensor
             symmetricIdentityTensor<T>(C,RCGinv);
             C *= mu-pressureValues.at(q);
+            /// active stress contribution - start
+
+            matrixTraceTensor<T>(Ctemp,M,M);
+            C += -1*Ctemp*alpha*maxMuscleStress*megaExp/pow(fiberStretch,3)* muscleTendonValues.at(q)*
+                    (2 + powerNu*pow(ratioInExp,powerNu-1)/deltaW/optFiberStretch);
+            /// active stress contribution - end
             // Matrix A and reisdual: loop over displacement basis functions
             for (index_t i = 0; i < N_D; i++)
             {
@@ -191,9 +229,15 @@ protected:
     // problem info
     short_t dim;
     const gsBasePde<T> * pde_ptr;
+    // distribution of the tendon and muscle tissue; given in the parametric domain
+    const gsPiecewiseFunction<T> & muscleTendon;
+    // orientation of muscle fibers in the parametric domain
+    const gsVector<T> & fiberDir;
     index_t patch; // current patch
     // Lame coefficients and force scaling factor
-    T lambda_inv, mu, forceScaling;
+    T lambda_inv_muscle, mu_muscle, lambda_inv_tendon, mu_tendon, forceScaling;
+    // Active response parameters
+    T maxMuscleStress, optFiberStretch, deltaW, powerNu, alpha;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
@@ -220,10 +264,12 @@ protected:
     const gsMultiPatch<T> & pressure;
     // evaluation data of the current pressure field stored as a 1 x numQuadPoints matrix
     gsMatrix<T> pressureValues;
+    // evaluation data of the muscle-tendon distribution stored as a 1 x numQuadPoints matrix
+    gsMatrix<T> muscleTendonValues;
 
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, Ctemp, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block, I;
-    gsVector<T> geometricTangentTemp, Svec, localResidual;
+    gsMatrix<T> C, Ctemp, physGradDisp, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, divV, block, I, M;
+    gsVector<T> geometricTangentTemp, Svec, localResidual, fiberDirPhys;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;

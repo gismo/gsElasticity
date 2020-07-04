@@ -46,6 +46,8 @@ public:
           m_type(comp)
     {}
 
+
+
     virtual short_t domainDim() const
     {
         return m_geometry->patch(m_patch).parDim();
@@ -80,7 +82,7 @@ public:
         case material_law::neo_hooke_quad : nonLinearElastic(u,result); return;
         case material_law::mixed_hooke : mixedLinearElastic(u,result); return;
         case material_law::mixed_neo_hooke_ln : mixedNonLinearElastic(u,result); return;
-        //case material_law::mixed_kelvin_voigt : mixedKelvinVoigt(u,result); return;
+        case material_law::muscle : mixedNonLinearElastic(u,result); return;
         default: return;
         }
     }

@@ -95,12 +95,12 @@ public:
     //--------------------- SPECIALS ----------------------------------//
 
     /// @brief Construct Cauchy stresses for evaluation or visualization
-    void constructCauchyStresses(const gsMultiPatch<T> & displacement,
+    virtual void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  gsPiecewiseFunction<T> & result,
                                  stress_components::components component = stress_components::von_mises) const;
 
     /// @brief Construct Cauchy stresses for evaluation or visualization
-    void constructCauchyStresses(const gsMultiPatch<T> & displacement,
+    virtual void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                  const gsMultiPatch<T> & pressure,
                                  gsPiecewiseFunction<T> & result,
                                  stress_components::components component = stress_components::von_mises) const;

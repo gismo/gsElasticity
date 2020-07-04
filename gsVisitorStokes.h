@@ -16,6 +16,7 @@
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
+#include <gsElasticity/gsBasePde.h>
 
 namespace gismo
 {
@@ -26,7 +27,7 @@ class gsVisitorStokes
 public:
 
     gsVisitorStokes(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_))
+        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_))
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -124,7 +125,7 @@ public:
 protected:
     // problem info
     short_t dim;
-    const gsPoissonPde<T> * pde_ptr;
+    const gsBasePde<T> * pde_ptr;
     T viscosity, density;
     // geometry mapping
     gsMapData<T> md;
@@ -149,7 +150,7 @@ protected:
     gsMatrix<T> block, physGradVel;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
-    gsVector<size_t> blockNumbers;
+    gsVector<index_t> blockNumbers;
 };
 
 } // namespace gismo
