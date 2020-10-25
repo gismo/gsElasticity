@@ -63,7 +63,7 @@ gsIterative<T>::gsIterative(gsBaseAssembler<T> & assembler_,
 template <class T>
 void gsIterative<T>::reset()
 {
-    m_status = solver_status::working;
+    m_status = working;
     numIterations = 0;
     residualNorm = 0.;
     initResidualNorm = 1.;
@@ -90,11 +90,11 @@ gsOptionList gsIterative<T>::defaultOptions()
 template <class T>
 void gsIterative<T>::solve()
 {
-    while (m_status == solver_status::working)
+    while (m_status == working)
     {
         if (!compute())
         {
-            m_status = solver_status::bad_solution;
+            m_status = bad_solution;
             goto abort;
         }
         if (m_options.getInt("Verbosity") == solver_verbosity::all)
@@ -103,9 +103,9 @@ void gsIterative<T>::solve()
             updateNorm < m_options.getReal("AbsTol") ||
             residualNorm/initResidualNorm < m_options.getReal("RelTol") ||
             updateNorm/initUpdateNorm < m_options.getReal("RelTol"))
-            m_status = solver_status::converged;
+            m_status = converged;
         else if (numIterations == m_options.getInt("MaxIters"))
-            m_status = solver_status::interrupted;
+            m_status = interrupted;
     }
 
     abort:;
@@ -189,16 +189,16 @@ template <class T>
 std::string gsIterative<T>::status()
 {
     std::string statusString;
-    if (m_status == solver_status::converged)
+    if (m_status == converged)
         statusString = "Iterative solver converged after " +
                  util::to_string(numIterations) + " iteration(s).";
-    else if (m_status == solver_status::interrupted)
+    else if (m_status == interrupted)
         statusString = "Iterative solver was interrupted after " +
                 util::to_string(numIterations) + " iteration(s).";
-    else if (m_status == solver_status::bad_solution)
+    else if (m_status == bad_solution)
         statusString = "Iterative solver was interrupted after " +
                 util::to_string(numIterations) + " iteration(s) due to an invalid solution";
-    else if (m_status == solver_status::working)
+    else if (m_status == working)
         statusString = "It: " + util::to_string(numIterations) +
                  ", updAbs: " + util::to_string(updateNorm) +
                  ", updRel: " + util::to_string(updateNorm/initUpdateNorm) +

@@ -63,7 +63,7 @@ void gsThermoAssembler<T>::findNonDirichletSides()
                 goto exitLabel;
 
         nonDirichletSides.push_back(temp);
-		exitLabel:;
+    exitLabel:;
     }
 }
 
@@ -76,10 +76,11 @@ void gsThermoAssembler<T>::assembleThermo()
     gsVisitorThermo<T> visitor(m_temperatureField);
     gsAssembler<T>::template push<gsVisitorThermo<T> >(visitor);
 
-    for (auto const & it : nonDirichletSides)
+    for (std::vector<std::pair<index_t,boxSide> >::const_iterator it = nonDirichletSides.begin();
+         it != nonDirichletSides.end(); ++it)
     {
-        gsVisitorThermoBoundary<T> bVisitor(it.second,m_temperatureField);
-        gsAssembler<T>::template apply<gsVisitorThermoBoundary<T> >(bVisitor,it.first,it.second);
+        gsVisitorThermoBoundary<T> bVisitor(it->second,m_temperatureField);
+        gsAssembler<T>::template apply<gsVisitorThermoBoundary<T> >(bVisitor,it->first,it->second);
     }
     gsAssembler<T>::m_system.rhs() += elastRhs;
 }

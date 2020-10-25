@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         bcInfoBeam.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
     // boundary conditions: flow mesh, set zero dirichlet on the entire boundary
     gsBoundaryConditions<> bcInfoALE;
-    for (auto it = geoALE.bBegin(); it != geoALE.bEnd(); ++it)
+    for (gsMultiPatch<>::const_biterator it = geoALE.bBegin(); it != geoALE.bEnd(); ++it)
         for (index_t d = 0; d < 2; ++d)
             bcInfoALE.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
 

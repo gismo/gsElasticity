@@ -96,10 +96,10 @@ struct iteration_type
 };
 
 /// @brief Specifies the status of the iterative solver
-enum class solver_status { converged,      /// method successfully converged
-                           interrupted,    /// solver was interrupted after exceeding the limit of iterations
-                           working,        /// solver working
-                           bad_solution }; /// method was interrupted because the current solution is invalid
+enum solver_status { converged,      /// method successfully converged
+                     interrupted,    /// solver was interrupted after exceeding the limit of iterations
+                     working,        /// solver working
+                     bad_solution }; /// method was interrupted because the current solution is invalid
 
 /** @brief Specifies the type of stresses to compute
  *

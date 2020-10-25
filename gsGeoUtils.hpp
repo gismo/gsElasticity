@@ -65,7 +65,7 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
         if (plotJac)
             collectionJac.addPart(fileNameOnly,p,".vts");
         else
-            res = system(("rm " + fileName + std::to_string(p) + ".vts").c_str());
+            res = system(("rm " + fileName + util::to_string(p) + ".vts").c_str());
         GISMO_ENSURE(res == 0, "Problems with deleting files\n");
     }
     res = system(("rm " + fileName + ".pvd").c_str());
@@ -119,20 +119,20 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
     gsField<T> detField(configuration,dets,true);
     std::map<std::string,const gsField<T> *> fields;
     fields["Jacobian"] = &detField;
-    gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(0),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
+    gsWriteParaviewMultiPhysics(fields,fileName+util::to_string(0),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
 
     for (size_t p = 0; p < configuration.nPatches(); ++p)
     {
-        collectionMesh.addTimestep(fileNameOnly + std::to_string(0),p,0,"_mesh.vtp");
+        collectionMesh.addTimestep(fileNameOnly + util::to_string(0),p,0,"_mesh.vtp");
         if (plotJac)
-            collectionJac.addTimestep(fileNameOnly + std::to_string(0),p,0,".vts");
+            collectionJac.addTimestep(fileNameOnly + util::to_string(0),p,0,".vts");
         else
         {
-            res = system(("rm " + fileName + std::to_string(0) + std::to_string(p) + ".vts").c_str());
+            res = system(("rm " + fileName + util::to_string(0) + util::to_string(p) + ".vts").c_str());
             GISMO_ENSURE(res == 0, "Problems with deleting files\n");
         }
     }
-    res = system(("rm " + fileName + std::to_string(0) + ".pvd").c_str());
+    res = system(("rm " + fileName + util::to_string(0) + ".pvd").c_str());
     GISMO_ENSURE(res == 0, "Problems with deleting files\n");
 
     for (size_t s = 0; s < displacements.size(); ++s)
@@ -147,20 +147,20 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
                configuration.patch(p).coefs() -= displacements[s-1].patch(p).coefs();
         }
 
-        gsWriteParaviewMultiPhysics(fields,fileName+std::to_string(s+1),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
+        gsWriteParaviewMultiPhysics(fields,fileName+util::to_string(s+1),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
         for (size_t p = 0; p < configuration.nPatches(); ++p)
         {
-            collectionMesh.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,"_mesh.vtp");
+            collectionMesh.addTimestep(fileNameOnly + util::to_string(s+1),p,s+1,"_mesh.vtp");
 
             if (plotJac)
-                collectionJac.addTimestep(fileNameOnly + std::to_string(s+1),p,s+1,".vts");
+                collectionJac.addTimestep(fileNameOnly + util::to_string(s+1),p,s+1,".vts");
             else
             {
-                res = system(("rm " + fileName + std::to_string(s+1) + std::to_string(p) + ".vts").c_str());
+                res = system(("rm " + fileName + util::to_string(s+1) + util::to_string(p) + ".vts").c_str());
                 GISMO_ENSURE(res == 0, "Problems with deleting files\n");
             }
         }
-        res = system(("rm " + fileName + std::to_string(s+1) + ".pvd").c_str());
+        res = system(("rm " + fileName + util::to_string(s+1) + ".pvd").c_str());
         GISMO_ENSURE(res == 0, "Problems with deleting files\n");
     }
 
@@ -211,7 +211,7 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
             gsVector<index_t> numNodes(domain.dim());
             for (short_t i = 0; i < domain.dim(); ++i)
                 numNodes.at(i) = domain.basis(p).degree(i)+1;
-            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
             typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
 #ifdef _OPENMP
@@ -257,7 +257,7 @@ index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const 
             gsVector<index_t> numNodes(domain.dim());
             for (short_t i = 0; i < domain.dim(); ++i)
                 numNodes.at(i) = displacement.basis(p).degree(i)+1;
-            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
             typename gsBasis<T>::domainIter domIt = displacement.basis(p).makeDomainIterator(boundary::none);
 #ifdef _OPENMP
@@ -305,7 +305,7 @@ T normL2(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & solution)
             gsVector<index_t> numNodes(domain.dim());
             for (short_t i = 0; i < domain.dim(); ++i)
                 numNodes.at(i) = solution.basis(p).degree(i)+1;
-            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
+            gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
             typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
 #ifdef _OPENMP
@@ -344,7 +344,7 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
         gsVector<index_t> numNodes(domain.dim());
         for (short_t i = 0; i < domain.dim(); ++i)
             numNodes.at(i) = domain.basis(p).degree(i)+1;
-        gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
@@ -387,7 +387,7 @@ T displacementJacRatio(const gsMultiPatch<T> & domain,const gsMultiPatch<T> & di
         gsVector<index_t> numNodes(domain.dim());
         for (short_t i = 0; i < domain.dim(); ++i)
             numNodes.at(i) = displacement.basis(p).degree(i)+1;
-        gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
+        gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
         typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
         for (; domIt->good(); domIt->next())
@@ -513,7 +513,7 @@ T curveLength(const gsGeometry<T> & geo)
 
     gsVector<index_t> numNodes(1);
     numNodes << geo.basis().degree(0)+1;
-    gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::rule::GaussLegendre,numNodes);
+    gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
     gsMatrix<T> qPoints;
     gsVector<T> qWeights;
     gsMapData<T> md;

@@ -189,26 +189,27 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
     const T density = m_options.getReal("Density");
 
     // loop over bdry sides
-    for (auto &it : bdrySides)
+    for (std::vector<std::pair<index_t,boxSide> >::const_iterator it = bdrySides.begin();
+         it != bdrySides.end(); ++it)
     {
         // basis of the patch
-        const gsBasis<T> & basis = m_bases[0][it.first];
+        const gsBasis<T> & basis = m_bases[0][it->first];
         // setting quadrature rule for the boundary side
-        gsGaussRule<T> bdQuRule(basis,1.0,1,it.second.direction());
+        gsGaussRule<T> bdQuRule(basis,1.0,1,it->second.direction());
         // loop over elements of the side
-        typename gsBasis<T>::domainIter elem = basis.makeDomainIterator(it.second);
+        typename gsBasis<T>::domainIter elem = basis.makeDomainIterator(it->second);
         for (; elem->good(); elem->next())
         {
             // mapping quadrature rule to the element
             bdQuRule.mapTo(elem->lowerCorner(),elem->upperCorner(),quNodes,quWeights);
             // evaluate geoemtry mapping at the quad points
             mdGeo.points = quNodes;
-            m_pde_ptr->patches().patch(it.first).computeMap(mdGeo);
+            m_pde_ptr->patches().patch(it->first).computeMap(mdGeo);
             // evaluate velocity at the quad points
             mdVel.points = quNodes;
-            velocity.patch(it.first).computeMap(mdVel);
+            velocity.patch(it->first).computeMap(mdVel);
             // evaluate pressure at the quad points
-            pressure.patch(it.first).eval_into(quNodes,pressureValues);
+            pressure.patch(it->first).eval_into(quNodes,pressureValues);
 
             // loop over quad points
             for (index_t q = 0; q < quWeights.rows(); ++q)
@@ -216,7 +217,7 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
                 // transform gradients from parametric to physical
                 physGradJac = mdVel.jacobian(q)*(mdGeo.jacobian(q).cramerInverse());
                 // normal length is the local measure
-                outerNormal(mdGeo,q,it.second,normal);
+                outerNormal(mdGeo,q,it->second,normal);
                 // pressure contribution to the stress tensor
                 sigma = pressureValues.at(q)*gsMatrix<T>::Identity(m_dim,m_dim);
                 force.col(0) += quWeights[q] * sigma * normal;

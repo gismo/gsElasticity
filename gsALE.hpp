@@ -38,7 +38,7 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     // create input for the assembler
     gsMultiBasis<T> basis(geometry);
     gsBoundaryConditions<T> bcInfo;
-    for (auto it = geometry.bBegin(); it != geometry.bEnd(); ++it)
+    for (gsMultiPatch<>::const_biterator it = geometry.bBegin(); it != geometry.bEnd(); ++it)
         for (index_t d = 0; d < geometry.parDim(); ++d)
             bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
     gsConstantFunction<T> rhs(gsVector<>::Zero(geometry.parDim()),geometry.parDim());
@@ -71,7 +71,7 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     else if (methodALE == ale_method::BHE || methodALE == ale_method::IBHE)
     {
         gsBoundaryConditions<T> bcInfoBHE;
-        for (auto it = geometry.bBegin(); it != geometry.bEnd(); ++it)
+        for (gsMultiPatch<>::const_biterator it = geometry.bBegin(); it != geometry.bEnd(); ++it)
             bcInfoBHE.addCondition(it->patch,it->side(),condition_type::dirichlet,0);
         assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfoBHE,rhs));
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
