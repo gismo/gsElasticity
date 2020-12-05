@@ -104,7 +104,7 @@ void gsNsTimeIntegrator<T>::implicitLinear()
     stiffAssembler.constructSolution(solVector + tStep/oldTimeStep*(solVector-oldSolVector),
                                      stiffAssembler.allFixedDofs(),velocity,pressure);
     if (m_options.getSwitch("ALE"))
-        for (index_t p = 0; p < interface->patches.size(); ++p)
+        for (size_t p = 0; p < interface->patches.size(); ++p)
             velocity.patch(interface->patches[p].second).coefs() -=
                     velocityALE->patch(interface->patches[p].first).coefs();
     stiffAssembler.assemble(velocity,pressure);
@@ -185,7 +185,7 @@ bool gsNsTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
     gsMultiPatch<T> velocity, pressure;
     stiffAssembler.constructSolution(solutionVector,fixedDoFs,velocity,pressure);
     if (m_options.getSwitch("ALE"))
-        for (index_t p = 0; p < interface->patches.size(); ++p)
+        for (size_t p = 0; p < interface->patches.size(); ++p)
             velocity.patch(interface->patches[p].second).coefs() -=
                     velocityALE->patch(interface->patches[p].first).coefs();
     stiffAssembler.assemble(velocity,pressure);

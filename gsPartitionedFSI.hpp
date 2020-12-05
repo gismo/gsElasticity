@@ -120,7 +120,7 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
             m_aleSolver.recoverState();
 
         // undo last ALE deformation of the flow domain
-        for (index_t p = 0; p < m_nsSolver.aleInterface().patches.size(); ++p)
+        for (size_t p = 0; p < m_nsSolver.aleInterface().patches.size(); ++p)
         {
             index_t pFlow = m_nsSolver.aleInterface().patches[p].second;
             index_t pALE = m_nsSolver.aleInterface().patches[p].first;
@@ -135,11 +135,11 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
             return false; // if the new ALE deformation is not bijective, stop the simulation
         // construct new ALE displacement
         m_aleSolver.constructSolution(m_ALEdisplacment);
-        for (index_t p = 0; p < m_ALEvelocity.nPatches(); ++p)
+        for (size_t p = 0; p < m_ALEvelocity.nPatches(); ++p)
             m_ALEvelocity.patch(p).coefs() = (m_ALEdisplacment.patch(p).coefs() - m_ALEvelocity.patch(p).coefs()) / timeStep;
 
         // apply new ALE deformation to the flow domain
-        for (index_t p = 0; p < m_nsSolver.aleInterface().patches.size(); ++p)
+        for (size_t p = 0; p < m_nsSolver.aleInterface().patches.size(); ++p)
         {
             index_t pFlow = m_nsSolver.aleInterface().patches[p].second;
             index_t pALE = m_nsSolver.aleInterface().patches[p].first;
@@ -158,7 +158,7 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
 
         // set velocity boundary condition on the FSI interface; velocity comes from the ALE velocity;
         // FSI inteface info is contained in the Navier-Stokes solver
-        for (index_t p = 0; p < m_nsSolver.aleInterface().sidesA.size(); ++p)
+        for (size_t p = 0; p < m_nsSolver.aleInterface().sidesA.size(); ++p)
         {
             index_t pFlow = m_nsSolver.aleInterface().sidesB[p].patch;
             boxSide sFlow = m_nsSolver.aleInterface().sidesB[p].side();
@@ -196,7 +196,7 @@ void gsPartitionedFSI<T>::formVector(const gsMultiPatch<T> & disp, gsMatrix<T> &
     index_t dim = disp.patch(0).parDim();
 
     index_t totalSize = 0;
-    for (index_t i = 0; i < m_aleSolver.interface().sidesA.size(); ++i)
+    for (size_t i = 0; i < m_aleSolver.interface().sidesA.size(); ++i)
     {
         index_t patch = m_aleSolver.interface().sidesA[i].patch;
         boxSide side = m_aleSolver.interface().sidesA[i].side();
@@ -205,7 +205,7 @@ void gsPartitionedFSI<T>::formVector(const gsMultiPatch<T> & disp, gsMatrix<T> &
 
     vector.setZero(totalSize*dim,1);
     index_t filledSize = 0;
-    for (index_t i = 0; i < m_aleSolver.interface().sidesA.size(); ++i)
+    for (size_t i = 0; i < m_aleSolver.interface().sidesA.size(); ++i)
     {
         index_t patch = m_aleSolver.interface().sidesA[i].patch;
         boxSide side = m_aleSolver.interface().sidesA[i].side();
@@ -232,7 +232,7 @@ void gsPartitionedFSI<T>::aitken(gsMultiPatch<T> & dispOO, gsMultiPatch<T> & dis
     omega = -1*omega * ((vecOG - vecOO).transpose()*vecTemp)(0,0) /
             (vecTemp.transpose()*vecTemp)(0,0);
 
-    for (index_t p = 0; p < dispOO.nPatches(); ++p)
+    for (size_t p = 0; p < dispOO.nPatches(); ++p)
     {
         dispOO.patch(p).coefs() = dispO.patch(p).coefs();
         dispOG.patch(p).coefs() = dispN.patch(p).coefs();

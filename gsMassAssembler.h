@@ -47,7 +47,8 @@ public:
     virtual void assemble(bool saveEliminationMatrix = false);
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDDoFs) {assemble();}
+                          const std::vector<gsMatrix<T> > & fixedDDoFs)
+    {assemble(); return true;}
 
 protected:
     /// Dimension of the problem

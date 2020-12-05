@@ -37,6 +37,7 @@ inline short_t voigt(short_t dim, short_t I, short_t J)
         case 4: return J == 0 ? 1 : 2;
         case 5: return J == 0 ? 0 : 2;
         }
+    return -1;
 }
 
 // construct a fourth order symmetric identity tensor C based on a second order symmetric tensor R

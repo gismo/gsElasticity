@@ -1,7 +1,8 @@
-### CMakeLists.txt --- G+Smo module
+######################################################################
+## CMakeLists.txt --- gsElasticity
+## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2018
 ######################################################################
 
 ## gsElasticity module
@@ -21,6 +22,8 @@ if( (NOT GISMO_BUILD_LIB) )
     LIST( REMOVE_ITEM ${PROJECT_NAME}_CPP ${${PROJECT_NAME}_INS})
   endif()
 endif()
+
+#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
 
 # Add object library
 add_library(${PROJECT_NAME} OBJECT
@@ -54,5 +57,3 @@ foreach(file ${FILES})
     # install the example executables (optionally)
     install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
-
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)

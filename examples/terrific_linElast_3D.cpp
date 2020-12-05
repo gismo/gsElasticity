@@ -18,7 +18,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"terrific.xml";
+    std::string filename("terrific.xml");
     real_t youngsModulus = 74e9;
     real_t poissonsRatio = 0.33;
     index_t numUniRef = 0;
