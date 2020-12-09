@@ -1,26 +1,26 @@
 
-# gsElasticity
+# gsElasticity {#gsElasticity}
 gsElasticity is a **submodule of G+Smo** which has started as a collection of nonlinear elasticity solvers for 2D and 3D solids. Since then, its focus has shifted towards mesh deformation, and now gsElasticity contains isogeometric solvers for nonlinear elasticity and incompressible Navier-Stokes equations, various PDE-based mesh deformations algorithms and a partitioned fluid-structure interaction solver. Additionally, gsElasticity includes numerous application examples and the corresponding NURBS geometries.
 
 ------------------  Nonlinear elastic deformation of a 3D object  ----------------------------------------------------
 
-<img src="../media/images/terrific.png" width="500">   
+<img src="https://raw.githubusercontent.com/gismo/gsElasticity/media/images/terrific.png" width="500">
 
 ------------------  Active muscle behavior  ----------------------------------------------------
 
-<img src="../media/images/muscle.png" width="600">   
+<img src="https://raw.githubusercontent.com/gismo/gsElasticity/media/images/muscle.png" width="600">
 
 ------------------  Fluid-structure interaction in 2D  ---------------------------------------------------------------
 
-<img src="../media/images/FSI.png" width="450">
+<img src="https://raw.githubusercontent.com/gismo/gsElasticity/media/images/FSI.png" width="450">
 
 ------------------  Mesh deformation for isogeometric domain parametrization -----------------------------------------
 
-<img src="../media/images/meshDeform.png" width="550">
+<img src="https://raw.githubusercontent.com/gismo/gsElasticity/media/images/meshDeform.png" width="550">
 
 ## Solvers
 gsElasticity currently includes the following solvers for 2D and 3D multi-patch tensor-product NURBS geometries:
-* Elasticity solvers 
+* Elasticity solvers
   * linear elasticity
   * nonlinear elasticity with St.Venant-Kirchhoff and neo-Hookean material laws
   * implicit time integration with Newmark method
@@ -90,10 +90,10 @@ cmake .. -DGISMO_ELASTICITY=ON -DGISMO_WITH_OPENMP=ON -DEIGEN_USE_MKL_ALL=ON -DG
 ```
 Despite an older version of Pardiso used in MKL, Intel optimization often results in faster performance than if a stand-alone library is used.
 
-Final tip: you can speed up the compilation of G+Smo by specifying the number of threads `make` command uses: 
+Final tip: you can speed up the compilation of G+Smo by specifying the number of threads `make` command uses:
 ```
 make -j<number of threads to use>
 ```
 
 ## Using
-Check out numerous detailed examples in `path/to/gismo/extensions/gsElasticity/examples`! 
+Check out numerous detailed examples in `path/to/gismo/extensions/gsElasticity/examples`!

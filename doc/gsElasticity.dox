@@ -1,0 +1,26 @@
+/*
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+*/
+
+namespace gismo {
+
+/** @addtogroup Elasticity Elasticity module
+\ingroup Modules
+
+The \b Elasticity module is a collection of nonlinear elasticity
+solvers for 2D and 3D solids. Since then, its focus has shifted
+towards mesh deformation, and now gsElasticity contains isogeometric
+solvers for nonlinear elasticity and incompressible Navier-Stokes
+equations, various PDE-based mesh deformations algorithms and a
+partitioned fluid-structure interaction solver.
+
+Readme file: \ref gsElasticity
+
+*/
+
+}
+
