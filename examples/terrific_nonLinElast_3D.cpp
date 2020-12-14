@@ -113,8 +113,8 @@ int main(int argc, char* argv[]){
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &nonlinearSolutionField;
         fields["von Mises"] = &stressField;
-        gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
-        gsInfo << "Open \"terrific.pvd\" in Paraview for visualization.\n";
+        gsWriteParaviewMultiPhysics(fields,"terrific_nle",numPlotPoints);
+        gsInfo << "Open \"terrific_nle.pvd\" in Paraview for visualization.\n";
     }
 
     return 0;

@@ -164,8 +164,8 @@ int main(int argc, char* argv[]){
         fields["Pressure"] = &pressureField;
         fields["von Mises"] = &stressField;
         fields["Muscle/tendon"] = &muscleTendonField;
-        gsWriteParaviewMultiPhysics(fields,rightOrLeft ? "bicepsRight" : "bicepsLeft",numPlotPoints);
-        gsInfo << "Open \" " << (rightOrLeft ? "bicepsRight" : "bicepsLeft")
+        gsWriteParaviewMultiPhysics(fields,rightOrLeft ? "bicepsRightMS" : "bicepsLeftMS",numPlotPoints);
+        gsInfo << "Open \" " << (rightOrLeft ? "bicepsRightMS" : "bicepsLeftMS")
                << ".pvd\" in Paraview for visualization.\n";
     }
 

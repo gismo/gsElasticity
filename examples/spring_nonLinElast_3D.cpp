@@ -9,15 +9,15 @@
 
 using namespace gismo;
 
-int main(int argc, char* argv[]){
-
+int main(int argc, char* argv[])
+{
     gsInfo << "Testing the nonlinear elasticity solver in 3D.\n";
 
     //=====================================//
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"springMP.xml";
+    std::string filename = "springMP.xml";
     real_t youngsModulus = 1.0e6;
     real_t poissonsRatio = 0.3;
     index_t materialLaw = material_law::neo_hooke_ln;
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]){
     for (index_t i = 0; i < numUniRef; ++i)
         basis.uniformRefine();
     for (index_t i = 0; i < numUniRefX; ++i)
-        for (index_t p = 0; p < geometry.nPatches(); ++p)
+        for (size_t p = 0; p < geometry.nPatches(); ++p)
             static_cast<gsTensorBSplineBasis<3,real_t> &>(basis.basis(p)).knots(2).uniformRefine();
 
     //=============================================//
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]){
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
-    for (index_t p = 0; p < geometry.nPatches(); ++p)
+    for (size_t p = 0; p < geometry.nPatches(); ++p)
     {
         // Dirichlet BC are imposed separately for every component (coordinate)
         bcInfo.addCondition(p,boundary::front,condition_type::dirichlet,0,0);

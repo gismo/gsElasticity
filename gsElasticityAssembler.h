@@ -9,8 +9,8 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
-        A.Shamanskiy (2016 - ...., TU Kaiserslautern)
+    O. Weeger    (2012 - 2015, TU Kaiserslautern),
+    A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 */
 
 #pragma once
@@ -23,9 +23,9 @@ namespace gismo
 {
 
 /** @brief Assembles the stiffness matrix and the right-hand side vector for linear and nonlinear elasticity
-           for 2D plain stress and 3D continua. The matrix and vector have a block structure associated with
-           components of the displacement vector, each block corresponding to one component.
-           Supports mixed displacement-pressure formulation.
+    for 2D plain stress and 3D continua. The matrix and vector have a block structure associated with
+    components of the displacement vector, each block corresponding to one component.
+    Supports mixed displacement-pressure formulation.
 */
 template <class T>
 class gsElasticityAssembler : public gsBaseAssembler<T>
@@ -85,7 +85,8 @@ public:
     /// @brief Construct displacement and pressure from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
-                                   gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
+                                   gsMultiPatch<T> & displacement,
+                                   gsMultiPatch<T> & pressure) const;
 
     /// @ brief Construct pressure from computed solution vector
     virtual void constructPressure(const gsMatrix<T> & solVector,
@@ -96,14 +97,14 @@ public:
 
     /// @brief Construct Cauchy stresses for evaluation or visualization
     virtual void constructCauchyStresses(const gsMultiPatch<T> & displacement,
-                                 gsPiecewiseFunction<T> & result,
-                                 stress_components::components component = stress_components::von_mises) const;
+                                         gsPiecewiseFunction<T> & result,
+                                         stress_components::components component = stress_components::von_mises) const;
 
     /// @brief Construct Cauchy stresses for evaluation or visualization
     virtual void constructCauchyStresses(const gsMultiPatch<T> & displacement,
-                                 const gsMultiPatch<T> & pressure,
-                                 gsPiecewiseFunction<T> & result,
-                                 stress_components::components component = stress_components::von_mises) const;
+                                         const gsMultiPatch<T> & pressure,
+                                         gsPiecewiseFunction<T> & result,
+                                         stress_components::components component = stress_components::von_mises) const;
 
 protected:
     /// a custom reserve function to allocate memory for the sparse matrix

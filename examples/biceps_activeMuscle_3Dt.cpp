@@ -132,7 +132,7 @@ int main(int argc, char* argv[]){
     massAssembler.options().setReal("Density",density);
 
     // creating time integrator
-    gsElTimeIntegrator<real_t> timeSolver(assembler,massAssembler);
+    gsElTimeIntegrator<real_t> timeSolver(assembler, massAssembler);
     timeSolver.options().setInt("Scheme",time_integration::implicit_nonlinear);
     timeSolver.options().setInt("Verbosity",solver_verbosity::none);
 

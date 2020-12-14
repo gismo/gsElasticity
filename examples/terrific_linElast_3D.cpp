@@ -10,8 +10,8 @@
 
 using namespace gismo;
 
-int main(int argc, char* argv[]){
-
+int main(int argc, char* argv[])
+{
     gsInfo << "Testing the linear elasticity solver in 3D.\n";
 
     //=====================================//
@@ -117,8 +117,8 @@ int main(int argc, char* argv[]){
         std::map<std::string,const gsField<> *> fields;
         fields["Deformation"] = &solutionField;
         fields["von Mises"] = &stressField;
-        gsWriteParaviewMultiPhysics(fields,"terrific",numPlotPoints);
-        gsInfo << "Open \"terrific.pvd\" in Paraview for visualization.\n";
+        gsWriteParaviewMultiPhysics(fields,"terrific_le",numPlotPoints);
+        gsInfo << "Open \"terrific_le.pvd\" in Paraview for visualization.\n";
     }
 
     return 0;

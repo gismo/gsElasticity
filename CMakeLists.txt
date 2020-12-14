@@ -8,6 +8,11 @@
 ## gsElasticity module
 project(gsElasticity)
 
+option(GISMO_ELASTICITY       "With Elasticity module"            false  )
+if  (${GISMO_ELASTICITY})
+message ("  GISMO_ELASTICITY        ${GISMO_ELASTICITY}")
+endif()
+
 # Apply G+Smo config
 include(gsConfig)
 

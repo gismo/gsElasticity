@@ -149,8 +149,8 @@ int main(int argc, char* argv[]){
         std::map<std::string,const gsField<> *> fields;
         fields["Velocity"] = &velocityField;
         fields["Pressure"] = &pressureField;
-        gsWriteParaviewMultiPhysics(fields,"aroundCylinder",numPlotPoints,plotMesh);
-        gsInfo << "Open \"aroundCylinder.pvd\" in Paraview for visualization.\n";
+        gsWriteParaviewMultiPhysics(fields,"aroundCylinderNS",numPlotPoints,plotMesh);
+        gsInfo << "Open \"aroundCylinderNS.pvd\" in Paraview for visualization.\n";
     }
 
     // computing forces acting on the surface of the solid body
