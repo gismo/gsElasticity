@@ -1,5 +1,5 @@
 
-# gsElasticity {#gsElasticity}
+# gsElasticity
 gsElasticity is a **submodule of G+Smo** which has started as a collection of nonlinear elasticity solvers for 2D and 3D solids. Since then, its focus has shifted towards mesh deformation, and now gsElasticity contains isogeometric solvers for nonlinear elasticity and incompressible Navier-Stokes equations, various PDE-based mesh deformations algorithms and a partitioned fluid-structure interaction solver. Additionally, gsElasticity includes numerous application examples and the corresponding NURBS geometries.
 
 ------------------  Nonlinear elastic deformation of a 3D object  ----------------------------------------------------
