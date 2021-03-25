@@ -1,4 +1,4 @@
-/** @file gsVisitorLinearElasticity.h
+/** @file gsVisitorCompositeLinearElasticity.h
 
     @brief Visitor class for volumetric integration of the linear elasticity system.
 
@@ -25,12 +25,14 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorLinearElasticity
+class gsVisitorCompositeLinearElasticity
 {
 public:
 
-    gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
+    gsVisitorCompositeLinearElasticity(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
+                                gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+          // materialFunctions_ptr(std::move(&pars)),
           elimMat(elimMatrix)
     {}
 
@@ -44,6 +46,8 @@ public:
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
+        //---------------------------------------
+        //
         T E = options.getReal("YoungsModulus");
         T pr = options.getReal("PoissonsRatio");
         lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
@@ -56,6 +60,7 @@ public:
         C *= lambda;
         symmetricIdentityTensor<T>(Ctemp,I);
         C += mu*Ctemp;
+        //---------------------------------------
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
@@ -80,6 +85,10 @@ public:
         basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
+
+        // Compute C per Qnode
+        //materialFunctions_ptr->at(i)->eval(...)
+
     }
 
     inline void assemble(gsDomainIterator<T> & element,

@@ -147,7 +147,7 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
         GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke,
-                     "Material law not specified OR not supported!");
+                     "Material law not specified OR not supported! Material law = "<<m_options.getInt("MaterialLaw"));
         if (saveEliminationMatrix)
         {
             eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
@@ -155,8 +155,13 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
             eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
         }
 
+        // if !composite
         gsVisitorLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
         Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+        // else
+        // gsVisitorCompositeLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+        // Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+
 
         if (saveEliminationMatrix)
         {
@@ -189,7 +194,7 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
         if (checkDisplacement(m_pde_ptr->patches(),displacement) != -1)
             return false;
 
-    if (m_bases.size() == unsigned(m_dim)) // displacement formulation 
+    if (m_bases.size() == unsigned(m_dim)) // displacement formulation
         assemble(displacement);
     else // mixed formulation (displacement + pressure)
     {

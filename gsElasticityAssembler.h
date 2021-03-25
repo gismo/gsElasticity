@@ -39,6 +39,13 @@ public:
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force);
 
+    // /// @brief Constructor for displacement formulation
+    // gsElasticityAssembler(const gsMultiPatch<T> & patches,
+    //                       const gsMultiBasis<T> & basis,
+    //                       const gsBoundaryConditions<T> & bconditions,
+    //                       const gsFunction<T> & body_force,
+    //                       const gsPieceWiseFunction<T> &materialMatrix);
+
     /// @brief Constructor of mixed formulation (displacement + pressure)
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basisDisp,
@@ -114,6 +121,8 @@ protected:
     /// Dimension of the problem
     /// parametric dim = physical dim = deformation dim
     short_t m_dim;
+
+    // const std::vector<typename gsFunction<T>::uPtr > m_pars;
 
     using Base::m_pde_ptr;
     using Base::m_bases;
