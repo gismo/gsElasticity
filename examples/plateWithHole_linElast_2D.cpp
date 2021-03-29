@@ -77,11 +77,11 @@ int main(int argc, char* argv[]){
               // Assembling & solving //
     //=============================================//
 
-    gsMaterialBase<real_t> * materialMat = new gsLinearMaterial(youngsModulus,poissonsRatio,2);
+    gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio,2);
 
     // creating assembler
     // gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);//,materialMat);
-    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g,materialMat);
+    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g,&materialMat);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     gsInfo<<"Assembling...\n";

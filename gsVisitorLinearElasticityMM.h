@@ -1,4 +1,4 @@
-/** @file gsVisitorCompositeLinearElasticity.h
+/** @file gsVisitorLinearElasticityMM.h
 
     @brief Visitor class for volumetric integration of the linear elasticity system.
 
@@ -27,11 +27,11 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorCompositeLinearElasticity
+class gsVisitorLinearElasticityMM
 {
 public:
 
-    gsVisitorCompositeLinearElasticity(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
+    gsVisitorLinearElasticityMM(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
                                         gsMaterialBase<T> * materialMat,
                                 gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
