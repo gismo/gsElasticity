@@ -17,6 +17,8 @@
 
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsMaterialEval.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -30,9 +32,10 @@ class gsVisitorCompositeLinearElasticity
 public:
 
     gsVisitorCompositeLinearElasticity(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
+                                        gsMaterialBase<T> * materialMat,
                                 gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
-          // materialFunctions_ptr(std::move(&pars)),
+          m_materialMat(materialMat),
           elimMat(elimMatrix)
     {}
 
@@ -47,20 +50,11 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         //---------------------------------------
-        //
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
-        mu     = E / ( 2. * ( 1. + pr ) );
-        forceScaling = options.getReal("ForceScaling");
-        localStiffening = options.getReal("LocalStiff");
-        // linear elasticity tensor
-        I = gsMatrix<T>::Identity(dim,dim);
-        matrixTraceTensor<T>(C,I,I);
-        C *= lambda;
-        symmetricIdentityTensor<T>(Ctemp,I);
-        C += mu*Ctemp;
+        // T E = options.getReal("YoungsModulus");
+        // T pr = options.getReal("PoissonsRatio");
+        // m_materialMat = new gsElasticityMaterial(E,pr,dim);
         //---------------------------------------
+        I = gsMatrix<T>::Identity(dim,dim);
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
@@ -89,6 +83,11 @@ public:
         // Compute C per Qnode
         //materialFunctions_ptr->at(i)->eval(...)
 
+        gsMaterialEval<T,true> materialMatrix(m_materialMat);
+        materialMatrix.eval_into(quNodes,matValues);
+        // gsMaterialEval<T,false> materialVector(m_materialMat);
+        // materialVector.eval_into(quNodes,matValues);
+
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -110,7 +109,8 @@ public:
             {
                 // stiffness matrix K = B_i^T * C * B_j;
                 setB<T>(B_i,I,physGrad.col(i));
-                tempK = B_i.transpose() * C; //.reshapeCol(q,dim,dim)
+                C = matValues.reshapeCol(i,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
+                tempK = B_i.transpose() * C;
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {
@@ -184,6 +184,8 @@ protected:
     std::vector<gsMatrix<T> > basisValuesDisp;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+    /// Material handler
+    gsMaterialBase<T> * m_materialMat;
     // elimination matrix to efficiently change Dirichlet degrees of freedom
     gsSparseMatrix<T> * elimMat;
     // all temporary matrices defined here for efficiency
@@ -191,6 +193,8 @@ protected:
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;
+
+    gsMatrix<T> matValues;
 };
 
 } // namespace gismo

@@ -24,6 +24,7 @@
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
+#include <gsElasticity/gsVisitorLinearElasticityMM.h>
 #include <gsElasticity/gsVisitorMixedLinearElasticity.h>
 #include <gsElasticity/gsVisitorMixedNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinearElasticity.h>
@@ -36,7 +37,10 @@ template<class T>
 gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
                                                 const gsMultiBasis<T> & basis,
                                                 const gsBoundaryConditions<T> & bconditions,
-                                                const gsFunction<T> & body_force)
+                                                const gsFunction<T> & body_force,
+                                                gsMaterialBase<T> * materialMatrix)
+:
+m_materialMat(NULL)
 {
     // Originally concieved as a meaningful class, now gsPde is just a container for
     // the domain, boundary conditions and the right-hand side;
@@ -60,7 +64,10 @@ gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
                                                 gsMultiBasis<T> const & basisDisp,
                                                 gsMultiBasis<T> const & basisPres,
                                                 gsBoundaryConditions<T> const & bconditions,
-                                                const gsFunction<T> & body_force)
+                                                const gsFunction<T> & body_force,
+                                                gsMaterialBase<T> * materialMatrix)
+:
+m_materialMat(NULL)
 {
     // same as above
     gsPiecewiseFunction<T> rightHandSides;
@@ -156,12 +163,19 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
         }
 
         // if !composite
-        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
-        Base::template push<gsVisitorLinearElasticity<T> >(visitor);
-        // else
-        // gsVisitorCompositeLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
-        // Base::template push<gsVisitorLinearElasticity<T> >(visitor);
 
+        // else
+
+        if (m_materialMat!=NULL)
+        {
+            gsVisitorLinearElasticityMM<T> visitor(*m_pde_ptr,m_materialMat, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+            Base::template push<gsVisitorLinearElasticityMM<T> >(visitor);
+        }
+        else
+        {
+            gsVisitorLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+            Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+        }
 
         if (saveEliminationMatrix)
         {

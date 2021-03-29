@@ -6,6 +6,8 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsLinearMaterial.h>
 
 using namespace gismo;
 
@@ -75,8 +77,11 @@ int main(int argc, char* argv[]){
               // Assembling & solving //
     //=============================================//
 
+    gsMaterialBase<real_t> * materialMat = new gsLinearMaterial(youngsModulus,poissonsRatio,2);
+
     // creating assembler
-    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);
+    // gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);//,materialMat);
+    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g,materialMat);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     gsInfo<<"Assembling...\n";
