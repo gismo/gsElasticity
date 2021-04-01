@@ -30,43 +30,35 @@ public:
     using Base = gsMaterialBase<T>;
 
     gsLinearMaterial(   const T E,
-                        const T nu,
-                        const index_t dim
-                                        )
+                        const T nu)
     {
         m_Emodulus = E;
         m_PoissonRatio = nu;
-        Base::m_dim = dim;
-        if (dim==2)
-            Base::m_size = 3;
-        else if (dim==3)
-            Base::m_size = 6;
-        else
-            GISMO_ERROR("Material matrix for dimension "<<dim<<" unknown");
     }
 
-    /// Implementation of eval_into, see \ref gsFunction
-    void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    /// \a u points, \a k patch index
+    void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
     {
-        result.resize(Base::m_size*Base::m_size,u.cols());
+        const index_t sz = (u.rows()+1)*u.rows()/2;
+        result.resize(sz*sz,u.cols());
 
         gsMatrix<T> C, Ctemp;
         T lambda = m_Emodulus * m_PoissonRatio / ( ( 1. + m_PoissonRatio ) * ( 1. - 2. * m_PoissonRatio ) );
         T mu     = m_Emodulus / ( 2. * ( 1. + m_PoissonRatio ) );
         // linear elasticity tensor
-        gsMatrix<T> I = gsMatrix<T>::Identity(Base::m_dim,Base::m_dim);
+        gsMatrix<T> I = gsMatrix<T>::Identity(u.rows(),u.rows());
         matrixTraceTensor<T>(C,I,I);
         C *= lambda;
         symmetricIdentityTensor<T>(Ctemp,I);
         C += mu*Ctemp;
 
         for (index_t k=0; k!=u.cols(); k++)
-            result.reshapeCol(k,Base::m_size,Base::m_size) = C;
+            result.reshapeCol(k,sz,sz) = C;
 
     }
 
-    /// Implementation of eval_into, see \ref gsFunction
-    void eval_vector_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    /// \a u points, \a k patch index
+    void eval_vector_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
     {
         GISMO_NO_IMPLEMENTATION;
     }

@@ -25,15 +25,6 @@ class gsMaterialBase
 
 public:
     virtual ~gsMaterialBase() {};
-    virtual short_t size() const {return m_size;}
-    virtual short_t dim() const {return m_dim;}
-    /**
-     * @brief      { function_description }
-     *
-     * @param[in]  u       { parameter_description }
-     * @param      result  The result
-     */
-    virtual void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result) const = 0;
 
     /**
      * @brief      { function_description }
@@ -41,10 +32,17 @@ public:
      * @param[in]  u       { parameter_description }
      * @param      result  The result
      */
-    virtual void eval_vector_into(const gsMatrix<T>& u, gsMatrix<T>& result) const = 0;
+    virtual void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result,
+                                  index_t k = 0) const = 0;
 
-protected:
-    index_t m_size, m_dim;
+    /**
+     * @brief      { function_description }
+     *
+     * @param[in]  u       { parameter_description }
+     * @param      result  The result
+     */
+    virtual void eval_vector_into(const gsMatrix<T>& u, gsMatrix<T>& result,
+                                  index_t k = 0) const = 0;
 
 };
 

@@ -18,7 +18,6 @@
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsElasticity/gsBasePde.h>
 #include <gsElasticity/gsMaterialBase.h>
-#include <gsElasticity/gsMaterialEval.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -83,8 +82,7 @@ public:
         // Compute C per Qnode
         //materialFunctions_ptr->at(i)->eval(...)
 
-        gsMaterialEval<T,true> materialMatrix(m_materialMat);
-        materialMatrix.eval_into(quNodes,matValues);
+        m_materialMat->eval_matrix_into(quNodes,matValues, geo.id());
         // gsMaterialEval<T,false> materialVector(m_materialMat);
         // materialVector.eval_into(quNodes,matValues);
 
