@@ -34,18 +34,33 @@ public:
                             const T alpha,
                             const T beta,
                             const T gamma)
-    : m_homogeneous(true)
+    : m_homogeneous(true),
+      m_constAngle(true)
     {
         gsMatrix<T> Phi;
         _makePhi(alpha,beta,gamma,Phi);
         m_G.push_back( Phi.transpose()*G*Phi );
     }
 
+    gsCompositeMaterial(    const gsMatrix<T> G,
+                            const gsFunctionSet<T> & alpha,
+                            const gsFunctionSet<T> & beta,
+                            const gsFunctionSet<T> & gamma)
+    : m_homogeneous(true),
+      m_constAngle(false),
+      m_alpha(&alpha),
+      m_beta(&beta),
+      m_gamma(&gamma)
+    {
+        m_G.push_back( G );
+    }
+
     gsCompositeMaterial(std::vector<gsMatrix<T>> G,
                         std::vector<T> alpha,
                         std::vector<T> beta,
                         std::vector<T> gamma)
-    : m_homogeneous(false)
+    : m_homogeneous(false),
+      m_constAngle(true)
     {
         gsMatrix<T> Phi;
         for (index_t k=0; k!=G.size(); k++)
@@ -53,6 +68,20 @@ public:
             _makePhi(alpha.at(k),beta.at(k),gamma.at(k),Phi);
             m_G.push_back( Phi.transpose()*G.at(k)*Phi );
         }
+
+    }
+
+    gsCompositeMaterial(std::vector<gsMatrix<T>> G,
+                        const gsFunctionSet<T> & alpha,
+                        const gsFunctionSet<T> & beta,
+                        const gsFunctionSet<T> & gamma)
+    : m_homogeneous(false),
+      m_constAngle(false),
+      m_G(give(G)),
+      m_alpha(&alpha),
+      m_beta(&beta),
+      m_gamma(&gamma)
+    {
 
     }
 
@@ -68,12 +97,38 @@ public:
                             const T alpha = 0,
                             const T beta = 0,
                             const T gamma = 0)
-    : m_homogeneous(true)
+    : m_homogeneous(true),
+      m_constAngle(true)
     {
         gsMatrix<T> G,Phi;
         _makeG(Exx,Eyy,Ezz,Gxy,Gyz,Gxz,nuxy,nuyz,nuxz,G);
         _makePhi(alpha,beta,gamma,Phi);
         m_G.push_back( Phi.transpose()*G*Phi );
+
+        gsDebugVar(m_alpha.size());
+    }
+
+    gsCompositeMaterial(    const T Exx,
+                            const T Eyy,
+                            const T Ezz,
+                            const T Gxy,
+                            const T Gyz,
+                            const T Gxz,
+                            const T nuxy,
+                            const T nuyz,
+                            const T nuxz,
+                            const gsFunctionSet<T> & alpha,
+                            const gsFunctionSet<T> & beta,
+                            const gsFunctionSet<T> & gamma)
+    : m_homogeneous(true),
+      m_constAngle(false),
+      m_alpha(&alpha),
+      m_beta(&beta),
+      m_gamma(&gamma)
+    {
+        gsMatrix<T> G;
+        _makeG(Exx,Eyy,Ezz,Gxy,Gyz,Gxz,nuxy,nuyz,nuxz,G);
+        m_G.push_back( G );
     }
 
     gsCompositeMaterial(    std::vector<T> Exx,
@@ -88,7 +143,8 @@ public:
                             std::vector<T> alpha,
                             std::vector<T> beta,
                             std::vector<T> gamma)
-    : m_homogeneous(false)
+    : m_homogeneous(false),
+      m_constAngle(true)
     {
         gsMatrix<T> G,Phi;
         for (index_t k=0; k!=Exx.size(); k++)
@@ -99,20 +155,76 @@ public:
         }
     }
 
+    gsCompositeMaterial(    std::vector<T> Exx,
+                            std::vector<T> Eyy,
+                            std::vector<T> Ezz,
+                            std::vector<T> Gxy,
+                            std::vector<T> Gyz,
+                            std::vector<T> Gxz,
+                            std::vector<T> nuxy,
+                            std::vector<T> nuyz,
+                            std::vector<T> nuxz,
+                            const gsFunctionSet<T> & alpha,
+                            const gsFunctionSet<T> & beta,
+                            const gsFunctionSet<T> & gamma)
+    : m_homogeneous(false),
+      m_constAngle(false),
+      m_alpha(&alpha),
+      m_beta(&beta),
+      m_gamma(&gamma)
+    {
+        gsMatrix<T> G;
+        for (index_t k=0; k!=Exx.size(); k++)
+        {
+            _makeG(Exx.at(k),Eyy.at(k),Ezz.at(k),Gxy.at(k),Gyz.at(k),Gxz.at(k),nuxy.at(k),nuyz.at(k),nuxz.at(k),G);
+            m_G.push_back( G );
+        }
+    }
+
     mutable util::gsThreaded<gsMatrix<T> > C, Ctemp;
 
     /// \a u points, \a k patch index
     void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
     {
-        if (m_homogeneous) k = 0;
+        if (m_homogeneous && m_constAngle) C = m_G.at(0);
+        if (!m_homogeneous && m_constAngle) C = m_G.at(0);
         GISMO_ASSERT(m_G.size()<static_cast<size_t>(k), "Invalid patch index");
 
         const index_t sz = (u.rows()+1)*u.rows()/2;
         result.resize(sz*sz,u.cols());
 
-        // composite linear elasticity tensor
-        for (index_t j=0; j!=u.cols(); j++)
-            result.reshapeCol(j,sz,sz) = m_G.at(k);
+        if (m_constAngle && m_homogeneous)
+        {
+            // composite linear elasticity tensor
+            for (index_t j=0; j!=u.cols(); j++)
+                result.reshapeCol(j,sz,sz) = m_G.at(0);
+        }
+        else if (!m_constAngle && m_homogeneous)
+        {
+            gsMatrix<T> alphas,betas,gammas, Phi;
+            alphas = m_alpha->piece(k).eval(u);
+            betas = m_beta->piece(k).eval(u);
+            gammas = m_gamma->piece(k).eval(u);
+            // composite linear elasticity tensor
+            for (index_t j=0; j!=u.cols(); j++)
+            {
+                _makePhi(alphas(0,k),betas(0,k),gammas(0,k),Phi);
+                result.reshapeCol(j,sz,sz) = Phi.transpose() * m_G.at(0) * Phi;
+            }
+        }
+        else
+        {
+           gsMatrix<T> alphas,betas,gammas, Phi;
+           alphas = m_alpha->piece(k).eval(u);
+           betas = m_beta->piece(k).eval(u);
+           gammas = m_gamma->piece(k).eval(u);
+           // composite linear elasticity tensor
+           for (index_t j=0; j!=u.cols(); j++)
+           {
+               _makePhi(alphas(0,k),betas(0,k),gammas(0,k),Phi);
+               result.reshapeCol(j,sz,sz) = Phi.transpose() * m_G.at(k) * Phi;
+           }
+        }
     }
 
         /// \a u points, \a k patch index
@@ -125,7 +237,7 @@ protected:
     void _makeG(const T Exx, const T Eyy, const T Ezz,
                 const T Gxy, const T Gxz, const T Gyz,
                 const T nuxy,const T nuxz,const T nuyz,
-                gsMatrix<T> & G)
+                gsMatrix<T> & G) const
     {
         // Note: The stress and strain tensors are ordered as:
         // 2D: [Sxx,Syy,Sxy]
@@ -164,7 +276,7 @@ protected:
     void _makePhi(  const T alpha,
                     const T beta,
                     const T gamma,
-                    gsMatrix<T> & Phi)
+                    gsMatrix<T> & Phi) const
     {
         gsMatrix<T,3,3> Ax,Ay,Az,A;
         Ax <<                   1,                  0,                  0,
@@ -240,8 +352,11 @@ protected:
     }
 
 protected:
-    bool m_homogeneous;
+    bool m_homogeneous, m_constAngle;
     std::vector<gsMatrix<T>> m_G;
+    const gsFunctionSet<T> * m_alpha;
+    const gsFunctionSet<T> * m_beta;
+    const gsFunctionSet<T> * m_gamma;
 
 };
 

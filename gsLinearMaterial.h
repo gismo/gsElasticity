@@ -40,12 +40,12 @@ public:
 
     gsLinearMaterial(std::vector<T> E,
                      std::vector<T> nu)
-    : m_Emodulus(give(E)), m_PoissonRatio(give(nu)), m_homogeneous(true)
+    : m_Emodulus(give(E)), m_PoissonRatio(give(nu)), m_homogeneous(false)
     {
     }
 
     mutable util::gsThreaded<gsMatrix<T> > C, Ctemp;
-    
+
     /// \a u points, \a k patch index
     void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
     {
