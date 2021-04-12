@@ -30,155 +30,24 @@ class gsCompositeMaterial : public gsMaterialBase<T>
 public:
     using Base = gsMaterialBase<T>;
 
-    gsCompositeMaterial(    const gsMatrix<T> G,
-                            const T alpha,
-                            const T beta,
-                            const T gamma)
-    : m_homogeneous(true),
-      m_constAngle(true)
-    {
-        gsMatrix<T> Phi;
-        _makePhi(alpha,beta,gamma,Phi);
-        m_G.push_back( Phi.transpose()*G*Phi );
-    }
+/*
+    To do:
+        - G will be a gsFunctionSet or gsFunction!
+        - alpha, beta, gamma --> in one gsFunctionSet m_angles
 
-    gsCompositeMaterial(    const gsMatrix<T> G,
-                            const gsFunctionSet<T> & alpha,
-                            const gsFunctionSet<T> & beta,
-                            const gsFunctionSet<T> & gamma)
-    : m_homogeneous(true),
-      m_constAngle(false),
-      m_alpha(&alpha),
-      m_beta(&beta),
-      m_gamma(&gamma)
-    {
-        m_G.push_back( G );
-    }
+        -   if m_angles.rows()==1 --> 2D elasticity
+            if m_angles.rows()==3 --> 3D elasticity
+        -   m_G.rows()==4 OR m_G.rows()==9
+        - _makePhi will have input gsMatrix<T>. If 3 rows, then phi3D and if 1 row, then phi2D
 
-    gsCompositeMaterial(std::vector<gsMatrix<T>> G,
-                        std::vector<T> alpha,
-                        std::vector<T> beta,
-                        std::vector<T> gamma)
-    : m_homogeneous(false),
-      m_constAngle(true)
-    {
-        gsMatrix<T> Phi;
-        for (index_t k=0; k!=G.size(); k++)
-        {
-            _makePhi(alpha.at(k),beta.at(k),gamma.at(k),Phi);
-            m_G.push_back( Phi.transpose()*G.at(k)*Phi );
-        }
+*/
 
-    }
-
-    gsCompositeMaterial(std::vector<gsMatrix<T>> G,
-                        const gsFunctionSet<T> & alpha,
-                        const gsFunctionSet<T> & beta,
-                        const gsFunctionSet<T> & gamma)
-    : m_homogeneous(false),
-      m_constAngle(false),
-      m_G(give(G)),
-      m_alpha(&alpha),
-      m_beta(&beta),
-      m_gamma(&gamma)
+    gsCompositeMaterial(    const gsFunctionSet<T> & G,
+                            const gsFunctionSet<T> & alpha)
+    : m_G(&G),
+      m_alpha(&alpha)
     {
 
-    }
-
-    gsCompositeMaterial(    const T Exx,
-                            const T Eyy,
-                            const T Ezz,
-                            const T Gxy,
-                            const T Gyz,
-                            const T Gxz,
-                            const T nuxy,
-                            const T nuyz,
-                            const T nuxz,
-                            const T alpha = 0,
-                            const T beta = 0,
-                            const T gamma = 0)
-    : m_homogeneous(true),
-      m_constAngle(true)
-    {
-        gsMatrix<T> G,Phi;
-        _makeG(Exx,Eyy,Ezz,Gxy,Gyz,Gxz,nuxy,nuyz,nuxz,G);
-        _makePhi(alpha,beta,gamma,Phi);
-        m_G.push_back( Phi.transpose()*G*Phi );
-
-        gsDebugVar(m_alpha.size());
-    }
-
-    gsCompositeMaterial(    const T Exx,
-                            const T Eyy,
-                            const T Ezz,
-                            const T Gxy,
-                            const T Gyz,
-                            const T Gxz,
-                            const T nuxy,
-                            const T nuyz,
-                            const T nuxz,
-                            const gsFunctionSet<T> & alpha,
-                            const gsFunctionSet<T> & beta,
-                            const gsFunctionSet<T> & gamma)
-    : m_homogeneous(true),
-      m_constAngle(false),
-      m_alpha(&alpha),
-      m_beta(&beta),
-      m_gamma(&gamma)
-    {
-        gsMatrix<T> G;
-        _makeG(Exx,Eyy,Ezz,Gxy,Gyz,Gxz,nuxy,nuyz,nuxz,G);
-        m_G.push_back( G );
-    }
-
-    gsCompositeMaterial(    std::vector<T> Exx,
-                            std::vector<T> Eyy,
-                            std::vector<T> Ezz,
-                            std::vector<T> Gxy,
-                            std::vector<T> Gyz,
-                            std::vector<T> Gxz,
-                            std::vector<T> nuxy,
-                            std::vector<T> nuyz,
-                            std::vector<T> nuxz,
-                            std::vector<T> alpha,
-                            std::vector<T> beta,
-                            std::vector<T> gamma)
-    : m_homogeneous(false),
-      m_constAngle(true)
-    {
-        gsMatrix<T> G,Phi;
-        for (index_t k=0; k!=Exx.size(); k++)
-        {
-            _makeG(Exx.at(k),Eyy.at(k),Ezz.at(k),Gxy.at(k),Gyz.at(k),Gxz.at(k),nuxy.at(k),nuyz.at(k),nuxz.at(k),G);
-            _makePhi(alpha.at(k),beta.at(k),gamma.at(k),Phi);
-            m_G.push_back( Phi.transpose()*G*Phi );
-        }
-    }
-
-    gsCompositeMaterial(    std::vector<T> Exx,
-                            std::vector<T> Eyy,
-                            std::vector<T> Ezz,
-                            std::vector<T> Gxy,
-                            std::vector<T> Gyz,
-                            std::vector<T> Gxz,
-                            std::vector<T> nuxy,
-                            std::vector<T> nuyz,
-                            std::vector<T> nuxz,
-                            const gsFunctionSet<T> & alpha,
-                            const gsFunctionSet<T> & beta,
-                            const gsFunctionSet<T> & gamma)
-    : m_homogeneous(false),
-      m_constAngle(false),
-      m_alpha(&alpha),
-      m_beta(&beta),
-      m_gamma(&gamma)
-    {
-        gsMatrix<T> G;
-        for (index_t k=0; k!=Exx.size(); k++)
-        {
-            _makeG(Exx.at(k),Eyy.at(k),Ezz.at(k),Gxy.at(k),Gyz.at(k),Gxz.at(k),nuxy.at(k),nuyz.at(k),nuxz.at(k),G);
-            m_G.push_back( G );
-        }
     }
 
     mutable util::gsThreaded<gsMatrix<T> > C, Ctemp;
@@ -186,44 +55,18 @@ public:
     /// \a u points, \a k patch index
     void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
     {
-        if (m_homogeneous && m_constAngle) C = m_G.at(0);
-        if (!m_homogeneous && m_constAngle) C = m_G.at(0);
-        GISMO_ASSERT(m_G.size()<static_cast<size_t>(k), "Invalid patch index");
-
         const index_t sz = (u.rows()+1)*u.rows()/2;
         result.resize(sz*sz,u.cols());
 
-        if (m_constAngle && m_homogeneous)
+
+        gsMatrix<T> angles, Phi, G;
+        angles = m_alpha->piece(k).eval(u);
+        G = m_G->piece(k).eval(u);
+        // composite linear elasticity tensor
+        for (index_t j=0; j!=u.cols(); j++)
         {
-            // composite linear elasticity tensor
-            for (index_t j=0; j!=u.cols(); j++)
-                result.reshapeCol(j,sz,sz) = m_G.at(0);
-        }
-        else if (!m_constAngle && m_homogeneous)
-        {
-            gsMatrix<T> alphas,betas,gammas, Phi;
-            alphas = m_alpha->piece(k).eval(u);
-            betas = m_beta->piece(k).eval(u);
-            gammas = m_gamma->piece(k).eval(u);
-            // composite linear elasticity tensor
-            for (index_t j=0; j!=u.cols(); j++)
-            {
-                _makePhi(alphas(0,k),betas(0,k),gammas(0,k),Phi);
-                result.reshapeCol(j,sz,sz) = Phi.transpose() * m_G.at(0) * Phi;
-            }
-        }
-        else
-        {
-           gsMatrix<T> alphas,betas,gammas, Phi;
-           alphas = m_alpha->piece(k).eval(u);
-           betas = m_beta->piece(k).eval(u);
-           gammas = m_gamma->piece(k).eval(u);
-           // composite linear elasticity tensor
-           for (index_t j=0; j!=u.cols(); j++)
-           {
-               _makePhi(alphas(0,k),betas(0,k),gammas(0,k),Phi);
-               result.reshapeCol(j,sz,sz) = Phi.transpose() * m_G.at(k) * Phi;
-           }
+           _makePhi(angles.col(k),Phi);
+           result.reshapeCol(j,sz,sz) = Phi.transpose() * G.reshapeCol(j,sz,sz) * Phi;
         }
     }
 
@@ -234,36 +77,6 @@ public:
     }
 
 protected:
-    void _makeG(const T Exx, const T Eyy, const T Ezz,
-                const T Gxy, const T Gxz, const T Gyz,
-                const T nuxy,const T nuxz,const T nuyz,
-                gsMatrix<T> & G) const
-    {
-        // Note: The stress and strain tensors are ordered as:
-        // 2D: [Sxx,Syy,Sxy]
-        // 3D: [Sxx,Syy,Szz,Sxy,Syz,Sxz]
-        /// Via https://www.efunda.com/formulae/solid_mechanics/mat_mechanics/hooke_orthotropic.cfm
-
-        G.resize(6,6);
-        G.setZero();
-        T D = (1-nuxy*nuxy-nuyz*nuyz-nuxz*nuxz-2*nuxy*nuyz*nuxz) / (Exx*Eyy*Ezz);
-        G(0,0) = (1-nuyz*nuyz) / (Eyy*Ezz); // Gzz
-        G(1,1) = (1-nuxz*nuxz) / (Exx*Ezz); // Gyy
-        G(2,2) = (1-nuxy*nuxy) / (Exx*Eyy); // Gzz
-
-        // Gij = nuij + nuik*nukj / Ejj*Ekk
-        G(0,1) = G(1,0) = (nuxy+nuxz*nuyz) / (Eyy*Ezz); // Gxy
-        G(0,2) = G(2,0) = (nuxz+nuxy*nuyz) / (Eyy*Ezz); // Gxz
-        G(1,2) = G(2,1) = (nuyz+nuxy*nuxz) / (Exx*Ezz); // Gyz
-
-        G *= 1.0/D;
-
-        G(3,3) = 2.*Gxy;
-        G(4,4) = 2.*Gyz;
-        G(5,5) = 2.*Gxz;
-    }
-
-
     /**
      * @brief      Makes the rotation matrix (Tiat-Bryan angle)
      *
@@ -273,90 +86,111 @@ protected:
      * @param[in]  Phi    The rotation matrix
      *
      */
-    void _makePhi(  const T alpha,
-                    const T beta,
-                    const T gamma,
+    void _makePhi(  const gsMatrix<T> angles,
                     gsMatrix<T> & Phi) const
     {
-        gsMatrix<T,3,3> Ax,Ay,Az,A;
-        Ax <<                   1,                  0,                  0,
-                                0,   math::cos(alpha),  -math::sin(alpha),
-                                0,   math::sin(alpha),   math::cos(alpha);
+        if (angles.rows()==1) // 2d elasticity
+        {
+            Phi.resize(3,3);
+            Phi.setZero();
 
-        Ay <<     math::cos(beta),                  0,    math::sin(beta),
-                                0,                  1,                  0,
-                 -math::sin(beta),                  0,    math::cos(beta);
+            const T & alpha = angles(0,0);
 
-        Az <<    math::cos(gamma),  -math::sin(gamma),                  0,
-                 math::sin(gamma),   math::cos(gamma),                  0,
-                                0,                  0,                  1;
+            // Make transformation matrix
+            Phi(0,0) = Phi(1,1) = math::pow(math::cos(alpha),2);
+            Phi(0,1) = Phi(1,0) = math::pow(math::sin(alpha),2);
+            Phi(2,0) = Phi(0,2) = Phi(2,1) = Phi(1,2) = math::sin(alpha) * math::cos(alpha);
+            Phi(2,0) *= -2.0;
+            Phi(2,1) *= 2.0;
+            Phi(1,2) *= -1.0;
+            Phi(2,2) = math::pow(math::cos(alpha),2) - math::pow(math::sin(alpha),2);
+        }
+        else if (angles.rows()==3)
+        {
+            Phi.resize(6,6);
+            Phi.setZero();
 
-        // Tiat-Bryan angle (X1,Y2,Z3) --> https://en.wikipedia.org/wiki/Euler_angles
-        Ax *= Ay;
-        Ax *= Az;
-        A.swap(Ax);
+            const T & alpha = angles(0,0);
+            const T & beta  = angles(1,0);
+            const T & gamma = angles(2,0);
 
-        /*
-              a11^2     ,a12^2      ,a13^2      ,2*a12*a11          ,2*a12*a13          ,2*a11*a13
-              a21^2     ,a22^2      ,a23^2      ,2*a21*a22          ,2*a22*a23          ,2*a21*a23
-              a31^2     ,a32^2      ,a33^2      ,2*a31*a32          ,2*a32*a33          ,2*a31*a33
-              a11*a21   ,a12*a22    ,a13*a23    ,a11*a22+a12*a21    ,a12*a23+a13*a22    ,a11*a23+a13*a21
-              a21*a31   ,a22*a32    ,a23*a33    ,a21*a32+a22*a31    ,a22*a33+a23*a32    ,a21*a33+a23*a31
-              a11*a31   ,a12*a32    ,a13*a33    ,a11*a32+a31*a12    ,a12*a33+a13*a32    ,a11*a33+a31*a13
-         */
+            gsMatrix<T,3,3> Ax,Ay,Az,A;
+            Ax <<                   1,                  0,                  0,
+                                    0,   math::cos(alpha),  -math::sin(alpha),
+                                    0,   math::sin(alpha),   math::cos(alpha);
 
-        Phi.resize(6,6);
-        Phi.setZero();
+            Ay <<     math::cos(beta),                  0,    math::sin(beta),
+                                    0,                  1,                  0,
+                     -math::sin(beta),                  0,    math::cos(beta);
 
-        Phi(0,0) = A(0,0)*A(0,0);
-        Phi(0,1) = A(0,1)*A(0,1);
-        Phi(0,2) = A(0,2)*A(0,2);
-        Phi(0,3) = 2*A(0,0)*A(0,1);
-        Phi(0,4) = 2*A(0,1)*A(0,2);
-        Phi(0,5) = 2*A(0,0)*A(0,2);
+            Az <<    math::cos(gamma),  -math::sin(gamma),                  0,
+                     math::sin(gamma),   math::cos(gamma),                  0,
+                                    0,                  0,                  1;
 
-        Phi(1,0) = A(1,0)*A(1,0);
-        Phi(1,1) = A(1,1)*A(1,1);
-        Phi(1,2) = A(1,2)*A(1,2);
-        Phi(1,3) = 2*A(1,0)*A(1,1);
-        Phi(1,4) = 2*A(1,1)*A(1,2);
-        Phi(1,5) = 2*A(1,0)*A(1,2);
+            // Tiat-Bryan angle (X1,Y2,Z3) --> https://en.wikipedia.org/wiki/Euler_angles
+            Ax *= Ay;
+            Ax *= Az;
+            A.swap(Ax);
 
-        Phi(2,0) = A(2,0)*A(2,0);
-        Phi(2,1) = A(2,1)*A(2,1);
-        Phi(2,2) = A(2,2)*A(2,2);
-        Phi(2,3) = 2*A(2,0)*A(2,1);
-        Phi(2,4) = 2*A(2,1)*A(2,2);
-        Phi(2,5) = 2*A(2,0)*A(2,2);
+            /*
+                Phi:
+                  a11^2     ,a12^2      ,a13^2      ,2*a12*a11          ,2*a12*a13          ,2*a11*a13
+                  a21^2     ,a22^2      ,a23^2      ,2*a21*a22          ,2*a22*a23          ,2*a21*a23
+                  a31^2     ,a32^2      ,a33^2      ,2*a31*a32          ,2*a32*a33          ,2*a31*a33
+                  a11*a21   ,a12*a22    ,a13*a23    ,a11*a22+a12*a21    ,a12*a23+a13*a22    ,a11*a23+a13*a21
+                  a21*a31   ,a22*a32    ,a23*a33    ,a21*a32+a22*a31    ,a22*a33+a23*a32    ,a21*a33+a23*a31
+                  a11*a31   ,a12*a32    ,a13*a33    ,a11*a32+a31*a12    ,a12*a33+a13*a32    ,a11*a33+a31*a13
+             */
 
-        Phi(3,0) = A(0,0)*A(1,0);
-        Phi(3,1) = A(0,1)*A(1,1);
-        Phi(3,2) = A(0,2)*A(1,2);// !
-        Phi(3,3) = A(0,0)*A(1,1)+A(0,1)*A(1,0);
-        Phi(3,4) = A(0,1)*A(1,2)+A(0,2)*A(1,1);
-        Phi(3,5) = A(0,0)*A(1,2)+A(0,2)*A(1,0);
+            Phi(0,0) = A(0,0)*A(0,0);
+            Phi(0,1) = A(0,1)*A(0,1);
+            Phi(0,2) = A(0,2)*A(0,2);
+            Phi(0,3) = 2*A(0,0)*A(0,1);
+            Phi(0,4) = 2*A(0,1)*A(0,2);
+            Phi(0,5) = 2*A(0,0)*A(0,2);
 
-        Phi(4,0) = A(1,0)*A(2,0);
-        Phi(4,1) = A(1,1)*A(2,1);
-        Phi(4,2) = A(1,2)*A(2,2);
-        Phi(4,3) = A(1,0)*A(2,1)+A(1,1)*A(2,0);//////////////////
-        Phi(4,4) = A(1,1)*A(2,2)+A(1,2)*A(2,1);
-        Phi(4,5) = A(1,0)*A(2,2)+A(1,2)*A(2,0);
+            Phi(1,0) = A(1,0)*A(1,0);
+            Phi(1,1) = A(1,1)*A(1,1);
+            Phi(1,2) = A(1,2)*A(1,2);
+            Phi(1,3) = 2*A(1,0)*A(1,1);
+            Phi(1,4) = 2*A(1,1)*A(1,2);
+            Phi(1,5) = 2*A(1,0)*A(1,2);
 
-        Phi(5,0) = A(0,0)*A(2,0);
-        Phi(5,1) = A(0,1)*A(2,1);
-        Phi(5,2) = A(0,2)*A(2,2);// !
-        Phi(5,3) = A(0,0)*A(2,1)+A(2,0)*A(0,1);
-        Phi(5,4) = A(0,1)*A(2,2)+A(0,2)*A(2,1);
-        Phi(5,5) = A(0,0)*A(2,2)+A(2,0)*A(0,2);
+            Phi(2,0) = A(2,0)*A(2,0);
+            Phi(2,1) = A(2,1)*A(2,1);
+            Phi(2,2) = A(2,2)*A(2,2);
+            Phi(2,3) = 2*A(2,0)*A(2,1);
+            Phi(2,4) = 2*A(2,1)*A(2,2);
+            Phi(2,5) = 2*A(2,0)*A(2,2);
+
+            Phi(3,0) = A(0,0)*A(1,0);
+            Phi(3,1) = A(0,1)*A(1,1);
+            Phi(3,2) = A(0,2)*A(1,2);
+            Phi(3,3) = A(0,0)*A(1,1)+A(0,1)*A(1,0);
+            Phi(3,4) = A(0,1)*A(1,2)+A(0,2)*A(1,1);
+            Phi(3,5) = A(0,0)*A(1,2)+A(0,2)*A(1,0);
+
+            Phi(4,0) = A(1,0)*A(2,0);
+            Phi(4,1) = A(1,1)*A(2,1);
+            Phi(4,2) = A(1,2)*A(2,2);
+            Phi(4,3) = A(1,0)*A(2,1)+A(1,1)*A(2,0);
+            Phi(4,4) = A(1,1)*A(2,2)+A(1,2)*A(2,1);
+            Phi(4,5) = A(1,0)*A(2,2)+A(1,2)*A(2,0);
+
+            Phi(5,0) = A(0,0)*A(2,0);
+            Phi(5,1) = A(0,1)*A(2,1);
+            Phi(5,2) = A(0,2)*A(2,2);
+            Phi(5,3) = A(0,0)*A(2,1)+A(2,0)*A(0,1);
+            Phi(5,4) = A(0,1)*A(2,2)+A(0,2)*A(2,1);
+            Phi(5,5) = A(0,0)*A(2,2)+A(2,0)*A(0,2);
+        }
+        else
+            GISMO_ERROR("angles have wrong dimension ("<<angles.rows()<<")");
     }
 
 protected:
-    bool m_homogeneous, m_constAngle;
-    std::vector<gsMatrix<T>> m_G;
+    const gsFunctionSet<T> * m_G;
     const gsFunctionSet<T> * m_alpha;
-    const gsFunctionSet<T> * m_beta;
-    const gsFunctionSet<T> * m_gamma;
 
 };
 

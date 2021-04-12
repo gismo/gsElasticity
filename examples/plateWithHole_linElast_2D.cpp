@@ -9,6 +9,7 @@
 #include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsLinearMaterial.h>
 #include <gsElasticity/gsCompositeMaterial.h>
+#include <gsElasticity/gsCompositeMatrix.cpp>
 
 using namespace gismo;
 
@@ -78,20 +79,16 @@ int main(int argc, char* argv[]){
               // Assembling & solving //
     //=============================================//
 
-    gsConstantFunction<> alpha_p(0.0,3);
-    gsConstantFunction<> beta_p(0.0,3);
-    gsConstantFunction<> gamma_p(0.0,3);
-    gsPiecewiseFunction<> alpha(geometry.nPatches()), beta(geometry.nPatches()), gamma(geometry.nPatches());
-    for (size_t k=0; k!=geometry.nPatches(); k++)
-    {
-        alpha.addPiece(alpha_p);
-        beta .addPiece(beta_p);
-        gamma.addPiece(gamma_p);
-    }
+    gsConstantFunction<> alpha(0.0,2);
+    gsMatrix<> Gmat = gsCompositeMatrix(youngsModulus,youngsModulus,
+                                        youngsModulus/(2*(1+poissonsRatio)),
+                                        poissonsRatio);
+
+    Gmat.resize(Gmat.rows()*Gmat.cols(),1);
+    gsConstantFunction<> G(Gmat,2);
 
     // gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio);
-    // gsCompositeMaterial<real_t> materialMat(youngsModulus,youngsModulus,youngsModulus,youngsModulus/(2*(1+poissonsRatio)),youngsModulus/(2*(1+poissonsRatio)),youngsModulus/(2*(1+poissonsRatio)),poissonsRatio,poissonsRatio,poissonsRatio,0,0,0);
-    gsCompositeMaterial<real_t> materialMat(youngsModulus,youngsModulus,youngsModulus,youngsModulus/(2*(1+poissonsRatio)),youngsModulus/(2*(1+poissonsRatio)),youngsModulus/(2*(1+poissonsRatio)),poissonsRatio,poissonsRatio,poissonsRatio,alpha,beta,gamma);
+    gsCompositeMaterial<real_t> materialMat(G,alpha);
 
     // creating assembler
     // gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);//,materialMat);

@@ -50,7 +50,7 @@ public:
     void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
     {
         if (m_homogeneous) k = 0;
-        GISMO_ASSERT(m_Emodulus.size()<static_cast<size_t>(k), "Invalid patch index");
+        GISMO_ASSERT(m_Emodulus.size() > static_cast<size_t>(k), "Invalid patch index");
 
         const index_t sz = (u.rows()+1)*u.rows()/2;
         result.resize(sz*sz,u.cols());

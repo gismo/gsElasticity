@@ -40,7 +40,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
                                                 const gsFunction<T> & body_force,
                                                 gsMaterialBase<T> * materialMatrix)
 :
-m_materialMat(NULL)
+m_materialMat(materialMatrix)
 {
     // Originally concieved as a meaningful class, now gsPde is just a container for
     // the domain, boundary conditions and the right-hand side;
@@ -165,6 +165,7 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
         // if !composite
 
         // else
+
 
         if (m_materialMat!=NULL)
         {
