@@ -13,57 +13,58 @@
         A. Mantzaflaris (2019-..., Inria)
 */
 
-#pragma once
+// #pragma once
 
-namespace gismo
+#include <gismo.h>
+
+using namespace gismo;
+
+template<class T>
+gsMatrix<T> gsCompositeMatrix(	const T Exx,
+	                            const T Eyy,
+	                            const T Ezz,
+	                            const T Gxy,
+	                            const T Gyz,
+	                            const T Gxz,
+	                            const T nuxy,
+	                            const T nuyz,
+	                            const T nuxz
+	                          )
 {
-	template<class T>
-	gsMatrix<T> gsCompositeMatrix(	const T Exx,
-		                            const T Eyy,
-		                            const T Ezz,
-		                            const T Gxy,
-		                            const T Gyz,
-		                            const T Gxz,
-		                            const T nuxy,
-		                            const T nuyz,
-		                            const T nuxz
-		                          )
-	{
-		gsMatrix<T> G(6,6);
-		G.setZero();
-		T D = (1-nuxy*nuxy-nuyz*nuyz-nuxz*nuxz-2*nuxy*nuyz*nuxz) / (Exx*Eyy*Ezz);
-		G(0,0) = (1-nuyz*nuyz) / (Eyy*Ezz); // Gzz
-		G(1,1) = (1-nuxz*nuxz) / (Exx*Ezz); // Gyy
-		G(2,2) = (1-nuxy*nuxy) / (Exx*Eyy); // Gzz
+	gsMatrix<T> G(6,6);
+	G.setZero();
+	T D = (1-nuxy*nuxy-nuyz*nuyz-nuxz*nuxz-2*nuxy*nuyz*nuxz) / (Exx*Eyy*Ezz);
+	G(0,0) = (1-nuyz*nuyz) / (Eyy*Ezz); // Gzz
+	G(1,1) = (1-nuxz*nuxz) / (Exx*Ezz); // Gyy
+	G(2,2) = (1-nuxy*nuxy) / (Exx*Eyy); // Gzz
 
-		// Gij = nuij + nuik*nukj / Ejj*Ekk
-		G(0,1) = G(1,0) = (nuxy+nuxz*nuyz) / (Eyy*Ezz); // Gxy
-		G(0,2) = G(2,0) = (nuxz+nuxy*nuyz) / (Eyy*Ezz); // Gxz
-		G(1,2) = G(2,1) = (nuyz+nuxy*nuxz) / (Exx*Ezz); // Gyz
+	// Gij = nuij + nuik*nukj / Ejj*Ekk
+	G(0,1) = G(1,0) = (nuxy+nuxz*nuyz) / (Eyy*Ezz); // Gxy
+	G(0,2) = G(2,0) = (nuxz+nuxy*nuyz) / (Eyy*Ezz); // Gxz
+	G(1,2) = G(2,1) = (nuyz+nuxy*nuxz) / (Exx*Ezz); // Gyz
 
-		G *= 1.0/D;
+	G *= 1.0/D;
 
-		G(3,3) = Gxy; // Factor 2?
-		G(4,4) = Gyz; // Factor 2?
-		G(5,5) = Gxz; // Factor 2?
-		return G;
-	}
+	G(3,3) = Gxy; // Factor 2?
+	G(4,4) = Gyz; // Factor 2?
+	G(5,5) = Gxz; // Factor 2?
+	return G;
+}
 
-	template<class T>
-	gsMatrix<T> gsCompositeMatrix(	const T Exx,
-		                            const T Eyy,
-		                            const T Gxy,
-		                            const T nuxy
-		                          )
-	{
-		gsMatrix<T> G(3,3);
-		G.setZero();
+template<class T>
+gsMatrix<T> gsCompositeMatrix(	const T Exx,
+	                            const T Eyy,
+	                            const T Gxy,
+	                            const T nuxy
+	                          )
+{
+	gsMatrix<T> G(3,3);
+	G.setZero();
 
-		G(0,0) = Exx*nuxy / ((1+nuxy)*(1-2*nuxy)) + Exx / ((1+nuxy)); // Gxx
-		G(1,1) = Eyy*nuxy / ((1+nuxy)*(1-2*nuxy)) + Eyy / ((1+nuxy)); // Gxx
-		G(0,1) = G(1,0) = (nuxy*Exx) / ((1+nuxy)*(1-2*nuxy)); // Gxy
+	G(0,0) = Exx*nuxy / ((1+nuxy)*(1-2*nuxy)) + Exx / ((1+nuxy)); // Gxx
+	G(1,1) = Eyy*nuxy / ((1+nuxy)*(1-2*nuxy)) + Eyy / ((1+nuxy)); // Gxx
+	G(0,1) = G(1,0) = (nuxy*Exx) / ((1+nuxy)*(1-2*nuxy)); // Gxy
 
-		G(2,2) = Gxy;
-		return G;
-	}
+	G(2,2) = Gxy;
+	return G;
 }
