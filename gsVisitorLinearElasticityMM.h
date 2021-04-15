@@ -26,7 +26,7 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorLinearElasticityMM
+class gsVisitorLinearElasticityMM //material matrix
 {
 public:
 
@@ -47,6 +47,8 @@ public:
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
+        forceScaling    = options.getReal("ForceScaling");
+        localStiffening = options.getReal("LocalStiff");
         // saving necessary info
         //---------------------------------------
         // T E = options.getReal("YoungsModulus");
@@ -99,7 +101,7 @@ public:
         {
             // Multiply quadrature weight by the geometry measure
             const T weightForce = quWeights[q] * md.measure(q);
-            const T weightBody = quWeights[q] * pow(md.measure(q),1-localStiffening);
+            const T weightBody = quWeights[q] * math::pow(md.measure(q),1-localStiffening);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md,q,basisValuesDisp[1],physGrad);
             // loop over active basis functions (v_j)
