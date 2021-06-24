@@ -110,6 +110,7 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
     return solver.solve(m_system.rhs());
 #endif
     numIters = 1;
+    return gsMatrix<T>();
 }
 
 template <class T>
