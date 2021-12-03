@@ -21,6 +21,7 @@
 #include <gsElasticity/gsBiharmonicAssembler.h>
 #include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsGeoUtils.h>
+#include <gsCore/gsConstantFunction.h>
 
 namespace gismo
 {

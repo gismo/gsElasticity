@@ -109,7 +109,8 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitLinear()
     gsSparseSolver<>::SimplicialLDLT solver(m_system.matrix());
     return solver.solve(m_system.rhs());
 #endif
-//    numIters = 1;
+    numIters = 1;
+    return gsMatrix<T>();
 }
 
 template <class T>
