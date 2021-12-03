@@ -68,8 +68,8 @@ public:
             result.reshapeCol(j,sz,sz) = C.mine();
     }
 
-        /// \a u points, \a k patch index
-        void eval_vector_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
+    /// \a u points, \a k patch index
+    void eval_vector_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
     {
         GISMO_NO_IMPLEMENTATION;
     }
