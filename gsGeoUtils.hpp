@@ -868,9 +868,9 @@ typename gsGeometry<T>::uPtr genSphere(gsKnotVector<T> & xiKnots, gsKnotVector<T
                                        T xi0, T xi1, T eta0, T eta1)
 {
     gsBSplineBasis<T> xiBasis(xiKnots);
-    typename gsGeometry<T>::uPtr xiCircle = genCircle(xiBasis,1.,0.,0.,xi0,xi1-xi0);
+    typename gsGeometry<T>::uPtr xiCircle = genCircle(xiBasis,(T)1.,(T)0.,(T)0.,xi0,xi1-xi0);
     gsBSplineBasis<T> etaBasis(etaKnots);
-    typename gsGeometry<T>::uPtr etaCircle = genCircle(xiBasis,1.,0.,0.,xi0,xi1-xi0);
+    typename gsGeometry<T>::uPtr etaCircle = genCircle(xiBasis,(T)1.,(T)0.,(T)0.,xi0,xi1-xi0);
 
     gsTensorBSplineBasis<2,T> basis(xiKnots,etaKnots);
 
@@ -1090,15 +1090,15 @@ void genMuscleMP(gsGeometry<T> const & muscleSurface, gsMultiPatch<T> & result)
     for (index_t i = 0; i < 7; ++i)
     {   // for each cross-section
         // compute four corners of the interior hub-patch
-        gsMatrix<T> cornerA = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),1./3.,0*7+i,7*7+i); // right 1/3 left 1/3
-        gsMatrix<T> cornerC = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),2./3.,0*7+i,7*7+i); // right 3/5 left 2/3
-        gsMatrix<T> cornerB = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),1./3.,3*7+i,10*7+i); // right 2/5 left 1/3
-        gsMatrix<T> cornerD = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),2./3.,3*7+i,10*7+i); // right 2/3 left 2/3
+        gsMatrix<T> cornerA = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),(T)1./3.,0*7+i,7*7+i); // right 1/3 left 1/3
+        gsMatrix<T> cornerC = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),(T)2./3.,0*7+i,7*7+i); // right 3/5 left 2/3
+        gsMatrix<T> cornerB = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),(T)1./3.,3*7+i,10*7+i); // right 2/5 left 1/3
+        gsMatrix<T> cornerD = combine(temp.patch(0).coefs(),temp.patch(0).coefs(),(T)2./3.,3*7+i,10*7+i); // right 2/3 left 2/3
 
         if (i == 0) // only for the left
         {
-            cornerB = combine(cornerB,cornerC,0.5);
-            cornerD = combine(cornerD,cornerC,0.5);
+            cornerB = combine(cornerB,cornerC,(T)0.5);
+            cornerD = combine(cornerD,cornerC,(T)0.5);
         }
 
         // gen patch1
