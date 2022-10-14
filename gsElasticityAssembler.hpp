@@ -28,6 +28,7 @@
 #include <gsElasticity/gsVisitorMixedLinearElasticity.h>
 #include <gsElasticity/gsVisitorMixedNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinearElasticity.h>
+#include <gsElasticity/gsVisitorNonLinearElasticityMM.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
 
 namespace gismo
@@ -232,8 +233,19 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
     m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
-    Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    if (m_materialMat!=NULL)
+    {
+        // gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
+        // Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+        gsVisitorNonLinearElasticityMM<T> visitor(*m_pde_ptr,m_materialMat,displacement);
+        Base::template push<gsVisitorNonLinearElasticityMM<T> >(visitor);
+    }
+    else
+    {
+        gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
+        Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    }
+
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());

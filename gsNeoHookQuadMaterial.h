@@ -24,13 +24,13 @@ namespace gismo
 {
 
 template <class T>
-class gsLinearMaterial : public gsMaterialBase<T>
+class gsNeoHookQuadMaterial : public gsMaterialBase<T>
 {
 
 public:
     using Base = gsMaterialBase<T>;
 
-    gsLinearMaterial(   const T E,
+    gsNeoHookQuadMaterial(   const T E,
                         const T nu,
                         const gsFunctionSet<T> * patches,
                         const gsFunctionSet<T> * deformed)
@@ -42,7 +42,7 @@ public:
         m_PoissonRatio.push_back(nu);
     }
 
-    gsLinearMaterial(std::vector<T> E,
+    gsNeoHookQuadMaterial(std::vector<T> E,
                      std::vector<T> nu,
                      const gsFunctionSet<T> * patches,
                      const gsFunctionSet<T> * deformed)
@@ -54,7 +54,7 @@ public:
     {
     }
 
-    // mutable util::gsThreaded<gsMatrix<T> > C, Ctemp;//, S;
+    // mutable util::gsThreaded<gsMatrix<T> > C, Ctemp;
 
     /// \a u points, \a k patch index
     void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
@@ -62,21 +62,31 @@ public:
         if (m_homogeneous) k = 0;
         GISMO_ASSERT(m_Emodulus.size() > static_cast<size_t>(k), "Invalid patch index");
 
-        const index_t sz = (u.rows()+1)*u.rows()/2;
-        result.resize(sz*sz,u.cols());
+        gsMatrix<T> C, Ctemp;
+        gsMatrix<T> Fres, Eres;
+        Base::allStrains_into(u,Fres,Eres,k);
 
         T lambda = m_Emodulus.at(k) * m_PoissonRatio.at(k) / ( ( 1. + m_PoissonRatio.at(k) ) * ( 1. - 2. * m_PoissonRatio.at(k) ) );
         T mu     = m_Emodulus.at(k) / ( 2. * ( 1. + m_PoissonRatio.at(k) ) );
-        // linear elasticity tensor
-        gsMatrix<T> I = gsMatrix<T>::Identity(u.rows(),u.rows());
-        gsMatrix<T> C, Ctemp;
-        matrixTraceTensor<T>(C,I,I);
-        C *= lambda;
-        symmetricIdentityTensor<T>(Ctemp,I);
-        C += mu*Ctemp;
 
+        const index_t sz = (u.rows()+1)*u.rows()/2;
+        result.resize(sz*sz,u.cols());
+        gsMatrix<T> RCG, RCGinv;
+        T J;
         for (index_t j=0; j!=u.cols(); j++)
+        {
+            gsAsMatrix<T, Dynamic, Dynamic> F = Fres.reshapeCol(j,u.rows(),u.rows());
+            gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(j,u.rows(),u.rows());
+            J = F.determinant();
+            RCG = F.transpose() * F;
+            RCGinv = RCG.cramerInverse();
+
+            matrixTraceTensor<T>(C,RCGinv,RCGinv);
+            C *= lambda*J*J;
+            symmetricIdentityTensor<T>(Ctemp,RCGinv);
+            C += (mu-lambda*(J*J-1)/2)*Ctemp;
             result.reshapeCol(j,sz,sz) = C;
+        }
     }
 
     /// \a u points, \a k patch index
@@ -85,8 +95,8 @@ public:
         if (m_homogeneous) k = 0;
         GISMO_ASSERT(m_Emodulus.size() > static_cast<size_t>(k), "Invalid patch index");
 
-        gsMatrix<T> Eres;
-        Base::strain_into(u,Eres,k);
+        gsMatrix<T> Fres, Eres;
+        Base::allStrains_into(u,Fres,Eres,k);
 
         T lambda = m_Emodulus.at(k) * m_PoissonRatio.at(k) / ( ( 1. + m_PoissonRatio.at(k) ) * ( 1. - 2. * m_PoissonRatio.at(k) ) );
         T mu     = m_Emodulus.at(k) / ( 2. * ( 1. + m_PoissonRatio.at(k) ) );
@@ -94,11 +104,18 @@ public:
 
         const index_t sz = u.rows();
         result.resize(sz*sz,u.cols());
+        gsMatrix<T> RCG, RCGinv;
         gsMatrix<T> S;
+        T J;
         for (index_t i=0; i!=u.cols(); i++)
         {
+            gsAsMatrix<T, Dynamic, Dynamic> F = Fres.reshapeCol(i,u.rows(),u.rows());
             gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,u.rows(),u.rows());
-            S = lambda*E.trace()*I + 2*mu*E;
+            J = F.determinant();
+            RCG = F.transpose() * F;
+            RCGinv = RCG.cramerInverse();
+
+            S = (lambda*(J*J-1)/2-mu)*RCGinv + mu*I;
             result.reshapeCol(i,sz,sz) = S;
         }
     }
