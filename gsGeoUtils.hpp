@@ -42,7 +42,7 @@ namespace gismo
 template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples)
 {
-    std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
+    std::string fileNameOnly = gsFileManager::getFilename(fileName);
     gsParaviewCollection collectionMesh(fileName + "_mesh");
     gsParaviewCollection collectionJac(fileName + "_jac");
     index_t res;
@@ -61,9 +61,9 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
 
     for (size_t p = 0; p < domain.nPatches(); ++p)
     {
-        collectionMesh.addPart(fileNameOnly,p,"_mesh.vtp"); 
+        collectionMesh.addPart(fileNameOnly + "_mesh.vtp",0,"Mesh",p);
         if (plotJac)
-            collectionJac.addPart(fileNameOnly,p,".vts");
+            collectionJac.addPart(fileNameOnly + ".vts",0,"Jac",p);
         else
             res = system(("rm " + fileName + util::to_string(p) + ".vts").c_str());
         GISMO_ENSURE(res == 0, "Problems with deleting files\n");
@@ -85,8 +85,9 @@ void plotGeometry(const gsMultiPatch<T> & domain, std::string const & fileName,
     {
         gsMesh<T> mesh(domain.basis(p),8);
         domain.patch(p).evaluateMesh(mesh);
-        gsWriteParaview(mesh,fileName + util::to_string(step) + "_" + util::to_string(p),false);
-        collection.addTimestep(fileName + util::to_string(step) + "_",p,step,".vtp");
+        std::string patchFileName = fileName + util::to_string(step) + "_" + util::to_string(p);
+        gsWriteParaview(mesh,patchFileName,false);
+        collection.addPart(gsFileManager::getFilename(patchFileName),step,"",p);
     }
 }
 
@@ -96,7 +97,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
 {
     gsInfo << "Plotting deformed configurations...\n";
 
-    std::string fileNameOnly = fileName.substr(fileName.find_last_of("/\\")+1);
+    std::string fileNameOnly = gsFileManager::getFilename(fileName);
     gsParaviewCollection collectionMesh(fileName + "_mesh");
     gsParaviewCollection collectionJac(fileName + "_jac");
     index_t res;
@@ -123,9 +124,9 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
 
     for (size_t p = 0; p < configuration.nPatches(); ++p)
     {
-        collectionMesh.addTimestep(fileNameOnly + util::to_string(0),p,0,"_mesh.vtp");
+        collectionMesh.addPart(fileNameOnly + util::to_string(0) + util::to_string(p) + "_mesh.vtp",0,"Mesh",p);
         if (plotJac)
-            collectionJac.addTimestep(fileNameOnly + util::to_string(0),p,0,".vts");
+            collectionJac.addPart(fileNameOnly + util::to_string(0) + util::to_string(p) + ".vts",0,"Jac",p);
         else
         {
             res = system(("rm " + fileName + util::to_string(0) + util::to_string(p) + ".vts").c_str());
@@ -150,10 +151,9 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
         gsWriteParaviewMultiPhysics(fields,fileName+util::to_string(s+1),numSamplingPoints == 0 ? 1 : numSamplingPoints,true);
         for (size_t p = 0; p < configuration.nPatches(); ++p)
         {
-            collectionMesh.addTimestep(fileNameOnly + util::to_string(s+1),p,s+1,"_mesh.vtp");
-
+            collectionMesh.addPart(fileNameOnly + util::to_string(s+1) + util::to_string(p) +  "_mesh.vtp",s+1,"Mesh",p);
             if (plotJac)
-                collectionJac.addTimestep(fileNameOnly + util::to_string(s+1),p,s+1,".vts");
+                collectionJac.addPart(fileNameOnly + util::to_string(s+1) + util::to_string(p) + ".vts",s+1,"Jac",p);
             else
             {
                 res = system(("rm " + fileName + util::to_string(s+1) + util::to_string(p) + ".vts").c_str());
@@ -190,8 +190,9 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const gsMultiPatch<T> &
     {
         gsMesh<T> mesh(configuration.basis(p),8);
         configuration.patch(p).evaluateMesh(mesh);
-        gsWriteParaview(mesh,fileName + util::to_string(step) + "_" + util::to_string(p),false);
-        collection.addTimestep(fileName + util::to_string(step) + "_",p,step,".vtp");
+        std::string patchFileName = fileName + util::to_string(step) + "_" + util::to_string(p);
+        gsWriteParaview(mesh,patchFileName,false);
+        collection.addPart(gsFileManager::getFilename(patchFileName),step,"",p);
     }
 }
 
