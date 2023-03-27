@@ -88,17 +88,17 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
         gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
-        collection.addPart(baseName + util::to_string(i) + ".vts", i );
+        collection.addPart(baseName + util::to_string(i) + ".vts", -1, "", i );
 
         if ( mesh )
         {
             writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
-            collection.addPart(baseName + util::to_string(i) + "_mesh" + ".vtp",i, "Mesh");
+            collection.addPart(baseName + util::to_string(i) + "_mesh" + ".vtp",-1, "Mesh", i);
         }
         if ( ctrlNet ) // Output the control net
         {
             writeSingleControlNet(fields.begin()->second->patch(i), fn + util::to_string(i) + "_cnet");
-            collection.addPart(baseName + util::to_string(i) + "_cnet" + ".vtp", i, "ControlNet");
+            collection.addPart(baseName + util::to_string(i) + "_cnet" + ".vtp", -1, "ControlNet", i);
         }
 
     }
