@@ -103,7 +103,7 @@ public:
 protected:   
     // problem info
     short_t dim;
-    const gsFunction<T> * neumannFunction_ptr;
+    const gsFunctionSet<T> * neumannFunction_ptr;
     T forceScaling;
     boxSide patchSide;
     // geometry mapping

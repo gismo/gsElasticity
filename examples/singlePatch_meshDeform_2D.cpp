@@ -144,8 +144,7 @@ int main(int argc, char* argv[])
                 // Output //
     //=====================================//
 
-    filename = filename.substr(filename.find_last_of("/\\")+1); // file name without a path
-    filename = filename.substr(0,filename.find_last_of(".\\")); // file name without an extension
+    filename = gsFileManager::getBasename(filename);
     filename = filename.substr(0,filename.find_last_of("_\\"));
 
     // save initial domain

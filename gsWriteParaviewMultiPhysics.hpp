@@ -77,9 +77,10 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
                                  std::string const & fn,
                                  unsigned npts, bool mesh, bool ctrlNet)
 {
+    gsDebugVar(fn);
     const unsigned numP = fields.begin()->second->patches().nPatches();
     gsParaviewCollection collection(fn);
-    std::string fileName = fn.substr(fn.find_last_of("/\\")+1); // file name without a path
+    std::string baseName = gsFileManager::getFilename(fn); // file name without a path
 
     for ( unsigned i=0; i < numP; ++i )
     {
@@ -87,17 +88,17 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
         gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
-        collection.addPart(fileName + util::to_string(i), ".vts");
+        collection.addPart(baseName + util::to_string(i) + ".vts", -1, "", i );
 
         if ( mesh )
-            {
-                writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
-            collection.addPart(fileName + util::to_string(i) + "_mesh", ".vtp");
+        {
+            writeSingleCompMesh(dom, fields.begin()->second->patch(i), fn + util::to_string(i) + "_mesh");
+            collection.addPart(baseName + util::to_string(i) + "_mesh" + ".vtp",-1, "Mesh", i);
         }
         if ( ctrlNet ) // Output the control net
         {
             writeSingleControlNet(fields.begin()->second->patch(i), fn + util::to_string(i) + "_cnet");
-            collection.addPart(fileName + util::to_string(i) + "_cnet", ".vtp");
+            collection.addPart(baseName + util::to_string(i) + "_cnet" + ".vtp", -1, "ControlNet", i);
         }
 
     }
@@ -109,12 +110,11 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
                                          gsParaviewCollection & collection, int time, unsigned npts)
 {
     const unsigned numP = fields.begin()->second->patches().nPatches();
-    std::string fileName = fn.substr(fn.find_last_of("/\\")+1); // file name without a path
-
     for ( size_t p = 0; p < numP; ++p)
     {
-        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,fn + util::to_string(time) + "_" + util::to_string(p),npts);
-        collection.addTimestep(fileName + util::to_string(time) + "_",p,time,".vts");
+        std::string patchFileName = fn + util::to_string(time) + "_" + util::to_string(p);
+        gsWriteParaviewMultiPhysicsSinglePatch(fields,p,patchFileName,npts);
+        collection.addPart(gsFileManager::getFilename(patchFileName),time,"",p);
     }
 
 }
