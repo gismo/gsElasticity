@@ -113,20 +113,7 @@ public:
             gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,u.rows(),u.rows());
             J = F.determinant();
             RCG = F.transpose() * F;
-            gsDebugVar(F);
-            gsDebugVar(RCG);
-            gsDebugVar(RCG.invariant3());
-            gsDebugVar(RCG.determinant());
-
             RCGinv = RCG.cramerInverse();
-
-            gsDebugVar(lambda);
-            gsDebugVar(mu);
-            gsDebugVar(J);
-            gsDebugVar(log(J));
-            gsDebugVar(RCGinv);
-            gsDebugVar(lambda*log(J)-mu);
-
             S = (lambda*log(J)-mu)*RCGinv + mu*I;
             result.reshapeCol(i,sz,sz) = S;
         }
