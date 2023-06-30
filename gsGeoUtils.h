@@ -144,14 +144,14 @@ typename gsGeometry<T>::uPtr genLine(index_t deg, index_t num,
 template<class T>
 typename gsGeometry<T>::uPtr genCircle(index_t deg, index_t num,
                                        T radius = 1., T x0 = 0., T y0 = 0.,
-                                       T angle0 = 0., T arcAngle = 2*M_PI);
+                                       T angle0 = 0., T arcAngle = 2*EIGEN_PI);
 
 /// @breif generates a uniformly parametrized circular arc with a given basis;
 /// generates a closed circle if <arcAngle> is 2pi
 template<class T>
 typename gsGeometry<T>::uPtr genCircle(gsBasis<T> & basis,
                                        T radius = 1., T x0 = 0., T y0 = 0.,
-                                       T angle0 = 0., T arcAngle = 2*M_PI);
+                                       T angle0 = 0., T arcAngle = 2*EIGEN_PI);
 
 /// @brief generates a quad patch given by its four   C---D
 /// corners with the following orientation;           |   |
@@ -166,15 +166,15 @@ typename gsGeometry<T>::uPtr genQuad(index_t xiDeg, index_t xiNum, index_t etaDe
 /// given the degrees and number of control points in two parametric dimensions
 template<class T>
 typename gsGeometry<T>::uPtr genSphere(index_t xiDeg, index_t xiNum, index_t etaDeg, index_t etaNum,
-                                       T xi0 = 0., T xi1 = 2*M_PI,
-                                       T eta0 = -M_PI/2, T eta1 = M_PI/2);
+                                       T xi0 = 0., T xi1 = 2*EIGEN_PI,
+                                       T eta0 = -EIGEN_PI/2, T eta1 = EIGEN_PI/2);
 
 /// @brief generates a tensor product B-spline spherical patch with radius 1 and center at 0
 /// given knot vectors for two parametric dimensions
 template<class T>
 typename gsGeometry<T>::uPtr genSphere(gsKnotVector<T> & xiKnots, gsKnotVector<T> & etaKnots,
-                                       T xi0 = 0., T xi1 = 2*M_PI,
-                                       T eta0 = -M_PI/2, T eta1 = M_PI/2);
+                                       T xi0 = 0., T xi1 = 2*EIGEN_PI,
+                                       T eta0 = -EIGEN_PI/2, T eta1 = EIGEN_PI/2);
 
 /// @brief generates a 3D tensor product B-spline cylindrical patch
 template<class T>

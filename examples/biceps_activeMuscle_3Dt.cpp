@@ -184,7 +184,7 @@ int main(int argc, char* argv[]){
     {
         bar.display(i+1,index_t(timeSpan/timeStep));
 
-        assembler.options().setReal("Alpha",(1-cos(M_PI*(i+1)*timeStep))/2);
+        assembler.options().setReal("Alpha",(1-cos(EIGEN_PI*(i+1)*timeStep))/2);
         timeSolver.makeTimeStep(timeStep);
         // construct solution; timeSolver already knows the new Dirichlet BC
         timeSolver.constructSolution(displacement,pressure);
