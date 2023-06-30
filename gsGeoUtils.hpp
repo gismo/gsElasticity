@@ -1022,7 +1022,7 @@ typename gsGeometry<T>::uPtr genSpring(gsGeometry<T> const & crossSection,
     gsMatrix<T> coefs(numP*(2*N+1),3);
     for (index_t i = 0; i < 2*N+1; ++i)
     {
-        gsMatrix<T> rotation = gsEigen::AngleAxis<T>(-1.0*M_PI/4*i,gsEigen::Vector3f(0.,0.,1.)).toRotationMatrix().transpose();
+        gsMatrix<T> rotation = gsEigen::AngleAxis<T>(-1.0*EIGEN_PI/4*i,gsEigen::Vector3f(0.,0.,1.)).toRotationMatrix().transpose();
         gsMatrix<T> scaling = gsEigen::DiagonalMatrix<T,3>((i%2 == 0 ? 1. : sqrt(2)),1.,1.);
         coefs.middleRows(i*numP,numP) = crossCoefs * scaling  * rotation;
         for (index_t j = 0; j < numP; ++j)
