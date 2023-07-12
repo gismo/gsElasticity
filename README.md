@@ -46,12 +46,12 @@ Since gsElasticity is a submodule of G+Smo, you should download G+Smo first:
 ```
 git clone https://github.com/gismo/gismo.git
 ```
-Then, configure G+Smo with `GISMO_ELASTICITY=ON`:
+Then, configure G+Smo with `-DGISMO_OPTIONAL="<other submodules>;gsElasticity"````:
 ```
 cd gismo
 mkdir build
 cd build
-cmake .. -DGISMO_ELASTICITY=ON
+cmake .. -DGISMO_OPTIONAL="<other submodules>;gsElasticity"
 ```
 This will trigger a download of gsElasticity from GitHub. Once gsElasticity is downloaded, you can compile G+Smo with gsElasticity:
 ```
@@ -69,7 +69,7 @@ git pull
 Simulation of time-dependent processes can be rather computationally costly. Although G+Smo and gsElasticity are not suitable for distributed computing, you can achieve significant speed-up by using it with multi-theading on your desktop or laptop. To that end, you should install OpenMP library https://www.geeksforgeeks.org/openmp-introduction-with-installation-guide/. Once you have OpenMP, configure G+Smo with `GISMO_WITH_OPENMP=ON`:
 ```
 cd /path/to/gismo/build
-cmake .. -DGISMO_ELASTICITY=ON -DGISMO_WITH_OPENMP=ON
+cmake .. -DGISMO_OPTIONAL="<other submodules>;gsElasticity" -DGISMO_WITH_OPENMP=ON
 ```
 By defining the environmental variable `OMP_NUM_THREADS`, you can choose how many threads your application is going to use
 ```
@@ -80,13 +80,13 @@ With OpenMP included, at least the linear system assebmly is parallelized. This 
 There are two options to get Pardiso - either as a stand-alone library from the official page https://www.pardiso-project.org/#download, or as a part of Intel MKL https://software.intel.com/en-us/mkl. The former options allows you to get the latest version of Pardiso (which, theoretically, should be faster than the version that Intel MKL uses). Once you register, download the library and get a license, you can configure G+Smo with Pardiso by
 ```
 cd /path/to/gismo/build
-cmake .. -DGISMO_ELASTICITY=ON -DGISMO_WITH_OPENMP=ON -DGISMO_WITH_PARDISO=ON -DPardiso_DIR=/path/to/pardiso
+cmake .. -DGISMO_OPTIONAL="<other submodules>;gsElasticity" -DGISMO_WITH_OPENMP=ON -DGISMO_WITH_PARDISO=ON -DPardiso_DIR=/path/to/pardiso
 ```
 The Intel MKL way to use Pardiso is only viable for machines with an Intel CPU. To that end, you should register at Intel Development Tools https://software.intel.com/en-us/articles/free-ipsxe-tools-and-libraries, download and intall Inter C/C++ compiler and Intel MKL library. After that, you can configure G+Smo with Pardiso in the following way:
 ```
 cd /path/to/gismo/build
 source /path/to/intel/compilers_and_libraries/linux/bin/compilervars.sh intel64
-cmake .. -DGISMO_ELASTICITY=ON -DGISMO_WITH_OPENMP=ON -DEIGEN_USE_MKL_ALL=ON -DGISMO_WITH_PARDISO=ON -DPARDISO_USE_MKL=ON -DINTEL_ROOT=/path/to/intel -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc
+cmake .. -DGISMO_OPTIONAL="<other submodules>;gsElasticity" -DGISMO_WITH_OPENMP=ON -DEIGEN_USE_MKL_ALL=ON -DGISMO_WITH_PARDISO=ON -DPARDISO_USE_MKL=ON -DINTEL_ROOT=/path/to/intel -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc
 ```
 Despite an older version of Pardiso used in MKL, Intel optimization often results in faster performance than if a stand-alone library is used.
 

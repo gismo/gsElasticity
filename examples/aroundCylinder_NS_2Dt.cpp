@@ -229,7 +229,7 @@ int main(int argc, char* argv[]){
         real_t tStep = (warmUp && simTime < 2.) ? 0.1 : timeStep;
         // smoothly change the inflow boundary condition
         if (simTime < 2.)
-            assembler.setFixedDofs(0,boundary::north,inflowDDoFs*(1-cos(M_PI*(simTime+tStep)/2.))/2);
+            assembler.setFixedDofs(0,boundary::north,inflowDDoFs*(1-cos(EIGEN_PI*(simTime+tStep)/2.))/2);
 
         timeSolver.makeTimeStep(tStep);
         // construct solution; timeSolver already knows the new Dirichlet BC
