@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsElasticity/gsBaseAssembler.h>
+#include <gsElasticity/gsVisitorMassElasticity.h>
 
 namespace gismo
 {
