@@ -52,7 +52,7 @@ public:
         localStiffening = options.getReal("LocalStiff");
         // elasticity tensor
         I = gsMatrix<T>::Identity(dim,dim);
-        if (materialLaw == 0)
+        if (materialLaw == -1 || materialLaw == 0)
         {
             matrixTraceTensor<T>(C,I,I);
             C *= lambda;
@@ -115,7 +115,7 @@ public:
             E = 0.5 * (RCG - I);
             const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
             // Second Piola-Kirchhoff stress tensor
-            if (materialLaw == 0) // Saint Venant-Kirchhoff
+            if (materialLaw==-1 || materialLaw == 0) // Hooke/Saint Venant-Kirchhoff
                 S = lambda*E.trace()*I + 2*mu*E;
             if (materialLaw == 1) // neo-Hooke ln(J)
             {

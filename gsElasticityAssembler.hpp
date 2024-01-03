@@ -203,7 +203,8 @@ bool gsElasticityAssembler<T>::assemble(const gsMatrix<T> & solutionVector,
 template<class T>
 void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
 {
-    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff ||
+    GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke ||
+                 m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff ||
                  m_options.getInt("MaterialLaw") == material_law::neo_hooke_ln ||
                  m_options.getInt("MaterialLaw") == material_law::neo_hooke_quad,
                  "Material law not specified OR not supported!");
