@@ -1,4 +1,4 @@
-/** @file gsVisitorLinearElasticity.h
+/** @file gsVisitorLinearElasticityMM.h
 
     @brief Visitor class for volumetric integration of the linear elasticity system.
 
@@ -17,6 +17,7 @@
 
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/gsMaterialBase.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -25,12 +26,15 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorLinearElasticity
+class gsVisitorLinearElasticityMM //material matrix
 {
 public:
 
-    gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
+    gsVisitorLinearElasticityMM(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
+                                        gsMaterialBase<T> * materialMat,
+                                gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+          m_materialMat(materialMat),
           elimMat(elimMatrix)
     {}
 
@@ -43,19 +47,15 @@ public:
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
-        // saving necessary info
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
-        mu     = E / ( 2. * ( 1. + pr ) );
-        forceScaling = options.getReal("ForceScaling");
+        forceScaling    = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
-        // linear elasticity tensor
+        // saving necessary info
+        //---------------------------------------
+        // T E = options.getReal("YoungsModulus");
+        // T pr = options.getReal("PoissonsRatio");
+        // m_materialMat = new gsElasticityMaterial(E,pr,dim);
+        //---------------------------------------
         I = gsMatrix<T>::Identity(dim,dim);
-        matrixTraceTensor<T>(C,I,I);
-        C *= lambda;
-        symmetricIdentityTensor<T>(Ctemp,I);
-        C += mu*Ctemp;
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
@@ -80,6 +80,14 @@ public:
         basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
+
+        // Compute C per Qnode
+        //materialFunctions_ptr->at(i)->eval(...)
+
+        m_materialMat->eval_matrix_into(quNodes,matValues, geo.id());
+        // gsMaterialEval<T,false> materialVector(m_materialMat);
+        // materialVector.eval_into(quNodes,matValues);
+
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -93,15 +101,16 @@ public:
         {
             // Multiply quadrature weight by the geometry measure
             const T weightForce = quWeights[q] * md.measure(q);
-            const T weightBody = quWeights[q] * pow(md.measure(q),1-localStiffening);
+            const T weightBody = quWeights[q] * math::pow(md.measure(q),1-localStiffening);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md,q,basisValuesDisp[1],physGrad);
+            C = matValues.reshapeCol(q,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
             // loop over active basis functions (v_j)
             for (index_t i = 0; i < N_D; i++)
             {
                 // stiffness matrix K = B_i^T * C * B_j;
                 setB<T>(B_i,I,physGrad.col(i));
-                tempK = B_i.transpose() * C; //.reshapeCol(q,dim,dim)
+                tempK = B_i.transpose() * C;
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {
@@ -175,6 +184,8 @@ protected:
     std::vector<gsMatrix<T> > basisValuesDisp;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+    /// Material handler
+    gsMaterialBase<T> * m_materialMat;
     // elimination matrix to efficiently change Dirichlet degrees of freedom
     gsSparseMatrix<T> * elimMat;
     // all temporary matrices defined here for efficiency
@@ -182,6 +193,8 @@ protected:
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;
+
+    gsMatrix<T> matValues;
 };
 
 } // namespace gismo
