@@ -44,8 +44,8 @@ public:
 
     gsCompositeMaterial(    const gsFunctionSet<T> & G,
                             const gsFunctionSet<T> & alpha)
-    : m_G(&G),
-      m_alpha(&alpha)
+    :   m_G(&G),
+        m_alpha(&alpha)
     {
 
     }
