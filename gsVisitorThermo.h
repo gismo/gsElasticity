@@ -26,7 +26,8 @@ class gsVisitorThermo
 {
 public:
     gsVisitorThermo(const gsFunctionSet<T> & temperatureField_)
-        : temperatureField(temperatureField_) {}
+    : dim(0), lambda(0), mu(0), thermalExpCoef(0), N_D(0), patch(0),
+      temperatureField(temperatureField_), paramTemp(0) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
