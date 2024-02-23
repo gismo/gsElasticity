@@ -28,8 +28,13 @@ public:
 
     gsVisitorElasticityNeumann(const gsPde<T> & pde_,
                                const boundary_condition<T> & s)
-        : neumannFunction_ptr(s.function().get()),
-          patchSide(s.side()) {}
+    :
+    neumannFunction_ptr(s.function().get()),
+    patchSide(s.side()),
+    parametric(s.parametric())
+    {
+
+    }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -59,7 +64,11 @@ public:
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
         // Evaluate the Neumann functon on the images of the quadrature points
-        neumannFunction_ptr->eval_into(md.values[0], neumannValues);
+        if (parametric)
+            neumannFunction_ptr->eval_into(quNodes, neumannValues);
+        else
+            neumannFunction_ptr->eval_into(md.values[0], neumannValues);
+
         // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();
@@ -106,6 +115,7 @@ protected:
     const gsFunctionSet<T> * neumannFunction_ptr;
     T forceScaling;
     boxSide patchSide;
+    bool parametric;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
