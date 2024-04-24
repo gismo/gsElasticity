@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
     // real_t poissonsRatio = 0.4;
     // real_t densitySolid = 1.0e4;
     // flow parameters
-    std::string filenameFlow = ELAST_DATA_DIR"/grid.xml";
+    std::string filenameFlow = ELAST_DATA_DIR"/cylinder.xml";
     real_t viscosity = 0.001;
     real_t meanVelocity = 1.;
     real_t densityFluid = 1.0e3;
@@ -44,32 +44,26 @@ int main(int argc, char* argv[])
     real_t meshPR = 0.4; // poisson ratio for ALE
     real_t meshStiff = 2.5;
     index_t ALEmethod = ale_method::TINE;
-    bool oneWay = false;
     // space discretization
     index_t numUniRef = 3;
     // time integration
     real_t timeStep = 0.01;
     real_t timeSpan = 15.;
     real_t thetaFluid = 0.5;
-    index_t maxCouplingIter = 10;
-    bool imexOrNewton = false;
-    bool warmUp = false;
+    bool imexOrNewton = true;
     // output parameters
-    index_t numPlotPoints = 0.;
     index_t verbosity = 0;
+    index_t periods = 1;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the two-way fluid-structure interaction solver in 2D.");
     cmd.addReal("m","mesh","Poisson's ratio for ALE",meshPR);
     cmd.addReal("x","chi","Local stiffening degree for ALE",meshStiff);
-    cmd.addSwitch("o","oneway","Run as a oneway coupled simulation: beam-to-flow",oneWay);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE, 6 - TEST",ALEmethod);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
-    cmd.addInt("i","iter","Number of coupling iterations",maxCouplingIter);
-    cmd.addSwitch("w","warmup","Use large time steps during the first 2 seconds",warmUp);
-    cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
+    cmd.addInt("p","periods","Number of oscillation periods",periods);
     cmd.addInt("v","verbosity","Amount of info printed to the prompt: 0 - none, 1 - crucial, 2 - all",verbosity);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -84,10 +78,11 @@ int main(int argc, char* argv[])
     // gsMultiBasis<> basisDisplacement(geoBeam);
     
     gsMultiPatch<> geoALE = geoFlow;
-    gsMultiPatch<> geoSquare;
-    geoSquare.addPatch(gsNurbsCreator<>::BSplineSquare(1,0,0));
+    gsMultiPatch<> geoCircle;
+    geoCircle.addPatch(gsNurbsCreator<>::NurbsDisk(0.05,0.2,0.2));
+    gsNurbsCreator<>::rotate2D(geoCircle.patch(0),45,0.2,0.2);
 
-	// gsMatrix<> dispBeam = geoSquare.patch(0).coefs();
+	// gsMatrix<> dispBeam = geoCircle.patch(0).coefs();
 
     // for (index_t p = 0; p < 3; ++p)
     //     geoALE.addPatch(geoFlow.patch(p+3).clone());
@@ -97,22 +92,24 @@ int main(int argc, char* argv[])
     {
         // basisDisplacement.uniformRefine();
         geoFlow.uniformRefine();
-        geoSquare.uniformRefine();
+        geoCircle.uniformRefine();
         geoALE.uniformRefine();
     }
 
-    gsMultiPatch<> dispBeam = geoSquare;
+    // gsWriteParaview(geoFlow,"fluid",1000,true);
+    // gsWriteParaview(geoCircle,"solid",1000,true);
+
+    gsMultiPatch<> dispBeam = geoCircle;
 
     gsMultiBasis<> basisPressure(geoFlow);
     // I use subgrid elements (because degree elevation is not implemented for geometries, so I cant use Taylor-Hood)
     // basisDisplacement.uniformRefine();
 
-    gsWarn<<"Fix the thing below this line\n";
     // geoALE.uniformRefine();
-    // geoSquare.uniformRefine();
+    // geoCircle.uniformRefine();
     // geoFlow.uniformRefine();
         geoALE.degreeElevate();
-        geoSquare.degreeElevate();
+        geoCircle.degreeElevate();
         geoFlow.degreeElevate();
 
     gsMultiBasis<> basisVelocity(geoFlow);
@@ -134,45 +131,19 @@ int main(int argc, char* argv[])
     // bcInfoFlow.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
     // bcInfoFlow.addCondition(0,boundary::west,condition_type::dirichlet,0,1);
     
-
-    /*
-     * ______________________
-     * |      |      |      |
-     * |  2   |  4   |  7   |
-     * |______|______|______|
-     * |      |      |      |
-     * |  1   |      |  6   |
-     * |______|______|______|
-     * |      |      |      |
-     * |  0   |  3   |  5   |
-     * |______|______|______|
-     *
-     */
     for (index_t d = 0; d < 2; ++d)
     {   // no slip conditions
-        // bcInfoFlow.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
-        // bcInfoFlow.addCondition(0,boundary::south,condition_type::dirichlet,0,d);
+        bcInfoFlow.addCondition(0,boundary::south,condition_type::dirichlet,0,d);
+        // bcInfoFlow.addCondition(0,boundary::north,condition_type::dirichlet,0,d);
 
-        // bcInfoFlow.addCondition(1,boundary::west,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(1,boundary::east,condition_type::dirichlet,0,d);
+        bcInfoFlow.addCondition(1,boundary::south,condition_type::dirichlet,0,d);
+        // bcInfoFlow.addCondition(1,boundary::north,condition_type::dirichlet,0,d);
 
+        bcInfoFlow.addCondition(2,boundary::south,condition_type::dirichlet,0,d);
         // bcInfoFlow.addCondition(2,boundary::north,condition_type::dirichlet,0,d);
-        // bcInfoFlow.addCondition(2,boundary::west,condition_type::dirichlet,0,d);
 
-        // bcInfoFlow.addCondition(3,boundary::south,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(3,boundary::north,condition_type::dirichlet,0,d);
-
-        // bcInfoFlow.addCondition(4,boundary::north,condition_type::dirichlet,0,d);
-        bcInfoFlow.addCondition(4,boundary::south,condition_type::dirichlet,0,d);
-
-        // bcInfoFlow.addCondition(5,boundary::east,condition_type::dirichlet,0,d);
-        // bcInfoFlow.addCondition(5,boundary::south,condition_type::dirichlet,0,d);
-
-        bcInfoFlow.addCondition(6,boundary::west,condition_type::dirichlet,0,d);
-        // bcInfoFlow.addCondition(6,boundary::east,condition_type::dirichlet,0,d);
-
-        // bcInfoFlow.addCondition(7,boundary::east,condition_type::dirichlet,0,d);
-        // bcInfoFlow.addCondition(7,boundary::north,condition_type::dirichlet,0,d);
+        bcInfoFlow.addCondition(3,boundary::south,condition_type::dirichlet,0,d);
+        // bcInfoFlow.addCondition(3,boundary::north,condition_type::dirichlet,0,d);
     }
 
     // ALE to flow bdry interface: Navier-Stokes solver contatains a reference to the ALE velocity field,
@@ -181,17 +152,17 @@ int main(int argc, char* argv[])
     //This might be incorrect, the interface is Structure--ALE--Fluid, so it should be another side of the ALE
 
     gsBoundaryInterface interfaceALE2Flow;
-    interfaceALE2Flow.addInterfaceSide(1,boundary::east,1,boundary::east);
-    interfaceALE2Flow.addInterfaceSide(3,boundary::north,3,boundary::north);
-    interfaceALE2Flow.addInterfaceSide(4,boundary::south,4,boundary::south);
-    interfaceALE2Flow.addInterfaceSide(6,boundary::west,6,boundary::west);
+    interfaceALE2Flow.addInterfaceSide(0,boundary::south,0,boundary::south);
+    interfaceALE2Flow.addInterfaceSide(1,boundary::south,1,boundary::south);
+    interfaceALE2Flow.addInterfaceSide(2,boundary::south,2,boundary::south);
+    interfaceALE2Flow.addInterfaceSide(3,boundary::south,3,boundary::south);
 
 
     gsBoundaryInterface interfaceSolid2ALE;
-    interfaceSolid2ALE.addInterfaceSide(0,boundary::west,1,boundary::east);
-    interfaceSolid2ALE.addInterfaceSide(0,boundary::east,6,boundary::west);
-    interfaceSolid2ALE.addInterfaceSide(0,boundary::south,3,boundary::north);
-    interfaceSolid2ALE.addInterfaceSide(0,boundary::north,4,boundary::south);
+    interfaceSolid2ALE.addInterfaceSide(0,boundary::west,3,boundary::south);
+    interfaceSolid2ALE.addInterfaceSide(0,boundary::east,1,boundary::south);
+    interfaceSolid2ALE.addInterfaceSide(0,boundary::south,2,boundary::south);
+    interfaceSolid2ALE.addInterfaceSide(0,boundary::north,0,boundary::south);
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -206,12 +177,10 @@ int main(int argc, char* argv[])
     nsMassAssembler.options().setReal("Density",densityFluid);
     // velALE: velocity update from the ALE solver
     gsNsTimeIntegrator<real_t> nsTimeSolver(nsAssembler,nsMassAssembler,&velALE,&interfaceALE2Flow);
-
     nsTimeSolver.options().setInt("Scheme",imexOrNewton ? time_integration::implicit_nonlinear : time_integration::implicit_linear);
     nsTimeSolver.options().setReal("Theta",thetaFluid);
-    nsTimeSolver.options().setInt("Verbosity",verbosity);
-    gsDebugVar(nsTimeSolver.options().getInt("Verbosity"));
     nsTimeSolver.options().setSwitch("ALE",true);
+    nsTimeSolver.options().setInt("Verbosity",verbosity);
     gsInfo << "Initialized Navier-Stokes system with " << nsAssembler.numDofs() << " dofs.\n";
   
     // mesh deformation module
@@ -257,6 +226,7 @@ int main(int argc, char* argv[])
     // set initial velocity: zero free and fixed DoFs
     nsTimeSolver.setSolutionVector(gsMatrix<>::Zero(nsAssembler.numDofs(),1));
     nsTimeSolver.setFixedDofs(nsAssembler.allFixedDofs());
+    nsTimeSolver.constructSolution(velFlow,presFlow);
 
     //=============================================//
                    // Uncoupled simulation //
@@ -270,29 +240,29 @@ int main(int argc, char* argv[])
     gsParaviewCollection collection(fn);
 
     index_t kmax = math::ceil(timeSpan/timeStep)+1;
-    gsMultiPatch<> geoSquareNew = geoSquare;
-    gsMultiPatch<> geoSquareOld = geoSquare;
-    dispBeam = geoSquare;
+    gsMultiPatch<> geoCircleNew = geoCircle;
+    gsMultiPatch<> geoCircleOld = geoCircle;
+    dispBeam = geoCircle;
     for (index_t k = 0; k!=kmax; k++)
     {
         gsInfo << "Time: " << time << "\n";
 
         // Rotate geometry
-        angle = maxAngle * math::sin(2*M_PI/timeSpan*time);
-        // angle = 0.1 * math::sin(2*M_PI/timeSpan*time);
+        // angle = maxAngle * math::sin(2*M_PI/timeSpan*time);
+        angle = 0.05 * math::sin(periods*2*M_PI/timeSpan*time);
         // gsDebugVar(angle);
 
         // Displacements of the geometry
-        geoSquareNew = geoSquare;
-        // gsNurbsCreator<>::shift2D(geoSquareNew.patch(0),angle,0);
-        gsNurbsCreator<>::rotate2D(geoSquareNew.patch(0),angle,0.5,0.5);
-        dispBeam.patch(0).coefs() = geoSquareNew.patch(0).coefs() - geoSquareOld.patch(0).coefs();
+        geoCircleNew = geoCircle;
+        gsNurbsCreator<>::shift2D(geoCircleNew.patch(0),angle,0);
+        // gsNurbsCreator<>::rotate2D(geoCircleNew.patch(0),angle,0.2,0.2);
+        dispBeam.patch(0).coefs() = geoCircleNew.patch(0).coefs() - geoCircleOld.patch(0).coefs();
 
         // Store the old fluid mesh in the velocity mesh
         moduleALE.constructSolution(geoFlowVelo);
 
         // Compute the fluid mesh displacements
-        moduleALE.updateMesh();
+        GISMO_ENSURE(moduleALE.updateMesh()==-1,"ALE method did not succeed");
 
         // Update the fluid mesh displacements
         moduleALE.constructSolution(geoFlowDisp);
@@ -316,8 +286,8 @@ int main(int argc, char* argv[])
         // Update the fluid mesh
         for (size_t p = 0; p!=geoFlow.nPatches(); ++p)
         {
-            nsTimeSolver.assembler().patches().patch(p).coefs() = geoFlow.patch(p).coefs();
-            nsTimeSolver.mAssembler().patches().patch(p).coefs() = geoFlow.patch(p).coefs();
+            nsTimeSolver.assembler().patches().patch(p).coefs() += geoFlowDisp.patch(p).coefs();
+            nsTimeSolver.mAssembler().patches().patch(p).coefs() += geoFlowDisp.patch(p).coefs();
         }
 
 
@@ -359,7 +329,7 @@ int main(int argc, char* argv[])
 
         time += timeStep;
 
-        geoSquareOld = geoSquareNew;
+        geoCircleOld = geoCircleNew;
     }
 
     collection.save();

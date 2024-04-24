@@ -69,7 +69,7 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
     {
         std::string patchFileName = fn + util::to_string(time) + "_" + util::to_string(p);
         gsWriteParaviewMultiPhysicsSinglePatch(fields,p,patchFileName,npts);
-        collection.addPart(gsFileManager::getFilename(patchFileName),time,"",p);
+        collection.addPart(gsFileManager::getFilename(patchFileName),time,"Solution",p);
     }
 
 }

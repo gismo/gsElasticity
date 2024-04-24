@@ -192,7 +192,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const gsMultiPatch<T> &
         configuration.patch(p).evaluateMesh(mesh);
         std::string patchFileName = fileName + util::to_string(step) + "_" + util::to_string(p);
         gsWriteParaview(mesh,patchFileName,false);
-        collection.addPart(gsFileManager::getFilename(patchFileName),step,"",p);
+        collection.addPart(gsFileManager::getFilename(patchFileName),step,"Solution",p);
     }
 }
 
