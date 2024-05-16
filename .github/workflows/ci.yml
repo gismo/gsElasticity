@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: RelWithDebInfo
+
+jobs:
+  build:
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@master
+        with:
+          repository: gismo/gismo
+          ref: stable
+          path: ./gismo
+
+      - uses: actions/checkout@master
+        with:
+          path: ./gismo/optional/${{ github.event.repository.name }}
+          #token: ${{ secrets.GH_PAT }}
+
+      - name: "Run for ${{ matrix.os }}"
+        shell: bash
+        working-directory: ${{runner.workspace}}
+        run: ctest -S ${{ github.event.repository.name }}/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="${{ github.event.repository.name }}_actions_$GITHUB_RUN_NUMBER" -D CTEST_SITE="${{ matrix.os }}_[actions]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="${{ github.event.repository.name }}" -Q
