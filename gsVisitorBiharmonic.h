@@ -27,6 +27,7 @@ public:
 
     gsVisitorBiharmonic(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
+          N_M(), N_A(), localStiffening(),
           elimMat(elimMatrix)
     {}
 

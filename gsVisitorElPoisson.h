@@ -27,7 +27,7 @@ public:
 
     gsVisitorElPoisson(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
-          elimMat(elimMatrix)
+          N(), elimMat(elimMatrix), localStiffening()
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,

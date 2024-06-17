@@ -44,6 +44,8 @@ public:
 
     //--------------------- SYSTEM ASSEMBLY ----------------------------------//
 
+    using Base::assemble;
+    
     /// @brief Assembly of the linear system for the Stokes problem
     virtual void assemble(bool saveEliminationMatrix = false);
 
@@ -58,6 +60,8 @@ public:
     virtual void assemble(const gsMultiPatch<T> & velocity, const gsMultiPatch<T> & pressure);
 
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
+
+    using Base::constructSolution;
 
     /// @brief Construct velocity from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,

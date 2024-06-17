@@ -74,9 +74,14 @@ protected:
     /// ATTENTION: rhs() returns a negative residual (-r) !!!
     virtual void assemble(const gsMultiPatch<T> & displacement, const gsMultiPatch<T> & pressure);
 
+    using Base::assemble;
+
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
 public:
+
+    using Base::constructSolution;
+
     /// @brief Construct displacement from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,

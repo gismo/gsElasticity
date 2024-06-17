@@ -30,9 +30,10 @@ public:
 
     gsVisitorNavierStokes(const gsPde<T> & pde_, const gsMultiPatch<T> & velocity_,
                           const gsMultiPatch<T> & pressure_)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
-          velocity(velocity_),
-          pressure(pressure_) {}
+    : dim(), pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)), assemblyType(), patch(),
+      viscosity(), forceScaling(), density(),
+      N_V(), N_P(), velocity(velocity_), pressure(pressure_)
+    {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
