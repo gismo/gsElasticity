@@ -17,6 +17,7 @@
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
 
+
 using namespace gismo;
 
 
@@ -48,8 +49,8 @@ int main(int argc, char* argv[])
     // space discretization
     index_t numUniRef = 3;
     // time integration
-    real_t timeStep = 0.01;
-    real_t timeSpan = 15.;
+    real_t timeStep = 0.1;
+    real_t timeSpan = 1.;
     real_t thetaFluid = 0.5;
     index_t maxCouplingIter = 10;
     bool imexOrNewton = false;
@@ -261,12 +262,13 @@ int main(int argc, char* argv[])
     //=============================================//
                    // Uncoupled simulation //
     //=============================================//
+    gsDebugVar(geoFlow);
 
     real_t time = 0;
     real_t angle = 0;
     real_t maxAngle = 20;
     gsMultiPatch<> geoFlowDisp, geoFlowVelo;
-    std::string fn = "output";
+    std::string fn = "outputALE";
     gsParaviewCollection collection(fn);
 
     index_t kmax = math::ceil(timeSpan/timeStep)+1;
@@ -278,7 +280,7 @@ int main(int argc, char* argv[])
         gsInfo << "Time: " << time << "\n";
 
         // Rotate geometry
-        angle = maxAngle * math::sin(2*M_PI/timeSpan*time);
+        angle = 2.2*maxAngle * math::sin(2*M_PI/timeSpan*time);
         // angle = 0.1 * math::sin(2*M_PI/timeSpan*time);
         // gsDebugVar(angle);
 
@@ -287,6 +289,9 @@ int main(int argc, char* argv[])
         // gsNurbsCreator<>::shift2D(geoSquareNew.patch(0),angle,0);
         gsNurbsCreator<>::rotate2D(geoSquareNew.patch(0),angle,0.5,0.5);
         dispBeam.patch(0).coefs() = geoSquareNew.patch(0).coefs() - geoSquareOld.patch(0).coefs();
+
+        // gsDebugVar(dispBeam.coefs());
+
 
         // Store the old fluid mesh in the velocity mesh
         moduleALE.constructSolution(geoFlowVelo);
@@ -304,6 +309,24 @@ int main(int argc, char* argv[])
         // Update the fluid mesh
         for (size_t p = 0; p!=geoFlow.nPatches(); ++p)
             geoFlow.patch(p).coefs() += geoFlowDisp.patch(p).coefs();
+
+
+        // update geometry using very advanced analysis-suiable parameterization developed Ye Ji
+        // geoFlow.fixOrientation();
+        // gsBarrierPatch<2, real_t> opt(geoFlow, false);
+        // opt.options().setInt("Verbose", 1);
+        // opt.options().setInt("ParamMethod", 1);
+        // opt.options().setInt("AAPreconditionType", 0);
+        // opt.compute();
+        // geoFlow = opt.result();
+
+
+
+
+
+
+
+
 
         // Update geoALE (FOR TESTING)
         geoALE = geoFlow;
@@ -347,6 +370,7 @@ int main(int argc, char* argv[])
 
 
 
+
         const std::string fileName = fn + util::to_string(k);
         gsWriteParaview(geoFlow,fileName,1000,true);
         for (size_t p = 0; p!=geoFlow.nPatches(); ++p)
@@ -359,8 +383,10 @@ int main(int argc, char* argv[])
 
         time += timeStep;
 
+
         geoSquareOld = geoSquareNew;
     }
+
 
     collection.save();
     collectionFlow.save();
@@ -375,7 +401,6 @@ int main(int argc, char* argv[])
     // moduleFSI.options().setReal("AbsTol",1e-10);
     // moduleFSI.options().setReal("RelTol",1e-6);
     // moduleFSI.options().setInt("Verbosity",verbosity);
-
-
+    return  EXIT_SUCCESS;
 
   }
