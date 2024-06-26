@@ -171,6 +171,9 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     solver.options().setReal("RelTol",m_options.getReal("RelTol"));
     solver.solve();
 
+    gsDebugVar(solVector.transpose());
+    gsDebugVar(solver.solution().transpose());
+
     solVector = solver.solution();
     m_ddof = stiffAssembler.allFixedDofs();
     numIters = solver.numberIterations();

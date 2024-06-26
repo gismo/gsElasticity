@@ -181,7 +181,7 @@ public:
 
     virtual short_t domainDim() const { return m_geo.domainDim(); }
 
-    virtual short_t targetDim() const { return m_geo.domainDim(); }
+    virtual short_t targetDim() const { return m_geo.targetDim(); }
 
     /** @brief Each column of the input matrix (u) corresponds to one evaluation point.
      *         Each column of the output matrix is the jacobian determinant of the mapping at this point.
@@ -199,6 +199,70 @@ protected:
     index_t m_patchVP;
     T m_viscosity;
     T m_density;
+
+}; // class definition ends
+
+/** @brief Loading function to transfer fluid action to the solid boundary.
+ * Used in Fluid-Structure Interaction simulation.
+ * Different parametrizations can be used for the geometry+ALE and velocity+pressure
+*/
+template <class T>
+class gsFsiBoundaryLoad : public gsFunction<T>
+{
+public:
+
+    /** @brief  
+     * 
+     * param[in] geoBoundary    boundary of the geometry matching the ALEboundary
+     * param[in] ALEboundary    boundary of the ALE mesh matching the geoBoundary
+     * param[in] velocity       patch of the velocity field adjacent to the interface
+     * param[in] pressure       patch of the pressure field adjacent to the interface
+     * param[in] viscosity      viscosity of the fluid
+     * param[in] density        density of the fluid
+     * 
+    */
+    gsFsiBoundaryLoad(const gsMultiPatch<T> & geo, patchSide geoSide,
+                      const gsMultiPatch<T> & ALE, patchSide ALESide,
+                      const gsMultiPatch<T> & velocity, patchSide velSide,
+                      const gsMultiPatch<T> & pressure, patchSide presSide,
+                      T viscosity, 
+                      T density,
+                      bool parametric = false)
+        : m_geo(geo),
+          m_geoSide(geoSide),
+          m_ale(ALE),
+          m_aleSide(ALESide),
+          m_vel(velocity),
+          m_velSide(velSide),
+          m_pres(pressure),
+          m_presSide(presSide),
+          m_viscosity(viscosity),
+          m_density(density),
+          m_parametric(parametric)
+    {}
+
+    virtual short_t domainDim() const { return m_geo.patch(m_geoSide.patch).boundary(m_geoSide.side())->domainDim(); }
+
+    virtual short_t targetDim() const { return m_geo.targetDim(); }
+
+    /** @brief Each column of the input matrix (u) corresponds to one evaluation point.
+     *         Each column of the output matrix is the jacobian determinant of the mapping at this point.
+     */
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
+
+protected:
+
+    gsMultiPatch<T> const & m_geo;
+    patchSide m_geoSide;
+    gsMultiPatch<T> const & m_ale;
+    patchSide m_aleSide;
+    gsMultiPatch<T> const & m_vel;
+    patchSide m_velSide;
+    gsMultiPatch<T> const & m_pres;
+    patchSide m_presSide;
+    T m_viscosity;
+    T m_density;
+    bool m_parametric;
 
 }; // class definition ends
 
