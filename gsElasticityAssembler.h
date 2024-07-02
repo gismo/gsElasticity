@@ -54,9 +54,11 @@ public:
 
     //--------------------- SYSTEM ASSEMBLY ----------------------------------//
 
+    virtual void assemble() { assemble(false); }
+  
     /// @brief Assembles the stiffness matrix and the RHS for the LINEAR ELASTICITY
     /// set *assembleMatrix* to false to only assemble the RHS;
-    virtual void assemble(bool saveEliminationMatrix = false);
+    virtual void assemble(bool saveEliminationMatrix);
 
     /// Assembles the tangential linear system for Newton's method given the current solution
     /// in the form of free and fixed/Dirichelt degrees of freedom.
