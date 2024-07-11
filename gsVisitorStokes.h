@@ -27,7 +27,8 @@ class gsVisitorStokes
 public:
 
     gsVisitorStokes(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_))
+    : dim(), pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+      viscosity(), density(), N_V(), N_P()
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,

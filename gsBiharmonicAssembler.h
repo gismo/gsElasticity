@@ -61,6 +61,8 @@ public:
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
                                    gsMultiPatch<T> & solutionMain, gsMultiPatch<T> & solutionAux) const;
 
+    using Base::constructSolution;
+
 protected:
     /// a custom reserve function to allocate memory for the sparse matrix
     virtual void reserve();

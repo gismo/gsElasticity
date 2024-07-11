@@ -67,7 +67,7 @@ public:
                           const std::vector<gsMatrix<T> > & fixedDoFs);
 
     /// return the number of free degrees of freedom
-    virtual int numDofs() const { return stiffAssembler.numDofs(); }
+    virtual int numDofs() const;
 
     /// returns complete solution vector (displacement + possibly pressure)
     const gsMatrix<T> & solutionVector() const { return solVector; }

@@ -125,6 +125,9 @@ gsMatrix<T> gsElTimeIntegrator<T>::implicitNonlinear()
 }
 
 template <class T>
+int gsElTimeIntegrator<T>::numDofs() const { return stiffAssembler.numDofs(); }
+
+template <class T>
 bool gsElTimeIntegrator<T>::assemble(const gsMatrix<T> & solutionVector,
                                      const std::vector<gsMatrix<T> > & fixedDoFs)
 {
