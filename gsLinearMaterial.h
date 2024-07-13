@@ -16,96 +16,103 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsMaterialBaseDim.h>
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsUtils/gsThreaded.h>
 
 namespace gismo
 {
 
-template <class T>
-class gsLinearMaterial : public gsMaterialBase<T>
+template <short_t d, class T>
+class gsLinearMaterial : public gsMaterialBaseDim<d,T>
 {
 
 public:
-    using Base = gsMaterialBase<T>;
+    using Base = gsMaterialBaseDim<d,T>;
 
     gsLinearMaterial(   const T E,
                         const T nu,
-                        const gsFunctionSet<T> * patches,
-                        const gsFunctionSet<T> * deformed)
+                        const gsFunctionSet<T> & patches,
+                        const gsFunctionSet<T> & deformed)
     :
-    Base(patches,deformed),
-    m_homogeneous(true)
+    gsLinearMaterial(gsConstantFunction<T>(E,d),gsConstantFunction<T>(nu,d),patches,deformed)
     {
-        m_Emodulus.push_back(E);
-        m_PoissonRatio.push_back(nu);
     }
 
-    gsLinearMaterial(std::vector<T> E,
-                     std::vector<T> nu,
-                     const gsFunctionSet<T> * patches,
-                     const gsFunctionSet<T> * deformed)
+    gsLinearMaterial(const gsFunctionSet<T> & E,
+                     const gsFunctionSet<T> & nu,
+                     const gsFunctionSet<T> & patches,
+                     const gsFunctionSet<T> & deformed)
     :
-    m_Emodulus(give(E)),
-    m_PoissonRatio(give(nu)),
-    Base(patches,deformed),
-    m_homogeneous(false)
+    Base(&patches,&deformed,nullptr)
     {
+        this->setParameter(0,E);
+        this->setParameter(1,nu);
     }
 
-    // mutable util::gsThreaded<gsMatrix<T> > C, Ctemp;//, S;
-
-    /// \a u points, \a k patch index
-    void eval_matrix_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
+    void eval_stress_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
     {
-        if (m_homogeneous) k = 0;
-        GISMO_ASSERT(m_Emodulus.size() > static_cast<size_t>(k), "Invalid patch index");
-
-        const index_t sz = (u.rows()+1)*u.rows()/2;
-        result.resize(sz*sz,u.cols());
-
-        T lambda = m_Emodulus.at(k) * m_PoissonRatio.at(k) / ( ( 1. + m_PoissonRatio.at(k) ) * ( 1. - 2. * m_PoissonRatio.at(k) ) );
-        T mu     = m_Emodulus.at(k) / ( 2. * ( 1. + m_PoissonRatio.at(k) ) );
-        // linear elasticity tensor
-        gsMatrix<T> I = gsMatrix<T>::Identity(u.rows(),u.rows());
-        gsMatrix<T> C, Ctemp;
-        matrixTraceTensor<T>(C,I,I);
-        C *= lambda;
-        symmetricIdentityTensor<T>(Ctemp,I);
-        C += mu*Ctemp;
-
-        for (index_t j=0; j!=u.cols(); j++)
-            result.reshapeCol(j,sz,sz) = C;
-    }
-
-    /// \a u points, \a k patch index
-    void eval_vector_into(const gsMatrix<T>& u, gsMatrix<T>& result, index_t k = 0) const
-    {
-        if (m_homogeneous) k = 0;
-        GISMO_ASSERT(m_Emodulus.size() > static_cast<size_t>(k), "Invalid patch index");
-
+        // Compute the parameter data (writes into m_data.mine().m_parMat)
+        this->_computeParameterData(patch,u);
+        // Compute the strain
         gsMatrix<T> Eres;
-        Base::strain_into(u,Eres,k);
+        Base::eval_strain_into(patch,u,Eres);
 
-        T lambda = m_Emodulus.at(k) * m_PoissonRatio.at(k) / ( ( 1. + m_PoissonRatio.at(k) ) * ( 1. - 2. * m_PoissonRatio.at(k) ) );
-        T mu     = m_Emodulus.at(k) / ( 2. * ( 1. + m_PoissonRatio.at(k) ) );
-        gsMatrix<T> I = gsMatrix<T>::Identity(u.rows(),u.rows());
-
-        const index_t sz = u.rows();
-        result.resize(sz*sz,u.cols());
-        gsMatrix<T> S;
+        // Lamé parameters
+        T E, nu;
+        T lambda, mu;
+        gsMatrix<T,d,d> I = gsMatrix<T>::Identity(d,d);
         for (index_t i=0; i!=u.cols(); i++)
         {
-            gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,u.rows(),u.rows());
-            S = lambda*E.trace()*I + 2*mu*E;
-            result.reshapeCol(i,sz,sz) = S;
+            E = m_data.mine().m_parmat(0,i);
+            nu= m_data.mine().m_parmat(1,i);
+            lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
+            mu     = E / ( 2. * ( 1. + nu ) );
+
+            gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,d,d);
+            result.reshapeCol(i,d,d) = lambda*E.trace()*I + 2*mu*E;
+        }
+
+    }
+
+    void eval_matrix_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
+    {
+        // Compute the parameter data (writes into m_data.mine().m_parMat)
+        this->_computeParameterData(patch,u);
+        // Compute the strain
+        gsMatrix<T> Eres;
+        Base::eval_strain_into(patch,u,Eres);
+
+        // Voight-size of the tensor
+        const index_t sz = (d+1)*d/2;
+
+        // Resize the result
+        result.resize(sz*sz,u.cols());
+
+        // Identity tensor
+        gsMatrix<T> I = gsMatrix<T>::Identity(d,d);
+
+        // C tensors
+        gsMatrix<T> Clambda, Cmu;
+        matrixTraceTensor<T>(Clambda,I,I);
+        symmetricIdentityTensor<T>(Cmu,I);
+
+        // Lamé parameters
+        T E, nu;
+        T lambda, mu;
+        for (index_t i=0; i!=u.cols(); i++)
+        {
+            E = m_data.mine().m_parmat(0,i);
+            nu= m_data.mine().m_parmat(1,i);
+            lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
+            mu     = E / ( 2. * ( 1. + nu ) );
+            // Compute C
+            result.reshapeCol(i,sz,sz) = lambda*Clambda + mu*Cmu;
         }
     }
 
 protected:
-    bool m_homogeneous;
-    std::vector<T> m_Emodulus, m_PoissonRatio;
+    using Base::m_data;
 
 };
 

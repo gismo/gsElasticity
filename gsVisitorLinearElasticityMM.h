@@ -18,6 +18,8 @@
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsElasticity/gsBasePde.h>
 #include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsMaterialEval.h>
+#include <gsElasticity/gsMaterialContainer.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -31,11 +33,12 @@ class gsVisitorLinearElasticityMM //material matrix
 public:
 
     gsVisitorLinearElasticityMM(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
-                                        gsMaterialBase<T> * materialMat,
-                                gsSparseMatrix<T> * elimMatrix = nullptr)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
-          m_materialMat(materialMat),
-          elimMat(elimMatrix)
+                                const gsMaterialContainer<T> & materials,
+                                      gsSparseMatrix<T> * elimMatrix = nullptr)
+    : 
+    pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+    m_materials(materials),
+    elimMat(elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -84,7 +87,8 @@ public:
         // Compute C per Qnode
         //materialFunctions_ptr->at(i)->eval(...)
 
-        m_materialMat->eval_matrix_into(quNodes,matValues, geo.id());
+        gsMaterialEval<T,gsMaterialOutput::C> Ceval(m_materials,&geo);
+        Ceval.piece(geo.id()).eval_into(quNodes,matValues);
         // gsMaterialEval<T,false> materialVector(m_materialMat);
         // materialVector.eval_into(quNodes,matValues);
 
@@ -185,7 +189,7 @@ protected:
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
     /// Material handler
-    gsMaterialBase<T> * m_materialMat;
+    const gsMaterialContainer<T> & m_materials;
     // elimination matrix to efficiently change Dirichlet degrees of freedom
     gsSparseMatrix<T> * elimMat;
     // all temporary matrices defined here for efficiency

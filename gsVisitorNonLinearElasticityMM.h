@@ -17,6 +17,8 @@
 
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsMaterialContainer.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -28,12 +30,16 @@ template <class T>
 class gsVisitorNonLinearElasticityMM
 {
 public:
-    gsVisitorNonLinearElasticityMM(const gsPde<T> & pde_,
-                                    gsMaterialBase<T> * materialMat,
+    gsVisitorNonLinearElasticityMM( const gsPde<T> & pde_,
+                                    const gsMaterialContainer<T> & materials,
                                     const gsMultiPatch<T> & displacement_)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
-          m_materialMat(materialMat),
-          displacement(displacement_) { }
+    : 
+    pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+    m_materials(materials),
+    displacement(displacement_) 
+    { 
+
+    }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -80,9 +86,10 @@ public:
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
 
-        m_materialMat->setDeformed(&displacement);
-        m_materialMat->eval_matrix_into(quNodes,matValues, geo.id());
-        m_materialMat->eval_vector_into(quNodes,vecValues, geo.id());
+        gsMaterialEval<T,gsMaterialOutput::S> Seval(m_materials,&displacement);
+        gsMaterialEval<T,gsMaterialOutput::C> Ceval(m_materials,&displacement);
+        Seval.piece(geo.id()).eval_into(quNodes,vecValues);
+        Ceval.piece(geo.id()).eval_into(quNodes,matValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -179,7 +186,7 @@ protected:
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
     /// Material handler
-    gsMaterialBase<T> * m_materialMat;
+    const gsMaterialContainer<T> & m_materials;
     // current displacement field
     const gsMultiPatch<T> & displacement;
     // evaluation data of the current displacement field

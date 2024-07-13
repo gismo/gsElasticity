@@ -19,6 +19,7 @@
 #include <gsElasticity/gsElasticityFunctions.h>
 #include <gsElasticity/gsBaseUtils.h>
 #include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsMaterialContainer.h>
 
 namespace gismo
 {
@@ -38,16 +39,28 @@ public:
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
-                          const gsFunction<T> & body_force,
-                          gsMaterialBase<T> *materialMatrix = NULL);
+                          const gsFunction<T> & body_force);   
 
     /// @brief Constructor of mixed formulation (displacement + pressure)
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basisDisp,
                           const gsMultiBasis<T> & basisPres,
                           const gsBoundaryConditions<T> & bconditions,
+                          const gsFunction<T> & body_force);
+
+    /// @brief Constructor for displacement formulation
+    gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                          const gsMultiBasis<T> & basis,
+                          const gsBoundaryConditions<T> & bconditions,
+                          const gsFunction<T>   & body_force,
+                          const gsMaterialBase<T> * material);   
+
+    /// @brief Constructor for displacement formulation
+    gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                          const gsMultiBasis<T> & basis,
+                          const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force,
-                          gsMaterialBase<T> *materialMatrix = NULL);
+                                gsMaterialContainer<T> materials);   
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -134,7 +147,7 @@ protected:
     using Base::m_system;
     using Base::eliminationMatrix;
 
-    gsMaterialBase<T> * m_materialMat;
+    gsMaterialContainer<T> m_materials;
 
 };
 

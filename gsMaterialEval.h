@@ -1,6 +1,6 @@
 /** @file gsMaterialEval.h
 
-    @brief Visitor class for volumetric integration of the linear elasticity system.
+    @brief Evaluator for `gsMaterialBase` objects
 
     This file is part of the G+Smo library.
 
@@ -9,41 +9,89 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        O. Weeger    (2012 - 2015, TU Kaiserslautern),
-        A.Shamanskiy (2016 - 2020, TU Kaiserslautern),
-        H.M.Verhelst (2019 - ...., TU Delft)
+        H.M.Verhelst
 */
 
 #pragma once
 
+#include <gsElasticity/gsMaterialUtils.h>
+#include <gsElasticity/gsMaterialContainer.h>
+#include <gsCore/gsFunction.h>
+
 namespace gismo
 {
 
-#include <gsCore/gsFunction.h>
-
-enum class gsMaterialOutput : short_t
-{
-    Vector   = 0,
-    Matrix   = 1,
-};
+template <class T, enum gsMaterialOutput out> 
+class gsMaterialEvalSingle;
 
 template <class T, enum gsMaterialOutput out>
 class gsMaterialEval : public gsFunction<T>
 {
 
 public:
+
     /// Constructor
-    gsMaterialEval(   gsMaterialBase<T> * materialMatrix,
-                            short_t dim)
+    gsMaterialEval( const gsMaterialContainer<T> & materialMatrices,
+                    const gsFunctionSet<T>       * deformed)
     :
-    m_materialMat(materialMatrix),
-    m_dim(dim)
+    m_materials(materialMatrices),
+    m_deformed(deformed)
     {
-        m_pIndex = 0;
+        for (index_t p = 0; p!=deformed->nPieces(); ++p)
+            GISMO_ASSERT(materialMatrices.piece(p)->initialized(),"Material matrix "<<p<<" is incomplete!");
+
+        this->_makePieces();
+    }
+
+    /// Constructor
+    gsMaterialEval(       gsMaterialBase<T> * materialMatrix,
+                    const gsFunctionSet<T>    * deformed)
+    :
+    m_materials(deformed->nPieces()),
+    m_deformed(deformed)
+    {
+        // GISMO_ASSERT(materialMatrix->initialized(),"Material matrix is incomplete!");
+        for (index_t p = 0; p!=deformed->nPieces(); ++p)
+            m_materials.set(p,materialMatrix);
+        this->_makePieces();
+    }
+
+    /// Constructor
+    gsMaterialEval( const gsMaterialContainer<T> & materialMatrices,
+                    const gsFunctionSet<T>       * undeformed,
+                    const gsFunctionSet<T>       * deformed)
+    :
+    m_materials(materialMatrices),
+    m_deformed(deformed)
+    {
+        for (index_t p = 0; p!=deformed->nPieces(); ++p)
+            GISMO_ASSERT(materialMatrices.piece(p)->initialized(),"Material matrix "<<p<<" is incomplete!");
+
+        this->_makePieces(undeformed);
+    }
+
+    /// Constructor
+    gsMaterialEval(       gsMaterialBase<T> * materialMatrix,
+                    const gsFunctionSet<T>    * undeformed,
+                    const gsFunctionSet<T>    * deformed)
+    :
+    m_materials(deformed->nPieces()),
+    m_deformed(deformed)
+    {
+        // GISMO_ASSERT(materialMatrix->initialized(),"Material matrix is incomplete!");
+        for (index_t p = 0; p!=deformed->nPieces(); ++p)
+            m_materials.set(p,materialMatrix);
+        this->_makePieces(undeformed);
+    }
+
+    /// Destructor
+    ~gsMaterialEval() 
+    { 
+        freeAll(m_pieces);
     }
 
     /// Domain dimension
-    short_t domainDim() const {return m_dim;}
+    short_t domainDim() const {return this->piece(0).domainDim();}
 
     /**
      * @brief      Target dimension
@@ -52,78 +100,155 @@ public:
      *
      * @return     Returns the target dimension depending on the specified type (scalar, vector, matrix etc.)
      */
-    short_t targetDim() const { return targetDim_impl<out>(); }
+    short_t targetDim() const { return this->piece(0).targetDim(); }
 
     /// Implementation of piece, see \ref gsFunction
     const gsFunction<T> & piece(const index_t p) const
     {
-        m_piece = new gsMaterialEval(*this);
-        m_piece->setPatch(p);
-        return *m_piece;
+        return *m_pieces[p];
     }
 
+    /// Implementation of eval_into, see \ref gsFunction
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+
+protected:
+    void _makePieces()
+    {
+        m_pieces.resize(m_deformed->nPieces());
+        for (size_t p = 0; p!=m_pieces.size(); ++p)
+            m_pieces.at(p) = new gsMaterialEvalSingle<T,out>(p,m_materials.piece(p),m_deformed);
+    }
+
+    void _makePieces(const gsFunctionSet<T> * undeformed)
+    {
+        m_pieces.resize(m_deformed->nPieces());
+        for (size_t p = 0; p!=m_pieces.size(); ++p)
+            m_pieces.at(p) = new gsMaterialEvalSingle<T,out>(p,m_materials.piece(p),undeformed,m_deformed);
+    }
+
+protected:
+    gsMaterialContainer<T> m_materials;
+    const gsFunctionSet<T> * m_deformed;
+    gsMatrix<T> m_z;
+    mutable std::vector<gsMaterialEvalSingle<T,out> *> m_pieces;
+}; //gsMaterialEval
+
+/**
+ * @brief      This class serves as the evaluator of materials, based on \ref gsMaterialBase
+ *
+ * @tparam     T     Real type
+ * @tparam     out   Output type (see \ref MaterialOutput)
+ *
+ * @ingroup    Elasticity
+ */
+template <class T, enum gsMaterialOutput out>
+class gsMaterialEvalSingle : public gsFunction<T>
+{
+public:
+
+    /// Constructor
+    gsMaterialEvalSingle(   index_t patch,
+                            gsMaterialBase<T>     * materialMatrix,
+                            const gsFunctionSet<T>  * deformed)
+    :
+    m_pIndex(patch),
+    m_material(materialMatrix)
+    {
+        m_material->setDeformed(deformed);
+    }
+
+    /// Constructor
+    gsMaterialEvalSingle(   index_t patch,
+                            gsMaterialBase<T>     * materialMatrix,
+                            const gsFunctionSet<T>  * undeformed,
+                            const gsFunctionSet<T>  * deformed)
+    :
+    m_pIndex(patch),
+    m_material(materialMatrix)
+    {
+        m_material->setDeformed(undeformed);
+        m_material->setDeformed(deformed);
+    }
+
+    short_t domainDim() const {return m_material->dim();}
+
+    /**
+     * @brief      Target dimension
+     *
+     * @return     Returns the target dimension depending on the specified type (scalar, vector, matrix etc.)
+     */
+    short_t targetDim() const {return targetDim_impl<out>();}
+
+
+private:
+
+    /// Implementation of \ref targetDim for density (TODO), energy
+    template<enum gsMaterialOutput _out>
+    typename std::enable_if<_out==gsMaterialOutput::Psi, short_t>::type targetDim_impl() const 
+    { 
+        return 1; 
+    };
+
+    /// Implementation of \ref targetDim for strain, stress
+    template<enum gsMaterialOutput _out>
+    typename std::enable_if<_out==gsMaterialOutput::E ||
+                            _out==gsMaterialOutput::S  , short_t>::type targetDim_impl() const 
+    { 
+        return m_material->dim(); 
+    };
+
+    /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2))
+    template<enum gsMaterialOutput _out>
+    typename std::enable_if<_out==gsMaterialOutput::C  , short_t>::type targetDim_impl() const 
+    { 
+        return math::pow((m_material->dim()+1)*m_material->dim()/2,2); 
+    };
+
+protected:
     /// Sets the patch index
     void setPatch(index_t p) {m_pIndex = p; }
 
-    /// Destructor
-    ~gsMaterialEval() { delete m_piece; }
+public:
 
     /// Implementation of eval_into, see \ref gsFunction
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        eval_into_impl<out>(u,result);
+        this->eval_into_impl<out>(u,result);
     }
 
 private:
+    /// Specialisation of \ref eval_into for density (TODO), energy
     template<enum gsMaterialOutput _out>
-    typename std::enable_if<_out==gsMaterialOutput::Vector, short_t>::type
-    targetDim_impl() const
+    typename std::enable_if<_out==gsMaterialOutput::Psi   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        return m_dim;
-    };
+        m_material->eval_energy_into(m_pIndex,u,result);
+    }
 
+    /// Specialisation of \ref eval_into for the strain tensor
     template<enum gsMaterialOutput _out>
-    typename std::enable_if<_out==gsMaterialOutput::Matrix, short_t>::type
-    targetDim_impl() const
+    typename std::enable_if<_out==gsMaterialOutput::E     , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        return m_dim*m_dim;
-    };
+        m_material->eval_strain_into(m_pIndex,u,result);
+    }
 
+    /// Specialisation of \ref eval_into for the stress tensor
     template<enum gsMaterialOutput _out>
-    typename std::enable_if<_out!=gsMaterialOutput::Matrix &&
-                            _out!=gsMaterialOutput::Vector, short_t>::type
-    targetDim_impl() const
+    typename std::enable_if<_out==gsMaterialOutput::S     , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        GISMO_NO_IMPLEMENTATION
-    };
+        m_material->eval_stress_into(m_pIndex,u,result);
+    }
 
+    /// Specialisation of \ref eval_into for the material tensor
     template<enum gsMaterialOutput _out>
-    typename std::enable_if<_out==gsMaterialOutput::Vector, void>::type
-    eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    typename std::enable_if<_out==gsMaterialOutput::C     , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_materialMat->eval_vector_into(u,result,m_pIndex);
-    };
-
-    template<enum gsMaterialOutput _out>
-    typename std::enable_if<_out==gsMaterialOutput::Matrix, void>::type
-    eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        m_materialMat->eval_matrix_into(u,result,m_pIndex);
-    };
-
-    template<enum gsMaterialOutput _out>
-    typename std::enable_if<_out!=gsMaterialOutput::Matrix &&
-                            _out!=gsMaterialOutput::Vector, void>::type
-    eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        GISMO_NO_IMPLEMENTATION
-    };
+        m_material->eval_matrix_into(m_pIndex,u,result);
+    }
 
 protected:
-    gsMaterialBase<T> * m_materialMat;
-    mutable gsMaterialEval<T,out> * m_piece;
     index_t m_pIndex;
-    size_t m_dim;
+    gsMaterialBase<T> * m_material;
 };
 
-}
+} // namespace
