@@ -63,6 +63,8 @@ int main (int argc, char** argv)
     gsMaterialEval<real_t, gsMaterialOutput::S> SvK_S(&SvK, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::C> SvK_C(&SvK, &mp_def);
 
+    // gsMaterialEval<real_t, gsMaterialOutput::Eplus> SvK_E(&SvK, &mp_def);
+
     // gsNeoHookLogMaterial<real_t> NH(E_modulus, PoissonRatio2, &mp, &mp_def);
     // gsMaterialBase<real_t> base(&mp, &mp_def);
 
@@ -82,7 +84,7 @@ int main (int argc, char** argv)
     gsDebugVar(Sres);
     SvK_S.piece(0).eval_into(pt,Sres);
     gsDebugVar(Sres);
-    SvK_E.piece(0).eval_into(pt,Sres);
+    SvK_C.piece(0).eval_into(pt,Sres);
     gsDebugVar(Sres);
 
     // NH.eval_vector_into(pt,Sres,0);

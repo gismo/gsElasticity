@@ -20,13 +20,17 @@ namespace gismo
 enum class gsMaterialOutput : short_t
 {
     /// @brief Strain
-    E       = 0,
+    E       = 10,
+    /// @brief Positive part of the Strain
+    Eplus   = 11,
+    /// @brief Negative part of the Strain
+    Eneg    = 12,
     /// @brief Stress
-    S       = 1,
+    S       = 2,
     /// @brief Material matrix
-    C       = 2,
+    C       = 3,
     /// @brief Energy
-    Psi     = 3,
+    Psi     = 4,
 };
 
 } // namespace
