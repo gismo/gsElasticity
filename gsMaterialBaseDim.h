@@ -118,6 +118,10 @@ public:
     }
 
     /// See \ref gsMaterialBase for details
+    virtual inline void eval_positive_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const override
+    { GISMO_NO_IMPLEMENTATION; // IMPLEMENT HERE!! }
+
+    /// See \ref gsMaterialBase for details
     virtual inline void eval_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const override
     {
         const index_t N = u.cols();

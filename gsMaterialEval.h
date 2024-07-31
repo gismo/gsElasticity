@@ -25,7 +25,7 @@ template <class T, enum gsMaterialOutput out>
 class gsMaterialEvalSingle;
 
 template <class T, enum gsMaterialOutput out>
-class gsMaterialEval : public gsFunction<T>
+class gsMaterialEval : public gsFunctionSet<T>
 {
 
 public:
@@ -230,6 +230,13 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::E     , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         m_material->eval_strain_into(m_pIndex,u,result);
+    }
+
+    /// Specialisation of \ref eval_into for the strain tensor
+    template<enum gsMaterialOutput _out>
+    typename std::enable_if<_out==gsMaterialOutput::Eplus , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        m_material->eval_positive_strain_into(m_pIndex,u,result);
     }
 
     /// Specialisation of \ref eval_into for the stress tensor
