@@ -104,6 +104,63 @@ int main (int argc, char** argv)
     SvK_C.piece(0).eval_into(pt,Sres);
     gsDebugVar(Sres);
 
+    // ============================================================
+    // Expression assembler check
+    gsExprAssembler<> A(1,1);
+    gsExprEvaluator<> ev(A);
+
+    typedef gsExprAssembler<>::geometryMap geometryMap;
+    typedef gsExprAssembler<>::variable    variable;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
+    
+    gsMatrix<> disp =  mp_def.patch(0).coefs()- mp.patch(0).coefs(); // displacement vector
+    gsMatrix<> disp_vec = disp.transpose();
+
+    // gsDebugVar(disp);
+    // gsDebugVar(disp_vec);
+
+    gsMultiBasis<> dbasis(mp,true);
+    
+    space w = A.getSpace(dbasis,3); // 3 dimensional solution field?
+
+    A.setIntegrationElements(dbasis); // necesito escribir la basis!
+
+    geometryMap G = A.getMap(mp); // al mp o al mp_def? domain dimension 3
+
+    solution u = A.getSolution(w, disp); // 3 rows one column
+
+    w.setup(); //setup allocates the degree-of-freedom mapper
+
+    auto lambda = E_modulus * PoissonRatio / ( ( 1. + PoissonRatio ) * ( 1. - 2. * PoissonRatio ) );
+    auto mu     = E_modulus / ( 2. * ( 1. + PoissonRatio ) );
+
+    gsMatrix<> I = gsMatrix<>::Identity(3,3); // es 3x3?
+
+    auto phys_jacobian = ijac(u, G);
+
+    // gsDebugVar(ev.eval(phys_jacobian,pt,0).cols());
+    // gsDebugVar(ev.eval(phys_jacobian,pt,0).rows());
+
+    // Linear strains
+    //auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian); //?? in matrix??? strain
+    // Green lagrange strain
+    auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian + phys_jacobian.cwisetr() * phys_jacobian); //?? in matrix??? strain
+    
+    // gsDebugVar(ev.eval(phys_jacobian,pt,0));
+    // gsDebugVar(ev.eval(EE,pt,0).cols());
+    // gsDebugVar(ev.eval(EE,pt,0).rows());
+
+    auto EE_eval = ev.eval(EE,pt,0); // Strain (small deformations) evaluated at pt (x,y,z)
+    gsDebugVar(EE_eval);
+    
+    auto SS = lambda * EE.trace().val()*I + 2.0*mu*EE; // stress
+    auto SS_eval = ev.eval(SS,pt,0); // Stress evaluated at pt (x,y,z)
+    gsDebugVar(SS_eval);
+    // ============================================================
+
+
+
     // NH.eval_vector_into(pt,Sres,0);
     // gsDebugVar(Sres);
     // NH.eval_matrix_into(pt,Sres,0);
