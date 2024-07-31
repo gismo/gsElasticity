@@ -101,17 +101,19 @@ public:
 
         const index_t N = u.cols();
         gsMatrix<T,d,d> I = gsMatrix<T>::Identity(d,d);
-        gsMatrix<T,d,d> physDispJac;
+        gsMatrix<T,d,d> physDefJac;
         result.resize(d*d,N);
         for (index_t i=0; i!=N; i++)
         {
             gsAsMatrix<T, Dynamic,Dynamic> jacdef = m_data.mine().m_jac_def.reshapeCol(i,d,d);
             gsAsMatrix<T, Dynamic,Dynamic> jacori = m_data.mine().m_jac_ori.reshapeCol(i,d,d);
 
-            physDispJac = jacdef*(jacori.cramerInverse());
+            physDefJac = jacdef*(jacori.cramerInverse());
             // deformation gradient F = I + du/dx
             gsAsMatrix<T, Dynamic,Dynamic> F = result.reshapeCol(i,d,d);
-            F = I + physDispJac;
+
+            F = physDefJac; 
+
         }
     }
 
@@ -124,13 +126,17 @@ public:
         this->eval_deformation_gradient_into(patch,u,Fres);
         gsMatrix<T,d,d> I = gsMatrix<T>::Identity(d,d);
         result.resize(d*d,N);
+
         for (index_t i=0; i!=N; i++)
         {
             // deformation gradient F = I + du/dx
             gsAsMatrix<T, Dynamic,Dynamic> F = Fres.reshapeCol(i,d,d);
             // Green-Lagrange strain, E = 0.5*(F'*F-I), a.k.a. full geometric strain tensor
             gsAsMatrix<T, Dynamic,Dynamic> E = result.reshapeCol(i,d,d);
+
             E = 0.5 * (F.transpose() * F - I);
+            // E = 0.5 * ((F-I).transpose() + (F-I)); // small strains
+
         }
     }
 
