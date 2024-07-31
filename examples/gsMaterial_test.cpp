@@ -15,6 +15,8 @@
 #include <gsElasticity/gsMaterialEval.h>
 // #include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsLinearMaterial.h>
+#include <gsElasticity/gsLinearDegradedMaterial.h>
+
 // #include <gsElasticity/gsNeoHookLogMaterial.h>
 // #include <gsElasticity/gsNeoHookQuadMaterial.h>
 // #include <gsElasticity/gsMuesliMaterial.h>
@@ -45,8 +47,10 @@ int main (int argc, char** argv)
     mp.addAutoBoundaries();
 
     mp_def = mp;
-    mp_def.patch(0).coefs().col(0) *= 2;
+    mp_def.patch(0).coefs().col(0) *= 2; // deformation *2 in the x direction (col(0))
 
+
+     
     real_t thickness = 1.0;
     real_t E_modulus = 210e9;
     real_t PoissonRatio = 0.3;
@@ -58,13 +62,26 @@ int main (int argc, char** argv)
     gsFunctionExpr<> nu2(std::to_string(PoissonRatio2),3);
     gsConstantFunction<> ratio(Ratio,3);
 
-    gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio2, mp, mp_def);
+    // ====== Initialize damage ====== !!
+    gsMatrix<> tmp = gsMatrix<>::Random(mp_def.patch(0).coefs().rows(),1);
+    gsMatrix<> damage = 0.1 * tmp.array() + 0.1; // damage btw 0 and 0.2
+    gsGeometry<>::uPtr damage_ = mp_def.basis(0).makeGeometry(give(damage)); // spline (Function)
+
+
+    gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio2, mp, mp_def); // why twice?
     gsMaterialEval<real_t, gsMaterialOutput::E> SvK_E(&SvK, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::S> SvK_S(&SvK, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::C> SvK_C(&SvK, &mp_def);
 
+    // gsLinearDegradedMaterial<3,real_t> SvK_deg(E_modulus, PoissonRatio2, mp, mp_def, damage_);
+    // gsMaterialEval<real_t, gsMaterialOutput::C> SvK_C(&SvK_deg, &mp_def);
+
+    // gsLinearDegradedMaterial<3,real_t> SvK_deg(E_modulus, PoissonRatio, mp, mp_def, damage);
+
+    // gsMaterialEval<real_t, gsMaterialOutput::C> SvK_C(&SvK, &mp_def);
+
     // gsNeoHookLogMaterial<real_t> NH(E_modulus, PoissonRatio2, &mp, &mp_def);
-    // gsMaterialBase<real_t> base(&mp, &mp_def);
+    //gsMaterialBase<real_t> base(&mp, &mp_def);
 
     gsVector<> pt(3);
     pt.col(0)<<0.125,0.375,0.5;
@@ -78,12 +95,125 @@ int main (int argc, char** argv)
     pts.col(5)<<0.5,0.5,0.5;
 
     gsMatrix<> Fres, Eres, Sres;
+    // strains
     SvK_E.piece(0).eval_into(pt,Sres);
     gsDebugVar(Sres);
+    // strsses
     SvK_S.piece(0).eval_into(pt,Sres);
     gsDebugVar(Sres);
-    SvK_E.piece(0).eval_into(pt,Sres);
-    gsDebugVar(Sres);
+    // material matrix
+    // SvK_C.piece(0).eval_into(pt,Sres); // problem evaluation of C
+    // gsDebugVar(Sres);
+
+
+
+    // ============================================================
+    // Expression assembler check
+    gsExprAssembler<> A(1,1);
+    gsExprEvaluator<> ev(A);
+
+    typedef gsExprAssembler<>::geometryMap geometryMap;
+    typedef gsExprAssembler<>::variable    variable;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
+    
+    gsMatrix<> disp =  mp_def.patch(0).coefs()- mp.patch(0).coefs(); // displacement vector
+    gsMatrix<> disp_vec = disp.transpose();
+
+    // gsDebugVar(disp);
+    // gsDebugVar(disp_vec);
+
+    gsMultiBasis<> dbasis(mp,true);
+    
+    space w = A.getSpace(dbasis,3); // 3 dimensional solution field?
+
+    A.setIntegrationElements(dbasis); // necesito escribir la basis!
+
+    geometryMap G = A.getMap(mp); // al mp o al mp_def? domain dimension 3
+
+    solution u = A.getSolution(w, disp); // 3 rows one column
+
+    w.setup(); //setup allocates the degree-of-freedom mapper
+
+    auto lambda = E_modulus * PoissonRatio / ( ( 1. + PoissonRatio ) * ( 1. - 2. * PoissonRatio ) );
+    auto mu     = E_modulus / ( 2. * ( 1. + PoissonRatio ) );
+
+    gsMatrix<> I = gsMatrix<>::Identity(3,3); // es 3x3?
+
+    auto phys_jacobian = ijac(u, G);
+
+    // gsDebugVar(ev.eval(phys_jacobian,pt,0).cols());
+    // gsDebugVar(ev.eval(phys_jacobian,pt,0).rows());
+
+    // Linear strains
+    //auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian); //?? in matrix??? strain
+    // Green lagrange strain
+    auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian + phys_jacobian.cwisetr() * phys_jacobian); //?? in matrix??? strain
+    
+    // gsDebugVar(ev.eval(phys_jacobian,pt,0));
+    // gsDebugVar(ev.eval(EE,pt,0).cols());
+    // gsDebugVar(ev.eval(EE,pt,0).rows());
+
+    auto EE_eval = ev.eval(EE,pt,0); // Strain (small deformations) evaluated at pt (x,y,z)
+    gsDebugVar(EE_eval);
+    
+    auto SS = lambda * EE.trace().val()*I + 2.0*mu*EE; // stress
+    auto SS_eval = ev.eval(SS,pt,0); // Stress evaluated at pt (x,y,z)
+    gsDebugVar(SS_eval);
+
+    // ============================================================
+    //
+
+    // ------------- Elasticity check (with expression assembler) -------------
+    // // gsDebugVar( mp.patch(0).coefs());
+    // // gsDebugVar( mp_def.patch(0).coefs());
+
+    // auto matrix_disp =  mp_def.patch(0).coefs()- mp.patch(0).coefs();
+    // gsDebugVar(matrix_disp);
+    
+    // // for (index_t q = 0; q < matrix_disp.cols(); ++q)
+    // // {
+    // //     auto dispGrad = matrix_disp.jacobian(q)*(matrix_disp.jacobian(q).cramerInverse());
+    // // }
+    // // auto eps = (dispGrad + dispGrad.transpose())/2;
+    // gsMatrix<> result;
+    // //auto holahola =  gsCauchyStressFunction<index_t>::linearElastic(matrix_disp,result);
+    // // gsWriteParaview(mp,"holahola",1,true);
+
+    
+    
+    
+    
+    // gsExprAssembler<> A(1,1);
+
+    // typedef gsExprAssembler<>::geometryMap geometryMap;
+    // typedef gsExprAssembler<>::variable    variable;
+    // typedef gsExprAssembler<>::space       space;
+    // typedef gsExprAssembler<>::solution    solution;
+    
+    // gsMultiBasis<> dbasis(mp,true);
+    
+    // space w = A.getSpace(dbasis);
+
+    // A.setIntegrationElements(dbasis); // necesito escribir la basis!
+    // gsExprEvaluator<> ev(A);
+    // A.assembleJacobian()
+    // geometryMap G = A.getMap(mp); // al mp o al mp_def?
+
+    
+
+    // // Set the discretization space
+    // space u_trial = A.getSpace(dbasis, 3); //?
+
+    // auto phys_jacobian = ijac(u_trial, G);
+    // auto epsilon = 0.5*(phys_jacobian.cwisetr() + phys_jacobian);
+    // gsDebugVar(epsilon);
+
+    // auto matrix = lambda * Itr + mu * Idev;
+
+    // epsilon.eval_into(pt);
+    // -------------------------------------------------------------------------
+
 
     // NH.eval_vector_into(pt,Sres,0);
     // gsDebugVar(Sres);
