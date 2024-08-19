@@ -49,7 +49,8 @@ int main (int argc, char** argv)
     mp_def = mp;
     mp_def.patch(0).coefs().col(0) *= 2; // deformation *2 in the x direction (col(0))
 
-
+    // gsDebugVar(mp.basis(0));
+    // I need to construct the solution of the phase field?
      
     real_t thickness = 1.0;
     real_t E_modulus = 210e9;
@@ -65,16 +66,18 @@ int main (int argc, char** argv)
     // ====== Initialize damage ====== !!
     gsMatrix<> tmp = gsMatrix<>::Random(mp_def.patch(0).coefs().rows(),1);
     gsMatrix<> damage = 0.1 * tmp.array() + 0.1; // damage btw 0 and 0.2
+    gsDebugVar(damage);
     gsGeometry<>::uPtr damage_ = mp_def.basis(0).makeGeometry(give(damage)); // spline (Function)
-
 
     gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio2, mp, mp_def); // why twice?
     gsMaterialEval<real_t, gsMaterialOutput::E> SvK_E(&SvK, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::S> SvK_S(&SvK, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::C> SvK_C(&SvK, &mp_def);
 
-    // gsLinearDegradedMaterial<3,real_t> SvK_deg(E_modulus, PoissonRatio2, mp, mp_def, damage_);
-    // gsMaterialEval<real_t, gsMaterialOutput::C> SvK_C(&SvK_deg, &mp_def);
+    gsLinearDegradedMaterial<3,real_t> SvK_deg(E_modulus, PoissonRatio2, mp, mp_def, *damage_);
+    gsMaterialEval<real_t, gsMaterialOutput::C> SvK_C_deg(&SvK_deg, &mp_def);
+    gsMaterialEval<real_t, gsMaterialOutput::S> SvK_S_deg(&SvK_deg, &mp_def);
+
 
     // gsLinearDegradedMaterial<3,real_t> SvK_deg(E_modulus, PoissonRatio, mp, mp_def, damage);
 
@@ -94,14 +97,30 @@ int main (int argc, char** argv)
     pts.col(4)<<0.25,0.25,0.5;
     pts.col(5)<<0.5,0.5,0.5;
 
-    gsMatrix<> Fres, Eres, Sres;
-    // strains
-    SvK_E.piece(0).eval_into(pt,Sres);
-    gsDebugVar(Sres);
-    // strsses
+    gsMatrix<> Fres, Eres, Sres ;
+    
+    // // strain
+    // SvK_E.piece(0).eval_into(pt,Sres);
+    // gsDebugVar(Sres);
+
+    // stress
+    gsInfo<<"Undegraded stress\n";
     SvK_S.piece(0).eval_into(pt,Sres);
     gsDebugVar(Sres);
+
+    //material matrix 
+    gsInfo<<"Undegraded material matrix\n";
     SvK_C.piece(0).eval_into(pt,Sres);
+    gsDebugVar(Sres);
+
+    // degraded stress
+    gsInfo<<"Degraded stress\n";
+    SvK_S_deg.piece(0).eval_into(pt,Sres);
+    gsDebugVar(Sres);
+
+    // degraded material matrix
+    gsInfo<<"Degraded material matrix\n";
+    SvK_C_deg.piece(0).eval_into(pt,Sres);
     gsDebugVar(Sres);
 
     // ============================================================
@@ -152,11 +171,11 @@ int main (int argc, char** argv)
     // gsDebugVar(ev.eval(EE,pt,0).rows());
 
     auto EE_eval = ev.eval(EE,pt,0); // Strain (small deformations) evaluated at pt (x,y,z)
-    gsDebugVar(EE_eval);
+    //gsDebugVar(EE_eval);
     
     auto SS = lambda * EE.trace().val()*I + 2.0*mu*EE; // stress
     auto SS_eval = ev.eval(SS,pt,0); // Stress evaluated at pt (x,y,z)
-    gsDebugVar(SS_eval);
+    //gsDebugVar(SS_eval);
     // ============================================================
 
 

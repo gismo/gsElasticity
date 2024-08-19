@@ -169,16 +169,6 @@ public:
     virtual inline void eval_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
     { GISMO_NO_IMPLEMENTATION; }
 
-    /**
-     * @brief      Evaluates the positive part of the strain tensor at a set of given points
-     *
-     * @param[in]  patch  The patch
-     * @param[in]  u      The in-plane shell coordinates to be eveluated on
-     *
-     * @return     
-     */
-    virtual inline void eval_positive_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
-    { GISMO_NO_IMPLEMENTATION; }
 
     /**
      * @brief      Evaluates the stress tensor at a set of given points

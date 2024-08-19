@@ -21,13 +21,13 @@ enum class gsMaterialOutput : short_t
 {
     /// @brief Strain
     E       = 10,
-    /// @brief Positive part of the Strain
-    Eplus   = 11,
-    /// @brief Negative part of the Strain
-    Eneg    = 12,
+    /// @brief Strain in Voigt notation
+    E_voigt = 11,
     /// @brief Stress
-    S       = 2,
-    /// @brief Material matrix
+    S       = 20,
+    /// @brief Stress in Voigt notation
+    S_voigt = 21,
+    /// @brief Material matrix in Voigt notation
     C       = 3,
     /// @brief Energy
     Psi     = 4,

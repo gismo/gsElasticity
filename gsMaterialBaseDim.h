@@ -87,7 +87,7 @@ public:
 public:
 
     /// See \ref gsMaterialBase for details
-    virtual short_t dim() const { return d; }
+    virtual short_t dim() const override { return d; }
 
     /// See \ref gsMaterialBase for details
     virtual void defaultOptions() override
@@ -117,9 +117,9 @@ public:
         }
     }
 
-    /// See \ref gsMaterialBase for details
-    virtual inline void eval_positive_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const override
-    { GISMO_NO_IMPLEMENTATION; // IMPLEMENT HERE!! }
+    // /// See \ref gsMaterialBase for details
+    // virtual inline void eval_positive_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const override
+    // { GISMO_NO_IMPLEMENTATION; // IMPLEMENT HERE!! }
 
     /// See \ref gsMaterialBase for details
     virtual inline void eval_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const override

@@ -36,7 +36,7 @@ public:
                                 const gsFunctionSet<T> & deformed,
                                 const gsFunctionSet<T> & damage)
     :
-    gsLinearDegradedMaterial(gsConstantFunction<T>(E,d),gsConstantFunction<T>(nu,d),patches,deformed,gsConstantFunction<T>(damage,d)) //?? anadi damage?
+    gsLinearDegradedMaterial(gsConstantFunction<T>(E,d),gsConstantFunction<T>(nu,d),patches,deformed,damage) //?? anadi damage?
     {
     }
 
@@ -56,7 +56,7 @@ public:
     void eval_stress_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
     {
         // Compute the parameter data (writes into m_data.mine().m_parMat)
-        this->_computeParameterData(patch,u);
+        this->_computeParameterData(patch,u); // compute functions (E,u,damage)
         // Compute the strain
         gsMatrix<T> Eres;
         Base::eval_strain_into(patch,u,Eres);
@@ -86,9 +86,9 @@ public:
             auto E_vol_neg = (E_vol < 0) ? E_vol : 0; // negative Heaviside function
 
             // Compute stress (Tensor dxd)
-            result.reshapeCol(i,d,d) = (1. - pow(damage,2)) * (kappa*E_vol_pos*I + 2.*mu*E) + kappa*E_vol_neg*I;
-
-
+            // result.reshapeCol(i,d,d) = math::pow((1. - damage),2) * (kappa*E_vol_pos*I + 2.*mu*E) + kappa*E_vol_neg*I; // error! already a dxd tensor!
+            auto E_dev = E - 1./d * E_vol * I; // deviatoric strain
+            result = math::pow((1. - damage),2) * (kappa*E_vol_pos*I + 2.*mu*E_dev) + kappa*E_vol_neg*I;
         }
 
     }
@@ -142,8 +142,7 @@ public:
             H_neg = (-E_vol > 0) ? 1 : 0; // negative Heaviside function
 
             // Compute C (in Voigt)
-            result.reshapeCol(i,sz,sz) = (1. - pow(damage,2)) * (kappa*H_pos*Cvol + 2.*mu*Cdev) + kappa*H_neg*Cvol; 
-            
+            result.reshapeCol(i,sz,sz) = math::pow((1. - damage),2) * (kappa*H_pos*Cvol + 2.*mu*Cdev) + kappa*H_neg*Cvol; 
         }
 
     }

@@ -16,6 +16,7 @@
 
 #include <gsElasticity/gsMaterialUtils.h>
 #include <gsElasticity/gsMaterialContainer.h>
+#include <gsElasticity/gsVisitorElUtils.h>
 #include <gsCore/gsFunction.h>
 
 namespace gismo
@@ -195,7 +196,17 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::E ||
                             _out==gsMaterialOutput::S  , short_t>::type targetDim_impl() const 
     { 
-        return m_material->dim(); 
+        const short_t d = m_material->dim();
+        return d*d; 
+    };
+
+    /// Implementation of \ref targetDim for strain, stress
+    template<enum gsMaterialOutput _out>
+    typename std::enable_if<_out==gsMaterialOutput::E_voigt ||
+                            _out==gsMaterialOutput::S_voigt  , short_t>::type targetDim_impl() const 
+    { 
+        const short_t d = m_material->dim();
+        return d*(d+1)/2;
     };
 
     /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2))
@@ -234,9 +245,22 @@ private:
 
     /// Specialisation of \ref eval_into for the strain tensor
     template<enum gsMaterialOutput _out>
-    typename std::enable_if<_out==gsMaterialOutput::Eplus , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    typename std::enable_if<_out==gsMaterialOutput::E_voigt   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_material->eval_positive_strain_into(m_pIndex,u,result);
+        gsMatrix<T> tmp;
+        m_material->eval_strain_into(m_pIndex,u,tmp); //tmp gives strain tensor (dxd)
+        const short_t d = m_material->dim();
+        result.resize(d*(d+1)/2,u.cols());
+        
+        for (index_t k = 0; k < u.cols(); k++)
+        {
+            // gsAsMatrix<T,Dynamic,Dynamic> E = tmp.reshapeCol(k,d,d); // in tensor notation
+            gsMatrix<T> E = tmp.reshapeCol(k,d,d); // in tensor notation
+            gsVector<T> E_voigt; // voigt strain
+            voigtStress(E_voigt,E);
+            result.col(k) = E_voigt;
+        }
+
     }
 
     /// Specialisation of \ref eval_into for the stress tensor

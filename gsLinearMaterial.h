@@ -62,6 +62,7 @@ public:
         T E, nu;
         T lambda, mu;
         gsMatrix<T,d,d> I = gsMatrix<T>::Identity(d,d);
+
         for (index_t i=0; i!=u.cols(); i++)
         {
             E = m_data.mine().m_parmat(0,i);
@@ -70,7 +71,7 @@ public:
             mu     = E / ( 2. * ( 1. + nu ) );
 
             gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,d,d);
-            result.reshapeCol(i,d,d) = lambda*E.trace()*I + 2*mu*E;
+            result = lambda*E.trace()*I + 2*mu*E;
         }
 
     }
@@ -83,11 +84,12 @@ public:
         gsMatrix<T> Eres;
         Base::eval_strain_into(patch,u,Eres);
 
-        // Voight-size of the tensor
+        // Voigt-size of the tensor
         const index_t sz = (d+1)*d/2;
 
         // Resize the result
         result.resize(sz*sz,u.cols());
+        //gsDebugVar(result.rows());
 
         // Identity tensor
         gsMatrix<T> I = gsMatrix<T>::Identity(d,d);
@@ -101,7 +103,7 @@ public:
         T E, nu;
         T lambda, mu;
         for (index_t i=0; i!=u.cols(); i++)
-        {
+        {   
             E = m_data.mine().m_parmat(0,i);
             nu= m_data.mine().m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
