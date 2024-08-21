@@ -270,6 +270,27 @@ private:
         m_material->eval_stress_into(m_pIndex,u,result);
     }
 
+
+    /// Specialisation of \ref eval_into for the strain tensor
+    template<enum gsMaterialOutput _out>
+    typename std::enable_if<_out==gsMaterialOutput::S_voigt   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        gsMatrix<T> tmp;
+        m_material->eval_stress_into(m_pIndex,u,tmp); //tmp gives strain tensor (dxd)
+        const short_t d = m_material->dim();
+        result.resize(d*(d+1)/2,u.cols());
+        
+        for (index_t k = 0; k < u.cols(); k++)
+        {
+            // gsAsMatrix<T,Dynamic,Dynamic> E = tmp.reshapeCol(k,d,d); // in tensor notation
+            gsMatrix<T> S = tmp.reshapeCol(k,d,d); // in tensor notation
+            gsVector<T> S_voigt; // voigt strain
+            voigtStress(S_voigt,S);
+            result.col(k) = S_voigt;
+        }
+
+    }
+
     /// Specialisation of \ref eval_into for the material tensor
     template<enum gsMaterialOutput _out>
     typename std::enable_if<_out==gsMaterialOutput::C     , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
