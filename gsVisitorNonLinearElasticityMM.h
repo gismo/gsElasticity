@@ -86,8 +86,8 @@ public:
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
 
-        gsMaterialEval<T,gsMaterialOutput::S> Seval(m_materials,&displacement);
-        gsMaterialEval<T,gsMaterialOutput::C> Ceval(m_materials,&displacement);
+        gsMaterialEval<T,gsMaterialOutput::S, true> Seval(m_materials,&displacement);
+        gsMaterialEval<T,gsMaterialOutput::C, true> Ceval(m_materials,&displacement);
         Seval.piece(geo.id()).eval_into(quNodes,vecValues);
         Ceval.piece(geo.id()).eval_into(quNodes,matValues);
     }

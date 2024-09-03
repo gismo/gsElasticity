@@ -110,6 +110,21 @@ inline void voigtStress(gsVector<T> & Svec, const gsMatrix<T> & S)
         Svec(i) = S(voigt(dim,i,0),voigt(dim,i,1));
 }
 
+// transform strain tensor E to a vector in Voigt notation
+template <class T>
+inline void voigtStrain(gsVector<T> & Evec, const gsMatrix<T> & E)
+{
+    short_t dim = E.cols();
+    gsDebugVar(dim);
+    short_t dimTensor = dim*(dim+1)/2;
+    Evec.resize(dimTensor);
+    for (short i = 0; i < dimTensor; ++i)
+        if (voigt(dim,i,0) != voigt(dim,i,1))
+            Evec(i) = E(voigt(dim,i,0),voigt(dim,i,1)) + E(voigt(dim,i,1),voigt(dim,i,0)); // off-diagonal terms
+        else
+            Evec(i) = E(voigt(dim,i,0),voigt(dim,i,1)); // diagonal terms
+}
+
 // auxiliary matrix B such that E:S = B*Svec in the weak form
 // (see Bernal, Calo, Collier, et. at., "PetIGA", ICCS 2013, p. 1610)
 template <class T>

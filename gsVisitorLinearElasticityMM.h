@@ -87,7 +87,7 @@ public:
         // Compute C per Qnode
         //materialFunctions_ptr->at(i)->eval(...)
 
-        gsMaterialEval<T,gsMaterialOutput::C> Ceval(m_materials,&geo);
+        gsMaterialEval<T,gsMaterialOutput::C, true> Ceval(m_materials,&geo);
         Ceval.piece(geo.id()).eval_into(quNodes,matValues);
         // gsMaterialEval<T,false> materialVector(m_materialMat);
         // materialVector.eval_into(quNodes,matValues);

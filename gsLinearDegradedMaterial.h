@@ -68,6 +68,8 @@ public:
         T damage;
 
         gsMatrix<T,d,d> I = gsMatrix<T>::Identity(d,d);
+        result.resize(d*d,u.cols());
+
         for (index_t i=0; i!=u.cols(); i++)
         {
             E      = m_data.mine().m_parmat(0,i);
@@ -84,10 +86,9 @@ public:
             auto E_vol = E.trace(); //volumetric strain (scalar) 
             auto E_vol_pos = (E_vol > 0) ? E_vol : 0; // positive Heaviside function
             auto E_vol_neg = (E_vol < 0) ? E_vol : 0; // negative Heaviside function
-
-            // Compute stress (Tensor dxd)
-            // result.reshapeCol(i,d,d) = math::pow((1. - damage),2) * (kappa*E_vol_pos*I + 2.*mu*E) + kappa*E_vol_neg*I; // error! already a dxd tensor!
             auto E_dev = E - 1./d * E_vol * I; // deviatoric strain
+            
+            // Compute stress (Tensor dxd)
             result = math::pow((1. - damage),2) * (kappa*E_vol_pos*I + 2.*mu*E_dev) + kappa*E_vol_neg*I;
         }
 
