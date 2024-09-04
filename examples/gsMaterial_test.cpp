@@ -158,10 +158,21 @@ int main (int argc, char** argv)
     mp.addPatch( gsNurbsCreator<>::BSplineCube(1) ); // degree
     mp.addAutoBoundaries();
 
+    gsDebugVar(mp.basis(0).numElements());
+    mp.uniformRefine(); // refines both
+    //mp.basis(0).uniformRefine(); // this refines the basis but not the geometry!
+
+    gsDebugVar(mp.basis(0));
+    
     mp_def = mp;
+    gsDebugVar(mp_def.patch(0).coefs());
+    gsDebugVar(mp.patch(0).coefs());
+    
+    //gsDebugVar(mp.nPatches());
+
     mp_def.patch(0).coefs().col(0) *= 2; // deformation *2 in the x direction (col(0))
-    mp_def.patch(0).coefs().col(1) += 0.5 * mp_def.patch(0).coefs().col(0);
-    mp_def.patch(0).coefs().col(0) += 0.5 * mp_def.patch(0).coefs().col(1);
+    // mp_def.patch(0).coefs().col(1) += 0.5 * mp_def.patch(0).coefs().col(0);
+    // mp_def.patch(0).coefs().col(0) += 0.5 * mp_def.patch(0).coefs().col(1);
 
     // gsDebugVar(mp.basis(0));
     // I need to construct the solution of the phase field?
@@ -186,15 +197,15 @@ int main (int argc, char** argv)
     // New structure: introduce a flag for Voigt notation (true) or tensor notation (false)
     // gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S_deg(&SvK_deg, &mp_def);
 
-    gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio2, mp, mp_def); 
+    gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio, mp, mp_def); 
     gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(&SvK, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S(&SvK, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(&SvK, &mp_def);
 
-    gsLinearDegradedMaterial<3,real_t> SvK_deg(E_modulus, PoissonRatio2, mp, mp_def, *damage_);
+    gsLinearDegradedMaterial<3,real_t> SvK_deg(E_modulus, PoissonRatio, mp, mp_def, *damage_);
     gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C_deg(&SvK_deg, &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S_deg(&SvK_deg, &mp_def);
-
+    gsMaterialEval<real_t, gsMaterialOutput::C_pos, true> SvK_C_pos(&SvK_deg, &mp_def);
     // gsNeoHookLogMaterial<real_t> NH(E_modulus, PoissonRatio2, &mp, &mp_def);
     // gsMaterialBase<real_t> base(&mp, &mp_def);
 
@@ -214,7 +225,7 @@ int main (int argc, char** argv)
     // // strain
     gsInfo<<"Strain\n";
     SvK_E.piece(0).eval_into(pt,Sres);
-    //gsDebugVar(Sres);
+    gsDebugVar(Sres);
 
     // stress
     gsInfo<<"Undegraded stress\n";
@@ -249,6 +260,8 @@ int main (int argc, char** argv)
     gsMatrix<> disp =  mp_def.patch(0).coefs()- mp.patch(0).coefs(); // displacement vector
     gsMatrix<> disp_vec = disp.transpose();
 
+    gsDebugVar(disp);
+
     gsMultiBasis<> dbasis(mp,true);
     
     space w = A.getSpace(dbasis,3); // 3 dimensional solution field?
@@ -259,13 +272,15 @@ int main (int argc, char** argv)
 
     solution u = A.getSolution(w, disp); // 3 rows one column
 
-    disp = disp.reshape(24,1); // to ensure Assert `_u.coefs().rows()==_u.mapper().freeSize()`
+    disp = disp.reshape(disp.rows()*disp.cols(),1); // to ensure Assert `_u.coefs().rows()==_u.mapper().freeSize()`
 
     w.setup(); //setup allocates the degree-of-freedom mapper
     A.initSystem();
 
     auto lambda = E_modulus * PoissonRatio / ( ( 1. + PoissonRatio ) * ( 1. - 2. * PoissonRatio ) );
     auto mu     = E_modulus / ( 2. * ( 1. + PoissonRatio ) );
+    gsDebugVar(lambda);
+    gsDebugVar(mu);
 
     gsMatrix<> I = gsMatrix<>::Identity(3,3); // es 3x3?
 
@@ -273,15 +288,16 @@ int main (int argc, char** argv)
     auto phys_jacobian_space = ijac(w, G);
 
     // Linear strains
-    //auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian); //?? in matrix??? strain
+    auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian); //?? in matrix??? strain
     // Green lagrange strain
-    auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian + phys_jacobian.cwisetr() * phys_jacobian); //?? in matrix??? strain
+    //auto EE = 0.5*(phys_jacobian.cwisetr() + phys_jacobian + phys_jacobian.cwisetr() * phys_jacobian); //?? in matrix??? strain
     // gsDebugVar(ev.eval(phys_jacobian,pt,0));
     // gsDebugVar(ev.eval(EE,pt,0).cols());
     // gsDebugVar(ev.eval(EE,pt,0).rows());
 
     auto EE_eval = ev.eval(EE,pt,0); // Strain (small deformations) evaluated at pt (x,y,z)
-    
+    gsDebugVar(EE_eval);
+
     auto SS = lambda * EE.trace().val()*I + 2.0*mu*EE; // stress
     auto SS_eval = ev.eval(SS,pt,0); // Stress evaluated at pt (x,y,z)
     gsDebugVar(SS_eval);
@@ -293,26 +309,56 @@ int main (int argc, char** argv)
         mu *
         ((phys_jacobian_space.cwisetr() + phys_jacobian_space) % phys_jacobian_space.tr()) *
         meas(G);
+
+    // auto bilin_mu_ =
+    //     mu *
+    //     ((phys_jacobian_space.cwisetr() + phys_jacobian_space) * 0.5*((phys_jacobian_space.cwisetr() + phys_jacobian_space).tr())) *
+    //     meas(G);
+
+    // gsDebugVar((phys_jacobian_space.cwisetr() + phys_jacobian_space).Space);
+    // gsDebugVar(((phys_jacobian_space.cwisetr() + phys_jacobian_space) % phys_jacobian_space.tr()).Space);
+    // gsDebugVar(((phys_jacobian_space.cwisetr() + phys_jacobian_space) * (0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space)).tr()).Space);
+    // gsDebugVar((phys_jacobian_space.cwisetr()).Space);
+    // gsDebugVar((phys_jacobian_space).Space);
+    // gsDebugVar((phys_jacobian_space.tr()).Space);
+
+    // gsDebugVar((lambda * idiv(w, G) * idiv(w, G).tr() * meas(G)).Space);
     
     auto bilin_combined = (bilin_lambda + bilin_mu_);
     A.assemble(bilin_combined);
     gsMatrix<> matr_assembly1 = A.matrix().toDense();
-    gsDebugVar(matr_assembly1); 
+    //gsDebugVar(matr_assembly1); 
+
     // ============================================================
 
     // ==== Bilinear form !!!!! ====
     auto delta_EE = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space);
-    //auto delta_EE_NL = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space + phys_jacobian*phys_jacobian_space.cwisetr() * phys_jacobian_space*phys_jacobian.tr()); // linearization with geometric non-linearities
+    //auto delta_EE_NL = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space + phys_jacobian*phys_jacobian_space.cwisetr() + phys_jacobian_space*phys_jacobian.cwisetr()); // linearization with geometric non-linearities
     
+    // gsDebugVar(phys_jacobian_space.cwisetr().Space);
+    // gsDebugVar(phys_jacobian_space.Space);
+    // gsDebugVar((phys_jacobian*phys_jacobian_space.cwisetr()).Space)
+    // gsDebugVar(phys_jacobian_space.cwisetr())
+
     // delta_EE to Voigt
     auto delta_EE_voigt = voigt(delta_EE);
     auto C_undgr = A.getCoeff(SvK_C);
+    auto C_positive = A.getCoeff(SvK_C_pos);
     A.clearMatrix();
-    A.assemble(delta_EE_voigt*reshape(C_undgr,6,6)*delta_EE_voigt.tr());
+    A.assemble(delta_EE_voigt*reshape(C_undgr,6,6)*delta_EE_voigt.tr()*meas(G));
     gsMatrix<> matr_assembly2 = A.matrix().toDense();
-    gsDebugVar(matr_assembly2);
-    gsDebugVar(matr_assembly2-matr_assembly1);
+    //gsDebugVar(ev.eval(reshape(C_undgr,6,6),pt,0));
+    //gsDebugVar(ev.eval(reshape(C_positive,6,6),pt,0));
+    // gsDebugVar(matr_assembly2);
+    //gsDebugVar(((matr_assembly2-matr_assembly1).array() / matr_assembly1.array()) .abs().maxCoeff()); //relative err
+    gsDebugVar((matr_assembly2-matr_assembly1).maxCoeff()); //relative err
+    gsDebugVar((matr_assembly2-matr_assembly1).minCoeff()); //relative err
+
     // =======================
+
+    // Check that voigt is working
+    auto EE_voigt = voigt(EE);
+    gsDebugVar(ev.eval(EE_voigt,pt,0));
 
     // NH.eval_vector_into(pt,Sres,0);
     // gsDebugVar(Sres);
