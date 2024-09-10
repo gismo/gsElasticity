@@ -80,6 +80,9 @@ public:
     {
         // Compute the parameter data (writes into m_data.mine().m_parMat)
         this->_computeParameterData(patch,u);
+        // Compute the strain
+        gsMatrix<T> Eres;
+        Base::eval_strain_into(patch,u,Eres);
 
         // Voigt-size of the tensor
         const index_t sz = (d+1)*d/2;
