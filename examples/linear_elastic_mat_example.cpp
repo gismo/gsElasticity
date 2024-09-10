@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
   bool compute_error{false};
   index_t sample_rate{9};
 
-  std::string file_name("pde/linear_elasticity_example_singlepatch.xml");
+  std::string file_name("linear_elasticity_example_singlepatch.xml");
 
   gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
   cmd.addInt("e", "degreeElevation",
@@ -294,14 +294,10 @@ int main(int argc, char *argv[]) {
   // Compute the system matrix and right-hand side
   auto phys_jacobian_space = ijac(w, G);
 
-  real_t thickness = 1.0;
   real_t E_modulus = 210e9;
   real_t PoissonRatio = 0.0;
-  real_t Ratio = 1;
-  gsFunctionExpr<> t(std::to_string(thickness), 3);
-  gsFunctionExpr<> E(std::to_string(E_modulus),3);
-  gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
-  gsConstantFunction<> ratio(Ratio,3);
+  gsFunctionExpr<> E(std::to_string(E_modulus),mp.geoDim());
+  gsFunctionExpr<> nu(std::to_string(PoissonRatio),mp.geoDim());
 
   //gsFunctionExpr<> fun("if ((x> 0) and (x < 0.5) and (y > 0.5-0.005e-3) and (y < 0.5+0.005e-3)) { 1 } else { 0 };",3); //3 dimension
   
@@ -310,9 +306,14 @@ int main(int argc, char *argv[]) {
 
 
   //gsFunctionExpr<> fun2("if (( 0 < x < 7.5e-3) and (0.5-0.005e-3 < y < 0.5+0.005e-3)) { 1 } else { 0 };",2);
-  gsMatrix<> tmp1;
-  gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp1); 
-  gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(tmp1));   
+  gsMatrix<> anchors = dbasis.basis(0).anchors();
+  gsMatrix<> vals = fun.eval(anchors);
+  vals.transposeInPlace();
+  gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(vals));   
+    
+
+  // gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp1); 
+  // gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(tmp1));   
   gsWriteParaview(mp,*geom_ptr,"fun",1e5);
        
 
@@ -323,18 +324,32 @@ int main(int argc, char *argv[]) {
   // gsMatrix<> tmp;
   // gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp); 
 
-  gsLinearDegradedMaterial<3,real_t> SvK(E_modulus, PoissonRatio, mp, mp_def, fun);
+  gsMaterialBase<real_t> * SvK;
+  gsMaterialBase<real_t> * SvK_undeg;
+  if      (mp.geoDim()==2)
+  {
+    SvK = new gsLinearDegradedMaterial<2,real_t>(E_modulus, PoissonRatio, mp, mp_def, fun);
+    SvK_undeg = new gsLinearMaterial<2,real_t>(E_modulus, PoissonRatio, mp, mp_def);
+  }
+  else if (mp.geoDim()==3)
+  {
+    SvK = new gsLinearDegradedMaterial<3,real_t>(E_modulus, PoissonRatio, mp, mp_def, fun);
+    SvK_undeg = new gsLinearMaterial<3,real_t>(E_modulus, PoissonRatio, mp, mp_def);
+  }
+  else
+    GISMO_ERROR("Dimension not supported");
+
 
   gsWriteParaview(mp,fun,"damage",1e5);
 
   //gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio, mp, mp_def); 
-  gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(&SvK, &mp_def);
-  gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S(&SvK, &mp_def);
-  gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(&SvK, &mp_def);
-  //gsMaterialEval<real_t, gsMaterialOutput::Psi, true> SvK_Psi(&SvK, &mp_def);
+  gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(SvK, &mp_def);
+  gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S(SvK, &mp_def);
+  gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(SvK, &mp_def);
+  gsMaterialEval<real_t, gsMaterialOutput::Psi, true> SvK_Psi(SvK, &mp_def);
 
-  gsLinearMaterial<3,real_t> SvK_undeg(E_modulus, PoissonRatio, mp, mp_def); 
-  gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_undeg_C(&SvK_undeg, &mp_def);
+  //gsLinearMaterial<3,real_t> SvK_undeg(E_modulus, PoissonRatio, mp, mp_def); 
+  gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_undeg_C(SvK_undeg, &mp_def);
 
 
   //  =========== Bilinear form I ===========
@@ -354,24 +369,40 @@ int main(int argc, char *argv[]) {
   auto delta_EE = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space);
   auto delta_EE_voigt = voigt(delta_EE);
   auto C = A.getCoeff(SvK_C);
+
   auto C_elast = A.getCoeff(SvK_undeg_C);
 
   //auto energy_pos = A.getCoeff(SvK_Psi);
 
   // A.clearMatrix();
-  auto bilin_combined = delta_EE_voigt*reshape(C,6,6)*delta_EE_voigt.tr()*meas(G);
+
+  short_t sz = (mp.parDim()+1)*mp.parDim()/2;
+  gsDebugVar(C.rows());
+  gsDebugVar(C.cols());
+
+  auto bilin_combined = delta_EE_voigt*reshape(C,sz,sz)*delta_EE_voigt.tr()*meas(G);
   
   // A.assemble(bilin_combined);
   
   // gsMatrix<> matrix_gsMat = A.matrix().toDense();
   // A.clearMatrix();
 
-  gsVector<> pt(3);
+  gsVector<> pt(mp.parDim());
   //pt.col(0)<<0.125,0.375,0.5;
-  pt.col(0)<<0.,0.5,1.;
+  if (mp.parDim() == 2) 
+    pt.col(0)<<0.,0.5;
+  else if (mp.parDim() == 3)
+    pt.col(0)<<0.,0.5,1.;
+  else 
+    GISMO_ERROR("Dimension not supported");
 
-  gsDebugVar(ev.eval(reshape(C,6,6),pt,0)); // degraded C
-  gsDebugVar(ev.eval(reshape(C_elast,6,6),pt,0));
+  gsDebugVar(SvK_C.piece(0).eval(pt)); // degraded C
+  gsDebugVar(ev.eval(reshape(C,sz,sz),pt,0)); // degraded C
+  gsDebugVar(ev.eval(reshape(C_elast,sz,sz),pt,0));
+
+  gsDebugVar(SvK_Psi.piece(0).eval(pt));
+  // gsDebugVar(ev.eval(SvK_Psi));
+
 
   //gsDebugVar(ev.eval(energy_pos,pt,0));
 
@@ -470,6 +501,8 @@ int main(int argc, char *argv[]) {
   }
   //! [Export visualization in ParaView]
 
+  delete SvK;
+  delete SvK_undeg;
   return EXIT_SUCCESS;
 
 }  // end main

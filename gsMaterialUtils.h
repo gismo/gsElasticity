@@ -28,9 +28,13 @@ enum class gsMaterialOutput : short_t
     /// @brief Stress in Voigt notation
     S_voigt = 21,
     /// @brief Material matrix in Voigt notation
-    C       = 3,
+    C       = 30,
+    /// @brief Material matrix in Voigt notation undegraded
+    C_pos   = 31,
     /// @brief Energy
-    Psi     = 4,
+    Psi     = 40,
+    /// @brief Energy
+    Psi_pos = 41,
 };
 
 } // namespace

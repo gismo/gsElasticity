@@ -65,7 +65,7 @@ inline void deviatoricTensor(gsMatrix<T> & C, const gsMatrix<T> & R)
 
     C.block(0,0,dim,dim).setConstant(-1.0/3.0);
     C.block(0,0,dim,dim).diagonal().setConstant(2.0/3.0);
-    C.block(dim,dim,dim,dim).diagonal().setConstant(0.5);
+    C.block(dim,dim,dimTensor-dim,dimTensor-dim).diagonal().setConstant(0.5);
 
     // if (dim == 2) 
     // {

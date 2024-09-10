@@ -84,7 +84,7 @@ public:
             gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,d,d);
 
             auto E_vol = E.trace(); //volumetric strain (scalar) 
-            auto E_vol_pos = (E_vol > 0) ? E_vol : 0; // positive Heaviside function
+            auto E_vol_pos = (E_vol >= 0) ? E_vol : 0; // positive Heaviside function
             auto E_vol_neg = (E_vol < 0) ? E_vol : 0; // negative Heaviside function
             auto E_dev = E - 1./d * E_vol * I; // deviatoric strain
             
@@ -139,11 +139,78 @@ public:
             gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,d,d);
 
             E_vol = E.trace(); //volumetric strain (scalar) 
-            H_pos = (E_vol > 0) ? 1 : 0; // positive Heaviside function
-            H_neg = (-E_vol > 0) ? 1 : 0; // negative Heaviside function
-
+            H_pos = (E_vol >= -math::limits::epsilon()) ? 1 : 0; // positive Heaviside function
+            H_neg = (E_vol <  -math::limits::epsilon()) ? 1 : 0; // negative Heaviside function
             // Compute C (in Voigt)
             result.reshapeCol(i,sz,sz) = math::pow((1. - damage),2) * (kappa*H_pos*Cvol + 2.*mu*Cdev) + kappa*H_neg*Cvol; 
+            //result.reshapeCol(i,sz,sz) = math::pow((1. - damage),2) * (kappa*Cvol + 2.*mu*Cdev); 
+
+            // gsDebugVar(Cvol);
+            // gsDebugVar(Cdev);
+            
+        }
+
+    }
+
+    void eval_energy_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
+    {
+        // Compute the parameter data (writes into m_data.mine().m_parMat)
+        this->_computeParameterData(patch,u);
+        
+        gsMatrix<T> Eres;
+        Base::eval_strain_into(patch,u,Eres);
+
+        // Voigt-size of the tensor
+        //const index_t sz = (d+1)*d/2;
+
+        // Resize the result
+        result.resize(1,u.cols()); // scalar
+
+        // Identity tensor
+        gsMatrix<T> I = gsMatrix<T>::Identity(d,d);
+
+        // C tensors
+        gsMatrix<T> Cvol, Cdev;
+        matrixTraceTensor<T>(Cvol,I,I);
+        deviatoricTensor<T>(Cdev,I);
+
+        // Lamé parameters
+        T E, nu;
+        T lambda, mu, kappa;
+        // Damage parameter
+        T damage;
+
+        bool H_pos, H_neg;
+        T E_vol;
+
+        for (index_t i=0; i!=u.cols(); i++) 
+        {
+            E      = m_data.mine().m_parmat(0,i);
+            nu     = m_data.mine().m_parmat(1,i);
+            damage = m_data.mine().m_parmat(2,i);
+            
+            lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
+            mu     = E / ( 2. * ( 1. + nu ) );
+            kappa  = E / ( 3. * ( 1. - 2.*nu ) );
+
+            // Compute strain Heaviside function
+            //gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,d,d);
+
+            gsMatrix<T> E_full = Eres.reshapeCol(i,d,d);
+            gsVector<T> E_vec;
+            voigtStrain(E_vec,E_full); //E_vect in voigt
+ 
+            E_vol = E_full.trace(); //volumetric strain (scalar) 
+            H_pos = (E_vol >= 0) ? 1 : 0; // positive Heaviside function
+
+            // Compute Psi 
+            gsMatrix<T> C_pos = kappa*H_pos*Cvol + 2.*mu*Cdev;
+            gsDebugVar(E_vec.transpose() * C_pos * E_vec);
+            // gsDebugVar((E.transpose() * C_pos * E).rows());
+            // gsDebugVar((E.transpose() * C_pos * E).cols());
+
+            result(0,i) = 0.5 * E_vec.transpose() * C_pos * E_vec; // I need a scalar as a result!!? transpose of a gsAsMatrix?
+
         }
 
     }

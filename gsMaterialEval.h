@@ -25,7 +25,7 @@ namespace gismo
 template <class T, enum gsMaterialOutput out, bool voigt> 
 class gsMaterialEvalSingle;
 
-template <class T, enum gsMaterialOutput out, bool voigt>
+template <class T, enum gsMaterialOutput out, bool voigt = true>
 class gsMaterialEval : public gsFunctionSet<T>
 {
 
@@ -144,7 +144,7 @@ protected:
  * 
  * @ingroup    Elasticity
  */
-template <class T, enum gsMaterialOutput out, bool voigt>
+template <class T, enum gsMaterialOutput out, bool voigt = true>
 class gsMaterialEvalSingle : public gsFunction<T>
 {
 public:
@@ -224,6 +224,20 @@ private:
         GISMO_NO_IMPLEMENTATION; 
     };
 
+        /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2)) -- in Voigt
+    template<enum gsMaterialOutput _out, bool _voigt>
+    typename std::enable_if<_out==gsMaterialOutput::C_pos  && _voigt, short_t>::type targetDim_impl() const 
+    { 
+        return math::pow((m_material->dim()+1)*m_material->dim()/2,2); 
+    };
+
+    /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2))
+    template<enum gsMaterialOutput _out, bool _voigt>
+    typename std::enable_if<_out==gsMaterialOutput::C_pos  && !_voigt, short_t>::type targetDim_impl() const 
+    { 
+        GISMO_NO_IMPLEMENTATION; 
+    };
+
 protected:
     /// Sets the patch index
     void setPatch(index_t p) {m_pIndex = p; }
@@ -238,7 +252,7 @@ public:
 
 private:
     /// Specialisation of \ref eval_into for density (TODO), energy
-    template<enum gsMaterialOutput _out>
+    template<enum gsMaterialOutput _out, bool>
     typename std::enable_if<_out==gsMaterialOutput::Psi, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         m_material->eval_energy_into(m_pIndex,u,result);
@@ -307,6 +321,19 @@ private:
 
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::C && !_voigt , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        GISMO_NO_IMPLEMENTATION; 
+    }
+
+    /// Specialisation of \ref eval_into for the material tensor
+    template<enum gsMaterialOutput _out, bool _voigt>
+    typename std::enable_if<_out==gsMaterialOutput::C_pos && _voigt , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        m_material->eval_matrix_pos_into(m_pIndex,u,result);
+    }
+
+    template<enum gsMaterialOutput _out, bool _voigt>
+    typename std::enable_if<_out==gsMaterialOutput::C_pos && !_voigt , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         GISMO_NO_IMPLEMENTATION; 
     }

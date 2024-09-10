@@ -193,6 +193,17 @@ public:
     { GISMO_NO_IMPLEMENTATION; }
 
     /**
+     * @brief      Evaluates the undamaged positive material tensor at a set of given points
+     *
+     * @param[in]  patch  The patch
+     * @param[in]  u      The in-plane shell coordinates to be eveluated on
+     *
+     * @return     
+     */
+    virtual inline void eval_matrix_pos_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
+    { GISMO_NO_IMPLEMENTATION; }
+
+    /**
      * @brief      Evaluates the energy at a set of given points
      *
      * @param[in]  patch  The patch
