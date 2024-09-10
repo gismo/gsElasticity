@@ -19,6 +19,120 @@
 */
 
 #include <gismo.h>
+#include <gsElasticity/gsMaterialEval.h>
+#include <gsElasticity/gsLinearMaterial.h>
+#include <gsElasticity/gsLinearDegradedMaterial.h>
+#include <gsElasticity/gsVisitorElUtils.h>
+
+namespace gismo 
+{
+    namespace expr 
+    {
+        /**
+        Transforms a matrix expression into a vector expression by computing the vector
+        [ a b c+d]^T
+        for each matrix block
+        [ a d ]
+        [ c b ]
+        */
+        template<class E>
+        class voigt_expr  : public _expr<voigt_expr<E> >
+        {
+        public:
+            typedef typename E::Scalar Scalar;
+            enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0}; // to do: ColBlocks
+        private:
+            typename E::Nested_t _u;
+            mutable gsMatrix<Scalar> tmp, result;
+            mutable short_t d;
+
+        protected:
+            inline short_t _voigt(short_t dim, short_t I, short_t J) const
+            {
+                if (dim == 2)
+                    switch(I)
+                    {
+                    case 0: return J == 0 ? 0 : 0;
+                    case 1: return J == 0 ? 1 : 1;
+                    case 2: return J == 0 ? 0 : 1;
+                    }
+                else if (dim == 3)
+                    switch (I)
+                    {
+                    case 0: return J == 0 ? 0 : 0;
+                    case 1: return J == 0 ? 1 : 1;
+                    case 2: return J == 0 ? 2 : 2;
+                    case 3: return J == 0 ? 0 : 1;
+                    case 4: return J == 0 ? 1 : 2;
+                    case 5: return J == 0 ? 0 : 2;
+                    }
+                GISMO_ERROR("voigt notation indices error");
+            }
+
+            inline void _voigtStrain(typename gsMatrix<Scalar>::ColXpr & Evec, const gsMatrix<Scalar> & E_mat) const
+            {
+                short_t dim = E_mat.cols();
+                short_t dimTensor = dim*(dim+1)/2;
+                Evec.resize(dimTensor);
+                for (short i = 0; i < dimTensor; ++i)
+                    if (_voigt(dim,i,0) != _voigt(dim,i,1))
+                        Evec(i) = E_mat(_voigt(dim,i,1),_voigt(dim,i,0)) + E_mat(_voigt(dim,i,0),_voigt(dim,i,1)); // off-diagonal terms
+                    else
+                        Evec(i) = E_mat(_voigt(dim,i,0),_voigt(dim,i,1)); // diagonal terms
+            }
+
+
+        public:
+
+            voigt_expr(_expr<E> const& u) : _u(u)
+            {
+                d = _u.rows(); 
+                //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+            }
+
+            const gsMatrix<Scalar> & eval(const index_t k) const
+            {
+                tmp = _u.eval(k);
+                const index_t numActives = _u.cardinality(); // basis functions 
+                result.resize(d*(d+1)/2,numActives);
+
+                for (index_t i = 0; i<numActives; ++i)
+                {
+                    typename gsMatrix<Scalar>::ColXpr col = result.col(i);
+                    _voigtStrain(col,tmp.block(0,i*_u.cols(),_u.rows(),_u.cols()));
+                }
+                
+                // Why is this done????
+                if ( 1==Space )
+                    result.transposeInPlace(); 
+                else if (2!=Space) // if not colSpan and not rowSpan
+                    result.transposeInPlace();
+
+
+                return result;
+            }
+
+            // Per basis function 
+            index_t rows() const { return 1; }
+            index_t cols() const { return d*(d+1)/2; } // dim*(dim+1)/2
+
+            void parse(gsExprHelper<Scalar> & evList) const
+            { _u.parse(evList); }
+
+            const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+            const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+            index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+            void print(std::ostream &os) const { os << "flat("; _u.print(os); os<<")"; }
+        };
+
+        /// Make a matrix 2x2 expression "flat"
+        template <typename E> EIGEN_STRONG_INLINE
+        voigt_expr<E> const voigt(E const & u)
+        { return voigt_expr<E>(u); }
+
+    }
+}
 
 using namespace gismo;
 
@@ -31,7 +145,7 @@ int main(int argc, char *argv[]) {
   bool compute_error{false};
   index_t sample_rate{9};
 
-  std::string file_name("pde/linear_elasticity_example.xml");
+  std::string file_name("pde/linear_elasticity_example_singlepatch.xml");
 
   gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
   cmd.addInt("e", "degreeElevation",
@@ -72,17 +186,17 @@ int main(int argc, char *argv[]) {
   gsFileData<> file_data(file_name);
   gsInfo << "Loaded file " << file_data.lastPath() << "\n";
 
-  gsMultiPatch<> multi_patch;
-  file_data.getId(0, multi_patch);  // id=0: Multipatch domain
+  gsMultiPatch<> mp, mp_def;
+  file_data.getId(0, mp);  // id=0: Multipatch domain
 
   gsFunctionExpr<> source_function_expression;
   file_data.getId(1, source_function_expression);  // id=1: source function
   gsInfo << "Source function " << source_function_expression << "\n";
 
-  gsBoundaryConditions<> boundary_conditions;
-  file_data.getId(2, boundary_conditions);  // id=2: boundary conditions
-  boundary_conditions.setGeoMap(multi_patch);
-  gsInfo << "Boundary conditions:\n" << boundary_conditions << "\n";
+  gsBoundaryConditions<> bc;
+  file_data.getId(2, bc);  // id=2: boundary conditions
+  bc.setGeoMap(mp);
+  gsInfo << "Boundary conditions:\n" << bc << "\n";
 
   gsFunctionExpr<> reference_solution_expr;
   file_data.getId(3, reference_solution_expr);  // id=3: reference solution
@@ -94,22 +208,24 @@ int main(int argc, char *argv[]) {
   //! [Read input file]
 
   //! [Refinement]
-  gsMultiBasis<> function_basis(multi_patch, true);
-  const int solution_field_dimension = multi_patch.geoDim();
+  gsMultiBasis<> dbasis(mp, true);
+  const int dim = mp.geoDim();
 
   // Elevate and p-refine the basis
-  function_basis.degreeElevate(n_deg_elevations);
+  dbasis.degreeElevate(n_deg_elevations);
 
   // h-refine each basis
   for (int r = 0; r < n_h_refinements; ++r) {
-    function_basis.uniformRefine();
+    dbasis.uniformRefine();
   }
+
+  mp_def = mp;
   //! [Refinement]
 
   //! [Problem setup]
-  gsExprAssembler<> expression_assembler(1, 1);
+  gsExprAssembler<> A(1, 1);
   if (file_data.hasId(4)) {
-    expression_assembler.setOptions(assembler_options);
+    A.setOptions(assembler_options);
   }
 
   typedef gsExprAssembler<>::geometryMap GeometryMap;
@@ -118,41 +234,41 @@ int main(int argc, char *argv[]) {
   typedef gsExprAssembler<>::solution Solution;
 
   // Elements used for numerical integration
-  expression_assembler.setIntegrationElements(function_basis);
-  gsExprEvaluator<> ev(expression_assembler);
+  A.setIntegrationElements(dbasis);
+  gsExprEvaluator<> ev(A);
 
   // Set the geometry map
-  GeometryMap geometry_map = expression_assembler.getMap(multi_patch);
+  GeometryMap G = A.getMap(mp);
 
   // Set the discretization space
-  Space u_trial =
-      expression_assembler.getSpace(function_basis, solution_field_dimension);
+  Space w =
+      A.getSpace(dbasis, dim);
 
   // Set the source term
   auto source_function =
-      expression_assembler.getCoeff(source_function_expression, geometry_map);
+      A.getCoeff(source_function_expression, G);
 
   // Recover manufactured solution
   auto reference_solution =
-      ev.getVariable(reference_solution_expr, geometry_map);
+      ev.getVariable(reference_solution_expr, G);
 
   // Solution vector and solution variable
   gsMatrix<> solution_vector;
-  Solution u_solution_expression =
-      expression_assembler.getSolution(u_trial, solution_vector);
+  Solution u =
+      A.getSolution(w, solution_vector);
   //! [Problem setup]
 
   // ![User output]
   gsInfo << "Problem Overview:\t"
-         << "\nGeometric Dim:\t" << solution_field_dimension << "\nPatches:\t"
-         << multi_patch.nPatches() << "\nMinimum degree:\t"
-         << function_basis.minCwiseDegree() << "\nMaximum degree:\t"
-         << function_basis.maxCwiseDegree() << "\n\n";
+         << "\nGeometric Dim:\t" << dim << "\nPatches:\t"
+         << mp.nPatches() << "\nMinimum degree:\t"
+         << dbasis.minCwiseDegree() << "\nMaximum degree:\t"
+         << dbasis.maxCwiseDegree() << "\n\n";
 #ifdef _OPENMP
   gsInfo << "Available threads: " << omp_get_max_threads() << "\n";
 #endif
   gsInfo << "Active assembly options:\n"
-         << expression_assembler.options() << std::endl;
+         << A.options() << std::endl;
   // ![User output]
 
   //! [Assembly]
@@ -160,48 +276,129 @@ int main(int argc, char *argv[]) {
 
   real_t l2_err{}, h1_err{}, setup_time{}, ma_time{}, slv_time{}, err_time{};
   gsStopwatch timer;
-  function_basis.uniformRefine();
+  dbasis.uniformRefine();
 
   // Apply dirichlet boundary conditions
-  u_trial.setup(boundary_conditions, dirichlet::l2Projection, 0);
+  w.setup(bc, dirichlet::l2Projection, 0);
 
   // Initialize the system
-  expression_assembler.initSystem();
+  A.initSystem();
   setup_time += timer.stop();
 
   // User output
-  gsInfo << "Number of degrees of freedom:\t" << expression_assembler.numDofs()
+  gsInfo << "Number of degrees of freedom:\t" << A.numDofs()
          << std::endl;
   gsInfo << "\nAssembling linear system ... " << std::flush;
   timer.restart();
 
   // Compute the system matrix and right-hand side
-  auto phys_jacobian = ijac(u_trial, geometry_map);
+  auto phys_jacobian_space = ijac(w, G);
 
-  // Bilinear form
-  auto bilin_lambda = lame_lambda * idiv(u_trial, geometry_map) *
-                      idiv(u_trial, geometry_map).tr() * meas(geometry_map);
+  real_t thickness = 1.0;
+  real_t E_modulus = 210e9;
+  real_t PoissonRatio = 0.0;
+  real_t Ratio = 1;
+  gsFunctionExpr<> t(std::to_string(thickness), 3);
+  gsFunctionExpr<> E(std::to_string(E_modulus),3);
+  gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
+  gsConstantFunction<> ratio(Ratio,3);
+
+  //gsFunctionExpr<> fun("if ((x> 0) and (x < 0.5) and (y > 0.5-0.005e-3) and (y < 0.5+0.005e-3)) { 1 } else { 0 };",3); //3 dimension
+  
+  gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.501) and (y > 0.5-0.05) and (y < 0.5+0.05)) { 1 } else { 0. };",mp.geoDim()); //3 dimension
+  
+
+
+  //gsFunctionExpr<> fun2("if (( 0 < x < 7.5e-3) and (0.5-0.005e-3 < y < 0.5+0.005e-3)) { 1 } else { 0 };",2);
+  gsMatrix<> tmp1;
+  gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp1); 
+  gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(tmp1));   
+  gsWriteParaview(mp,*geom_ptr,"fun",1e5);
+       
+
+  //gsConstantFunction<> fun(0,3); // to set damage to zero!
+
+  // gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(coefs(dbasis.size(),2)));        
+  // gsWriteParaview(*geom_ptr,mp,"fun");
+  // gsMatrix<> tmp;
+  // gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp); 
+
+  gsLinearDegradedMaterial<3,real_t> SvK(E_modulus, PoissonRatio, mp, mp_def, fun);
+
+  gsWriteParaview(mp,fun,"damage",1e5);
+
+  //gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio, mp, mp_def); 
+  gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(&SvK, &mp_def);
+  gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S(&SvK, &mp_def);
+  gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(&SvK, &mp_def);
+  //gsMaterialEval<real_t, gsMaterialOutput::Psi, true> SvK_Psi(&SvK, &mp_def);
+
+  gsLinearMaterial<3,real_t> SvK_undeg(E_modulus, PoissonRatio, mp, mp_def); 
+  gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_undeg_C(&SvK_undeg, &mp_def);
+
+
+  //  =========== Bilinear form I ===========
+  real_t lambda = E_modulus * PoissonRatio / ( ( 1. + PoissonRatio ) * ( 1. - 2. * PoissonRatio ) );
+  real_t mu     = E_modulus / ( 2. * ( 1. + PoissonRatio ) );
+  real_t kappa  = E_modulus / ( 3. * ( 1. - 2.*PoissonRatio ) );
+  
+  auto bilin_lambda = lambda * idiv(w, G) *
+                      idiv(w, G).tr() * meas(G);
   auto bilin_mu_ =
-      lame_mu *
-      ((phys_jacobian.cwisetr() + phys_jacobian) % phys_jacobian.tr()) *
-      meas(geometry_map);
-  auto bilin_combined = (bilin_lambda + bilin_mu_);
+      mu *
+      ((phys_jacobian_space.cwisetr() + phys_jacobian_space) % phys_jacobian_space.tr()) *
+      meas(G);
+  auto bilin_combined2 = (bilin_lambda + bilin_mu_);
+
+  // =========== Bilinear form II ===========
+  auto delta_EE = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space);
+  auto delta_EE_voigt = voigt(delta_EE);
+  auto C = A.getCoeff(SvK_C);
+  auto C_elast = A.getCoeff(SvK_undeg_C);
+
+  //auto energy_pos = A.getCoeff(SvK_Psi);
+
+  // A.clearMatrix();
+  auto bilin_combined = delta_EE_voigt*reshape(C,6,6)*delta_EE_voigt.tr()*meas(G);
+  
+  // A.assemble(bilin_combined);
+  
+  // gsMatrix<> matrix_gsMat = A.matrix().toDense();
+  // A.clearMatrix();
+
+  gsVector<> pt(3);
+  //pt.col(0)<<0.125,0.375,0.5;
+  pt.col(0)<<0.,0.5,1.;
+
+  gsDebugVar(ev.eval(reshape(C,6,6),pt,0)); // degraded C
+  gsDebugVar(ev.eval(reshape(C_elast,6,6),pt,0));
+
+  //gsDebugVar(ev.eval(energy_pos,pt,0));
+
+  //hola
+
+  // gsDebugVar(ev.eval(bilin_combined,pt,0)); //bilinear de gsmaterial
+  // gsDebugVar(ev.eval(bilin_combined2,pt,0)); //bilinear de linear elasticity
+
+  // A.assemble(bilin_combined2);
+  // gsMatrix<> matrix2_elast = A.matrix().toDense();
+
+  //gsDebugVar((matrix_gsMat-matrix2_elast).maxCoeff());
 
   // Linear Form
-  auto linear_form = u_trial * source_function * meas(geometry_map);
+  auto linear_form = w * source_function * meas(G);
 
-  expression_assembler.assemble(bilin_combined,  // matrix
+  A.assemble(bilin_combined,  // matrix
                                 linear_form      // rhs vector
   );
 
   // Compute the Neumann terms (will not be used in default file)
-  auto neumann_boundary_function =
-      expression_assembler.getBdrFunction(geometry_map);
+  auto neumann_boundary_function = A.getBdrFunction(G);
 
   // Neumann conditions
-  expression_assembler.assembleBdr(
-      boundary_conditions.get("Neumann"),
-      u_trial * neumann_boundary_function * nv(geometry_map).norm());
+  A.assembleBdr(
+      bc.get("Neumann"),
+      w * neumann_boundary_function * nv(G).norm());
   //! [Assembly]
 
   //! [Solver]
@@ -211,8 +408,8 @@ int main(int argc, char *argv[]) {
   timer.restart();
 
   // Solve linear system
-  linear_solver.compute(expression_assembler.matrix());
-  solution_vector = linear_solver.solve(expression_assembler.rhs());
+  linear_solver.compute(A.matrix());
+  solution_vector = linear_solver.solve(A.rhs());
   //! [Solver]
 
   slv_time += timer.stop();
@@ -223,14 +420,14 @@ int main(int argc, char *argv[]) {
     gsInfo << "Evaluating solution ........ " << std::flush;
     timer.restart();
     l2_err = math::sqrt(
-        ev.integral((reference_solution - u_solution_expression).sqNorm() *
-                    meas(geometry_map)));
+        ev.integral((reference_solution - u).sqNorm() *
+                    meas(G)));
 
     h1_err = l2_err +
              math::sqrt(ev.integral((igrad(reference_solution) -
-                                     igrad(u_solution_expression, geometry_map))
+                                     igrad(u, G))
                                         .sqNorm() *
-                                    meas(geometry_map)));
+                                    meas(G)));
     err_time += timer.stop();
     gsInfo << "Done" << std::endl;
   }
@@ -257,10 +454,10 @@ int main(int argc, char *argv[]) {
     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", sample_rate);
-    collection.newTimeStep(&multi_patch);
-    collection.addField(u_solution_expression, "numerical solution");
+    collection.newTimeStep(&mp);
+    collection.addField(u, "numerical solution");
     if (compute_error) {
-      collection.addField(reference_solution - u_solution_expression, "error");
+      collection.addField(reference_solution - u, "error");
     }
     collection.saveTimeStep();
     collection.save();
