@@ -258,4 +258,4 @@ public:
     mutable gsMatrix<T> m_jac_ori, m_jac_def;
 };
 
-}
+} // namespace gismo
