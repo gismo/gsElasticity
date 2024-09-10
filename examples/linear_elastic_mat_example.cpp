@@ -298,31 +298,25 @@ int main(int argc, char *argv[]) {
   real_t PoissonRatio = 0.0;
   gsFunctionExpr<> E(std::to_string(E_modulus),mp.geoDim());
   gsFunctionExpr<> nu(std::to_string(PoissonRatio),mp.geoDim());
-
-  //gsFunctionExpr<> fun("if ((x> 0) and (x < 0.5) and (y > 0.5-0.005e-3) and (y < 0.5+0.005e-3)) { 1 } else { 0 };",3); //3 dimension
   
+  // ========== Initial phase-field profile ==========
   gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.501) and (y > 0.5-0.05) and (y < 0.5+0.05)) { 1 } else { 0. };",mp.geoDim()); //3 dimension
-  
-
-
-  //gsFunctionExpr<> fun2("if (( 0 < x < 7.5e-3) and (0.5-0.005e-3 < y < 0.5+0.005e-3)) { 1 } else { 0 };",2);
+  //gsFunctionExpr<> fun("if ((x> 0) and (x < 0.5) and (y > 0.5-0.005e-3) and (y < 0.5+0.005e-3)) { 1 } else { 0 };",3); //3 dimension
   gsMatrix<> anchors = dbasis.basis(0).anchors();
   gsMatrix<> vals = fun.eval(anchors);
   vals.transposeInPlace();
   gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(vals));   
-    
-
+  gsWriteParaview(mp,*geom_ptr,"fun",1e5);
+  // gsWriteParaview(mp,fun,"damage",1e5);
+  
   // gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp1); 
   // gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(tmp1));   
-  gsWriteParaview(mp,*geom_ptr,"fun",1e5);
-       
-
   //gsConstantFunction<> fun(0,3); // to set damage to zero!
-
   // gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(coefs(dbasis.size(),2)));        
   // gsWriteParaview(*geom_ptr,mp,"fun");
   // gsMatrix<> tmp;
   // gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp); 
+  // =================================================
 
   gsMaterialBase<real_t> * SvK;
   gsMaterialBase<real_t> * SvK_undeg;
@@ -339,9 +333,6 @@ int main(int argc, char *argv[]) {
   else
     GISMO_ERROR("Dimension not supported");
 
-
-  gsWriteParaview(mp,fun,"damage",1e5);
-
   //gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio, mp, mp_def); 
   gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(SvK, &mp_def);
   gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S(SvK, &mp_def);
@@ -351,8 +342,7 @@ int main(int argc, char *argv[]) {
   //gsLinearMaterial<3,real_t> SvK_undeg(E_modulus, PoissonRatio, mp, mp_def); 
   gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_undeg_C(SvK_undeg, &mp_def);
 
-
-  //  =========== Bilinear form I ===========
+  //  =========== Bilinear form I (linear elasticity example) ===========
   real_t lambda = E_modulus * PoissonRatio / ( ( 1. + PoissonRatio ) * ( 1. - 2. * PoissonRatio ) );
   real_t mu     = E_modulus / ( 2. * ( 1. + PoissonRatio ) );
   real_t kappa  = E_modulus / ( 3. * ( 1. - 2.*PoissonRatio ) );
@@ -365,7 +355,7 @@ int main(int argc, char *argv[]) {
       meas(G);
   auto bilin_combined2 = (bilin_lambda + bilin_mu_);
 
-  // =========== Bilinear form II ===========
+  // =========== Bilinear form II (with gsMaterial class)===========
   auto delta_EE = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space);
   auto delta_EE_voigt = voigt(delta_EE);
   auto C = A.getCoeff(SvK_C);
@@ -383,12 +373,10 @@ int main(int argc, char *argv[]) {
   auto bilin_combined = delta_EE_voigt*reshape(C,sz,sz)*delta_EE_voigt.tr()*meas(G);
   
   // A.assemble(bilin_combined);
-  
   // gsMatrix<> matrix_gsMat = A.matrix().toDense();
   // A.clearMatrix();
 
   gsVector<> pt(mp.parDim());
-  //pt.col(0)<<0.125,0.375,0.5;
   if (mp.parDim() == 2) 
     pt.col(0)<<0.,0.5;
   else if (mp.parDim() == 3)
@@ -396,17 +384,12 @@ int main(int argc, char *argv[]) {
   else 
     GISMO_ERROR("Dimension not supported");
 
-  gsDebugVar(SvK_C.piece(0).eval(pt)); // degraded C
-  gsDebugVar(ev.eval(reshape(C,sz,sz),pt,0)); // degraded C
-  gsDebugVar(ev.eval(reshape(C_elast,sz,sz),pt,0));
-
-  gsDebugVar(SvK_Psi.piece(0).eval(pt));
-  // gsDebugVar(ev.eval(SvK_Psi));
-
+  // gsDebugVar(SvK_C.piece(0).eval(pt)); // degraded C
+  // gsDebugVar(ev.eval(reshape(C,sz,sz),pt,0)); // degraded C
+  // gsDebugVar(ev.eval(reshape(C_elast,sz,sz),pt,0));
+  // gsDebugVar(SvK_Psi.piece(0).eval(pt));
 
   //gsDebugVar(ev.eval(energy_pos,pt,0));
-
-  //hola
 
   // gsDebugVar(ev.eval(bilin_combined,pt,0)); //bilinear de gsmaterial
   // gsDebugVar(ev.eval(bilin_combined2,pt,0)); //bilinear de linear elasticity
