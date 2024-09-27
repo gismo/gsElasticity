@@ -1,4 +1,4 @@
-/** @file cahn-hilliard.cpp
+/** @file fracture_elasticity_example.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Cahn-Hilliard equation
 
@@ -14,105 +14,214 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <gsElasticity/gsMaterialEval.h>
+#include <gsElasticity/gsLinearMaterial.h>
+#include <gsElasticity/gsLinearDegradedMaterial.h>
+#include <gsElasticity/gsVisitorElUtils.h>
+
+namespace gismo 
+{
+    namespace expr 
+    {
+        /**
+        Transforms a matrix expression into a vector expression by computing the vector
+        [ a b c+d]^T
+        for each matrix block
+        [ a d ]
+        [ c b ]
+        */
+        template<class E>
+        class voigt_expr  : public _expr<voigt_expr<E> >
+        {
+        public:
+            typedef typename E::Scalar Scalar;
+            enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0}; // to do: ColBlocks
+        private:
+            typename E::Nested_t _u;
+            mutable gsMatrix<Scalar> tmp, result;
+            mutable short_t d;
+
+        protected:
+            inline short_t _voigt(short_t dim, short_t I, short_t J) const
+            {
+                if (dim == 2)
+                    switch(I)
+                    {
+                    case 0: return J == 0 ? 0 : 0;
+                    case 1: return J == 0 ? 1 : 1;
+                    case 2: return J == 0 ? 0 : 1;
+                    }
+                else if (dim == 3)
+                    switch (I)
+                    {
+                    case 0: return J == 0 ? 0 : 0;
+                    case 1: return J == 0 ? 1 : 1;
+                    case 2: return J == 0 ? 2 : 2;
+                    case 3: return J == 0 ? 0 : 1;
+                    case 4: return J == 0 ? 1 : 2;
+                    case 5: return J == 0 ? 0 : 2;
+                    }
+                GISMO_ERROR("voigt notation indices error");
+            }
+
+            inline void _voigtStrain(typename gsMatrix<Scalar>::ColXpr & Evec, const gsMatrix<Scalar> & E_mat) const
+            {
+                short_t dim = E_mat.cols();
+                short_t dimTensor = dim*(dim+1)/2;
+                Evec.resize(dimTensor);
+                for (short i = 0; i < dimTensor; ++i)
+                    if (_voigt(dim,i,0) != _voigt(dim,i,1))
+                        Evec(i) = E_mat(_voigt(dim,i,1),_voigt(dim,i,0)) + E_mat(_voigt(dim,i,0),_voigt(dim,i,1)); // off-diagonal terms
+                    else
+                        Evec(i) = E_mat(_voigt(dim,i,0),_voigt(dim,i,1)); // diagonal terms
+            }
+
+
+        public:
+
+            voigt_expr(_expr<E> const& u) : _u(u)
+            {
+                d = _u.rows(); 
+                //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+            }
+
+            const gsMatrix<Scalar> & eval(const index_t k) const
+            {
+                tmp = _u.eval(k);
+                const index_t numActives = _u.cardinality(); // basis functions 
+                result.resize(d*(d+1)/2,numActives);
+
+                for (index_t i = 0; i<numActives; ++i)
+                {
+                    typename gsMatrix<Scalar>::ColXpr col = result.col(i);
+                    _voigtStrain(col,tmp.block(0,i*_u.cols(),_u.rows(),_u.cols()));
+                }
+                
+                // Why is this done????
+                if ( 1==Space )
+                    result.transposeInPlace(); 
+                else if (2!=Space) // if not colSpan and not rowSpan
+                    result.transposeInPlace();
+
+
+                return result;
+            }
+
+            // Per basis function 
+            index_t rows() const { return 1; }
+            index_t cols() const { return d*(d+1)/2; } // dim*(dim+1)/2
+
+            void parse(gsExprHelper<Scalar> & evList) const
+            { _u.parse(evList); }
+
+            const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+            const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+            index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+            void print(std::ostream &os) const { os << "flat("; _u.print(os); os<<")"; }
+        };
+
+        /// Make a matrix 2x2 expression "flat"
+        template <typename E> EIGEN_STRONG_INLINE
+        voigt_expr<E> const voigt(E const & u)
+        { return voigt_expr<E>(u); }
+
+    }
+}
 
 using namespace gismo;
 //! [Include namespace]
 
 int main(int argc, char *argv[])
 {
-    real_t theta = 1.5;
-    real_t lambda = 1/(32*pow(EIGEN_PI,2));
-    // real_t lambda = 6.15e-4;
-    real_t L0 = 1;
-    real_t M0 = 0.005;
-    real_t dt = 1e-3;
-    index_t maxSteps = 10;
-
-    // real_t eps_penalty = 1e4 *lambda;   // not sure about the value!
-
-
-    bool output = true;
-
-
-    index_t plotmod = 1;
-
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 1;
-    index_t numElevate = 1;
-    bool last = false;
-    bool nitsche = false;
-    real_t mean = 0.0;
+    index_t n_h_refinements = 0;
+    index_t n_deg_elevations = 0;
+    bool only_last = false;
+    bool compute_error{false};
+    index_t sample_rate{9}; 
 
-    bool random = false;
+    std::string file_name("linear_elasticity_example_singlepatch.xml");
 
-    bool do3D = false;
-
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    cmd.addReal( "t", "dt","dt parameter",dt); // -t () or --dt ()
-    cmd.addReal( "T", "theta","Theta parameter",theta);
-    cmd.addReal( "l", "lambda","lambda parameter",lambda);
-    cmd.addReal( "L", "L0","L0 parameter",L0);
-    cmd.addReal( "M", "M0","M0 parameter",M0);
-    cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
-    cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
-    // cmd.addString( "f", "file", "Input XML file", fn );
-    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("nitsche", "Weak BC enforcement with Nitsche", nitsche);
-    cmd.addReal("m","mean", "Mean value of the normal random initial condition", mean);
-    cmd.addSwitch("initial", "Initial random condition of the CH problem", random);
-    cmd.addSwitch("3D", "Flag for 3D CH", do3D);
+    gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
+    cmd.addInt("e", "degreeElevation",
+                "Number of degree elevation steps to perform before solving (0: "
+                "equalize degree in all directions)",
+                n_deg_elevations);
+    cmd.addInt("r", "uniformRefine", "Number of Uniform h-refinement loops",
+                n_h_refinements);
+    cmd.addString("f", "file", "Input XML file", file_name);
+    cmd.addSwitch("only_last",
+                    "Solve solely for the only_last level of h-refinement",
+                    only_last);
+    cmd.addSwitch("plot",
+                    "Create a ParaView visualization file with the solution", plot);
+    cmd.addInt("q", "sample-rate", "Samples per spline in paraview export",
+                sample_rate);
+    cmd.addSwitch("compute-error",
+                    "Evaluate the error with respect to the analytical solution "
+                    "(evaluation with default options and default file required)",
+                    compute_error);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-    //! [Parse command line]
-
-    // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
-    // 0. Single patch construction parameters
-    index_t n = 20;
-    index_t degree = 2;
-    real_t hmax = 1.0/(n-degree);
-
-    // 1. construction of a knot vector for each direction
-    // n - degree - 1 interior knots
-    // degree + 1 multiplicity at the ends
-    // n-p elements!
-    gsKnotVector<> kv(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
-
-    // 2. construction of a basis    
-    gsMultiBasis<> dbasis;
-    if (do3D)
-        dbasis.addBasis(new gsTensorBSplineBasis<3>(kv, kv, kv) );
-    else
-        dbasis.addBasis(new gsTensorBSplineBasis<2>(kv, kv) );
-
-    // 3. Construction of a square or cube
-    gsMultiPatch<> mp;
-    if (do3D)
-        mp.addPatch( *gsNurbsCreator<>::BSplineCube(1) );
-    else
-        mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
-    mp.computeTopology();
-    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    // Boundary conditions
-    gsBoundaryConditions<> bc;
-    // ============================== Add Dirichlet BC ============================== // maybe not needed since xml file?
-    gsVector<> displ_bc (2); //could be a scalar? check!
-    displ_bc<< 0,1; // 0 in x 1(quantity) in y
-    gsConstantFunction<> displ_bc_fun (displ_bc,2);
-    bc.addCondition(boundary::side::north,condition_type::dirichlet,&displ_bc_fun,0,false,1); //last componnent is the component x(0), y(1), z(2)
-    bc.addCondition(boundary::side::south,condition_type::dirichlet,0,0,false,-1); //last componnent -1 fixes all displacements
-    // BC for phase field (fracture)
-    // bc.addCondition(boundary::side::north,condition_type::dirichlet,&displ_bc_fun,1); // 1 because of the ID of the space (phase field is 1)
-    bc.setGeoMap(mp);    
-    // ==============================================================================
+    // ========== [Read input file] ==========
+    gsFileData<> file_data(file_name);
+    gsInfo << "Loaded file " << file_data.lastPath() << "\n";
 
-    //! [Problem setup]
-    gsExprAssembler<> A(2,2); //2 trial 2 test spaces
+    gsMultiPatch<> mp, mp_def;
+    file_data.getId(0, mp);  // id=0: Multipatch domain
+
+    gsFunctionExpr<> source_function_expression;
+    file_data.getId(1, source_function_expression);  // id=1: source function
+    gsInfo << "Source function " << source_function_expression << "\n";
+
+    gsBoundaryConditions<> bc;
+    file_data.getId(2, bc);  // id=2: boundary conditions
+    bc.setGeoMap(mp);
+    gsInfo << "Boundary conditions:\n" << bc << "\n";
+
+    gsFunctionExpr<> reference_solution_expr;
+    file_data.getId(3, reference_solution_expr);  // id=3: reference solution
+
+    gsOptionList assembler_options = gsAssembler<>::defaultOptions();
+    if (file_data.hasId(4)) {
+        file_data.getId(4, assembler_options);  // id=4: assembler options
+    }
+    // =====================================
+
+    // ========== [Refinement] ==========
+    // gsMultiBasis<> dbasis(mp, true);
+    // const int dim = mp.geoDim();
+
+    // // Elevate and p-refine the basis
+    // dbasis.degreeElevate(n_deg_elevations);
+
+    // // h-refine each basis
+    // for (int r = 0; r < n_h_refinements; ++r) {
+    //     dbasis.uniformRefine();
+    //     mp.uniformRefine();
+    // }
+
+    // p-refine
+    if (n_deg_elevations!=0)
+        mp.degreeElevate(n_deg_elevations);
+
+    // h-refine
+    for (int r =0; r < n_h_refinements; ++r)
+        mp.uniformRefine();
+    
+    mp_def = mp;
+    // gsWriteParaview(mp,"mp",1000,true);
+
+    gsMultiBasis<> dbasis(mp);
+    // =====================================
+
+    // ========== [Problem setup] ==========
+    //gsExprAssembler<> A(2,2); // 2 trial 2 test spaces
+    gsExprAssembler<> A_u(1,1); // 1 trial 1 test space
+    gsExprAssembler<> A_d(1,1); // 1 trial 1 test space
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -120,34 +229,48 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
+    A_u.setIntegrationElements(dbasis); //?? makes sense? no?
+    A_d.setIntegrationElements(dbasis); //?? different basis?
+   
+   // gsExprEvaluator<> ev(A);
+    gsExprEvaluator<> ev_u(A_u);
+    gsExprEvaluator<> ev_d(A_d);
 
     // Set the geometry map
-    geometryMap G = A.getMap(mp);
+    geometryMap G = A_u.getMap(mp); //????? no estoy seguro??? necesito mp or mp_u?
 
     // Set the discretization space (!!!!!!!!!!different for displacements and phase field!!!!!!!!!)
-    space w = A.getSpace(dbasis,mp.parDim(),0); // displacements (3rd argument is the id of the space)
-    space b = A.getSpace(dbasis,1,1); // phase field d
+    space w = A_u.getSpace(dbasis,mp.parDim()); // displacements (3rd argument is the id of the space)
+    space b = A_d.getSpace(dbasis,1); // phase field d  (es parDim-1?????????? no estoy seguro)
 
     // Solution vectors and solution variables
     gsMatrix<> Unew, Uold;
     gsMatrix<> Dnew, Dold;
-    
+    gsMatrix<> deltaU, deltaD; // ????? no estoy seguro
+
     solution uold = A_u.getSolution(w, Uold); 
     solution unew = A_u.getSolution(w, Unew); 
 
-    solution dold = A_d.getSolution(w, Dold); 
+    solution dold = A_d.getSolution(b, Dold); 
     solution dnew = A_d.getSolution(b, Dnew); 
 
     gsMultiPatch<> mp_unew, mp_dnew;
 
+    auto dnew_u = A_u.getCoeff(mp_dnew); // gets mp as an evaluable object
     auto unew_d = A_d.getCoeff(mp_unew);
-    auto dnew_u = A_u.getCoeff(mp_dnew);
 
-    dnew.extract(mp_dmg); //ouputs
+    // Setup the spaces (compute Dirichlet BCs)
+    w.setup(bc, dirichlet::l2Projection, 0); // computes the values on CPs of dirichlet BC   
+    b.setup(); // no damage boundary conditions 
 
-    //! [Problem setup]
+    Dold.setZero(A_d.numDofs(),1);
+    Uold.setZero(A_u.numDofs(),1);
+    
+    // Extract variable to the corresponding multipatch
+    unew.extract(mp_unew); 
+    //dnew.extract(mp_dnew); // I do this in the initial condition!
+
+    // =====================================
 
     // Define linear solver (install SuperLUMT-devel)
 #ifdef GISMO_WITH_SUPERLU
@@ -170,132 +293,261 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Starting.."<<"\n";
     
-    // Setup the spaces (compute Dirichlet BCs)
-    w.setup(bc, dirichlet::l2Projection, 0); // computes the values on CPs of dirichlet BC   
-    b.setup(bc, dirichlet::l2Projection, 0);
-
     gsInfo<<"Initial condition.."<<"\n";
+
+    // Compute jacobian
+    auto phys_jacobian_space = ijac(w, G);
 
     // AT2 parameters                                        
     real_t c_w = 2.0;
     // Material properties
-    real_t G_c = 1e4; // in N/m
-    real_t ell = 0.015e-3; // in m
-    real_t E = 1e11; // Young's modulus
-    real_t nu = 0.25; // Poisson's ratio
+    real_t G_c = 2.7e3; // in N/m
+    real_t ell = 0.015; // in m
+    real_t E_modulus = 2.1e11; // Young's modulus
+    real_t PoissonRatio = 0.3; // Poisson's ratio
     // Formulas 3D
-    real_t mu = E/(2.0*(1+nu)); // shear modulus 
-    real_t kappa = E/(3.0*(1-2.0*nu)); // bulk modulus
+    real_t mu = E_modulus/(2.0*(1+PoissonRatio)); // shear modulus 
+    real_t kappa = E_modulus/(3.0*(1-2.0*PoissonRatio)); // bulk modulus
 
     // ================ Initialize displacements and phase field ================
-    Dold.setZero(A.numDofs(),1);
-    Uold.setZero(A.numDofs(),1);
+    //Uold.setZero(A.numDofs(),mp.parDim());
+
 
     // 1) Knot coordinates x and y ?? if not in parametric space?
     // 2) Check if values of x and y are within the bounds [0, 7.5e-3] and [0.5-l0/3, 0.5+l0/3], respectively
     // 3) Assign value of 1 
     // 4) L2 project to the control points (how do I L2 project without a source function)
     // gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp); 
+    gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.501) and (y > 0.5-0.01) and (y < 0.5+0.01)) { 1. } else { 0. };",mp.geoDim()); //3 dimension
+    gsMatrix<> anchors = dbasis.basis(0).anchors();
+    gsMatrix<> vals = fun.eval(anchors);
+    vals.transposeInPlace();
+    //gsDebugVar(vals);
+    gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(vals));   
+    gsWriteParaview(mp,*geom_ptr,"fun2",1e5);
 
-    gsFunctionExpr<> fun("if (( 0 < x < 7.5e-3) and (0.5-0.005e-3 < y < 0.5+0.005e-3)) { 1 } else { 0 };",2);
-    gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(coefs(dbasis.size(),2)));        
-    gsWriteParaview(*geom_ptr,mp,"fun");
-    gsMatrix<> tmp;
-    gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp); 
-    //if (verbose>0) gsInfo << "L2 projection error "<<error<<"\n";
-    for (index_t i = 0; i < dbasis.basis(0).size(); i++)
-    if (b.mapper().is_free(i))
-        Dold(b.mapper().index(i),0) = tmp(i,0);
-    
-    Dnew = Dold;
+    mp_dnew.addPatch(*geom_ptr); // add a patch to mp_dnew
+    gsDebugVar(Dold.norm());
+    dold.insert(mp_dnew.patch(0),0); // CHECK! update the coefficients in the solution!
+    // evaluation to check that dnew equal mp_dnew (solution updated to initial condition)
+    gsDebugVar(Dold.norm());
+    // New solution (check!)
+    Dnew = Dold; 
     Unew = Uold;
     // ============================================================================
 
+    // ========== Material class ==========
+    gsMaterialBase<real_t>::uPtr SvK;
+    gsMaterialBase<real_t>::uPtr SvK_undeg;
+    if      (mp.geoDim()==2)
+    {
+        SvK = memory::make_unique (new gsLinearDegradedMaterial<2,real_t>(E_modulus, PoissonRatio, mp, mp_def, mp_dnew));
+        SvK_undeg = memory::make_unique (new gsLinearMaterial<2,real_t>(E_modulus, PoissonRatio, mp, mp_def));
+    }
+    else if (mp.geoDim()==3)
+    {
+        SvK = memory::make_unique (new gsLinearDegradedMaterial<3,real_t>(E_modulus, PoissonRatio, mp, mp_def, mp_dnew));
+        SvK_undeg = memory::make_unique (new gsLinearMaterial<3,real_t>(E_modulus, PoissonRatio, mp, mp_def));
+    }
+    else
+        GISMO_ERROR("Dimension not supported");
+    // ======================================
+
     // Loop variables
-    real_t res_u_norm0, res_u_norm, res_d_norm0, res_d_norm;
+    real_t res_u_norm0, res_u_norm, res_d_norm0, res_d_norm, res_stag_norm0, res_stag_norm;
     // real_t res_norm0 = 1, res_norm = 10;
     real_t tol_NR = 1e-6;
     real_t tol_stag = 1e-4;
-    index_t maxStag = 10; // Staggered iteration
-    index_t maxIt = 50; // NR iteration
-    real_t penalty_irrev = 2.7e12;
+    index_t maxStag = 10; // Staggered iterations
+    index_t maxSteps = 10; // Time steps
+    index_t maxIt = 50; // NR iterations
+    real_t penalty_irrev = 2.7e12; // Penalty formulation (T. Gerasimov et al., 2019)
 
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    gsParaviewCollection collection("ParaviewOutput/solution", &ev_u); // Which evaluator?
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints",(do3D) ? 10000 : 1000);
-
-    // real_t dt_old = dt;
-    // real_t t_rho = 0.9;
-    // real_t t_err = 1;
-    // index_t lmax = 1;
-    // std::vector<gsMatrix<>> Csols(2);
-
-    // real_t tmp_alpha_m = 1;
-    // real_t tmp_alpha_f = 1;
-    // real_t tmp_gamma   = 1;
+    collection.options().setInt("numPoints", 10000); 
 
     real_t time = 0;
     bool converged = false;
 
-    A.initSystem(); // Initialize the system (outside the loops)
+    // A.initSystem(); // Initialize the system (outside the loops)
+    A_u.initSystem(); 
+    A_d.initSystem();
 
     gsSparseMatrix<> K_u, K_d;
     gsMatrix<> Q_u, Q_d;
+    gsMatrix<> cc;
+
+
+    // Voigt dimension
+    short_t sz = (mp.parDim()+1)*mp.parDim()/2; 
 
     // umax =  0.04 mm
     // delta_u = 5e-3 mm
 
-    for (index_t step = 0; step!=maxSteps; step++)
+    // These work by reference (updating mp_def already updates C/Psi...)
+    gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(SvK.get(), &mp_def); // change name of mp?
+    gsMaterialEval<real_t, gsMaterialOutput::Psi, true> SvK_Psi(SvK.get(), &mp_def);
+
+    //for (index_t step = 0; step!=maxSteps; step++)
+    for (index_t step = 0; step!=1; step++)
     {
         // gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
         gsInfo<<"Time step "<<step<<"/"<<maxSteps<<"\n";
         res_u_norm0 = 1;
         res_d_norm0 = 1;
+        res_stag_norm0 = 1;
         res_u_norm = 10;
         res_d_norm = 10;
+        res_stag_norm = 10;
 
-        // Increase the applied displacement!
+        // !!!!!!!!!!!!!!!!!!!!!!!!! STEP THE APPLIED DISPLACEMENT !!!!!!!!!!!!!!!!!!!!!!!!!
+        //Unew = Uold + (step/maxSteps) * Uold; // can I divide by an index?
+        //Dnew += step/maxSteps;
 
-        for (index_t stag = 0; stag!=maxStag; stag++)
+        // If (Dirichlet)
+        //     Dnew += step/maxSteps*(applieddisplacement);
+        //     Dnew += deltaU;
+        // If (neumann)
+                // increase value of traction;
+                // Assemble boundary inside the loop?
+                // auto f = f_increment * step; // in the boundary conditions
+                // bc.get("Neumann"), w * f * nv(G)) ????
+
+        // Neumann along one edge???? Neumann on a single degree of freedom?
+
+        for (index_t stag = 0; stag!=1; stag++)
         {
-            for (index_t it_eq = 0; it_eq!=maxIt; it_eq++) 
+            // if (stag > 0)
+
+            // Before the NR disp --> displacement step???????
+            for (index_t it_eq = 0; it_eq!=10; it_eq++) 
             {
-                // Pending: Dirichlet boundary condition!
-                A.clearMatrix(); //?
-            
-                auto D_pos = kappa * Heaviside_pos * reshape(PV,3,3) + 2*mu*reshape(PD,3,3);
-                auto D_neg = kappa * Heaviside_neg * reshape(PV,3,3); // 3x3 matrix
+                
+                // Unew = Uold;
 
-                auto D_split_dmg = g_d * D_pos + D_neg;// material matrix with energy split (linear elasticity)
+                // Pending: Dirichlet boundary conditions!!!!
+                A_u.clearMatrix(); //?
+                A_u.clearRhs();
 
-                K_u = igrad(w,G) * D_split_dmg * igrad(w,G).tr(); // stiffness matrix elastic problem
+                auto C = A_u.getCoeff(SvK_C);
 
-                A.assemble(K_u * meas(G)); // stiffness matrix
-                K_u = A.matrix();
+                auto delta_EE = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space);
+                auto delta_EE_voigt = voigt(delta_EE);
+
+                auto bilinear_form = delta_EE_voigt*reshape(C,sz,sz)*delta_EE_voigt.tr();
+
+                gsVector<> pt(mp.parDim());
+                if (mp.parDim() == 2) 
+                    pt.col(0)<<0.,0.5;
+                else if (mp.parDim() == 3)
+                    pt.col(0)<<0.,0.5,1.;
+                else 
+                    GISMO_ERROR("Dimension not supported");
+
+                //gsDebugVar(ev_u.eval(reshape(C,sz,sz),pt,0)); // degraded C
+                // gsInfo<<"hola0\n";
+                // //gsDebugVar(ev_u.eval(reshape(C,sz,sz),pt,0)); // degraded C
+                // gsInfo<<"hola\n";
+
+                A_u.assemble(bilinear_form * meas(G)); // stiffness matrix
+                K_u = A_u.matrix();
                 solver.compute(K_u);
+
+                // gsDebugVar(K_u.toDense());
 
                 // Boundary term (Body forces? add missing terms)
                 auto f = 0; //change this
-                A.assembleBdr(bc.get("Neumann"), w * f * nv(G)); // missing the f function!
-                Q_u = A.rhs();
+                A_u.assembleBdr(bc.get("Neumann"), w * f * nv(G)); // missing the f function!
                 
+                Q_u = A_u.rhs();
+
+                // K(U_old)
+
                 // Compute solution (automatically updates unew)
-                Unew = solver.solve(Q_u);
-                
+                // solver.compute(A_u.matrix());
+                // deltaU = solver.solve(A_u.rhs());
+
+                deltaU = solver.solve(-(K_u * Unew - Q_u)); // update vector
+                Unew += deltaU; // update the solution vector Unew
+                unew.extract(mp_unew);
+                mp_def.patch(0).coefs() = mp.patch(0).coefs() + mp_unew.patch(0).coefs(); // update deformed config
+
+                // unew.setSolutionVector(deltaU);
+                // unew.extract(cc,0);
+                // mp_def.patch(0).coefs() += cc;  // defG points to mp_def, therefore updated
+
+                // mp_def.patch(0).coefs() += mp_deltaunew.patch(0).coefs();
+
+                A_u.clearMatrix(); 
+                A_u.clearRhs();
+                A_u.assemble(bilinear_form * meas(G)); // stiffness matrix
+                K_u = A_u.matrix();
+                Q_u = A_u.rhs();
 
                 // Compute residual norm
-                real_t res_u =  (K_u * Unew - Q_u).norm();
+                real_t res_u =  (K_u * Unew - Q_u).norm(); ///?????????????
 
-                // Convergence check
+                // ========== Staggered convergence check ==========
+                if (stag == 0 && it_eq == 0) 
+                {
+                    res_stag_norm0 = res_u;
+                    gsInfo<<"\tStaggered  iter   "<<stag<<": res_stag = "<<res_stag_norm/res_stag_norm0<<"\n";
+                }
+                else if (stag>0)
+                {
+                    res_stag_norm = res_u;
+                    gsInfo<<"\tStaggered  iter   "<<stag<<": res_stag = "<<res_stag_norm/res_stag_norm0<<"\n";
+                }         
+                if (stag>0 && res_u < tol_stag)
+                {
+                    gsInfo<<"\tStaggered     converged in "<<stag+1<<" iterations\n";
+                    converged = true;
+                    break;
+                }
+                else if (stag==maxStag-1)
+                {
+                    gsInfo<<"\tStaggered          did not converge!\n";
+                    converged = false;
+                    break;
+                }
+                // =================================================
+
+                // // ========= Elasticity convergence check =========
+                // if (it_eq == 0) res_u_norm0 = res_u;
+                // else         res_u_norm = res_u;
+                // gsInfo<<"\t\tNR EQ iter   "<<it_eq<<": res_u = "<<res_u_norm/res_u_norm0<<"\n";
+                // gsInfo<<"\t\tNorm     "<<deltaU.norm()/Unew.norm()<<" iterations\n";
+
+
+                // //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
+                // if (it_eq>0 && res_u_norm/res_u_norm0 < tol_NR)
+                // {
+                //     gsInfo<<"\t\tEquilibrium converged in "<<it_eq<<" iterations\n";
+                //     converged = true; // not using it atm?
+                //     break;
+                // }
+                // else if (it_eq==maxIt-1)
+                // {
+                //     gsInfo<<"\t\tEquilibrium did not converge!\n";
+                //     converged = false;
+                //     break;
+                // }
+
+                // ========= Elasticity convergence check =========
                 if (it_eq == 0) res_u_norm0 = res_u;
                 else         res_u_norm = res_u;
-                gsInfo<<"\t\tNR EQ iter   "<<it_eq<<": res_u = "<<res_u_norm/res_u_norm0<<"\n";
+                gsInfo<<"\t\tNR EQ iter   "<<it_eq<<": res_u = "<<res_u<<"\n";
+                gsInfo<<"\t\tNorm     "<<deltaU.norm()/Unew.norm()<<"\n";
 
+
+                //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
                 if (it_eq>0 && res_u_norm/res_u_norm0 < tol_NR)
                 {
                     gsInfo<<"\t\tEquilibrium converged in "<<it_eq<<" iterations\n";
-                    converged = true;
+                    converged = true; // not using it atm?
                     break;
                 }
                 else if (it_eq==maxIt-1)
@@ -305,111 +557,215 @@ int main(int argc, char *argv[])
                     break;
                 }
 
+
+                // gsInfo<<"\t\tNR EQ iter   "<<it_eq<<": res_u = "<<res_u<<"\n";
+                // gsInfo<<"\t\tNorm deltaU = "<<deltaU.norm()/Unew.norm()<<"\n";
+
+
+                // //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
+                // if (it_eq>0 && deltaU.norm()/Unew.norm() < 1e-10)
+                // {
+                //     gsInfo<<"\t\tEquilibrium converged in "<<it_eq<<" iterations\n";
+                //     converged = true; // not using it atm?
+                //     break;
+                // }
+                // else if (it_eq==maxIt-1)
+                // {
+                //     gsInfo<<"\t\tEquilibrium did not converge!\n";
+                //     converged = false;
+                //     break;
+                // }
+                // =================================================
+
             } // NR equilibrium equation
 
+            //  !!!!!!!!!!! PLOT THE SOLUTION? !!!!!!!!!!!
+            // of the elastic problem? to check with the other solution
             // Extract unew into mp_unew --> updates unew_d
-            unew.extract(mp_unew);
+            // gsDebugVar(mp_def.patch(0).coefs());
+            // gsDebugVar(mp_unew.patch(0).coefs());
+            // gsDebugVar(mp.patch(0).coefs());
 
-            ev_d.eval(unew_d,pt) == ev_u.eval(unew,pt)
-
-            for (index_t it_pf = 0; it_pf!=maxIt; it_pf++)
+            if (plot) 
             {
-                auto strain_en_pos = 0.5 * igrad(w,G) * D_pos * igrad(u,G); // (scalar!!! check dimensions) positive part of the strain energy
-                
-                A.clearMatrix(); 
-                
-                real_t penalty = 0.0;
-                // if alpha - alpha_old is negative, change penalty parameter to take into account integral in the formulation!
-                if (dnew < dold) // solution from the previous iteration is greater than the new solution
-                    penalty = penalty_irrev;
+            gsInfo << "Plotting in Paraview ... ";
 
-                // if (Dnew - Dold < 0)
-                //     penalty = penalty_irrev;
+            gsParaviewCollection collection("ParaviewOutput_trial/disp", &ev_u);
+            collection.options().setSwitch("plotElements", true);
+            collection.options().setInt("plotElements.resolution", sample_rate);
+            collection.options().setInt("numPoints", 10000); 
+            collection.newTimeStep(&mp);
+            collection.addField(unew, "numerical solution");
+            // if (compute_error) {
+            // collection.addField(reference_solution - u, "error");
+            // }
+            collection.saveTimeStep();
+            collection.save();
 
-                
-                // Stiffness matrix
-                K_d = (w*w.tr()) * (2.0 * strain_en_pos + G_c/c_w * (2.0/ell) + penalty)  +   
-                      (G_c * 2.0 * ell / c_w) * igrad(w,G)* igrad(w,G).tr();
-                A.assemble(K_d * meas(G)); // stiffness matrix
-                K_d = A.matrix();
-                solver.compute(K_d);
-
-                // RHS
-                A.assemble(2.0 * w * strain_en_pos + penalty * w*w.tr() * meas(G));
-                Q_d = A.rhs();
-
-                // Compute solution
-                Dnew = solver.solve(Q_d);
-                
-                // Compute residual norm
-                real_t res_d =  (K_d * Dnew - Q_d).norm();
-                
-                // Convergence check
-                if (it_pf == 0) res_d_norm0 = res_d;
-                else         res_d_norm = res_d;
-                gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d = "<<res_d_norm/res_d_norm0<<"\n";
-
-                if (it_pf>0 && res_d_norm/res_d_norm0 < tol_NR)
-                {
-                    gsInfo<<"\t\tPF          converged in "<<it_pf<<" iterations\n";
-                    converged = true;
-                    break;
-                }
-                else if (it_pf==maxIt-1)
-                {
-                    gsInfo<<"\t\tPF          did not converge!\n";
-                    converged = false;
-                    break;
-                }
-
-            } // NR phase field equation
-
-            dnew.extract(mp_dmg); // updates the coefficients inside the multipatch
-            
-            // Compute residual with updated damage (Dnew)
-
-            auto D_pos = kappa * Heaviside_pos * reshape(PV,3,3) + 2*mu*reshape(PD,3,3);
-            auto D_neg = kappa * Heaviside_neg * reshape(PV,3,3); // 3x3 matrix
-
-            auto D_split_dmg = g_d * D_pos + D_neg;// material matrix with energy split (linear elasticity)
-            K_u = igrad(w,G) * D_split_dmg * igrad(w,G).tr(); // stiffness matrix elastic problem
-            
-            // Compute new residual norm
-            real_t res_stag =  (K_u * Unew - Q_u).norm();
-
-            // Convergence check
-            // if (stag == 0) res_d_norm0 = res_d;
-            // else         res_d_norm = res_d;
-            gsInfo<<"\t\tSTAG  iter   "<<stag<<": res_stag = "<<"\n";
-
-            if (stag>0 && res_stag < tol_stag)
-            {
-                gsInfo<<"\t\tSTAG         converged in "<<stag<<" iterations\n";
-                converged = true;
-                break;
+            gsFileManager::open("ParaviewOutput_trial/disp.pvd");
+            gsInfo << "Done" << std::endl;
             }
-            else if (stag==maxIt-1)
+
+            // for (index_t it_pf = 0; it_pf!=1; it_pf++)
+            // {                
+            //     A_d.clearMatrix(); 
+
+            //     /// TENGO QUE CAMBIAR LA FORMULACION!!! PARA TENER EL CALCULO
+            //     /// DEL RESIDUO BIEN!!! MUY IMPORTANTE!
+                
+            //     real_t penalty = 0.0;
+            //     // if alpha - alpha_old is negative, change penalty parameter to take into account integral in the formulation!
+            //     // if (dnew < dold) // solution from the previous iteration is greater than the new solution
+            //     //     penalty = penalty_irrev;
+            //     // Check ppartval()!!
+
+            //     auto strain_energy_pos = A_d.getCoeff(SvK_Psi);
+            //     // ev_d.eval(strain_energy_pos,pt,0);
+
+            //     // Stiffness matrix
+            //     //real_t constant = G_c/c_w * (2.0/ell);
+            //     auto K_d_expr = (b*b.tr()) * (2.0 * strain_energy_pos.val() + G_c*2.0/(c_w * ell) + penalty) +   
+            //                     (G_c * 2.0 * ell/c_w) * igrad(b,G)* igrad(b,G).tr();
+
+            //     A_d.assemble(K_d_expr * meas(G)); // assemble stiffness matrix
+            //     K_d = A_d.matrix();
+            //     solver.compute(K_d);
+
+            //     // RHS
+            //     // Why not strain_energy_pos.val()?
+            //     // auto f_d_expr = b * (2.0 * strain_energy_pos.val() + penalty * dold); // revisar si es RHS!
+            //     auto f_d_expr = b * (2.0 * strain_energy_pos.val());// + penalty * dold); // revisar si es RHS!
+            //     A_d.assemble(f_d_expr * meas(G)); // assemble RHS
+            //     Q_d = A_d.rhs();
+
+            //     // Compute solution
+            //     deltaD = solver.solve(-(K_d * Dnew - Q_d)); // update damage vector
+            //     Dnew += deltaD;
+                
+            //     // Compute residual norm
+            //     real_t res_d =  (K_d * Dnew - Q_d).norm(); // esto no se si esta bien???
+                
+                
+            //     // // Convergence check
+            //     // gsInfo<<"\t\tNorm deltaD = "<<deltaD.norm()/Dnew.norm()<<"\n";
+
+            //     //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
+            //     // if (it_pf>0 && deltaD.norm()/Dnew.norm() < 1e-10)
+            //     // {
+            //     //     gsInfo<<"\t\tPhase-field in "<<it_pf<<" iterations\n";
+            //     //     converged = true; // not using it atm?
+            //     //     break;
+            //     // }
+            //     // else if (it_pf==maxIt-1)
+            //     // {
+            //     //     gsInfo<<"\t\tPhase-field did not converge!\n";
+            //     //     converged = false;
+            //     //     break;
+            //     // }
+                
+            //     // Convergence check
+            //     if (it_pf == 0) res_d_norm0 = res_d;
+            //     else         res_d_norm = res_d;
+            //     gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d/res_d0 = "<<res_d_norm/res_d_norm0<<"\n";
+            //     gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d = "<<res_d<<"\n";
+
+            //     if (it_pf>0 && res_d_norm/res_d_norm0 < tol_NR)
+            //     {
+            //         gsInfo<<"\t\tPhase-field   converged in "<<it_pf<<" iterations\n";
+            //         converged = true;
+            //         break;
+            //     }
+            //     else if (it_pf==maxIt-1)
+            //     {
+            //         gsInfo<<"\t\tPhase-field   did not converge!\n";
+            //         converged = false;
+            //         break;
+            //     }
+
+            // } // NR phase field equation
+
+            // dnew.extract(mp_dnew);
+
+
+            if (plot) 
             {
-                gsInfo<<"\t\tSTAG          did not converge!\n";
-                converged = false;
-                break;
+            gsInfo << "Plotting in Paraview ... ";
+
+            gsParaviewCollection collection("ParaviewOutput_dmg/dmg", &ev_d);
+            collection.options().setSwitch("plotElements", true);
+            collection.options().setInt("plotElements.resolution", sample_rate);
+            collection.options().setInt("numPoints", 10000); 
+            collection.options().setInt("precision", 7); // 1e-7
+            gsVector<> pt(2);
+            pt << 0, 0.5;
+            gsDebugVar(ev_d.eval(dnew,pt,0));
+            collection.newTimeStep(&mp);
+            collection.addField(dnew, "damage");
+            // if (compute_error) {
+            // collection.addField(reference_solution - u, "error");
+            // }
+            collection.saveTimeStep();
+            collection.save();
+
+            gsFileManager::open("ParaviewOutput_dmg/dmg.pvd");
+            gsInfo << "Done" << std::endl;
             }
+            
+            // // ===================== STAGGERED CONVERGENCE =====================
+            // A_u.clearMatrix(); 
+
+            // // ======= Update material matrix =======
+            // auto C = A_u.getCoeff(SvK_C);
+
+            // // RENAME THE VARIABLES? IMPORTANTE!
+            // auto delta_EE = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space);
+            // auto delta_EE_voigt = voigt(delta_EE);
+            
+            // auto bilinear_form = delta_EE_voigt*reshape(C,sz,sz)*delta_EE_voigt.tr();
+
+            // A_u.assemble(bilinear_form * meas(G)); // stiffness matrix
+            // K_u = A_u.matrix();
+            // solver.compute(K_u);
+
+            // // Redefine RHS?????? needed?
+            // // Compute new residual norm
+            // real_t res_stag =  (K_u * Unew - Q_u).norm();
+
+            // // A_u.assemble(expressiovector);
+            // // residual = A_u.rhs().norm();
+
+
+            // // Convergence check
+            // if (stag == 0) res_d_norm0 = res_stag;
+            // else         res_d_norm = res_stag;
+            // gsInfo<<"\t\tStaggered  iter   "<<stag<<": res_stag = "<<"\n";
+
+            // if (stag>0 && res_stag < tol_stag)
+            // {
+            //     gsInfo<<"\t\tStaggered     converged in "<<stag<<" iterations\n";
+            //     converged = true;
+            //     break;
+            // }
+            // else if (stag==maxStag-1)
+            // {
+            //     gsInfo<<"\t\tStaggered          did not converge!\n";
+            //     converged = false;
+            //     break;
+            // }
+
             // Check staggered convergence
 
         } // staggered iteration
 
-        // Dnew = Dold;
-        // Unew = Uold + delta_U; // update displacements for next step!
-
     } // step iteration
 
-    if (plot)
-    {
-        collection.save();
-    }
-    else
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
+    // if (plot)
+    // {
+    //     collection.save();
+    // }
+    // else
+    //     gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+    //               "file containing the solution.\n";
 
     return EXIT_SUCCESS;
 
