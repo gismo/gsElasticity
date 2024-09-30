@@ -76,9 +76,11 @@ void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
 
     tStep = timeStep;
     if (m_options.getInt("Scheme") == time_integration::implicit_nonlinear)
+        gsInfo << "Implicit nonlinear scheme is used" << std::endl;
         implicitNonlinear();
     if (m_options.getInt("Scheme") == time_integration::implicit_linear)
         implicitLinear();
+        gsInfo << "Implicit nonlinear scheme is used" << std::endl;
 }
 
 template <class T>
@@ -171,9 +173,9 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     solver.options().setReal("RelTol",m_options.getReal("RelTol"));
     solver.solve();
 
-    gsDebugVar(solVector.transpose());
-    gsDebugVar(solver.solution().transpose());
-
+    // gsDebugVar(solver.solution().transpose());
+    // gsDebugVar(massAssembler.rhs());
+    // gsDebugVar(stiffAssembler.rhs());
     solVector = solver.solution();
     m_ddof = stiffAssembler.allFixedDofs();
     numIters = solver.numberIterations();

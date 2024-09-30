@@ -240,48 +240,47 @@ void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) co
 template <class T>
 void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
-    result.setZero(targetDim(),u.cols());
-    // mapping points back to the parameter space via the reference configuration
+    result.setZero(targetDim(), u.cols());
     gsMatrix<T> paramPoints;
-    m_geo.patch(m_patchGeo).invertPoints(u,paramPoints);
-    // evaluate reference geometry mapping at the param points
-    // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to reference domain
+    m_geo.patch(m_patchGeo).invertPoints(u, paramPoints);
+
     gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
     mdGeo.points = paramPoints;
     m_geo.patch(m_patchGeo).computeMap(mdGeo);
-    // evaluate velocity at the param points
-    // NEED_DERIV for velocity gradients
+
     gsMapData<T> mdVel(NEED_DERIV);
     mdVel.points = paramPoints;
     m_vel.patch(m_patchVP).computeMap(mdVel);
-    // evaluate pressure at the quad points
+
+
     gsMatrix<T> pressureValues;
-    m_pres.patch(m_patchVP).eval_into(paramPoints,pressureValues);
-    // evaluate ALE dispacement at the param points
-    // NEED_DERIV for gradients
+    m_pres.patch(m_patchVP).eval_into(paramPoints, pressureValues);
+    // gsDebugVar(paramPoints);
+    // gsDebugVar(pressureValues);
+
     gsMapData<T> mdALE(NEED_DERIV);
     mdALE.points = paramPoints;
     m_ale.patch(m_patchGeo).computeMap(mdALE);
 
-    gsMatrix<T> I  = gsMatrix<T>::Identity(targetDim(),targetDim());
+
+    // gsDebugVar(m_geo.patch(m_patchGeo).coefs().transpose());
+    // gsDebugVar(m_ale.patch(m_patchGeo).coefs().transpose());
+    // gsDebugVar(m_vel.patch(m_patchVP).coefs().transpose());
+    // gsDebugVar(m_pres.patch(m_patchVP).coefs().transpose());
+
+    gsMatrix<T> I = gsMatrix<T>::Identity(targetDim(), targetDim());
     for (index_t p = 0; p < paramPoints.cols(); ++p)
     {
-        // transform velocity gradients from parametric to reference
-        gsMatrix<T> physGradVel = mdVel.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
-        // ALE jacobian (identity + physical displacement gradient)
-        gsMatrix<T> physJacALE = I + mdALE.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
-        // inverse ALE jacobian
+        gsMatrix<T> physGradVel = mdVel.jacobian(p) * (mdGeo.jacobian(p).cramerInverse());
+        gsMatrix<T> physJacALE = I + mdALE.jacobian(p) * (mdGeo.jacobian(p).cramerInverse());
         gsMatrix<T> invJacALE = physJacALE.cramerInverse();
-        // ALE stress tensor
-        gsMatrix<T> sigma = pressureValues.at(p)*I
-                            - m_density*m_viscosity*(physGradVel*invJacALE +
-                                           invJacALE.transpose()*physGradVel.transpose());
-        // stress tensor pull back
-        gsMatrix<T> sigmaALE = physJacALE.determinant()*sigma*(invJacALE.transpose());
+        gsMatrix<T> sigma = pressureValues.at(p) * I
+                            - m_density * m_viscosity * (physGradVel * invJacALE +
+                                                         invJacALE.transpose() * physGradVel.transpose());
+        gsMatrix<T> sigmaALE = physJacALE.determinant() * sigma * (invJacALE.transpose());
 
-        // normal length is the local measure
         gsVector<T> normal;
-        outerNormal(mdGeo,p,m_sideGeo,normal);
+        outerNormal(mdGeo, p, m_sideGeo, normal);
         result.col(p) = sigmaALE * normal / normal.norm();
     }
 }
@@ -289,80 +288,59 @@ void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 template <class T>
 void gsFsiBoundaryLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
-    result.setZero(targetDim(),u.cols());
-    // mapping points back to the parameter space via the reference configuration
+    result.setZero(targetDim(), u.cols());
     gsMatrix<T> bdrParamPoints;
     if (!m_parametric)
-        m_geo.patch(m_geoSide.patch).boundary(m_geoSide.side())->invertPoints(u,bdrParamPoints);
-    else    
+        m_geo.patch(m_geoSide.patch).boundary(m_geoSide.side())->invertPoints(u, bdrParamPoints);
+    else
         bdrParamPoints = u;
 
-    GISMO_ASSERT(m_geo.domainDim()==2,"Only 2D geometry is supported for now");
+    GISMO_ASSERT(m_geo.domainDim() == 2, "Only 2D geometry is supported for now");
 
-    gsMatrix<T> paramPoints = gsMatrix<T>::Zero(m_geo.domainDim(),bdrParamPoints.cols());
+    gsMatrix<T> paramPoints = gsMatrix<T>::Zero(m_geo.domainDim(), bdrParamPoints.cols());
     short_t dir = m_geoSide.side().direction();
-    bool    par = m_geoSide.side().parameter();
+    bool par = m_geoSide.side().parameter();
     paramPoints.row(dir).setConstant((T)par);
     paramPoints.row(!dir) = bdrParamPoints;
-    
-    /** FOR ANY DIMENSION 
-    paramPoints.row() = bdrParamPoints;
 
-    for (short_t d = 0; d < m_geo.domainDim(); ++d)
-        if (d != dir)
-            paramPoints.row(d) = ;
-    paramPoints.row(dir).setConstant((T)par);
-    */
-
-
-    // evaluate reference geometry mapping at the param points
-    // NEED_GRAD_TRANSFORM for velocity gradients transformation from parametric to reference domain
     gsMapData<T> mdGeo(NEED_GRAD_TRANSFORM);
     mdGeo.points = paramPoints;
     m_geo.patch(m_geoSide.patch).computeMap(mdGeo);
-    // evaluate velocity at the param points
-    // NEED_DERIV for velocity gradients
+
     gsMapData<T> mdVel(NEED_DERIV);
     mdVel.points = paramPoints;
     m_vel.patch(m_velSide.patch).computeMap(mdVel);
-    // evaluate pressure at the quad points
+
     gsMatrix<T> pressureValues;
-    m_pres.patch(m_presSide.patch).eval_into(paramPoints,pressureValues);
-    // evaluate ALE dispacement at the param points
-    // NEED_DERIV for gradients
+    m_pres.patch(m_presSide.patch).eval_into(paramPoints, pressureValues);
+
+
+
     gsMapData<T> mdALE(NEED_DERIV);
     mdALE.points = paramPoints;
     m_ale.patch(m_aleSide.patch).computeMap(mdALE);
 
-    gsDebugVar(m_geo.patch(m_geoSide.patch).coefs().transpose());
-    gsDebugVar(m_ale.patch(m_aleSide.patch).coefs().transpose());
-    gsDebugVar(m_vel.patch(m_velSide.patch).coefs().transpose());
-    gsDebugVar(m_pres.patch(m_presSide.patch).coefs().transpose());
+    // gsDebugVar(m_geo.patch(m_geoSide.patch).coefs().transpose());
+    // gsDebugVar(m_ale.patch(m_aleSide.patch).coefs().transpose());
+    // gsDebugVar(m_vel.patch(m_velSide.patch).coefs().transpose());
+    // gsDebugVar(m_pres.patch(m_presSide.patch).coefs().transpose());
 
-    gsMatrix<T> I  = gsMatrix<T>::Identity(targetDim(),targetDim());
+    gsMatrix<T> I = gsMatrix<T>::Identity(targetDim(), targetDim());
     for (index_t p = 0; p < paramPoints.cols(); ++p)
     {
-
-
-        // transform velocity gradients from parametric to reference
-        gsMatrix<T> physGradVel = mdVel.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
-        // ALE jacobian (identity + physical displacement gradient)
-        gsMatrix<T> physJacALE = I + mdALE.jacobian(p)*(mdGeo.jacobian(p).cramerInverse());
-        // inverse ALE jacobian
+        gsMatrix<T> physGradVel = mdVel.jacobian(p) * (mdGeo.jacobian(p).cramerInverse());
+        gsMatrix<T> physJacALE = I + mdALE.jacobian(p) * (mdGeo.jacobian(p).cramerInverse());
         gsMatrix<T> invJacALE = physJacALE.cramerInverse();
-        // ALE stress tensor
-        gsMatrix<T> sigma = pressureValues.at(p)*I
-                            - m_density*m_viscosity*(physGradVel*invJacALE +
-                                           invJacALE.transpose()*physGradVel.transpose());
-        // stress tensor pull back
-        gsMatrix<T> sigmaALE = physJacALE.determinant()*sigma*(invJacALE.transpose());
+        gsMatrix<T> sigma = pressureValues.at(p) * I
+                            - m_density * m_viscosity * (physGradVel * invJacALE +
+                                                         invJacALE.transpose() * physGradVel.transpose());
+        gsMatrix<T> sigmaALE = physJacALE.determinant() * sigma * (invJacALE.transpose());
 
-        // normal length is the local measure
         gsVector<T> normal;
-        outerNormal(mdGeo,p,m_geoSide.side(),normal);
-        result.col(p) = sigmaALE * normal / normal.norm();
+        outerNormal(mdGeo, p, m_geoSide.side(), normal);
+        result.col(p) = 2* sigmaALE * normal / normal.norm();
     }
-}
 
+}
 
 } // namespace gismo ends

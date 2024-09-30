@@ -28,8 +28,8 @@ public:
 
     ~gsVisitorMassElasticity()
     {
-        if (elimMat!=nullptr)
-            delete elimMat;
+        // if (elimMat!=nullptr)
+        //     delete elimMat;
     }
 
     gsVisitorMassElasticity(gsSparseMatrix<T> * elimMatrix) :

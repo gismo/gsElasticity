@@ -87,18 +87,18 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
         if (numIter == 0) // save displacement i-2, no correction
         {
             m_elSolver.constructSolution(dispOldOld);
-        dispOldOld.patch(0).coefs().setZero();
+            // dispOldOld.patch(0).coefs().setZero();
             m_elSolver.constructSolution(m_displacement);
-        m_displacement.patch(0).coefs().setZero();
+            // m_displacement.patch(0).coefs().setZero();
         }
         else if (numIter == 1) // save displacement i-1 as a guess and a corrected solution
         {
             m_elSolver.constructSolution(dispOld);
-        dispOld.patch(0).coefs().setZero();
+        // dispOld.patch(0).coefs().setZero();
             m_elSolver.constructSolution(dispOldGuess);
-        dispOldGuess.patch(0).coefs().setZero();
+        // dispOldGuess.patch(0).coefs().setZero();
             m_elSolver.constructSolution(m_displacement);
-        m_displacement.patch(0).coefs().setZero();
+        // m_displacement.patch(0).coefs().setZero();
             gsMatrix<> vecA, vecB;
             formVector(dispOldOld,vecA);
             formVector(m_displacement,vecB);
@@ -107,7 +107,7 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
         else // save displacement as a current guess i and apply Aitken relaxation
         {
             m_elSolver.constructSolution(m_displacement);
-        m_displacement.patch(0).coefs().setZero();
+        // m_displacement.patch(0).coefs().setZero();
             aitken(dispOldOld,dispOldGuess,dispOld,m_displacement);
         }
 
@@ -130,14 +130,17 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
         {
             index_t pFlow = m_nsSolver.aleInterface().patches[p].second;
             index_t pALE = m_nsSolver.aleInterface().patches[p].first;
+            
             m_nsSolver.assembler().patches().patch(pFlow).coefs() -= m_ALEdisplacment.patch(pALE).coefs();
             m_nsSolver.mAssembler().patches().patch(pFlow).coefs() -= m_ALEdisplacment.patch(pALE).coefs();
         }
 
         // save ALE displacement at the beginning of the time step for ALE velocity computation
         m_aleSolver.constructSolution(m_ALEvelocity);
+        gsDebugVar(m_ALEvelocity.patch(0).coefs().transpose());
+
         // update ALE
-        if (m_aleSolver.updateMesh() != -1)
+        if (m_aleSolver.updateMesh() != -1) 
             return false; // if the new ALE deformation is not bijective, stop the simulation
         // construct new ALE displacement
         m_aleSolver.constructSolution(m_ALEdisplacment);
@@ -174,6 +177,8 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
         }
 
         m_nsSolver.makeTimeStep(timeStep);
+
+
         m_nsSolver.constructSolution(m_velocity,m_pressure);
 
         nsTime += clock.stop();

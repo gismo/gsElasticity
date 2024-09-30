@@ -37,6 +37,7 @@ gsNsAssembler<T>::gsNsAssembler(gsMultiPatch<T> const & patches,
     gsPiecewiseFunction<T> rightHandSides;
     rightHandSides.addPiece(body_force);
     typename gsPde<T>::Ptr pde( new gsBasePde<T>(patches,bconditions,rightHandSides) );
+    gsDebugVar(body_force);
 
     m_dim = body_force.targetDim();
     for (short_t d = 0; d < m_dim; ++d)
