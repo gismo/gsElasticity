@@ -10,6 +10,7 @@
 
     Author(s): 
     
+    ./bin/fracture_elasticity_example -f linear_elasticity_example_singlepatch_2d.xml -r 8  --plot
 */
 
 //! [Include namespace]
@@ -327,10 +328,10 @@ int main(int argc, char *argv[])
     gsWriteParaview(mp,*geom_ptr,"fun2",1e5);
 
     mp_dnew.addPatch(*geom_ptr); // add a patch to mp_dnew
-    gsDebugVar(Dold.norm());
+    //gsDebugVar(mp_dnew.patch(0).coefs());
     dold.insert(mp_dnew.patch(0),0); // CHECK! update the coefficients in the solution!
     // evaluation to check that dnew equal mp_dnew (solution updated to initial condition)
-    gsDebugVar(Dold.norm());
+    //gsDebugVar(Dold);
     // New solution (check!)
     Dnew = Dold; 
     Unew = Uold;
@@ -376,10 +377,8 @@ int main(int argc, char *argv[])
     A_u.initSystem(); 
     A_d.initSystem();
 
-    gsSparseMatrix<> K_u, K_d;
+    gsSparseMatrix<> K_u, K_d, K_d_old;
     gsMatrix<> Q_u, Q_d;
-    gsMatrix<> cc;
-
 
     // Voigt dimension
     short_t sz = (mp.parDim()+1)*mp.parDim()/2; 
@@ -423,7 +422,7 @@ int main(int argc, char *argv[])
             // if (stag > 0)
 
             // Before the NR disp --> displacement step???????
-            for (index_t it_eq = 0; it_eq!=10; it_eq++) 
+            for (index_t it_eq = 0; it_eq!=maxIt; it_eq++) 
             {
                 
                 // Unew = Uold;
@@ -452,33 +451,24 @@ int main(int argc, char *argv[])
                 // //gsDebugVar(ev_u.eval(reshape(C,sz,sz),pt,0)); // degraded C
                 // gsInfo<<"hola\n";
 
+                // Compute stiffness matrix
                 A_u.assemble(bilinear_form * meas(G)); // stiffness matrix
                 K_u = A_u.matrix();
                 solver.compute(K_u);
-
                 // gsDebugVar(K_u.toDense());
 
                 // Boundary term (Body forces? add missing terms)
                 auto f = 0; //change this
                 A_u.assembleBdr(bc.get("Neumann"), w * f * nv(G)); // missing the f function!
                 
+                // Compute RHS
                 Q_u = A_u.rhs();
 
-                // K(U_old)
-
-                // Compute solution (automatically updates unew)
-                // solver.compute(A_u.matrix());
-                // deltaU = solver.solve(A_u.rhs());
-
+                // Update displacements
                 deltaU = solver.solve(-(K_u * Unew - Q_u)); // update vector
                 Unew += deltaU; // update the solution vector Unew
                 unew.extract(mp_unew);
-                mp_def.patch(0).coefs() = mp.patch(0).coefs() + mp_unew.patch(0).coefs(); // update deformed config
-
-                // unew.setSolutionVector(deltaU);
-                // unew.extract(cc,0);
-                // mp_def.patch(0).coefs() += cc;  // defG points to mp_def, therefore updated
-
+                mp_def.patch(0).coefs() = mp.patch(0).coefs() + mp_unew.patch(0).coefs(); // update deformed configuration
                 // mp_def.patch(0).coefs() += mp_deltaunew.patch(0).coefs();
 
                 A_u.clearMatrix(); 
@@ -515,27 +505,6 @@ int main(int argc, char *argv[])
                 }
                 // =================================================
 
-                // // ========= Elasticity convergence check =========
-                // if (it_eq == 0) res_u_norm0 = res_u;
-                // else         res_u_norm = res_u;
-                // gsInfo<<"\t\tNR EQ iter   "<<it_eq<<": res_u = "<<res_u_norm/res_u_norm0<<"\n";
-                // gsInfo<<"\t\tNorm     "<<deltaU.norm()/Unew.norm()<<" iterations\n";
-
-
-                // //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
-                // if (it_eq>0 && res_u_norm/res_u_norm0 < tol_NR)
-                // {
-                //     gsInfo<<"\t\tEquilibrium converged in "<<it_eq<<" iterations\n";
-                //     converged = true; // not using it atm?
-                //     break;
-                // }
-                // else if (it_eq==maxIt-1)
-                // {
-                //     gsInfo<<"\t\tEquilibrium did not converge!\n";
-                //     converged = false;
-                //     break;
-                // }
-
                 // ========= Elasticity convergence check =========
                 if (it_eq == 0) res_u_norm0 = res_u;
                 else         res_u_norm = res_u;
@@ -556,36 +525,12 @@ int main(int argc, char *argv[])
                     converged = false;
                     break;
                 }
-
-
-                // gsInfo<<"\t\tNR EQ iter   "<<it_eq<<": res_u = "<<res_u<<"\n";
-                // gsInfo<<"\t\tNorm deltaU = "<<deltaU.norm()/Unew.norm()<<"\n";
-
-
-                // //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
-                // if (it_eq>0 && deltaU.norm()/Unew.norm() < 1e-10)
-                // {
-                //     gsInfo<<"\t\tEquilibrium converged in "<<it_eq<<" iterations\n";
-                //     converged = true; // not using it atm?
-                //     break;
-                // }
-                // else if (it_eq==maxIt-1)
-                // {
-                //     gsInfo<<"\t\tEquilibrium did not converge!\n";
-                //     converged = false;
-                //     break;
-                // }
                 // =================================================
+
 
             } // NR equilibrium equation
 
-            //  !!!!!!!!!!! PLOT THE SOLUTION? !!!!!!!!!!!
-            // of the elastic problem? to check with the other solution
-            // Extract unew into mp_unew --> updates unew_d
-            // gsDebugVar(mp_def.patch(0).coefs());
-            // gsDebugVar(mp_unew.patch(0).coefs());
-            // gsDebugVar(mp.patch(0).coefs());
-
+            //  Elastic problem -- Plot solution
             if (plot) 
             {
             gsInfo << "Plotting in Paraview ... ";
@@ -606,154 +551,108 @@ int main(int argc, char *argv[])
             gsInfo << "Done" << std::endl;
             }
 
-            // for (index_t it_pf = 0; it_pf!=1; it_pf++)
-            // {                
-            //     A_d.clearMatrix(); 
+            for (index_t it_pf = 0; it_pf!=3; it_pf++)
+            {                
+                A_d.clearMatrix();
+                A_d.clearRhs();
 
-            //     /// TENGO QUE CAMBIAR LA FORMULACION!!! PARA TENER EL CALCULO
-            //     /// DEL RESIDUO BIEN!!! MUY IMPORTANTE!
+                real_t penalty = 0.0;
+                // if alpha - alpha_old is negative, change penalty parameter to take into account integral in the formulation!
+                // if (dnew < dold) // solution from the previous iteration is greater than the new solution
+                //     penalty = penalty_irrev;
+                // Check ppartval()!!!! muy importante
+
+                auto strain_energy_pos = A_d.getCoeff(SvK_Psi);
+                // ev_d.eval(strain_energy_pos,pt,0);
+
+                // Stiffness matrix
+                auto K_d_expr = (b*b.tr()) * (2.0 * strain_energy_pos.val() + G_c*2.0/(c_w * ell) + penalty) +   
+                                (G_c * 2.0 * ell/c_w) * igrad(b,G)* igrad(b,G).tr();
+
+                A_d.assemble(K_d_expr * meas(G)); // assemble stiffness matrix
+                K_d = A_d.matrix();                                 
+                solver.compute(K_d);
+
+                // gsDebugVar(K_d.toDense().maxCoeff());
+                // gsDebugVar(K_d.toDense().minCoeff());
+
+                K_d_old = K_d;
+
+                // gsDebugVar(K_d.toDense()); //?????? mirar esto con  menos grados d libertad
+
+                // RHS
+                auto f_d_expr = b * (2.0 * strain_energy_pos.val());// + penalty * dold); // revisar si es RHS!
+                A_d.assemble(f_d_expr * meas(G)); // assemble RHS
+                Q_d = A_d.rhs();
+
+                // Compute solution
+                deltaD = solver.solve(-(K_d * Dnew - Q_d)); // update damage vector
+                Dnew += deltaD;
+                dnew.extract(mp_dnew); // extract the solution in mp_dnew (input of gsLinearDegradedMaterial)
+                //mp_def.patch(0).coefs() = mp_dnew.patch(0).coefs() + mp_dnew.patch(0).coefs(); // update deformed configuration
+                //mp.patch(0).coefs() += mp_dnew.patch(0).coefs(); // update deformed config
+
+                // Compute the residual norm (with the new solution)
+                A_d.clearMatrix(); 
+                A_d.clearRhs();
+                A_d.assemble(K_d_expr * meas(G)); // stiffness matrix
+                K_d = A_d.matrix();
+                Q_d = A_d.rhs();
+
+                // gsDebugVar(K_d.toDense().maxCoeff());
+                // gsDebugVar(K_d.toDense().minCoeff());
+
+                gsDebugVar((K_d.toDense()-K_d_old.toDense()).norm());
+
+                // Compute rdesidual norm
+                real_t res_d =  (K_d * Dnew - Q_d).norm(); // esto no se si esta bien???
                 
-            //     real_t penalty = 0.0;
-            //     // if alpha - alpha_old is negative, change penalty parameter to take into account integral in the formulation!
-            //     // if (dnew < dold) // solution from the previous iteration is greater than the new solution
-            //     //     penalty = penalty_irrev;
-            //     // Check ppartval()!!
+                // ================ Convergence check ================
+                if (it_pf == 0) res_d_norm0 = res_d;
+                else         res_d_norm = res_d;
+                // gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d/res_d0 = "<<res_d_norm/res_d_norm0<<"\n";
+                gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d = "<<res_d<<"\n";
 
-            //     auto strain_energy_pos = A_d.getCoeff(SvK_Psi);
-            //     // ev_d.eval(strain_energy_pos,pt,0);
+                if (it_pf>0 && res_d_norm/res_d_norm0 < tol_NR)
+                {
+                    gsInfo<<"\t\tPhase-field   converged in "<<it_pf<<" iterations\n";
+                    converged = true;
+                    break;
+                }
+                else if (it_pf==maxIt-1)
+                {
+                    gsInfo<<"\t\tPhase-field   did not converge!\n";
+                    converged = false;
+                    break;
+                }
+                // ====================================================
 
-            //     // Stiffness matrix
-            //     //real_t constant = G_c/c_w * (2.0/ell);
-            //     auto K_d_expr = (b*b.tr()) * (2.0 * strain_energy_pos.val() + G_c*2.0/(c_w * ell) + penalty) +   
-            //                     (G_c * 2.0 * ell/c_w) * igrad(b,G)* igrad(b,G).tr();
+            } // NR phase field equation
 
-            //     A_d.assemble(K_d_expr * meas(G)); // assemble stiffness matrix
-            //     K_d = A_d.matrix();
-            //     solver.compute(K_d);
-
-            //     // RHS
-            //     // Why not strain_energy_pos.val()?
-            //     // auto f_d_expr = b * (2.0 * strain_energy_pos.val() + penalty * dold); // revisar si es RHS!
-            //     auto f_d_expr = b * (2.0 * strain_energy_pos.val());// + penalty * dold); // revisar si es RHS!
-            //     A_d.assemble(f_d_expr * meas(G)); // assemble RHS
-            //     Q_d = A_d.rhs();
-
-            //     // Compute solution
-            //     deltaD = solver.solve(-(K_d * Dnew - Q_d)); // update damage vector
-            //     Dnew += deltaD;
-                
-            //     // Compute residual norm
-            //     real_t res_d =  (K_d * Dnew - Q_d).norm(); // esto no se si esta bien???
-                
-                
-            //     // // Convergence check
-            //     // gsInfo<<"\t\tNorm deltaD = "<<deltaD.norm()/Dnew.norm()<<"\n";
-
-            //     //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
-            //     // if (it_pf>0 && deltaD.norm()/Dnew.norm() < 1e-10)
-            //     // {
-            //     //     gsInfo<<"\t\tPhase-field in "<<it_pf<<" iterations\n";
-            //     //     converged = true; // not using it atm?
-            //     //     break;
-            //     // }
-            //     // else if (it_pf==maxIt-1)
-            //     // {
-            //     //     gsInfo<<"\t\tPhase-field did not converge!\n";
-            //     //     converged = false;
-            //     //     break;
-            //     // }
-                
-            //     // Convergence check
-            //     if (it_pf == 0) res_d_norm0 = res_d;
-            //     else         res_d_norm = res_d;
-            //     gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d/res_d0 = "<<res_d_norm/res_d_norm0<<"\n";
-            //     gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d = "<<res_d<<"\n";
-
-            //     if (it_pf>0 && res_d_norm/res_d_norm0 < tol_NR)
-            //     {
-            //         gsInfo<<"\t\tPhase-field   converged in "<<it_pf<<" iterations\n";
-            //         converged = true;
-            //         break;
-            //     }
-            //     else if (it_pf==maxIt-1)
-            //     {
-            //         gsInfo<<"\t\tPhase-field   did not converge!\n";
-            //         converged = false;
-            //         break;
-            //     }
-
-            // } // NR phase field equation
-
-            // dnew.extract(mp_dnew);
-
-
+            //  Damage problem -- Plot solution
             if (plot) 
             {
-            gsInfo << "Plotting in Paraview ... ";
+                gsInfo << "Plotting in Paraview ... ";
 
-            gsParaviewCollection collection("ParaviewOutput_dmg/dmg", &ev_d);
-            collection.options().setSwitch("plotElements", true);
-            collection.options().setInt("plotElements.resolution", sample_rate);
-            collection.options().setInt("numPoints", 10000); 
-            collection.options().setInt("precision", 7); // 1e-7
-            gsVector<> pt(2);
-            pt << 0, 0.5;
-            gsDebugVar(ev_d.eval(dnew,pt,0));
-            collection.newTimeStep(&mp);
-            collection.addField(dnew, "damage");
-            // if (compute_error) {
-            // collection.addField(reference_solution - u, "error");
-            // }
-            collection.saveTimeStep();
-            collection.save();
+                gsParaviewCollection collection("ParaviewOutput_dmg/dmg", &ev_d);
+                collection.options().setSwitch("plotElements", true);
+                collection.options().setInt("plotElements.resolution", sample_rate);
+                collection.options().setInt("numPoints", 10000); 
+                collection.options().setInt("precision", 7); // 1e-7
+                // gsVector<> pt(2);
+                // pt << 0, 0.5;
+                // gsDebugVar(ev_d.eval(dnew,pt,0)); // gives me something slightly bigger than 1....
+                collection.newTimeStep(&mp);
+                collection.addField(dnew, "damage");
+                // if (compute_error) {
+                // collection.addField(reference_solution - u, "error");
+                // }
+                collection.saveTimeStep();
+                collection.save();
 
-            gsFileManager::open("ParaviewOutput_dmg/dmg.pvd");
-            gsInfo << "Done" << std::endl;
+                gsFileManager::open("ParaviewOutput_dmg/dmg.pvd");
+                gsInfo << "Done" << std::endl;
             }
-            
-            // // ===================== STAGGERED CONVERGENCE =====================
-            // A_u.clearMatrix(); 
-
-            // // ======= Update material matrix =======
-            // auto C = A_u.getCoeff(SvK_C);
-
-            // // RENAME THE VARIABLES? IMPORTANTE!
-            // auto delta_EE = 0.5*(phys_jacobian_space.cwisetr() + phys_jacobian_space);
-            // auto delta_EE_voigt = voigt(delta_EE);
-            
-            // auto bilinear_form = delta_EE_voigt*reshape(C,sz,sz)*delta_EE_voigt.tr();
-
-            // A_u.assemble(bilinear_form * meas(G)); // stiffness matrix
-            // K_u = A_u.matrix();
-            // solver.compute(K_u);
-
-            // // Redefine RHS?????? needed?
-            // // Compute new residual norm
-            // real_t res_stag =  (K_u * Unew - Q_u).norm();
-
-            // // A_u.assemble(expressiovector);
-            // // residual = A_u.rhs().norm();
-
-
-            // // Convergence check
-            // if (stag == 0) res_d_norm0 = res_stag;
-            // else         res_d_norm = res_stag;
-            // gsInfo<<"\t\tStaggered  iter   "<<stag<<": res_stag = "<<"\n";
-
-            // if (stag>0 && res_stag < tol_stag)
-            // {
-            //     gsInfo<<"\t\tStaggered     converged in "<<stag<<" iterations\n";
-            //     converged = true;
-            //     break;
-            // }
-            // else if (stag==maxStag-1)
-            // {
-            //     gsInfo<<"\t\tStaggered          did not converge!\n";
-            //     converged = false;
-            //     break;
-            // }
-
-            // Check staggered convergence
 
         } // staggered iteration
 
