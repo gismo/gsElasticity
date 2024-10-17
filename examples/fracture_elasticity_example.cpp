@@ -10,7 +10,9 @@
 
     Author(s): 
     
-    ./bin/fracture_elasticity_example -f linear_elasticity_example_singlepatch_2d.xml -r 8  --plot
+    To run the script in 2D:
+    ./bin/fracture_elasticity_example -f linear_elasticity_example_singlepatch_2d.xml -r 8 --plot
+    ./bin/fracture_elasticity_example -f linear_elasticity_example_singlepatch_2d.xml -r 7 --plot
 */
 
 //! [Include namespace]
@@ -142,7 +144,7 @@ int main(int argc, char *argv[])
     bool only_last = false;
     bool compute_error{false};
     index_t sample_rate{9}; 
-
+    
     std::string file_name("linear_elasticity_example_singlepatch.xml");
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
@@ -182,6 +184,11 @@ int main(int argc, char *argv[])
     file_data.getId(2, bc);  // id=2: boundary conditions
     bc.setGeoMap(mp);
     gsInfo << "Boundary conditions:\n" << bc << "\n";
+
+    //// ===================== MUY IMPORTANTE =====================
+    // gsConstantFunction<> applied_displacment(bcOpt.getReal("stepsize"),mp.geoDim());
+    // bc.addCondition(bcOpt.getInt("side"),condition_type::dirichlet,&applied_displacment,0,false,bcOpt.getInt("dir"));
+    // ============================================================
 
     gsFunctionExpr<> reference_solution_expr;
     file_data.getId(3, reference_solution_expr);  // id=3: reference solution
@@ -258,7 +265,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp_unew, mp_dnew;
 
     auto dnew_u = A_u.getCoeff(mp_dnew); // gets mp as an evaluable object
-    auto unew_d = A_d.getCoeff(mp_unew);
+    auto unew_d = A_d.getCoeff(mp_unew); // ??????
 
     // Setup the spaces (compute Dirichlet BCs)
     w.setup(bc, dirichlet::l2Projection, 0); // computes the values on CPs of dirichlet BC   
@@ -266,6 +273,8 @@ int main(int argc, char *argv[])
 
     Dold.setZero(A_d.numDofs(),1);
     Uold.setZero(A_u.numDofs(),1);
+    Dnew = Dold; 
+
     
     // Extract variable to the corresponding multipatch
     unew.extract(mp_unew); 
@@ -329,7 +338,7 @@ int main(int argc, char *argv[])
 
     mp_dnew.addPatch(*geom_ptr); // add a patch to mp_dnew
     //gsDebugVar(mp_dnew.patch(0).coefs());
-    dold.insert(mp_dnew.patch(0),0); // CHECK! update the coefficients in the solution!
+    dnew.insert(mp_dnew.patch(0),0); // CHECK! update the coefficients in the solution!
     // evaluation to check that dnew equal mp_dnew (solution updated to initial condition)
     //gsDebugVar(Dold);
     // New solution (check!)
@@ -390,6 +399,8 @@ int main(int argc, char *argv[])
     gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(SvK.get(), &mp_def); // change name of mp?
     gsMaterialEval<real_t, gsMaterialOutput::Psi, true> SvK_Psi(SvK.get(), &mp_def);
 
+    real_t lambda = 1/maxSteps;
+
     //for (index_t step = 0; step!=maxSteps; step++)
     for (index_t step = 0; step!=1; step++)
     {
@@ -416,6 +427,11 @@ int main(int argc, char *argv[])
                 // bc.get("Neumann"), w * f * nv(G)) ????
 
         // Neumann along one edge???? Neumann on a single degree of freedom?
+        
+        // ================ IMPORTANTE!!!!!!! ================ 
+        // applied_displ.setValue(step/maxSteps,mp.parDim()); //(& applied_dipl)
+        // w.setup(bc, dirichlet::l2Projection, 0); //  // compute again after updating the values of the applied displacement 
+        // ===================================================
 
         for (index_t stag = 0; stag!=1; stag++)
         {
@@ -566,7 +582,7 @@ int main(int argc, char *argv[])
                 // ev_d.eval(strain_energy_pos,pt,0);
 
                 // Stiffness matrix
-                auto K_d_expr = (b*b.tr()) * (2.0 * strain_energy_pos.val() + G_c*2.0/(c_w * ell) + penalty) +   
+                auto K_d_expr = (b*b.tr()) * (2.0 * strain_energy_pos.val() + G_c*2.0/(c_w * ell)) +   
                                 (G_c * 2.0 * ell/c_w) * igrad(b,G)* igrad(b,G).tr();
 
                 A_d.assemble(K_d_expr * meas(G)); // assemble stiffness matrix
@@ -588,6 +604,7 @@ int main(int argc, char *argv[])
                 // Compute solution
                 deltaD = solver.solve(-(K_d * Dnew - Q_d)); // update damage vector
                 Dnew += deltaD;
+                //gsDebugVar(deltaD.norm());
                 dnew.extract(mp_dnew); // extract the solution in mp_dnew (input of gsLinearDegradedMaterial)
                 //mp_def.patch(0).coefs() = mp_dnew.patch(0).coefs() + mp_dnew.patch(0).coefs(); // update deformed configuration
                 //mp.patch(0).coefs() += mp_dnew.patch(0).coefs(); // update deformed config
@@ -599,11 +616,6 @@ int main(int argc, char *argv[])
                 K_d = A_d.matrix();
                 Q_d = A_d.rhs();
 
-                // gsDebugVar(K_d.toDense().maxCoeff());
-                // gsDebugVar(K_d.toDense().minCoeff());
-
-                gsDebugVar((K_d.toDense()-K_d_old.toDense()).norm());
-
                 // Compute rdesidual norm
                 real_t res_d =  (K_d * Dnew - Q_d).norm(); // esto no se si esta bien???
                 
@@ -612,6 +624,7 @@ int main(int argc, char *argv[])
                 else         res_d_norm = res_d;
                 // gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d/res_d0 = "<<res_d_norm/res_d_norm0<<"\n";
                 gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d = "<<res_d<<"\n";
+                gsInfo<<"\t\tNorm     "<<deltaD.norm()/Dnew.norm()<<"\n";
 
                 if (it_pf>0 && res_d_norm/res_d_norm0 < tol_NR)
                 {

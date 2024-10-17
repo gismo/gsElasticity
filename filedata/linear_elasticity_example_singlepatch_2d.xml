@@ -33,7 +33,7 @@
     0
     </Function>
     <Function type="FunctionExpr" dim="2" index="1">
-    0.1
+    1e-4
     </Function>
     <bc type="Dirichlet" function="0" unknown="0" component="0">
     0 3
