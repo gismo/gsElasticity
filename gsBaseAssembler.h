@@ -37,7 +37,7 @@ public:
 
     /// assembly procedure for linear problems
     virtual void assemble(bool saveEliminationMatrix) {};
-    virtual void assemble() {};
+    virtual void assemble() { assemble(false); };
     virtual void assemble(const gsMultiPatch<T> & curSolution)
     {GISMO_NO_IMPLEMENTATION}
 
