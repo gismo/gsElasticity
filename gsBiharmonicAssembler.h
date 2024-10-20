@@ -38,11 +38,15 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the matrix
+    /// @{
     virtual void assemble(bool saveEliminationMatrix);
+
+    virtual void assemble() { assemble(false); };
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs)
     {assemble(); return true;}
+    /// @}
 
     //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 

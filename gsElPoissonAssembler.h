@@ -37,11 +37,15 @@ public:
     virtual void refresh();
 
     /// @brief Assembles the mass matrix
+    /// @{
     virtual void assemble(bool saveEliminationMatrix);
+
+    virtual void assemble() { assemble(false); };
 
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDDoFs)
     {assemble(); return true;}
+    /// @}
 
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
