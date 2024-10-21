@@ -182,12 +182,12 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc;
     file_data.getId(2, bc);  // id=2: boundary conditions
-    bc.setGeoMap(mp);
-    gsInfo << "Boundary conditions:\n" << bc << "\n";
+    // bc.setGeoMap(mp);
+    // gsInfo << "Boundary conditions:\n" << bc << "\n";
 
     //// ===================== MUY IMPORTANTE =====================
-    // gsConstantFunction<> applied_displacment(bcOpt.getReal("stepsize"),mp.geoDim());
-    // bc.addCondition(bcOpt.getInt("side"),condition_type::dirichlet,&applied_displacment,0,false,bcOpt.getInt("dir"));
+    // gsConstantFunction<> applied_displacement(bcOpt.getReal("stepsize"),mp.geoDim());
+    // bc.addCondition(bcOpt.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,bcOpt.getInt("dir"));
     // ============================================================
 
     gsFunctionExpr<> reference_solution_expr;
@@ -197,6 +197,22 @@ int main(int argc, char *argv[])
     if (file_data.hasId(4)) {
         file_data.getId(4, assembler_options);  // id=4: assembler options
     }
+
+    //// ===================== MUY IMPORTANTE =====================
+    gsOptionList applied_disp_options;
+    if (file_data.hasId(5)) {
+        file_data.getId(5, applied_disp_options);  // id=4: assembler options
+    }
+
+    real_t delta_disp = applied_disp_options.getReal("maxDisp")/applied_disp_options.getInt("steps");
+    gsConstantFunction<> applied_displacement(delta_disp,mp.geoDim()); // apply the initial value of the boundary condition (it will be updated with the step)!
+
+    ////////////////// no bc.addCondition(applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("direction"));
+    bc.addCondition(0,applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("component"));
+    bc.setGeoMap(mp);
+    gsInfo << "Boundary conditions:\n" << bc << "\n";
+    // ============================================================
+
     // =====================================
 
     // ========== [Refinement] ==========
@@ -312,7 +328,7 @@ int main(int argc, char *argv[])
     real_t c_w = 2.0;
     // Material properties
     real_t G_c = 2.7e3; // in N/m
-    real_t ell = 0.015; // in m
+    real_t ell = 0.015e-3; // in m
     real_t E_modulus = 2.1e11; // Young's modulus
     real_t PoissonRatio = 0.3; // Poisson's ratio
     // Formulas 3D
@@ -328,7 +344,7 @@ int main(int argc, char *argv[])
     // 3) Assign value of 1 
     // 4) L2 project to the control points (how do I L2 project without a source function)
     // gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp); 
-    gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.501) and (y > 0.5-0.01) and (y < 0.5+0.01)) { 1. } else { 0. };",mp.geoDim()); //3 dimension
+    gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.50) and (y > 0.5-0.005) and (y < 0.5+0.005)) { 1. } else { 0. };",mp.geoDim()); //3 dimension
     gsMatrix<> anchors = dbasis.basis(0).anchors();
     gsMatrix<> vals = fun.eval(anchors);
     vals.transposeInPlace();
@@ -339,6 +355,7 @@ int main(int argc, char *argv[])
     mp_dnew.addPatch(*geom_ptr); // add a patch to mp_dnew
     //gsDebugVar(mp_dnew.patch(0).coefs());
     dnew.insert(mp_dnew.patch(0),0); // CHECK! update the coefficients in the solution!
+    //gsDebugVar(dnew.maxCoeff());
     // evaluation to check that dnew equal mp_dnew (solution updated to initial condition)
     //gsDebugVar(Dold);
     // New solution (check!)
@@ -366,15 +383,17 @@ int main(int argc, char *argv[])
     // Loop variables
     real_t res_u_norm0, res_u_norm, res_d_norm0, res_d_norm, res_stag_norm0, res_stag_norm;
     // real_t res_norm0 = 1, res_norm = 10;
+    // this is to be put in the xml file?
     real_t tol_NR = 1e-6;
     real_t tol_stag = 1e-4;
     index_t maxStag = 10; // Staggered iterations
-    index_t maxSteps = 10; // Time steps
+    // index_t maxSteps = 10; // Time steps
+    index_t maxSteps = applied_disp_options.askInt("steps",10);
     index_t maxIt = 50; // NR iterations
     real_t penalty_irrev = 2.7e12; // Penalty formulation (T. Gerasimov et al., 2019)
 
     // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev_u); // Which evaluator?
+    gsParaviewCollection collection("ParaviewOutput_fracture/solution", &ev_u); // Which evaluator?
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints", 10000); 
@@ -428,10 +447,11 @@ int main(int argc, char *argv[])
 
         // Neumann along one edge???? Neumann on a single degree of freedom?
         
-        // ================ IMPORTANTE!!!!!!! ================ 
-        // applied_displ.setValue(step/maxSteps,mp.parDim()); //(& applied_dipl)
-        // w.setup(bc, dirichlet::l2Projection, 0); //  // compute again after updating the values of the applied displacement 
-        // ===================================================
+        // ================ Update the applied displacement ================ 
+        real_t appl_displ_step = delta_disp*(step+1);
+        applied_displacement.setValue(appl_displ_step,mp.parDim()); // udpate the applied displacement!
+        w.setup(bc, dirichlet::l2Projection, 0); //  // compute again after updating the values of the applied displacement 
+        // =================================================================
 
         for (index_t stag = 0; stag!=1; stag++)
         {
@@ -481,7 +501,7 @@ int main(int argc, char *argv[])
                 Q_u = A_u.rhs();
 
                 // Update displacements
-                deltaU = solver.solve(-(K_u * Unew - Q_u)); // update vector
+                deltaU = solver.solve(-(K_u * Unew - Q_u)); // update vector (not sure this is -(K_u * Unew - Q_u)!!!!!!) maybe it should be deltaU = solver.solve(-Q_u);
                 Unew += deltaU; // update the solution vector Unew
                 unew.extract(mp_unew);
                 mp_def.patch(0).coefs() = mp.patch(0).coefs() + mp_unew.patch(0).coefs(); // update deformed configuration
@@ -525,7 +545,7 @@ int main(int argc, char *argv[])
                 if (it_eq == 0) res_u_norm0 = res_u;
                 else         res_u_norm = res_u;
                 gsInfo<<"\t\tNR EQ iter   "<<it_eq<<": res_u = "<<res_u<<"\n";
-                gsInfo<<"\t\tNorm     "<<deltaU.norm()/Unew.norm()<<"\n";
+                gsInfo<<"\t\t\t\tdeltaU.norm() = "<<deltaU.norm()<<"\n";
 
 
                 //if (it_eq>=0 && res_u_norm/res_u_norm0 < tol_NR)
@@ -551,7 +571,7 @@ int main(int argc, char *argv[])
             {
             gsInfo << "Plotting in Paraview ... ";
 
-            gsParaviewCollection collection("ParaviewOutput_trial/disp", &ev_u);
+            gsParaviewCollection collection("ParaviewOutput_fracture/disp", &ev_u);
             collection.options().setSwitch("plotElements", true);
             collection.options().setInt("plotElements.resolution", sample_rate);
             collection.options().setInt("numPoints", 10000); 
@@ -563,7 +583,7 @@ int main(int argc, char *argv[])
             collection.saveTimeStep();
             collection.save();
 
-            gsFileManager::open("ParaviewOutput_trial/disp.pvd");
+            gsFileManager::open("ParaviewOutput_fracture/disp.pvd");
             gsInfo << "Done" << std::endl;
             }
 
@@ -578,57 +598,64 @@ int main(int argc, char *argv[])
                 //     penalty = penalty_irrev;
                 // Check ppartval()!!!! muy importante
 
-                auto strain_energy_pos = A_d.getCoeff(SvK_Psi);
-                // ev_d.eval(strain_energy_pos,pt,0);
+                auto strain_energy_pos = A_d.getCoeff(SvK_Psi); // A_d or A_u??????
 
-                // Stiffness matrix
-                auto K_d_expr = (b*b.tr()) * (2.0 * strain_energy_pos.val() + G_c*2.0/(c_w * ell)) +   
-                                (G_c * 2.0 * ell/c_w) * igrad(b,G)* igrad(b,G).tr();
+                // Tangent stiffness matrix (Newton-Raphson)
+                auto K_d_expr = (b*b.tr()) * (2.0*strain_energy_pos.val() + G_c*2.0/(c_w*ell)) + 2*ell*igrad(b,G)*igrad(b,G).tr();
+                
+                auto K_d_1 = (b*b.tr()) * (2.0*strain_energy_pos.val());
+                auto K_d_2 = (b*b.tr()) * (G_c*2.0/(c_w*ell));
+                auto K_d_3 = 2*ell*igrad(b,G)*igrad(b,G).tr();
+
+            //    //A_d.assemble(K_d_1 * meas(G)); // assemble stiffness matrix
+            // ///A_d.assemble(K_d_2 * meas(G)); // assemble stiffness matrix
+            //   A_d.assemble(K_d_3 * meas(G)); // assemble stiffness matrix
+
 
                 A_d.assemble(K_d_expr * meas(G)); // assemble stiffness matrix
                 K_d = A_d.matrix();                                 
                 solver.compute(K_d);
 
-                // gsDebugVar(K_d.toDense().maxCoeff());
-                // gsDebugVar(K_d.toDense().minCoeff());
+                // RHS (expression of the residual -> directional derivative of the energy functional with respect to damage variable (d))
+                auto res_d_expr = b * (2.0*(-1.0+dnew.val()) * strain_energy_pos.val() + (G_c*2.0/(ell*c_w)) * dnew.val()) 
+                                    + G_c*2.0*ell/c_w*igrad(b,G)*igrad(dnew,G).tr();
 
-                K_d_old = K_d;
+                auto res_1 = b * (2.0*(-1.0+dnew.val()) * strain_energy_pos.val());
+                auto res_2 = b * ((G_c*2.0/(ell*c_w)) * dnew.val());
+                auto res_3 = G_c*2.0*ell/c_w*igrad(b,G)*igrad(dnew,G).tr();
 
-                // gsDebugVar(K_d.toDense()); //?????? mirar esto con  menos grados d libertad
-
-                // RHS
-                auto f_d_expr = b * (2.0 * strain_energy_pos.val());// + penalty * dold); // revisar si es RHS!
-                A_d.assemble(f_d_expr * meas(G)); // assemble RHS
+                A_d.assemble(res_d_expr * meas(G)); // assemble RHS
                 Q_d = A_d.rhs();
 
                 // Compute solution
-                deltaD = solver.solve(-(K_d * Dnew - Q_d)); // update damage vector
+                //deltaD = solver.solve(-(K_d * Dnew - Q_d)); // update damage vector
+                deltaD = solver.solve(-Q_d); // update damage vector
+
                 Dnew += deltaD;
-                //gsDebugVar(deltaD.norm());
                 dnew.extract(mp_dnew); // extract the solution in mp_dnew (input of gsLinearDegradedMaterial)
-                //mp_def.patch(0).coefs() = mp_dnew.patch(0).coefs() + mp_dnew.patch(0).coefs(); // update deformed configuration
-                //mp.patch(0).coefs() += mp_dnew.patch(0).coefs(); // update deformed config
 
                 // Compute the residual norm (with the new solution)
-                A_d.clearMatrix(); 
+                A_d.clearMatrix(); // stiffness matrix independent of damage (dnew), does not make sense to assemble!
                 A_d.clearRhs();
                 A_d.assemble(K_d_expr * meas(G)); // stiffness matrix
+                A_d.assemble(res_d_expr * meas(G)); // stiffness matrix
                 K_d = A_d.matrix();
                 Q_d = A_d.rhs();
 
                 // Compute rdesidual norm
-                real_t res_d =  (K_d * Dnew - Q_d).norm(); // esto no se si esta bien???
-                
+                //real_t res_d =  (K_d * Dnew - Q_d).norm(); // esto no se si esta bien???
+                real_t res_d =  Q_d.norm(); // esto no se si esta bien???
+
                 // ================ Convergence check ================
                 if (it_pf == 0) res_d_norm0 = res_d;
                 else         res_d_norm = res_d;
-                // gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d/res_d0 = "<<res_d_norm/res_d_norm0<<"\n";
-                gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d = "<<res_d<<"\n";
-                gsInfo<<"\t\tNorm     "<<deltaD.norm()/Dnew.norm()<<"\n";
+                gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d/res_d0 = "<<res_d_norm/res_d_norm0<<"\n";
+                //gsInfo<<"\t\tNR PF iter   "<<it_pf<<": res_d = "<<res_d<<"\n";
+                gsInfo<<"\t\t\t\tdeltaD.norm() = "<<deltaD.norm()<<"\n";
 
                 if (it_pf>0 && res_d_norm/res_d_norm0 < tol_NR)
                 {
-                    gsInfo<<"\t\tPhase-field   converged in "<<it_pf<<" iterations\n";
+                    gsInfo<<"\t\tPhase-field converged in "<<it_pf<<" iterations\n";
                     converged = true;
                     break;
                 }
@@ -647,7 +674,7 @@ int main(int argc, char *argv[])
             {
                 gsInfo << "Plotting in Paraview ... ";
 
-                gsParaviewCollection collection("ParaviewOutput_dmg/dmg", &ev_d);
+                gsParaviewCollection collection("ParaviewOutput_fracture/dmg", &ev_d);
                 collection.options().setSwitch("plotElements", true);
                 collection.options().setInt("plotElements.resolution", sample_rate);
                 collection.options().setInt("numPoints", 10000); 
@@ -663,7 +690,7 @@ int main(int argc, char *argv[])
                 collection.saveTimeStep();
                 collection.save();
 
-                gsFileManager::open("ParaviewOutput_dmg/dmg.pvd");
+                gsFileManager::open("ParaviewOutput_fracture/dmg.pvd");
                 gsInfo << "Done" << std::endl;
             }
 
