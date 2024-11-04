@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
     ////////////////// no bc.addCondition(applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("direction"));
     bc.addCondition(0,applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("component"));
     bc.setGeoMap(mp);
-    //
+    
     bc_d.addCondition(0,boundary::west,condition_type::clamped,0,0,false,0);
     bc_d.addCondition(0,boundary::east,condition_type::clamped,0,0,false,0);
     bc_d.addCondition(0,boundary::south,condition_type::clamped,0,0,false,0);
@@ -366,7 +366,7 @@ int main(int argc, char *argv[])
     // 4) L2 project to the control points (how do I L2 project without a source function)
     // gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp); 
 
-    gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.50) and (y > 0.5-0.005) and (y < 0.5+0.005)) { 1. } else { 0. };",mp.geoDim()); //3 dimension
+    gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.50) and (y > 0.5-0.002) and (y < 0.5+0.002)) { 1.0 } else { 0. };",mp.geoDim()); //3 dimension
     //gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.50) and (y = 0.5)) { 1. } else { 0. };",mp.geoDim()); //3 dimension
     gsMatrix<> anchors = dbasis.basis(0).anchors();
     gsMatrix<> vals = fun.eval(anchors);
@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(vals));   
     gsWriteParaview(mp,*geom_ptr,"fun2",1e7);
 
-    // L2 INTERPOLATION! (i get negative values how does luigi do it?)
+    //L2 INTERPOLATION! (i get negative values how does luigi do it?)
     // gsMatrix<> coefs_interp;
     // gsL2Projection<real_t>::projectFunction(dbasis.basis(0),fun,mp,coefs_interp);
     // gsGeometry<>::uPtr geom_l2 = dbasis.basis(0).makeGeometry(give(coefs_interp));   
@@ -413,19 +413,23 @@ int main(int argc, char *argv[])
     real_t res_u_norm0, res_u_norm, res_d_norm0, res_d_norm, res_stag_norm0, res_stag_norm;
     // real_t res_norm0 = 1, res_norm = 10;
     // this is to be put in the xml file?
-    real_t tol_NR = 1e-8;
+    real_t tol_NR = 1e-7;
     real_t tol_stag = 1e-6;
     index_t maxStag = 10; // Staggered iterations
     // index_t maxSteps = 10; // Time steps
     index_t maxSteps = applied_disp_options.askInt("steps",10);
     index_t maxIt = 50; // NR iterations
-    real_t penalty_irrev = 2.7e12; // Penalty formulation (T. Gerasimov et al., 2019)
+    real_t tol_irrev = 1e-3;
+    real_t penalty_irrev = G_c/ell*(1/pow(tol_irrev,2)-1); // Penalty formulation (T. Gerasimov et al., 2019) (2.7e5)
+    //real_t penalty_irrev = 0.0; // Penalty formulation (T. Gerasimov et al., 2019) (2.7e5)
+    //gsDebugVar(penalty_irrev);
+    //real_t penalty_irrev = 1e6; // Penalty formulation (T. Gerasimov et al., 2019)
 
-    // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    gsParaviewCollection collection("ParaviewOutput_fracture/solution", &ev_u); // Which evaluator?
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints", 10000); 
+    // // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    // gsParaviewCollection collection("ParaviewOutput_fracture/solution", &ev_u); // Which evaluator?
+    // collection.options().setSwitch("plotElements", true);
+    // collection.options().setInt("plotElements.resolution", 4);
+    // collection.options().setInt("numPoints", 10000); 
 
     real_t time = 0;
     bool converged = false;
@@ -533,12 +537,10 @@ int main(int argc, char *argv[])
                 //A_u.assemble(bilinear_form.dot(dnew) * meas(G));
                 // Compute RHS
                 //Q_u = K_u * Unew;                 // Perform matrix multiplication
-
                 Q_u = A_u.rhs();
 
                 // Update displacements
                 deltaU = solver.solve(-(K_u * Unew - Q_u)); 
-                
                 real_t res_u =  (K_u * Unew - Q_u).norm(); ///?????????????
 
                 Unew += deltaU; // update the solution vector Unew
@@ -609,34 +611,38 @@ int main(int argc, char *argv[])
             //  Elastic problem -- Plot solution
             if (plot) 
             {
-            gsInfo << "Plotting in Paraview ... ";
+                gsInfo << "Plotting in Paraview ... ";
 
-            gsParaviewCollection collection("ParaviewOutput_fracture/disp", &ev_u);
-            collection.options().setSwitch("plotElements", true);
-            collection.options().setInt("plotElements.resolution", sample_rate);
-            collection.options().setInt("numPoints", 10000); 
-            collection.newTimeStep(&mp);
-            collection.addField(unew, "numerical solution");
-            // if (compute_error) {
-            // collection.addField(reference_solution - u, "error");
-            // }
-            collection.saveTimeStep();
-            collection.save();
+                gsParaviewCollection collection1("ParaviewOutput_fracture/disp", &ev_u);
+                collection1.options().setSwitch("plotElements", true);
+                collection1.options().setInt("plotElements.resolution", sample_rate);
+                collection1.options().setInt("numPoints", 10000); 
+                collection1.newTimeStep(&mp);
+                collection1.addField(unew, "numerical solution");
+                // if (compute_error) {
+                // collection.addField(reference_solution - u, "error");
+                // }
+                collection1.saveTimeStep();
+                collection1.save();
 
-            gsFileManager::open("ParaviewOutput_fracture/disp.pvd");
-            gsInfo << "Done" << std::endl;
+                gsFileManager::open("ParaviewOutput_fracture/disp.pvd");
+                gsInfo << "Done" << std::endl;
             }
 
-            for (index_t it_pf = 0; it_pf!=20; it_pf++)
+            for (index_t it_pf = 0; it_pf!=13; it_pf++)
             {                
                 A_d.clearMatrix();
                 A_d.clearRhs();
 
                 auto strain_energy_pos = A_d.getCoeff(SvK_Psi); // I want to plot the energy!!
-                //ev_d.writeParaview(strain_energy_pos,G,"ParaviewOutput_fracture/energy"+util::to_string(it_pf));
+                // gsWriteParaview(strain_energy_pos,G,"ParaviewOutput_fracture/energy"+util::to_string(it_pf));
                 auto strain = A_d.getCoeff(SvK_E); // I want to plot the energy!!
                 //ev_d.writeParaview(strain,G,"ParaviewOutput_fracture/strain"+util::to_string(it_pf));
-
+                
+                // STRAIN HISTORY?
+                // auto strain_old = strain_energy_pos;
+                // auto H_energy = ternary((strain_energy_pos-strain_old).val(), strain_energy_pos, strain_old); // no se si tiene sentido....
+                
                 gsVector<> pt(mp.parDim());
                 gsVector<> pt1(mp.parDim());
 
@@ -651,19 +657,18 @@ int main(int argc, char *argv[])
 
                 // We add a ternary of dnew-dold; if true, we do not apply the penalty!
                 // This penalty term is added to the residual with npart(), which takes the negative part of the expression dnew-dold
-                auto penalty_term = ternary((-dold+dnew).val(), 0.0*dnew.val(), penalty_irrev + 0.0*dnew.val());
+
+                auto penalty_constant = ternary((dnew-dold).val()+1e-5, 0.0*dnew.val(), penalty_irrev + 0.0*dnew.val()); // no se si tiene sentido....
+                auto penalty_term_residual = ternary((dnew-dold).val()+1e-5, 0.0*dnew.val(), penalty_irrev*(dnew-dold).val()); 
 
                 // Residual (Newton-Raphson)
+                auto res_d_expr = b * (2.0*(-1.0+dnew.val()) * strain_energy_pos.val() + (G_c*2.0/(ell*c_w)) * dnew.val() + penalty_term_residual) 
+                                   + G_c*ell*2.0/(c_w)*igrad(b,G)*igrad(dnew,G).tr();
                 // auto res_d_expr = b * (2.0*(-1.0+dnew.val()) * strain_energy_pos.val() + (G_c*2.0/(ell*c_w)) * dnew.val() ) 
-                //     + G_c*ell*2.0/(c_w)*igrad(b,G)*igrad(dnew,G).tr() - b * penalty_irrev * (-dnew+dold).ppart() ;
-                auto res_d_expr = b * (2.0*(-1.0+dnew.val()) * strain_energy_pos.val() + (G_c*2.0/(ell*c_w)) * dnew.val() ) 
-                    + G_c*ell*2.0/(c_w)*igrad(b,G)*igrad(dnew,G).tr() ;
+                //                      + G_c*ell*2.0/(c_w)*igrad(b,G)*igrad(dnew,G).tr() ;
 
                 // Tangent stiffness matrix (Newton-Raphson)
-                // auto K_d_expr = (b*b.tr()) * (2.0*G_c/(ell*c_w) + 2.0*strain_energy_pos.val() + penalty_term) 
-                //                 + 2.0*G_c*ell/c_w*igrad(b,G)*igrad(b,G).tr();
-
-                auto K_d_expr = (b*b.tr()) * (2.0*G_c/(ell*c_w) + 2.0*strain_energy_pos.val()) 
+                auto K_d_expr = (b*b.tr()) * (2.0*G_c/(ell*c_w) + 2.0*strain_energy_pos.val() + penalty_constant) 
                                 + 2.0*G_c*ell/c_w*igrad(b,G)*igrad(b,G).tr();
 
                 A_d.assemble(K_d_expr * meas(G), res_d_expr * meas(G));
@@ -680,14 +685,36 @@ int main(int argc, char *argv[])
                 // gsSparseMatrix<> jaco = A_d.matrix();
                 // gsDebugVar((jaco-K_d).norm());
 
+                gsInfo<<"==========================================\n";
+                gsDebugVar(ev_d.eval(dnew,pt,0));
+                gsDebugVar(ev_d.eval(dnew,pt1,0));
+
                 // Compute solution
                 deltaD = solver.solve(-Q_d); // update damage vector
                 Dnew += deltaD;
 
+                //gsWriteParaview(dnew,"ParaviewOutput_fracture/damage_evol"); //??? no funciona que cojones?
+                // gsBSpline<> solution2(basis_plot,Dnew);
+                // gsWriteParaview(solution2,"ParaviewOutput_fracture/solution2"); // interpolated function mySinus
+
+                // ev_d.writeParaview(dnew,G,"hola"); // works
+                // ev_d.writeParaview(strain,G,"ParaviewOutput_fracture/strain"+util::to_string(it_pf)); // does not work!
+                // gsField<> solField(mp,dnew);
+                // gsWriteParaview(solField,"solution_step",1000,true);
+                // gsDebugVar(Dnew.norm());
+                ev_d.writeParaview(dnew,G,"ParaviewOutput_fracture/damage_"+util::to_string(it_pf)); // does not work!
+
+
+                gsInfo<<"==========================================\n";
+
+
                 //Dold = Dnew; // for checking the penalty
 
                 dnew.extract(mp_dnew); // extract the solution in mp_dnew (input of gsLinearDegradedMaterial)                
-             
+                
+                // gsDebugVar(ev_d.eval(dnew,pt,0));
+                // gsDebugVar(ev_d.eval(dnew,pt1,0));
+                
                 real_t res_d =  Q_d.norm(); // esto no se si esta bien???
 
                 // ================ Convergence check ================
@@ -718,18 +745,18 @@ int main(int argc, char *argv[])
             {
                 gsInfo << "Plotting in Paraview ... ";
 
-                gsParaviewCollection collection("ParaviewOutput_fracture/dmg", &ev_d);
-                collection.options().setSwitch("plotElements", true);
-                collection.options().setInt("plotElements.resolution", sample_rate);
-                collection.options().setInt("numPoints", 10000); 
-                collection.options().setInt("precision", 7); // 1e-7
-                collection.newTimeStep(&mp);
-                collection.addField(dnew, "damage");
+                gsParaviewCollection collection2("ParaviewOutput_fracture/dmg", &ev_d);
+                collection2.options().setSwitch("plotElements", true);
+                collection2.options().setInt("plotElements.resolution", sample_rate);
+                collection2.options().setInt("numPoints", 10000); 
+                collection2.options().setInt("precision", 7); // 1e-7
+                collection2.newTimeStep(&mp);
+                collection2.addField(dnew, "damage");
                 // if (compute_error) {
                 // collection.addField(reference_solution - u, "error");
                 // }
-                collection.saveTimeStep();
-                collection.save();
+                collection2.saveTimeStep();
+                collection2.save();
 
                 gsFileManager::open("ParaviewOutput_fracture/dmg.pvd");
                 gsInfo << "Done" << std::endl;
