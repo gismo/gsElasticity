@@ -432,12 +432,6 @@ int main(int argc, char *argv[])
     //gsDebugVar(penalty_irrev);
     //real_t penalty_irrev = 1e6; // Penalty formulation (T. Gerasimov et al., 2019)
 
-    // // gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-    // gsParaviewCollection collection("ParaviewOutput_fracture/solution", &ev_u); // Which evaluator?
-    // collection.options().setSwitch("plotElements", true);
-    // collection.options().setInt("plotElements.resolution", 4);
-    // collection.options().setInt("numPoints", 10000); 
-
     real_t time = 0;
     bool converged = false;
     bool converged_staggered = false;
@@ -470,7 +464,7 @@ int main(int argc, char *argv[])
     collection_dmg.options().setInt("plotElements.resolution", 4);
     collection_dmg.options().setInt("numPoints", 3000); 
 
-    for (index_t step = 0; step!=maxSteps; step++)
+    for (index_t step = 0; step!=1; step++)
     {
         // Update the applied displacement  
         real_t appl_displ_step = delta_disp*(step+1);
@@ -553,9 +547,6 @@ int main(int argc, char *argv[])
                     converged = false;
                     break;
                 }
-                // =================================================
-
-
             } // NR equilibrium equation
            
             for (index_t it_pf = 0; it_pf!=20; it_pf++)
@@ -614,7 +605,7 @@ int main(int argc, char *argv[])
                     real_t res_d =  Q_d.norm(); // esto no se si esta bien???
 
                     // ================ Convergence check ================
-                    gsInfo<<"\tNR PF iter     "<<it_pf<<": R_d_norm = "<<res_d<<", deltaD.norm() = "<<deltaD.norm()<<"\n";
+                    gsInfo<<"\tNR PF iter     "<<it_pf<<" : R_d_norm = "<<res_d<<", deltaD.norm() = "<<deltaD.norm()<<"\n";
 
                     if (it_pf>0 && res_d < tol_NR)
                     {
@@ -659,25 +650,23 @@ int main(int argc, char *argv[])
 
             // Update displacements
             real_t res_u =  (K_u * Unew - Q_u).norm(); ///?????????????
-
             gsInfo<<" R_stag = "<<res_u<<"\n\n";
 
             //========== Staggered convergence check ==========
-                
-                if (stag>=0 && res_u < tol_stag)
-                {
-                    gsInfo<<"********************************************************************************\n";
-                    gsInfo<<" Staggered converged in "<<stag+1<<" iterations, R_stag = "<<res_u<<"\n";
-                    gsInfo<<"********************************************************************************\n\n";
-                    break;
-                }
-                else if (stag==maxStag-1)
-                {
-                    gsInfo<<"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
-                    gsInfo<<" Staggered did not converge!, R_stag = "<<res_u<<"\n";
-                    gsInfo<<"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n";
-                    break;
-                }
+            if (stag>=0 && res_u < tol_stag)
+            {
+                gsInfo<<"********************************************************************************\n";
+                gsInfo<<" Staggered converged in "<<stag+1<<" iterations, R_stag = "<<res_u<<"\n";
+                gsInfo<<"********************************************************************************\n\n";
+                break;
+            }
+            else if (stag==maxStag-1)
+            {
+                gsInfo<<"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
+                gsInfo<<" Staggered did not converge!, R_stag = "<<res_u<<"\n";
+                gsInfo<<"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n";
+                break;
+            }
             // ================================================
 
 

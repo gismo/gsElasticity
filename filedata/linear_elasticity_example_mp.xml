@@ -112,7 +112,7 @@
  <OptionList id="5">
   <int label="component" desc="Direction of displacement" value="1"/>
   <int label="side" desc="Side of the patch" value="4"/>
-  <real label="maxDisp" desc="Maximum applied displacement" value="1e-2"/>
-  <int label="steps" desc="Maximum number of steps" value="20"/>
+  <real label="maxDisp" desc="Maximum applied displacement" value="1e-3"/>
+  <int label="steps" desc="Maximum number of steps" value="10"/>
  </OptionList>
 </xml>
