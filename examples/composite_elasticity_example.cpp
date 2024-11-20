@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   bool compute_error{false};
   index_t sample_rate{9};
 
-  std::string file_name("composite_elasticity_example.xml");
+  std::string file_name("composite_example_mp.xml");
 
   gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
   cmd.addInt("e", "degreeElevation",
@@ -108,72 +108,6 @@ int main(int argc, char *argv[]) {
     dbasis.uniformRefine();
   }
   //! [Refinement]
-
-  //! [Problem setup]
-  gsExprAssembler<> A(1, 1);
-  // if (file_data.hasId(4)) {
-  //   A.setOptions(assembler_options);
-  // }
-
-  typedef gsExprAssembler<>::geometryMap GeometryMap;
-  typedef gsExprAssembler<>::variable Variable;
-  typedef gsExprAssembler<>::space Space;
-  typedef gsExprAssembler<>::solution Solution;
-
-  // Elements used for numerical integration
-  A.setIntegrationElements(dbasis);
-  gsExprEvaluator<> ev(A);
-
-  // Set the geometry map
-  GeometryMap G = A.getMap(mp);
-
-  // Set the discretization space
-  Space w = A.getSpace(dbasis, solution_field_dimension);
-
-  // // Set the source term ?? do i need this?
-  // auto source_function =
-  //     A.getCoeff(source_function_expression, G);
-
-  // Solution vector and solution variable
-  gsMatrix<> solution_vector;
-  Solution u_solution_expression = A.getSolution(w, solution_vector);
-  //! [Problem setup]
-
-  // ![User output]
-  gsInfo << "Problem Overview:\t"
-         << "\nGeometric Dim:\t" << solution_field_dimension << "\nPatches:\t"
-         << mp.nPatches() << "\nMinimum degree:\t"
-         << dbasis.minCwiseDegree() << "\nMaximum degree:\t"
-         << dbasis.maxCwiseDegree() << "\n\n";
-#ifdef _OPENMP
-  gsInfo << "Available threads: " << omp_get_max_threads() << "\n";
-#endif
-  gsInfo << "Active assembly options:\n"
-         << A.options() << std::endl;
-  // ![User output]
-
-  //! [Assembly]
-  gsSparseSolver<>::CGDiagonal solver;
-
-  real_t l2_err{}, h1_err{}, setup_time{}, ma_time{}, slv_time{}, err_time{};
-  gsStopwatch timer;
-  // dbasis.uniformRefine();
-
-  // Apply dirichlet boundary conditions
-  // w.setup(bc, dirichlet::l2Projection, 0);
-
-  // Initialize the system
-  A.initSystem();
-  
-  setup_time += timer.stop();
-  // User output
-  gsInfo << "Number of degrees of freedom:\t" << A.numDofs()
-         << std::endl;
-  gsInfo << "\nAssembling linear system ... " << std::flush;
-  timer.restart();
-
-  // Compute the system matrix and right-hand side
-  auto phys_jacobian = ijac(w, G);
 
   // Material properties (0 deg ply)
   real_t E11 = 25000; // in MPa (N/mm^2)
@@ -246,51 +180,23 @@ int main(int argc, char *argv[]) {
   gsConstantFunction<> g(0,mp.parDim()); // it is a gsFunction
   gsElasticityAssembler<real_t> A(mp,dbasis,bc,g,container); // not with pointer
   
+  // Assembly
+  gsStopwatch clock;
+  clock.restart();
   A.assemble();
-
-  //! [Solver]
-  ma_time += timer.stop();
-  gsInfo << "Done" << std::endl;
-  gsInfo << "Solving Linear System ...... " << std::flush;
-  timer.restart();
+  gsInfo << "Assembled a system (matrix and load vector) with "
+          << A.numDofs() << " dofs in " << clock.stop() << "s.\n";
+  gsInfo << "Solving...\n";
+  clock.restart();  
 
   // Solve linear system
-  solver.compute(A.matrix());
-  solution_vector = solver.solve(A.rhs());
-  //! [Solver]
+  gsSparseSolver<>::SimplicialLDLT solver(A.matrix());
+  gsVector<> solVector = solver.solve(A.rhs());
+  gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
 
-  slv_time += timer.stop();
-  gsInfo << "Done" << std::endl;
-
-
-  //! [Summarize User Output]
-  gsInfo << "\n\nTotal time: " << setup_time + ma_time + slv_time + err_time
-         << "\n";
-  gsInfo << "     Setup: " << setup_time << "\n";
-  gsInfo << "  Assembly: " << ma_time << "\n";
-  gsInfo << "   Solving: " << slv_time << "\n";
-  gsInfo << "     Norms: " << err_time << "\n";
-
-
-  //! [Export visualization in ParaView]
-  if (plot) {
-    gsInfo << "Plotting in Paraview ... ";
-
-    gsParaviewCollection collection("ParaviewOutput_composite/solution", &ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setInt("plotElements.resolution", sample_rate);
-    collection.newTimeStep(&mp);
-    collection.addField(u_solution_expression, "numerical solution");
-    collection.saveTimeStep();
-    collection.save();
-
-    gsFileManager::open("ParaviewOutput_composite/solution.pvd");
-    gsInfo << "Done" << std::endl;
-  } else {
-    gsInfo << "No output created, re-run with --plot to get a ParaView "
-              "file containing the solution.\n";
-  }
-  //! [Export visualization in ParaView]
+  //=============================================//
+                      // Output //
+  //=============================================//
 
   return EXIT_SUCCESS;
 
