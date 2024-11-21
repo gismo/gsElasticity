@@ -24,12 +24,18 @@
 
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsGeoUtils.h>
+
 #include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsLinearMaterial.h>
-#include <gsElasticity/gsCompositeMaterial.h>
-#include <gsElasticity/gsCompositeMatrix.cpp>
+// #include <gsElasticity/gsCompositeMaterial.h>
+// #include <gsElasticity/gsCompositeMatrix.cpp>
 #include <gsElasticity/gsCompositeMat.h>
 #include <gsElasticity/gsMaterialEval.h>
+#include <gsElasticity/gsVisitorElUtils.h>
+
+
 
 
 
@@ -43,6 +49,8 @@ int main(int argc, char *argv[]) {
   bool only_last = false;
   bool compute_error{false};
   index_t sample_rate{9};
+  index_t numPlotPoints = 10000;
+
 
   std::string file_name("composite_example_mp.xml");
 
@@ -65,6 +73,8 @@ int main(int argc, char *argv[]) {
                 "Evaluate the error with respect to the analytical solution "
                 "(evaluation with default options and default file required)",
                 compute_error);
+  cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
+
 
   // Error is computed for an analytical solution with the following
   // Lame constants
@@ -88,12 +98,16 @@ int main(int argc, char *argv[]) {
   gsMultiPatch<> mp;
   file_data.getId(0, mp);  // id=0: Multipatch domain
 
+  gsDebugVar(mp);
+
   gsBoundaryConditions<> bc;
   file_data.getId(1, bc);  // id=2: boundary conditions
   
   // Apply sinusoidal applied load on top patch (the third one -- index 2) 
-  gsFunctionExpr<>func("sin(pi*x/20) * sin(pi*y/20)",mp.parDim()); //?????????????
-  bc.addCondition(2,6,condition_type::neumann,0,false,2); // unknown 0 (displacements), component 2 (z) 
+  //gsFunctionExpr<>func("sin(pi*x/20) * sin(pi*y/20)",mp.parDim()); //?????????????
+  gsFunctionExpr<>func("0","0","sin(pi*x/20) * sin(pi*y/20)",mp.parDim()); // tiene sentido?????
+  //bc.addCondition(2,6,condition_type::neumann,0,false,2); // unknown 0 (displacements), component 2 (z) 
+  bc.addCondition(2,6,condition_type::neumann,&func);
 
   bc.setGeoMap(mp);
   gsInfo << "Boundary conditions:\n" << bc << "\n";
@@ -130,41 +144,18 @@ int main(int argc, char *argv[]) {
   real_t nu23 = 0.25;
 
 
-
-  // // Material matrix of a ply (0 degrees)
-  // gsMatrix<> Gmat = gsCompositeMatrix(E11,E22,E33,G12,G23,G13,nu12,nu23,nu13);
-  
-  // gsCompositeMat<3,real_t> C_ply(E11,E22,E33,G12,G23,G13,nu12,nu23,nu13); // this apparently gives the right thing?
-  
-  // // Create constant function for rotation matrix
-
-
-  // Gmat.resize(Gmat.rows()*Gmat.cols(),1); //  needed for gs constant function!!!
-
-  // // gsConstantFunction<> G_0(Gmat,mp.parDim()); //?
-  // // gsCompositeMaterial<real_t> materialMat_0(G_0,rot_0); //??
-  // // gsCompositeMaterial<real_t> materialMat_90(G_0,rot_90); //??
-
-  // gsMaterialEval<real_t, gsMaterialOutput::C, true> layaered_C(SvK.get(), &mp_def); // change name of mp?
-
-  // gsMaterialEval <3,real_t>  C_ply_0(C_ply,rot_0); 
-  // gsCompositeMat<3,real_t>  C_ply_90(C_ply_0,rot_90); 
-
-  // // Como se llama eval_matrix????????? help!!!
-  // gsCompositeMat<3,real_t> C_rot(C_ply,)
-
   // Donde las doy como input???????????????? Importante! :(
   gsConstantFunction<> rot_0(0.0, 0.0, 0.0, mp.parDim()); // 3 is the dimension?
   gsConstantFunction<> rot_90(0.0, 0.0, M_PI/2.0, mp.parDim()); // in radians?? or d
 
   // ========== Material class ==========
-  // gsMaterialBase<real_t>::uPtr ply_mat_0, ply_mat_90;
   gsMaterialBase<real_t> * ply_mat_0;
   gsMaterialBase<real_t> * ply_mat_90;
 
   if      (mp.geoDim()==2)
   {
-    //layered_mat = memory::make_unique (new gsCompositeMat<2,real_t>(E11,E22,G12,nu12));
+    ply_mat_0  = new gsCompositeMat<2,real_t>(E11,E22,G12,nu12,rot_0,mp);
+    ply_mat_90 = new gsCompositeMat<2,real_t>(E11,E22,G12,nu12,rot_90,mp);
   }
   else if (mp.geoDim()==3)
   {
@@ -188,6 +179,7 @@ int main(int argc, char *argv[]) {
   // container.add(&ply_mat_90);
 
   // Option 2
+  gsDebugVar(mp.nPatches());
   gsMaterialContainer<real_t> container(ply_mat_90,mp.nPatches()); // 3 containers! preallocated (all patches have the properties of layered_mat_90)
   container.set(1,ply_mat_0); //overload it to assign the material props of the ply 0 degrees
   
@@ -210,15 +202,35 @@ int main(int argc, char *argv[]) {
 
   // Solve linear system
   gsSparseSolver<>::SimplicialLDLT solver(A.matrix());
-  gsVector<> solVector = solver.solve(A.rhs());
+  gsVector<> solVector = solver.solve(A.rhs()); // displacements!
   gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
 
   //=============================================//
   //                    Output                   //
   //=============================================//
+  
+  // // constructing solution as an IGA function
+  // gsMultiPatch<> sol;
+  // A.constructSolution(solVector,A.allFixedDofs(),sol);
+  // // constructing stresses
+  // gsPiecewiseFunction<> stresses;
+  // A.constructCauchyStresses(sol,stresses,stress_components::von_mises);
+  // // Mirar que soluciones puedo tener ??
 
 
-  // .....
+  // if (numPlotPoints > 0)
+  // {
+  //       // constructing an IGA field (mp + solution)
+  //       gsField<> solutionField(A.patches(),sol);
+  //       gsField<> stressField(A.patches(),stresses,true);
+  //       // creating a container to plot all fields to one Paraview file
+  //       std::map<std::string,const gsField<> *> fields;
+  //       fields["Deformation"] = &solutionField;
+  //       fields["von Mises"] = &stressField;
+  //       gsWriteParaviewMultiPhysics(fields,"terrific_le",numPlotPoints);
+  //       gsInfo << "Open \"terrific_le.pvd\" in Paraview for visualization.\n";
+  // }
+
   delete ply_mat_0;
   delete ply_mat_90;
   return EXIT_SUCCESS;
