@@ -45,11 +45,7 @@ public:
     m_alpha(&alpha),
     Base(&patches)
     {
-        // gsMatrix<T> m_C(6,6);
-
         m_C.resize(6,6);
-        std::cout << "m_C rows: " << m_C.rows() << ", cols: " << m_C.cols() << std::endl;
-
         m_C.setZero();
         T D = (1-nuxy*nuxy-nuyz*nuyz-nuxz*nuxz-2*nuxy*nuyz*nuxz) / (Exx*Eyy*Ezz); // determinant of the compliance matrix (S)
         
@@ -80,7 +76,25 @@ public:
         // this -> setParameter(7,m_C(4,4));
         // this -> setParameter(8,m_C(5,5));
 
-        gsDebugVar(m_C);
+        //gsDebugVar(m_C);
+
+        // Compliance matrix
+        m_S.resize(6,6);
+        m_S.setZero();
+        
+        // Diagonal components
+        m_S(0,0) = 1/Exx; 
+        m_S(1,1) = 1/Eyy; 
+        m_S(2,2) = 1/Ezz; 
+        m_S(3,3) = 1.0/Gxy; // Factor 2? ??????? CHECK!
+        m_S(4,4) = 1.0/Gyz; // Factor 2?
+        m_S(5,5) = 1.0/Gxz; // Factor 2?
+
+        // Off-diagonal components
+        m_S(0,1) = m_S(1,0) = -nuxy/Exx; // Gxy
+        m_S(0,2) = m_S(2,0) = -nuxz/Exx; // Gxz
+        m_S(1,2) = m_S(2,1) = -nuyz/Eyy;
+        gsDebugVar(m_S);
     }
 
     gsCompositeMat( const T Exx,
@@ -91,10 +105,9 @@ public:
                     const gsFunctionSet<T> & patches)
     :   
     m_alpha(&alpha),
-    Base(&patches,nullptr,nullptr)
+    Base(&patches)
     // Base(&patches,nullptr,nullptr), in this case it will check the dimension of mp_def
     {
-        // gsMatrix<T> m_C(3,3);
         m_C.resize(3,3);
         m_C.setZero();
 
@@ -111,13 +124,121 @@ public:
         // this -> setParameter(4,m_C(2,2));
     }
 
+    // void computeHomogenizedStiffness(const index_t patch,  const gsMatrix<T> & u)
+    // {
+    //     // input a gsMultiPatch??????????
+    //     // input numpatches?
+        
+    //     // Compute the parameter data (writes into m_data.mine().m_parMat)
+    //     this->_computeParameterData(patch,u);
+
+    //     // Voigt-size of the tensor
+    //     const index_t sz = (d+1)*d/2;
+
+    //     // Resize the matrix
+    //     m_C_homogenized.resize(sz*sz,u.cols());
+    //     m_C_homogenized.setZero();
+
+    //     // const index_t k = numPatches; //?????
+    //     const index_t k = 3; //?????
+    //     //const real_t t_k = 1/k;
+    //     const real_t t_k = 1./k;
+    //     // const real_t Delta, term_44, term_55, Delta_k, sum_33, sum_44, sum_55;
+    //     real_t Delta_k, sum_33 = 0.0, sum_44 = 0.0, sum_55 = 0.0;
+    //     real_t term_44 = 0.0, term_55 = 0.0;
+
+    //     gsMatrix<T> material_mat_1, material_mat_k; //???? I would need to do a resize?
+        
+    //     gsCompositeMat::eval_matrix_into(0,u,material_mat_1); // ????????????
+
+    //     for (index_t j=0; j!=u.cols(); j++)
+    //     {   
+    //         // I would need to change the indices for the matrix!
+
+    //         for (index i=0; i<k; i++) // loop over all layers ????
+    //         {
+    //             gsCompositeMat::eval_matrix_into(i,u,material_mat_k); // get material matrix of the container
+
+    //             // First term of the sums
+    //             m_C_homogenized(0,0) += t_k*material_mat_k(0,0);
+    //             m_C_homogenized(0,1) += t_k*material_mat_k(0,1);
+    //             m_C_homogenized(0,2) += t_k*material_mat_k(0,2);
+    //             m_C_homogenized(1,1) += t_k*material_mat_k(1,1);
+    //             m_C_homogenized(1,2) += t_k*material_mat_k(1,2);
+
+    //             Delta_k = material_mat_k(3,3) * material_mat_k(4,4);
+                
+    //             // To calculate the other terms in the diagonal
+    //             sum_33 += t_k / material_mat_k(2,2);
+    //             sum_44 += t_k * material_mat_k(3,3) / Delta_k;
+    //             sum_55 += t_k * material_mat_k(4,4) / Delta_k;
+
+    //             // To calculate C_66_bar
+    //             m_C_homogenized(5,5) += t_k*material_mat_k(5,5);
+
+    //             // To calculate Delta
+    //             term_44  += t_k * material_mat_k(3,3)/Delta_k;
+    //             term_55  += t_k * material_mat_k(4,4)/Delta_k;
+    //         }
+
+    //         const real_t Delta = term_44*term_55;
+    //         m_C_homogenized(2,2) = 1./sum_33;
+    //         m_C_homogenized(3,3) = sum_44/Delta;
+    //         m_C_homogenized(4,4) = sum_55/Delta;
+            
+    //         for (index q=2; q<k; q++) // loop over all layers
+    //         {
+    //             gsCompositeMat::eval_matrix_into(q,u,material_mat_k); // ????
+    //             // Second term of the sums
+    //             m_C_homogenized(0,0) += (material_mat_k(0,2)-m_C_homogenized(0,2))*t_k*(material_mat_1(0,2)-material_mat_k(0,2))/material_mat_k(2,2);
+    //             m_C_homogenized(0,1) += (material_mat_k(0,2)-m_C_homogenized(0,2))*t_k*(material_mat_1(1,2)-material_mat_k(1,2))/material_mat_k(2,2);
+    //             m_C_homogenized(0,2) += (material_mat_k(2,2)-m_C_homogenized(2,2))*t_k*(material_mat_1(0,2)-material_mat_k(0,2))/material_mat_k(2,2);
+    //             m_C_homogenized(1,1) += (material_mat_k(1,2)-m_C_homogenized(1,2))*t_k*(material_mat_1(1,2)-material_mat_k(1,2))/material_mat_k(2,2);
+    //             m_C_homogenized(1,2) += (material_mat_k(2,2)-m_C_homogenized(2,2))*t_k*(material_mat_1(1,2)-material_mat_k(1,2))/material_mat_k(2,2);
+    //         } 
+    //     }
+    // }
+
+    // void eval_stress_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
+    // {
+    //     // Compute the parameter data (writes into m_data.mine().m_parMat)
+    //     this->_computeParameterData(patch,u);
+    //     // Compute the strain
+    //     gsMatrix<T> Eres,  stress_tensor, stress_voigt;
+
+    //     Base::eval_strain_into(patch,u,Eres); // Eres in tensor notation
+
+    //      // Resize the result
+    //     result.resize(d*d,u.cols());
+    //     stress_tensor.resize(d,d); 
+
+    //     // Voigt-size of the tensor
+    //     const index_t sz = (d+1)*d/2;
+
+    //     gsMatrix<T> angles, Phi;
+    //     angles = m_alpha->piece(patch).eval(u);
+    //     // composite linear elasticity tensor
+
+    //     for (index_t j=0; j!=u.cols(); j++)
+    //     {
+    //         gsMatrix<T> E_full = Eres.reshapeCol(j,d,d);
+
+    //         gsVector<T> E_voigt;
+    //         voigtStrain(E_voigt,E_full); //E_vect in voigt
+
+    //         _makePhi(angles.col(patch),Phi);
+
+    //         stress_voigt = Phi.transpose() * m_C * Phi * E_voigt; // this gives the stress in Voigt notation
+    //         tensorStress(d,stress_voigt,stress_tensor);  // to get stress in tensor notation
+    //         result.reshapeCol(j,d,d) = stress_tensor; // this gives the stress in tensor notation
+    //     }
+    // }
+
     void eval_matrix_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
     {
-        gsDebugVar(patch);
-        gsDebugVar(u);
         // Compute the parameter data (writes into m_data.mine().m_parMat)
         this->_computeParameterData(patch,u);
- 
+
         // Voigt-size of the tensor
         const index_t sz = (d+1)*d/2;
 
@@ -128,19 +249,14 @@ public:
         angles = m_alpha->piece(patch).eval(u);
         // composite linear elasticity tensor
 
-        gsInfo<<"Matrix unrotated\n";
-        gsDebugVar(m_C);
-        gsInfo<<"================\n";
+        //gsDebugVar(u);
 
         for (index_t j=0; j!=u.cols(); j++)
         {
            _makePhi(angles.col(patch),Phi);
-        //    result.reshapeCol(j,sz,sz) = Phi.transpose() * G.reshapeCol(j,sz,sz) * Phi;
            result.reshapeCol(j,sz,sz) = Phi.transpose() * m_C * Phi; // m_C is sz*sz?
-           gsInfo<<"Matrix per point\n";
-           gsDebugVar(Phi.transpose() * m_C * Phi);
-           gsInfo<<"================\n";
         }
+
         //gsDebugVar(result);
     }
 
@@ -260,6 +376,8 @@ protected:
     using Base::m_data;
     const gsFunctionSet<T> * m_alpha;
     gsMatrix<T> m_C; // make stiffness matrix a member of the class-- constant over the whole domain
+    gsMatrix<T> m_S; // make stiffness matrix a member of the class-- constant over the whole domain
+    gsMatrix<T> m_C_homogenized; // make stiffness matrix a member of the class-- constant over the whole domain
 
 
 };
