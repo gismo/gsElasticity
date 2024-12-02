@@ -35,6 +35,7 @@ struct ale_method
         TINE_StVK = 5,  /// tangential incremental nonlinear elasticity (with the St.Venant-Kirchhoff law)
         BHE = 6,        /// bi-harmonic extension
         IBHE = 7,       /// incremental bi-harmonic extension
+        BARRIER = 8,
     };
 };
 

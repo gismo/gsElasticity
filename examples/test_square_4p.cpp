@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
     // real_t poissonsRatio = 0.4;
     // real_t densitySolid = 1.0e4;
     // flow parameters
-    std::string filenameFlow = ELAST_DATA_DIR"/grid.xml";
+    std::string filenameFlow = ELAST_DATA_DIR"/cross_4p.xml";
     real_t viscosity = 0.001;
     real_t meanVelocity = 1.;
     real_t densityFluid = 1.0e3;

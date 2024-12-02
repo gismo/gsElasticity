@@ -16,6 +16,7 @@
 // #include <gsElasticity/gsPartitionedFSI2.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
+#include <gsModeling/gsBarrierPatch.h>
 
 
 using namespace gismo;
@@ -79,7 +80,9 @@ int main(int argc, char* argv[])
     //=============================================//
     // Scanning geometry
 	gsMultiPatch<> geoFlow;
-    gsReadFile<>(filenameFlow, geoFlow);    
+    gsReadFile<>(filenameFlow, geoFlow);   
+    gsMatrix<> optCoefs = geoFlow.coefs();
+    gsDebugVar(optCoefs); 
 
     // creating bases
     // gsMultiBasis<> basisDisplacement(geoBeam);
@@ -325,7 +328,17 @@ int main(int argc, char* argv[])
     gsMultiPatch<> geoSquareNew = geoSquare;
     gsMultiPatch<> geoSquareOld = geoSquare;
     dispBeam = geoSquare;
-    for (index_t k = 0; k!=kmax; k++)
+
+    // gsBSpline<> outerCurve = geoSquare.patch(0);
+    gsMatrix<> outerCoefs(5,2);
+    outerCoefs << -1,-1,
+                  2,-1,
+                  2,2,
+                  -1,2, 
+                  -1, -1;
+    gsKnotVector<> kv(0,1,3,2);
+    gsBSpline<> outerCurve(kv, outerCoefs);
+    for (index_t k = 0; k!=1; k++)
     {
         gsInfo << "Time: " << time << "\n";
 
@@ -338,6 +351,117 @@ int main(int argc, char* argv[])
         geoSquareNew = geoSquare;
         // gsNurbsCreator<>::shift2D(geoSquareNew.patch(0),angle,0);
         gsNurbsCreator<>::rotate2D(geoSquareNew.patch(0),angle,0.5,0.5);
+
+        // if ( i == 0 ) {
+        //   theta = 1e-6;
+        // }
+        // else if (i == 90) {
+        //   theta = M_PI/2 - 1e-6;
+        // }
+        // else {
+        //   theta = i*M_PI/180;
+        // }
+//   auto innerCurve2 = innerCurve;
+//   innerCurve2.rotate(theta);
+        if (math::abs( angle ) < 1e-12) angle = 1e-6;
+
+        double ratio = std::tan(angle+M_PI/4);
+        double x = std::abs(ratio) > 1e-10? -2.0/ratio : 0.0;
+        double xi = (x+2.0) * 0.25 * 0.25;
+
+        gsInfo << "xi = " << (xi) << "\n";
+        gsBSpline<> left, right;
+        outerCurve.splitAt(xi, left, right);
+        // gsWriteParaview(left, "left", 1000);
+        // gsWriteParaview(right, "right", 1000);
+          right.merge(&left);
+          right.knots(0).affineTransformTo(0,1);
+
+
+                // gsInfo << geoSquareNew.patch(0) << "\n";
+                // gsInfo << geoSquareNew.patch(0).boundary(1)->coefs() << "\n";
+    gsMatrix<> innerCoefs(5,2);
+    innerCoefs << 0,-0,
+                  1,-0,
+                  1,1,
+                  -0,1, 
+                  -0, -0;
+    gsKnotVector<> kv(0,1,3,2);
+    gsBSpline<> innerCurve(kv, innerCoefs);
+    auto innerCurve2 = innerCurve;
+    innerCurve2.translate(gsEigen::Vector2d(-0.5, -0.5));
+    innerCurve2.rotate(angle);
+    innerCurve2.translate(-gsEigen::Vector2d(-0.5, -0.5));
+
+
+        std::vector<double> diffKnots;
+          right.knots(0).difference(innerCurve2.knots(0), diffKnots);
+          innerCurve2.insertKnots(diffKnots.begin(), diffKnots.end());
+          innerCurve2.knots(0).difference(right.knots(0), diffKnots);
+          right.insertKnots(diffKnots.begin(), diffKnots.end());
+          gsMatrix<> surfCoefs;
+          surfCoefs.resize(innerCurve2.numCoefs()*2, 2);
+          surfCoefs.topRows(innerCurve2.numCoefs()) = right.coefs();
+          surfCoefs.bottomRows(innerCurve2.numCoefs()) = innerCurve2.coefs();
+          gsKnotVector<> uKnot = innerCurve2.knots(0);
+          gsKnotVector<> vKnot(0,1,0,2);
+          uKnot.affineTransformTo(0, 4);
+          gsTensorBSpline<2> surf2(uKnot, vKnot, surfCoefs);
+          surf2.degreeElevate(1);
+          // surf2.uniformRefine(10,1,1);
+          gsBarrierPatch<2, real_t> optthisone(surf2, true);
+          optthisone.options().setInt("Verbose", 0);
+          optthisone.options().setInt("ParamMethod", 1);
+        //  opt.options().setInt(“AAPreconditionType”, AAPreconditionType);
+          optthisone.compute();
+          surf2 = dynamic_cast<gsTensorBSpline<2>&>( optthisone.result().patch(0) );
+          gsTensorBSpline<2,real_t> leftPatch, rightPatch;
+          // surf2.splitAt(1, 0, leftPatch, rightPatch);
+
+          gsMatrix<> paraPoints;
+          // surf2.invertPoints(outerCoefs.transpose(), paraPoints);
+        // 存储分割后的曲面片段
+        std::vector<gsTensorBSpline<2, real_t>> splitPatches;
+
+        // 遍历所有参数点，依次分割曲面
+        gsTensorBSpline<2, real_t> currentPatch = surf2;  // 初始化为原始曲面
+
+        gsMultiPatch<> allLeft;
+
+        for (index_t i = 1; i < outerCoefs.transpose().cols() - 1; ++i)
+        {
+            gsMatrix<> tempPhy = outerCoefs.row(i);
+            gsMatrix<> tempPara;
+            currentPatch.invertPoints(tempPhy.transpose(), tempPara);
+            gsInfo << "Splitting at v = " << tempPara(0, 0) << "\n";
+
+            // 使用当前曲面进行切割，避免重叠
+            gsTensorBSpline<2, real_t> leftPatch, rightPatch;
+            currentPatch.splitAt(0, tempPara(0, 0), leftPatch, rightPatch);
+
+            // 将左侧片段添加到 allLeft 中
+            allLeft.addPatch(leftPatch);
+
+            // 更新 currentPatch 为右侧片段
+            currentPatch = rightPatch;
+        }
+
+
+
+        // 添加最后一个分割后的片段
+        allLeft.addPatch(currentPatch);
+        // gsWrtie(allLeft, "cross_4p.xml");
+
+        // 输出到 Paraview
+        gsWriteParaview(allLeft, "surf", 1000);
+        // return 0;
+
+
+
+          // gsWriteParaview(rightPatch, "surf1", 1000);
+          // gsWriteParaview(leftPatch, "surf2", 1000);
+
+
         dispBeam.patch(0).coefs() = geoSquareNew.patch(0).coefs() - geoSquareOld.patch(0).coefs();
 
         // gsDebugVar(dispBeam.coefs());
@@ -359,6 +483,8 @@ int main(int argc, char* argv[])
         // Update the fluid mesh
         for (size_t p = 0; p!=geoFlow.nPatches(); ++p)
             geoFlow.patch(p).coefs() += geoFlowDisp.patch(p).coefs();
+
+
 
 
         //update geometry using very advanced analysis-suiable parameterization developed Ye Ji

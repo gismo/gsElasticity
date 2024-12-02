@@ -78,17 +78,17 @@ int main(int argc, char* argv[])
     // ALE parameters
     real_t meshPR = 0.4; // poisson ratio for ALE
     real_t meshStiff = 2.5;
-    index_t ALEmethod = ale_method::TINE;
+    index_t ALEmethod = ale_method::LE;
     bool oneWay = false;
     // space discretization
-    index_t numUniRef = 3;
+    index_t numUniRef = 4;
     // time integration
-    real_t timeStep = 0.01;
+    real_t timeStep = 0.0025;
     real_t timeSpan = 15.;
     real_t thetaFluid = 0.5;
     real_t thetaSolid = 1.;
     index_t maxCouplingIter = 10;
-    bool imexOrNewton = false;
+    bool imexOrNewton = true;
     bool warmUp = false;
     // output parameters
     index_t numPlotPoints = 0.;
@@ -132,6 +132,10 @@ int main(int argc, char* argv[])
     for (index_t p = 0; p < 3; ++p)
         geoALE.addPatch(geoFlow.patch(p+3).clone());
     geoALE.computeTopology();
+
+
+    // gsWriteParaview(geoALE,"geoALE",1000);
+    // return 0;
 
     // creating bases
     gsMultiBasis<> basisDisplacement(geoBeam);
