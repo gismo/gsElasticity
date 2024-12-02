@@ -87,18 +87,14 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
         if (numIter == 0) // save displacement i-2, no correction
         {
             m_elSolver.constructSolution(dispOldOld);
-        dispOldOld.patch(0).coefs().setZero();
             m_elSolver.constructSolution(m_displacement);
-        m_displacement.patch(0).coefs().setZero();
         }
         else if (numIter == 1) // save displacement i-1 as a guess and a corrected solution
         {
             m_elSolver.constructSolution(dispOld);
-        dispOld.patch(0).coefs().setZero();
             m_elSolver.constructSolution(dispOldGuess);
-        dispOldGuess.patch(0).coefs().setZero();
             m_elSolver.constructSolution(m_displacement);
-        m_displacement.patch(0).coefs().setZero();
+
             gsMatrix<> vecA, vecB;
             formVector(dispOldOld,vecA);
             formVector(m_displacement,vecB);
@@ -136,6 +132,7 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
 
         // save ALE displacement at the beginning of the time step for ALE velocity computation
         m_aleSolver.constructSolution(m_ALEvelocity);
+
         // update ALE
         if (m_aleSolver.updateMesh() != -1)
             return false; // if the new ALE deformation is not bijective, stop the simulation

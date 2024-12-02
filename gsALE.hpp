@@ -208,6 +208,7 @@ index_t gsALE<T>::nonlinearMethod()
     solverNL->reset();
     solverNL->solve();
     assembler->constructSolution(solverNL->solution(),solverNL->allFixedDofs(),ALEdisp);
+
     if (m_options.getSwitch("Check"))
         return checkDisplacement(assembler->patches(),ALEdisp);
     else

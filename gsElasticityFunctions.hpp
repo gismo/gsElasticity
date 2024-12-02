@@ -10,7 +10,7 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-        A.Shamanskiy (2016 - ...., TU Kaiserslautern)
+        A.Shamanskiy (2016 - ...., TU Kaiserslautern), H. Verhelst (2019 - 2024, TU Delft), J.Li (2023 - ...., TU Delft)
 */
 
 #pragma once
@@ -237,6 +237,61 @@ void gsDetFunction<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) co
         result(0,i) = mappingData.jacobian(i).determinant();
 }
 
+/**
+ * @brief Computes the fluid-structure interaction (FSI) load by evaluating stress tensors 
+ *        and applying them on the specified points in the physical domain.
+ * 
+ * This function evaluates forces acting on the structure by transforming quantities 
+ * (velocity, pressure, and ALE displacement gradients) between parametric, reference, 
+ * and physical spaces. The result is a set of load vectors applied to the input points.
+ * 
+ * @tparam T The data type (e.g., `double`, `float`) used for computations.
+ * 
+ * @param[in] u 
+ *     A matrix of points in the physical space where the loads are to be evaluated. 
+ *     Each column represents a point in the physical domain.
+ * 
+ * @param[out] result 
+ *     A matrix where each column contains the computed load vector for the corresponding 
+ *     column in `u`. The result matrix is initialized as zero and modified in-place.
+ * 
+ * @details
+ * The computation follows these key steps:
+ * 1. **Mapping Points**:
+ *    - Input points `u` are mapped back to the parameter space using the reference configuration.
+ * 2. **Reference Geometry Evaluation**:
+ *    - The reference geometry is evaluated for gradient transformations required for domain mapping.
+ * 3. **Velocity Field Evaluation**:
+ *    - The velocity field and its gradients are evaluated at the parameter points.
+ * 4. **Pressure Field Evaluation**:
+ *    - Pressure values are directly evaluated at the parameter points.
+ * 5. **ALE Displacement Field Evaluation**:
+ *    - ALE displacement and its gradients are evaluated at the parameter points.
+ * 6. **Stress Tensor Computation**:
+ *    - Velocity gradients are transformed from the parametric domain to the reference domain.
+ *    - The ALE Jacobian is computed, including its inverse, to model ALE effects.
+ *    - The stress tensor is calculated as:
+ *      \f[
+ *      \sigma = p \cdot I - \rho \cdot \mu \cdot (\nabla v \cdot J^{-1}_{ALE} + J^{-1}_{ALE}^T \cdot \nabla v^T)
+ *      \f]
+ *    - The stress tensor is then pulled back to the reference configuration.
+ * 7. **Force Calculation**:
+ *    - The stress tensor is applied to the normal vector of the surface to compute the load.
+ * 
+ * @note
+ * - This function assumes that the input matrix `u` corresponds to points on the surface of the structure. And u is a gsMatrix object.
+ * 
+ * Example Usage:
+ * @code
+ * gsMatrix<double> u = ...; // Points in the physical domain
+ * gsMatrix<double> result;
+ * gsFsiLoad<double> fsiLoad(...); // Construct with appropriate parameters
+ * fsiLoad.eval_into(u, result);
+ * // result now contains the load vectors for the input points
+ * @endcode
+ */
+
+
 template <class T>
 void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
@@ -256,6 +311,8 @@ void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
     m_vel.patch(m_patchVP).computeMap(mdVel);
     // evaluate pressure at the quad points
     gsMatrix<T> pressureValues;
+    m_pres.patch(m_patchVP).eval_into(paramPoints, pressureValues);
+
     m_pres.patch(m_patchVP).eval_into(paramPoints,pressureValues);
     // evaluate ALE dispacement at the param points
     // NEED_DERIV for gradients
@@ -263,6 +320,8 @@ void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
     mdALE.points = paramPoints;
     m_ale.patch(m_patchGeo).computeMap(mdALE);
 
+
+    gsMatrix<T> I = gsMatrix<T>::Identity(targetDim(), targetDim());
     gsMatrix<T> I  = gsMatrix<T>::Identity(targetDim(),targetDim());
     for (index_t p = 0; p < paramPoints.cols(); ++p)
     {
@@ -285,6 +344,55 @@ void gsFsiLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
         result.col(p) = sigmaALE * normal / normal.norm();
     }
 }
+
+/**
+ * @brief An updated version for the FSI load (will be a starting point for the new ALE class).
+ * 
+ * This function calculates the forces acting on the boundary of a domain by evaluating 
+ * stress tensors and projecting them onto boundary normals. The results are stored in 
+ * the `result` matrix.
+ * 
+ * @tparam T The data type (e.g., `double`, `float`) used for computations.
+ * 
+ * @param[in] u 
+ *     A matrix representing points along the boundary where loads are to be evaluated. 
+ *     Each column corresponds to a point in either the parametric or physical space.
+ * 
+ * @param[out] result 
+ *     A matrix where each column contains the computed boundary load vector for the 
+ *     corresponding input point. The size of `result` matches the target dimension 
+ *     of the domain.
+ * 
+ * @details
+ * The function follows these steps:
+ * 1. **Boundary Mapping**:
+ *    - If the input points are in physical space (`m_parametric == false`), they are mapped 
+ *      back to the parametric domain using the reference geometry boundary mapping.
+ * 2. **Field Evaluations**:
+ *    - The reference geometry, velocity field, pressure field, and ALE displacement field 
+ *      are evaluated at the parametric points.
+ * 3. **Stress Tensor Computation**:
+ *    - The stress tensor is computed using velocity gradients, pressure, and ALE transformations.
+ *    - The tensor is transformed to the ALE frame for consistency.
+ * 4. **Load Computation**:
+ *    - The stress tensor is projected onto boundary normal vectors to compute the load.
+ *    - The result is scaled by a factor of 2 and normalized.
+ * 
+ * @note
+ * - This function supports only 2D domains, as specified by the geometry dimension assertion.
+ * - Input points must lie on the boundary of the domain.
+ * 
+ * @see gsMapData, gsMatrix, gsVector, invertPoints, cramerInverse
+ * 
+ * Example Usage:
+ * @code
+ * gsMatrix<double> boundaryPoints = ...; // Points along the boundary
+ * gsMatrix<double> loads;
+ * gsFsiBoundaryLoad<double> fsiBoundaryLoad(...); // Construct with appropriate parameters
+ * fsiBoundaryLoad.eval_into(boundaryPoints, loads);
+ * // `loads` now contains the computed boundary loads
+ * @endcode
+ */
 
 template <class T>
 void gsFsiBoundaryLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
@@ -334,12 +442,7 @@ void gsFsiBoundaryLoad<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result
     mdALE.points = paramPoints;
     m_ale.patch(m_aleSide.patch).computeMap(mdALE);
 
-    gsDebugVar(m_geo.patch(m_geoSide.patch).coefs().transpose());
-    gsDebugVar(m_ale.patch(m_aleSide.patch).coefs().transpose());
-    gsDebugVar(m_vel.patch(m_velSide.patch).coefs().transpose());
-    gsDebugVar(m_pres.patch(m_presSide.patch).coefs().transpose());
-
-    gsMatrix<T> I  = gsMatrix<T>::Identity(targetDim(),targetDim());
+    gsMatrix<T> I = gsMatrix<T>::Identity(targetDim(), targetDim());
     for (index_t p = 0; p < paramPoints.cols(); ++p)
     {
 

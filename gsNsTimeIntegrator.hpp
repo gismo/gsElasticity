@@ -79,6 +79,7 @@ void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
         implicitNonlinear();
     if (m_options.getInt("Scheme") == time_integration::implicit_linear)
         implicitLinear();
+        gsInfo << "Implicit linear scheme is used" << std::endl;
 }
 
 template <class T>
@@ -170,9 +171,6 @@ void gsNsTimeIntegrator<T>::implicitNonlinear()
     solver.options().setReal("AbsTol",m_options.getReal("AbsTol"));
     solver.options().setReal("RelTol",m_options.getReal("RelTol"));
     solver.solve();
-
-    gsDebugVar(solVector.transpose());
-    gsDebugVar(solver.solution().transpose());
 
     solVector = solver.solution();
     m_ddof = stiffAssembler.allFixedDofs();
