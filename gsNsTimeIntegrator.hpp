@@ -79,6 +79,7 @@ void gsNsTimeIntegrator<T>::makeTimeStep(T timeStep)
         implicitNonlinear();
     if (m_options.getInt("Scheme") == time_integration::implicit_linear)
         implicitLinear();
+        gsInfo << "Implicit linear scheme is used" << std::endl;
 }
 
 template <class T>

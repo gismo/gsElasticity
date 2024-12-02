@@ -7,6 +7,10 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsLinearMaterial.h>
+#include <gsElasticity/gsCompositeMaterial.h>
+#include <gsElasticity/gsCompositeMatrix.cpp>
 
 using namespace gismo;
 
@@ -72,8 +76,26 @@ int main(int argc, char* argv[])
               // Assembling & solving //
     //=============================================//
 
+    gsConstantFunction<> alpha(0.0,0.0,0.0,3);
+    gsMatrix<> Gmat = gsCompositeMatrix(youngsModulus,youngsModulus,youngsModulus,
+                                        youngsModulus/(2*(1+poissonsRatio)),
+                                        youngsModulus/(2*(1+poissonsRatio)),
+                                        youngsModulus/(2*(1+poissonsRatio)),
+                                        poissonsRatio,
+                                        poissonsRatio,
+                                        poissonsRatio);
+
+    Gmat.resize(Gmat.rows()*Gmat.cols(),1);
+    gsConstantFunction<> G(Gmat,3);
     // creating assembler
-    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
+
+    // gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio);
+    gsCompositeMaterial<real_t> materialMat(G,alpha);
+
+    // creating assembler
+    // gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,g);//,materialMat);
+    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f,&materialMat);
+
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("DirichletValues",dirichlet::l2Projection);

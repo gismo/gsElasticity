@@ -18,7 +18,7 @@
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsBasePde.h>
 
-#include <gsElasticity/gsVisitorMass.h>
+#include <gsElasticity/gsVisitorMassElasticity.h>
 
 namespace gismo
 {
@@ -90,8 +90,8 @@ void gsMassAssembler<T>::assemble(bool saveEliminationMatrix)
         eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
     }
 
-    gsVisitorMass<T> visitor(saveEliminationMatrix ? &eliminationMatrix : nullptr);
-    Base::template push<gsVisitorMass<T> >(visitor);
+    gsVisitorMassElasticity<T> visitor(saveEliminationMatrix ? &eliminationMatrix : nullptr);
+    Base::template push<gsVisitorMassElasticity<T> >(visitor);
 
     m_system.matrix().makeCompressed();
 

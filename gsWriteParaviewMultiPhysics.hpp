@@ -27,51 +27,6 @@
 namespace gismo
 {
 
-
-//---------- START REPEATED from gsWriteParaview.hpp
-
-template<class T>
-void writeSingleControlNet(const gsGeometry<T> & Geo,
-                           std::string const & fn)
-{
-    const short_t d = Geo.parDim();
-    gsMesh<T> msh;
-    Geo.controlNet(msh);
-    const short_t n = Geo.geoDim();
-    if ( n == 1 )
-    {
-        gsMatrix<T> anch = Geo.basis().anchors();
-        // Lift vertices at anchor positions
-        for (std::size_t i = 0; i!= msh.numVertices(); ++i)
-        {
-            msh.vertex(i)[d] = msh.vertex(i)[0];
-            msh.vertex(i).topRows(d) = anch.col(i);
-        }
-    }
-    else if (n>3)
-    {
-        gsDebug<<"Writing 4th coordinate\n";
-        const gsMatrix<T> & cp = Geo.coefs();
-        gsWriteParaviewPoints<T>(cp.transpose(), fn );
-        return;
-    }
-
-    gsWriteParaview(msh, fn, false);
-}
-
-template<class T>
-void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
-                         std::string const & fn, unsigned resolution)
-{
-    gsMesh<T> msh(basis, resolution);
-    Geo.evaluateMesh(msh);
-    gsWriteParaview(msh, fn, false);
-}
-
-
-//---------- END REPEATED from gsWriteParaview.hpp
-
-
 template<class T>
 void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields,
                                  std::string const & fn,
@@ -114,7 +69,7 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
     {
         std::string patchFileName = fn + util::to_string(time) + "_" + util::to_string(p);
         gsWriteParaviewMultiPhysicsSinglePatch(fields,p,patchFileName,npts);
-        collection.addPart(gsFileManager::getFilename(patchFileName),time,"",p);
+        collection.addPart(gsFileManager::getFilename(patchFileName),time,"Solution",p);
     }
 
 }

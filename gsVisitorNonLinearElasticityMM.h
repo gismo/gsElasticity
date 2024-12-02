@@ -1,4 +1,4 @@
-/** @file gsVisitorNonLinearElasticity.h
+/** @file gsVisitorNonLinearElasticityMM.h
 
     @brief Element visitor for nonlinear elasticity for 2D plain strain and 3D continua.
 
@@ -25,11 +25,14 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorNonLinearElasticity
+class gsVisitorNonLinearElasticityMM
 {
 public:
-    gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_)
+    gsVisitorNonLinearElasticityMM(const gsPde<T> & pde_,
+                                    gsMaterialBase<T> * materialMat,
+                                    const gsMultiPatch<T> & displacement_)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+          m_materialMat(materialMat),
           displacement(displacement_) { }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -43,22 +46,9 @@ public:
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
         patch = patchIndex;
-        materialLaw = options.getInt("MaterialLaw");
-        T YM = options.getReal("YoungsModulus");
-        T PR = options.getReal("PoissonsRatio");
-        lambda = YM * PR / ( ( 1. + PR ) * ( 1. - 2. * PR ) );
-        mu     = YM / ( 2. * ( 1. + PR ) );
         forceScaling = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
-        // elasticity tensor
         I = gsMatrix<T>::Identity(dim,dim);
-        if (materialLaw == -1 || materialLaw == 0)
-        {
-            matrixTraceTensor<T>(C,I,I);
-            C *= lambda;
-            symmetricIdentityTensor<T>(Ctemp,I);
-            C += mu*Ctemp;
-        }
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
@@ -89,6 +79,10 @@ public:
         mdDisplacement.flags = NEED_DERIV;
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
+
+        m_materialMat->setDeformed(&displacement);
+        m_materialMat->eval_matrix_into(quNodes,matValues, geo.id());
+        m_materialMat->eval_vector_into(quNodes,vecValues, geo.id());
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -107,38 +101,11 @@ public:
             physDispJac = mdDisplacement.jacobian(q)*(md.jacobian(q).cramerInverse());
             // deformation gradient F = I + du/dx
             F = I + physDispJac;
-            // deformation jacobian J = det(F)
-            T J = F.determinant();
-            // Right Cauchy Green strain, C = F'*F
-            RCG = F.transpose() * F;
-            // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
-            E = 0.5 * (RCG - I);
             const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
+            // Elasticity tensor
+            C = matValues.reshapeCol(q,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
             // Second Piola-Kirchhoff stress tensor
-            if (materialLaw==-1 || materialLaw == 0) // Hooke/Saint Venant-Kirchhoff
-                S = lambda*E.trace()*I + 2*mu*E;
-            if (materialLaw == 1) // neo-Hooke ln(J)
-            {
-                GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
-                RCGinv = RCG.cramerInverse();
-                S = (lambda*log(J)-mu)*RCGinv + mu*I;
-                // elasticity tensor
-                matrixTraceTensor<T>(C,RCGinv,RCGinv);
-                C *= lambda;
-                symmetricIdentityTensor<T>(Ctemp,RCGinv);
-                C += (mu-lambda*log(J))*Ctemp;
-            }
-            if (materialLaw == 2) // quad neo-Hooke
-            {
-                RCGinv = RCG.cramerInverse();
-                S = (lambda*(J*J-1)/2-mu)*RCGinv + mu*I;
-                // elasticity tensor
-                matrixTraceTensor<T>(C,RCGinv,RCGinv);
-                C *= lambda*J*J;
-                symmetricIdentityTensor<T>(Ctemp,RCGinv);
-                C += (mu-lambda*(J*J-1)/2)*Ctemp;
-            }
-            // loop over active basis functions (u_i)
+            S = vecValues.reshapeCol(q,math::sqrt(vecValues.rows()),math::sqrt(vecValues.rows()));
             for (index_t i = 0; i < N_D; i++)
             {
                 // Material tangent K_tg_mat = B_i^T * C * B_j;
@@ -211,6 +178,8 @@ protected:
     std::vector<gsMatrix<T> > basisValuesDisp;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+    /// Material handler
+    gsMaterialBase<T> * m_materialMat;
     // current displacement field
     const gsMultiPatch<T> & displacement;
     // evaluation data of the current displacement field
@@ -223,6 +192,10 @@ protected:
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;
+
+    gsMatrix<T> matValues;
+    gsMatrix<T> vecValues;
+
 };
 
 } // namespace gismo

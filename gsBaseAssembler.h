@@ -92,7 +92,7 @@ public:
 
     virtual void setRHS(const gsMatrix<T> & rhs) {m_system.rhs() = rhs;}
 
-    virtual void setMatrix(const gsSparseMatrix<T> & matrix) {m_system.matrix() = matrix;}
+    virtual void setMatrix(const gsSparseMatrix<T> & mat) {m_system.matrix() = mat;}
 
 protected:
     using gsAssembler<T>::m_pde_ptr;

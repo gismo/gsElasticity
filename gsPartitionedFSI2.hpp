@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsPartitionedFSI.h>
+#include <gsElasticity/gsPartitionedFSI2.h>
 
 #include <gsElasticity/gsNsTimeIntegrator.h>
 #include <gsElasticity/gsElTimeIntegrator.h>
@@ -26,17 +26,17 @@ namespace gismo
 {
 
 template <class T>
-gsPartitionedFSI<T>::gsPartitionedFSI(gsNsTimeIntegrator<T> & nsSolver,
-                                      gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure,
-                                      gsElTimeIntegrator<T> & elSolver,
-                                      gsMultiPatch<T> & displacement,
+gsPartitionedFSI<T>::gsPartitionedFSI2(gsNsTimeIntegrator<T> & nsSolver,
+                                      gsMultiPatch<T> & velocity,
+                                      gsMultiPatch<T> & pressure,
                                       gsALE<T> & aleSolver,
-                                      gsMultiPatch<T> & aleDisplacement, gsMultiPatch<T> & aleVelocity) :
+                                      gsMultiPatch<T> & aleDisplacement,
+                                      gsMultiPatch<T> & aleVelocity) :
     m_nsSolver(nsSolver),
     m_velocity(velocity),
     m_pressure(pressure),
-    m_elSolver(elSolver),
-    m_displacement(displacement),
+    //m_elSolver(elSolver),
+    //m_displacement(displacement),
     m_aleSolver(aleSolver),
     m_ALEdisplacment(aleDisplacement),
     m_ALEvelocity(aleVelocity),
@@ -46,7 +46,7 @@ gsPartitionedFSI<T>::gsPartitionedFSI(gsNsTimeIntegrator<T> & nsSolver,
 }
 
 template <class T>
-gsOptionList gsPartitionedFSI<T>::defaultOptions()
+gsOptionList gsPartitionedFSI2<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt("MaxIter","Maximum number of coupling iterations per time step",10);
@@ -57,11 +57,10 @@ gsOptionList gsPartitionedFSI<T>::defaultOptions()
 }
 
 template <class T>
-bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
+bool gsPartitionedFSI2<T>::makeTimeStep(T timeStep)
 {
     // save states of the component solvers at the beginning of the time step
     m_nsSolver.saveState();
-    m_elSolver.saveState();
     m_aleSolver.saveState();
 
     // reset the solver
@@ -78,40 +77,38 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
     while (numIter < m_options.getInt("MaxIter") && !converged)
     {
         // ================== Structure section ================ //
-        clock.restart();
-        if (numIter > 0) // recover the solver state from the time step beginning
-            m_elSolver.recoverState();
+        // clock.restart();
+        // if (numIter > 0) // recover the solver state from the time step beginning
+        //     m_elSolver.recoverState();
 
-        m_elSolver.makeTimeStep(timeStep);
+        // m_elSolver.makeTimeStep(timeStep);
 
-        if (numIter == 0) // save displacement i-2, no correction
-        {
-            m_elSolver.constructSolution(dispOldOld);
-            m_elSolver.constructSolution(m_displacement);
-        }
-        else if (numIter == 1) // save displacement i-1 as a guess and a corrected solution
-        {
-            m_elSolver.constructSolution(dispOld);
-            m_elSolver.constructSolution(dispOldGuess);
-            m_elSolver.constructSolution(m_displacement);
+        // if (numIter == 0) // save displacement i-2, no correction
+        // {
+        //     m_elSolver.constructSolution(dispOldOld);
+        //     m_elSolver.constructSolution(m_displacement);
+        // }
+        // else if (numIter == 1) // save displacement i-1 as a guess and a corrected solution
+        // {
+        //     m_elSolver.constructSolution(dispOld);
+        //     m_elSolver.constructSolution(dispOldGuess);
+        //     m_elSolver.constructSolution(m_displacement);
+        //     gsMatrix<> vecA, vecB;
+        //     formVector(dispOldOld,vecA);
+        //     formVector(m_displacement,vecB);
+        //     absResNorm = initResNorm = (vecB-vecA).norm()/sqrt(vecB.rows());
+        // }
+        // else // save displacement as a current guess i and apply Aitken relaxation
+        // {
+        //     m_elSolver.constructSolution(m_displacement);
+        //     aitken(dispOldOld,dispOldGuess,dispOld,m_displacement);
+        // }
 
-            gsMatrix<> vecA, vecB;
-            formVector(dispOldOld,vecA);
-            formVector(m_displacement,vecB);
-            absResNorm = initResNorm = (vecB-vecA).norm()/sqrt(vecB.rows());
-        }
-        else // save displacement as a current guess i and apply Aitken relaxation
-        {
-            m_elSolver.constructSolution(m_displacement);
-        m_displacement.patch(0).coefs().setZero();
-            aitken(dispOldOld,dispOldGuess,dispOld,m_displacement);
-        }
-
-        if (numIter > 0 && m_options.getInt("Verbosity") == solver_verbosity::all)
-            gsInfo << numIter << ": absRes " << absResNorm << ", relRes " << absResNorm/initResNorm << std::endl;
+        // if (numIter > 0 && m_options.getInt("Verbosity") == solver_verbosity::all)
+        //     gsInfo << numIter << ": absRes " << absResNorm << ", relRes " << absResNorm/initResNorm << std::endl;
 
 
-        elTime += clock.stop();
+        // elTime += clock.stop();
         // =================================================================== //
 
 
@@ -132,7 +129,6 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
 
         // save ALE displacement at the beginning of the time step for ALE velocity computation
         m_aleSolver.constructSolution(m_ALEvelocity);
-
         // update ALE
         if (m_aleSolver.updateMesh() != -1)
             return false; // if the new ALE deformation is not bijective, stop the simulation
@@ -194,7 +190,7 @@ bool gsPartitionedFSI<T>::makeTimeStep(T timeStep)
 }
 
 template <class T>
-void gsPartitionedFSI<T>::formVector(const gsMultiPatch<T> & disp, gsMatrix<T> & vector)
+void gsPartitionedFSI2<T>::formVector(const gsMultiPatch<T> & disp, gsMatrix<T> & vector)
 {
     index_t dim = disp.patch(0).parDim();
 
@@ -222,7 +218,7 @@ void gsPartitionedFSI<T>::formVector(const gsMultiPatch<T> & disp, gsMatrix<T> &
 }
 
 template <class T>
-void gsPartitionedFSI<T>::aitken(gsMultiPatch<T> & dispOO, gsMultiPatch<T> & dispOG,
+void gsPartitionedFSI2<T>::aitken(gsMultiPatch<T> & dispOO, gsMultiPatch<T> & dispOG,
                                  gsMultiPatch<T> & dispO, gsMultiPatch<T> & dispN)
 {
     gsMatrix<> vecOO,vecOG,vecO,vecN;

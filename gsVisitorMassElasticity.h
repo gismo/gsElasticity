@@ -1,6 +1,6 @@
-/** @file gsVisitorLinearElasticity.h
+/** @file gsVisitorMassElasticity.h
 
-    @brief Visitor class for volumetric integration of the linear elasticity system.
+    @brief Visitor class for the mass matrix assembly for elasticity problems.
 
     This file is part of the G+Smo library.
 
@@ -15,9 +15,6 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorElUtils.h>
-#include <gsElasticity/gsBasePde.h>
-
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
 
@@ -25,14 +22,22 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorLinearElasticity
+class gsVisitorMassElasticity
 {
 public:
 
-    gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
-          elimMat(elimMatrix)
-    {}
+    ~gsVisitorMassElasticity()
+    {
+        if (elimMat!=nullptr)
+            delete elimMat;
+    }
+
+    gsVisitorMassElasticity(gsSparseMatrix<T> * elimMatrix) :
+    elimMat(elimMatrix) {}
+
+    gsVisitorMassElasticity() :
+    elimMat(nullptr) {}
+
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -44,18 +49,7 @@ public:
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
-        mu     = E / ( 2. * ( 1. + pr ) );
-        forceScaling = options.getReal("ForceScaling");
-        localStiffening = options.getReal("LocalStiff");
-        // linear elasticity tensor
-        I = gsMatrix<T>::Identity(dim,dim);
-        matrixTraceTensor<T>(C,I,I);
-        C *= lambda;
-        symmetricIdentityTensor<T>(Ctemp,I);
-        C += mu*Ctemp;
+        density = options.getReal("Density");
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
@@ -67,19 +61,16 @@ public:
     {
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
-        // NEED_VALUE to get points in the physical domain for evaluation of the RHS
         // NEED_MEASURE to get the Jacobian determinant values for integration
-        // NEED_GRAD_TRANSFORM to get the Jacobian matrix to transform gradient from the parametric to physical domain
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
-        // Compute image of the quadrature points plus gradient, jacobian and other necessary data
+        md.flags = NEED_MEASURE;
+        // Compute the geometry mapping at the quadrature points
         geo.computeMap(md);
+        // Evaluate displacement basis functions on the element
+        basisRefs.front().eval_into(quNodes,basisValuesDisp);
         // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();
-        // Evaluate displacement basis functions and their derivatives on the element
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
-        // Evaluate right-hand side at the image of the quadrature points
-        pde_ptr->rhs()->eval_into(md.values[0],forceValues);
+
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -87,35 +78,9 @@ public:
     {
         // initialize local matrix and rhs
         localMat.setZero(dim*N_D,dim*N_D);
-        localRhs.setZero(dim*N_D,1);
-        // Loop over the quadrature nodes
-        for (index_t q = 0; q < quWeights.rows(); ++q)
-        {
-            // Multiply quadrature weight by the geometry measure
-            const T weightForce = quWeights[q] * md.measure(q);
-            const T weightBody = quWeights[q] * pow(md.measure(q),1-localStiffening);
-            // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
-            transformGradients(md,q,basisValuesDisp[1],physGrad);
-            // loop over active basis functions (v_j)
-            for (index_t i = 0; i < N_D; i++)
-            {
-                // stiffness matrix K = B_i^T * C * B_j;
-                setB<T>(B_i,I,physGrad.col(i));
-                tempK = B_i.transpose() * C; //.reshapeCol(q,dim,dim)
-                // loop over active basis functions (v_j)
-                for (index_t j = 0; j < N_D; j++)
-                {
-                    setB<T>(B_j,I,physGrad.col(j));
-                    K = tempK * B_j;
-                    for (short_t di = 0; di < dim; ++di)
-                        for (short_t dj = 0; dj < dim; ++dj)
-                            localMat(di*N_D+i,dj*N_D+j) += weightBody * K(di,dj);
-                }
-            }
-            // rhs contribution
-            for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_D,N_D).noalias() += weightForce * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q) ;
-        }
+        block = density*basisValuesDisp * quWeights.asDiagonal() * md.measures.asDiagonal() * basisValuesDisp.transpose();
+        for (short_t d = 0; d < dim; ++d)
+            localMat.block(d*N_D,d*N_D,N_D,N_D) = block.block(0,0,N_D,N_D);
     }
 
     inline void localToGlobal(const int patchIndex,
@@ -129,8 +94,8 @@ public:
             blockNumbers.at(d) = d;
         }
         // push to global system
-        system.pushToRhs(localRhs,globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+
         // push to the elimination system
         if (elimMat != nullptr)
         {
@@ -158,30 +123,28 @@ public:
 protected:
     // problem info
     short_t dim;
-    const gsBasePde<T> * pde_ptr;
-    // Lame coefficients and force scaling factor
-    T lambda, mu, forceScaling, localStiffening;
+    //density
+    T density;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
     gsMatrix<T> localMat;
-    gsMatrix<T> localRhs;
     // local indices (at the current patch) of the displacement basis functions active at the current element
     gsMatrix<index_t> localIndicesDisp;
     // number of displacement basis functions active at the current element
     index_t N_D;
-    // values and derivatives of displacement basis functions at quadrature points at the current element
-    // values are stored as a N_D x numQuadPoints matrix; not sure about derivatives, must be smth like N_D*dim x numQuadPoints
-    std::vector<gsMatrix<T> > basisValuesDisp;
-    // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
-    gsMatrix<T> forceValues;
+    // values of displacement basis functions at quadrature points at the current element stored as a N_D x numQuadPoints matrix;
+    gsMatrix<T> basisValuesDisp;
+    bool assembleMatrix;
     // elimination matrix to efficiently change Dirichlet degrees of freedom
     gsSparseMatrix<T> * elimMat;
+
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, Ctemp,physGrad, B_i, tempK, B_j, K, I;
+    gsMatrix<T> block;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;
 };
 
 } // namespace gismo
+

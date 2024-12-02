@@ -18,6 +18,7 @@
 #include <gsElasticity/gsBaseAssembler.h>
 #include <gsElasticity/gsElasticityFunctions.h>
 #include <gsElasticity/gsBaseUtils.h>
+#include <gsElasticity/gsMaterialBase.h>
 
 namespace gismo
 {
@@ -37,14 +38,16 @@ public:
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
-                          const gsFunction<T> & body_force);
+                          const gsFunction<T> & body_force,
+                          gsMaterialBase<T> *materialMatrix = NULL);
 
     /// @brief Constructor of mixed formulation (displacement + pressure)
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basisDisp,
                           const gsMultiBasis<T> & basisPres,
                           const gsBoundaryConditions<T> & bconditions,
-                          const gsFunction<T> & body_force);
+                          const gsFunction<T> & body_force,
+                          gsMaterialBase<T> *materialMatrix = NULL);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -122,12 +125,17 @@ protected:
     /// parametric dim = physical dim = deformation dim
     short_t m_dim;
 
+    // const std::vector<typename gsFunction<T>::uPtr > m_pars;
+
     using Base::m_pde_ptr;
     using Base::m_bases;
     using Base::m_ddof;
     using Base::m_options;
     using Base::m_system;
     using Base::eliminationMatrix;
+
+    gsMaterialBase<T> * m_materialMat;
+
 };
 
 

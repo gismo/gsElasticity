@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsALE.h>
+#include <gsElasticity/gsALE2.h>
 
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsElPoissonAssembler.h>
@@ -27,7 +27,7 @@ namespace gismo
 {
 
 template <class T>
-gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement,
+gsALE<T>::gsALE2(gsMultiPatch<T> & geometry, const gsMatrix<T> & displacement,
                 const gsBoundaryInterface & interfaceS2M, ale_method::method method)
     : disp(displacement),
       m_interface(interfaceS2M),
@@ -77,6 +77,10 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
         assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfoBHE,rhs));
         assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
     }
+    else if ( methodALE == ale_method::TEST)
+    {
+        gsInfo << "Test method \n";
+    }    
     else
         for (size_t p = 0; p < geometry.nPatches(); ++p)
         {
@@ -86,7 +90,70 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
 }
 
 template <class T>
-gsOptionList gsALE<T>::defaultOptions()
+gsALE<T>::gsALE2(gsMultiPatch<T> & geometry, const gsMatrix<T> & displacement
+                , ale_method::method method)
+    : disp(displacement),
+      methodALE(method),
+      m_options(defaultOptions()),
+      initialized(false),
+      hasSavedState(false)
+{
+    // create input for the assembler
+    gsMultiBasis<T> basis(geometry);
+    gsBoundaryConditions<T> bcInfo;
+    for (gsMultiPatch<>::const_biterator it = geometry.bBegin(); it != geometry.bEnd(); ++it)
+        for (index_t d = 0; d < geometry.parDim(); ++d)
+            bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
+    gsConstantFunction<T> rhs(gsVector<T>::Zero(geometry.parDim()),geometry.parDim());
+
+    // define assembler according to the method
+    if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK || methodALE == ale_method::ILE || methodALE == ale_method::LE || methodALE == ale_method::TEST)
+    {
+        assembler = typename gsBaseAssembler<T>::uPtr(new gsElasticityAssembler<T>(geometry,basis,bcInfo,rhs));
+        if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
+        {
+            assembler->options().setSwitch("Check",false);
+            solverNL = typename gsIterative<T>::uPtr(new gsIterative<T>(*assembler,
+                                                                        gsMatrix<>::Zero(assembler->numDofs(),1),
+                                                                        assembler->allFixedDofs()));
+            solverNL->options().setInt("Verbosity",solver_verbosity::none);
+            solverNL->options().setInt("Solver",linear_solver::LDLT);
+        }
+        if (methodALE == ale_method::TINE)
+            assembler->options().setInt("MaterialLaw",material_law::neo_hooke_ln);
+        if (methodALE == ale_method::TINE_StVK)
+            assembler->options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
+
+        assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),1),assembler->allFixedDofs(),ALEdisp);
+    }
+    else if (methodALE == ale_method::HE || methodALE == ale_method::IHE)
+    {
+        assembler = typename gsBaseAssembler<T>::uPtr(new gsElPoissonAssembler<T>(geometry,basis,bcInfo,rhs));
+        assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
+    }
+    else if (methodALE == ale_method::BHE || methodALE == ale_method::IBHE)
+    {
+        gsBoundaryConditions<T> bcInfoBHE;
+        for (gsMultiPatch<>::const_biterator it = geometry.bBegin(); it != geometry.bEnd(); ++it)
+            bcInfoBHE.addCondition(it->patch,it->side(),condition_type::dirichlet,0);
+        assembler = typename gsBaseAssembler<T>::uPtr(new gsBiharmonicAssembler<T>(geometry,basis,bcInfoBHE,rhs));
+        assembler->constructSolution(gsMatrix<T>::Zero(assembler->numDofs(),geometry.parDim()),assembler->allFixedDofs(),ALEdisp);
+    }
+    else if ( methodALE == ale_method::TEST)
+    {
+        gsInfo << "Calling test Method \n";
+    }    
+    else
+        for (size_t p = 0; p < geometry.nPatches(); ++p)
+        {
+            ALEdisp.addPatch(geometry.patch(p).clone());
+            ALEdisp.patch(p).coefs() *= 0.;
+        }
+}
+
+
+template <class T>
+gsOptionList gsALE2<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addReal("PoissonsRatio","Poisson's ratio of the material (only for elasticity-based methods)",0.4);
@@ -98,7 +165,7 @@ gsOptionList gsALE<T>::defaultOptions()
 
 
 template <class T>
-void gsALE<T>::constructSolution(gsMultiPatch<T> & solution) const
+void gsALE2<T>::constructSolution(gsMultiPatch<T> & solution) const
 {
     solution.clear();
     for (size_t p = 0; p < ALEdisp.nPatches(); ++p)
@@ -106,7 +173,7 @@ void gsALE<T>::constructSolution(gsMultiPatch<T> & solution) const
 }
 
 template <class T>
-void gsALE<T>::initialize()
+void gsALE2<T>::initialize()
 {
     assembler->options().setReal("LocalStiff",m_options.getReal("LocalStiff"));
     if (methodALE == ale_method::LE || methodALE == ale_method::ILE || methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
@@ -115,12 +182,14 @@ void gsALE<T>::initialize()
         assembler->assemble(true);
     if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
         solverNL->options().setInt("MaxIters",m_options.getInt("NumIter"));
+    if (methodALE == ale_method::TEST)
+        gsInfo << "Initialized test\n";
 
     initialized = true;
 }
 
 template <class T>
-index_t gsALE<T>::updateMesh()
+index_t gsALE2<T>::updateMesh()
 {
     if (!initialized)
         initialize();
@@ -135,12 +204,22 @@ index_t gsALE<T>::updateMesh()
     case ale_method::TINE_StVK: return nonlinearMethod(); break;
     case ale_method::BHE: return linearMethod(); break;
     case ale_method::IBHE: return linearIncrementalMethod(); break;
+    case ale_method::TEST: return testMethod(); break;
     default: return -1;
     }
 }
 
 template <class T>
-index_t gsALE<T>::linearMethod()
+index_t gsALE2<T>::testMethod()
+{
+
+    disp.setConstant(0);
+    gsDebugVar(disp);
+}
+
+
+template <class T>
+index_t gsALE2<T>::linearMethod()
 {
 
     for (size_t i = 0; i < m_interface.sidesA.size(); ++i)
@@ -166,7 +245,7 @@ index_t gsALE<T>::linearMethod()
 }
 
 template <class T>
-index_t gsALE<T>::linearIncrementalMethod()
+index_t gsALE2<T>::linearIncrementalMethod()
 {
     for (size_t i = 0; i < m_interface.sidesA.size(); ++i)
         assembler->setFixedDofs(m_interface.sidesB[i].patch,
@@ -198,7 +277,7 @@ index_t gsALE<T>::linearIncrementalMethod()
 }
 
 template <class T>
-index_t gsALE<T>::nonlinearMethod()
+index_t gsALE2<T>::nonlinearMethod()
 {
     for (size_t i = 0; i < m_interface.sidesA.size(); ++i)
         assembler->setFixedDofs(m_interface.sidesB[i].patch,
@@ -208,7 +287,6 @@ index_t gsALE<T>::nonlinearMethod()
     solverNL->reset();
     solverNL->solve();
     assembler->constructSolution(solverNL->solution(),solverNL->allFixedDofs(),ALEdisp);
-
     if (m_options.getSwitch("Check"))
         return checkDisplacement(assembler->patches(),ALEdisp);
     else
@@ -216,7 +294,7 @@ index_t gsALE<T>::nonlinearMethod()
 }
 
 template <class T>
-void gsALE<T>::saveState()
+void gsALE2<T>::saveState()
 {
     if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)
         solverNL->saveState();
@@ -227,7 +305,7 @@ void gsALE<T>::saveState()
 }
 
 template <class T>
-void gsALE<T>::recoverState()
+void gsALE2<T>::recoverState()
 {
     GISMO_ENSURE(hasSavedState,"No state saved!");
     if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK)

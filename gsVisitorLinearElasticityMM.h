@@ -1,6 +1,6 @@
-/** @file gsVisitorNonLinearElasticity.h
+/** @file gsVisitorLinearElasticityMM.h
 
-    @brief Element visitor for nonlinear elasticity for 2D plain strain and 3D continua.
+    @brief Visitor class for volumetric integration of the linear elasticity system.
 
     This file is part of the G+Smo library.
 
@@ -17,6 +17,7 @@
 
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/gsMaterialBase.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -25,12 +26,17 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorNonLinearElasticity
+class gsVisitorLinearElasticityMM //material matrix
 {
 public:
-    gsVisitorNonLinearElasticity(const gsPde<T> & pde_, const gsMultiPatch<T> & displacement_)
+
+    gsVisitorLinearElasticityMM(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
+                                        gsMaterialBase<T> * materialMat,
+                                gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
-          displacement(displacement_) { }
+          m_materialMat(materialMat),
+          elimMat(elimMatrix)
+    {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
@@ -41,24 +47,15 @@ public:
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
-        // saving necessary info
-        patch = patchIndex;
-        materialLaw = options.getInt("MaterialLaw");
-        T YM = options.getReal("YoungsModulus");
-        T PR = options.getReal("PoissonsRatio");
-        lambda = YM * PR / ( ( 1. + PR ) * ( 1. - 2. * PR ) );
-        mu     = YM / ( 2. * ( 1. + PR ) );
-        forceScaling = options.getReal("ForceScaling");
+        forceScaling    = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
-        // elasticity tensor
+        // saving necessary info
+        //---------------------------------------
+        // T E = options.getReal("YoungsModulus");
+        // T pr = options.getReal("PoissonsRatio");
+        // m_materialMat = new gsElasticityMaterial(E,pr,dim);
+        //---------------------------------------
         I = gsMatrix<T>::Identity(dim,dim);
-        if (materialLaw == -1 || materialLaw == 0)
-        {
-            matrixTraceTensor<T>(C,I,I);
-            C *= lambda;
-            symmetricIdentityTensor<T>(Ctemp,I);
-            C += mu*Ctemp;
-        }
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
@@ -83,12 +80,14 @@ public:
         basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
-        // store quadrature points of the element for displacement evaluation
-        mdDisplacement.points = quNodes;
-        // NEED_DERIV to compute deformation gradient
-        mdDisplacement.flags = NEED_DERIV;
-        // evaluate displacement gradient
-        displacement.patch(patch).computeMap(mdDisplacement);
+
+        // Compute C per Qnode
+        //materialFunctions_ptr->at(i)->eval(...)
+
+        m_materialMat->eval_matrix_into(quNodes,matValues, geo.id());
+        // gsMaterialEval<T,false> materialVector(m_materialMat);
+        // materialVector.eval_into(quNodes,matValues);
+
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -97,80 +96,34 @@ public:
         // initialize local matrix and rhs
         localMat.setZero(dim*N_D,dim*N_D);
         localRhs.setZero(dim*N_D,1);
-        // loop over quadrature nodes
+        // Loop over the quadrature nodes
         for (index_t q = 0; q < quWeights.rows(); ++q)
         {
+            // Multiply quadrature weight by the geometry measure
             const T weightForce = quWeights[q] * md.measure(q);
+            const T weightBody = quWeights[q] * math::pow(md.measure(q),1-localStiffening);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md,q,basisValuesDisp[1],physGrad);
-            // physical jacobian of displacemnt du/dx = du/dxi * dxi/dx
-            physDispJac = mdDisplacement.jacobian(q)*(md.jacobian(q).cramerInverse());
-            // deformation gradient F = I + du/dx
-            F = I + physDispJac;
-            // deformation jacobian J = det(F)
-            T J = F.determinant();
-            // Right Cauchy Green strain, C = F'*F
-            RCG = F.transpose() * F;
-            // Green-Lagrange strain, E = 0.5*(C-I), a.k.a. full geometric strain tensor
-            E = 0.5 * (RCG - I);
-            const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
-            // Second Piola-Kirchhoff stress tensor
-            if (materialLaw==-1 || materialLaw == 0) // Hooke/Saint Venant-Kirchhoff
-                S = lambda*E.trace()*I + 2*mu*E;
-            if (materialLaw == 1) // neo-Hooke ln(J)
-            {
-                GISMO_ENSURE(J>0,"Invalid configuration: J < 0");
-                RCGinv = RCG.cramerInverse();
-                S = (lambda*log(J)-mu)*RCGinv + mu*I;
-                // elasticity tensor
-                matrixTraceTensor<T>(C,RCGinv,RCGinv);
-                C *= lambda;
-                symmetricIdentityTensor<T>(Ctemp,RCGinv);
-                C += (mu-lambda*log(J))*Ctemp;
-            }
-            if (materialLaw == 2) // quad neo-Hooke
-            {
-                RCGinv = RCG.cramerInverse();
-                S = (lambda*(J*J-1)/2-mu)*RCGinv + mu*I;
-                // elasticity tensor
-                matrixTraceTensor<T>(C,RCGinv,RCGinv);
-                C *= lambda*J*J;
-                symmetricIdentityTensor<T>(Ctemp,RCGinv);
-                C += (mu-lambda*(J*J-1)/2)*Ctemp;
-            }
-            // loop over active basis functions (u_i)
+            C = matValues.reshapeCol(q,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
+            // loop over active basis functions (v_j)
             for (index_t i = 0; i < N_D; i++)
             {
-                // Material tangent K_tg_mat = B_i^T * C * B_j;
-                setB<T>(B_i,F,physGrad.col(i));
-                materialTangentTemp = B_i.transpose() * C;
-                // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
-                geometricTangentTemp = S * physGrad.col(i);
+                // stiffness matrix K = B_i^T * C * B_j;
+                setB<T>(B_i,I,physGrad.col(i));
+                tempK = B_i.transpose() * C;
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {
-                    setB<T>(B_j,F,physGrad.col(j));
-
-                    materialTangent = materialTangentTemp * B_j;
-                    T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
-                    // K_tg = K_tg_mat + I*K_tg_geo;
-                    for (short_t d = 0; d < dim; ++d)
-                        materialTangent(d,d) += geometricTangent;
-
+                    setB<T>(B_j,I,physGrad.col(j));
+                    K = tempK * B_j;
                     for (short_t di = 0; di < dim; ++di)
                         for (short_t dj = 0; dj < dim; ++dj)
-                            localMat(di*N_D+i, dj*N_D+j) += weightBody * materialTangent(di,dj);
+                            localMat(di*N_D+i,dj*N_D+j) += weightBody * K(di,dj);
                 }
-                // Second Piola-Kirchhoff stress tensor as vector
-                voigtStress<T>(Svec,S);
-                // rhs = -r = force - B*Svec,
-                localResidual = B_i.transpose() * Svec;
-                for (short_t d = 0; d < dim; d++)
-                    localRhs(d*N_D+i) -= weightBody * localResidual(d);
             }
-            // contribution of volumetric load function to residual/rhs
+            // rhs contribution
             for (short_t d = 0; d < dim; ++d)
-                localRhs.middleRows(d*N_D,N_D).noalias() += weightForce * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q);
+                localRhs.middleRows(d*N_D,N_D).noalias() += weightForce * forceScaling * forceValues(d,q) * basisValuesDisp[0].col(q) ;
         }
     }
 
@@ -187,16 +140,36 @@ public:
         // push to global system
         system.pushToRhs(localRhs,globalIndices,blockNumbers);
         system.pushToMatrix(localMat,globalIndices,eliminatedDofs,blockNumbers,blockNumbers);
+        // push to the elimination system
+        if (elimMat != nullptr)
+        {
+            index_t globalI,globalElimJ;
+            index_t elimSize = 0;
+            for (short_t dJ = 0; dJ < dim; ++dJ)
+            {
+                for (short_t dI = 0; dI < dim; ++dI)
+                    for (index_t i = 0; i < N_D; ++i)
+                        if (system.colMapper(dI).is_free_index(globalIndices[dI].at(i)))
+                        {
+                            system.mapToGlobalRowIndex(localIndicesDisp.at(i),patchIndex,globalI,dI);
+                            for (index_t j = 0; j < N_D; ++j)
+                                if (!system.colMapper(dJ).is_free_index(globalIndices[dJ].at(j)))
+                                {
+                                    globalElimJ = system.colMapper(dJ).global_to_bindex(globalIndices[dJ].at(j));
+                                    elimMat->coeffRef(globalI,elimSize+globalElimJ) += localMat(N_D*dI+i,N_D*dJ+j);
+                                }
+                        }
+                elimSize += eliminatedDofs[dJ].rows();
+            }
+        }
     }
 
 protected:
     // problem info
     short_t dim;
-    index_t patch; // current patch
     const gsBasePde<T> * pde_ptr;
-    index_t materialLaw; // (0: St. Venant-Kirchhoff, 1: ln neo-Hooke, 2: quad neo-Hooke)
     // Lame coefficients and force scaling factor
-    T lambda, mu, forceScaling;
+    T lambda, mu, forceScaling, localStiffening;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
@@ -211,18 +184,17 @@ protected:
     std::vector<gsMatrix<T> > basisValuesDisp;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
-    // current displacement field
-    const gsMultiPatch<T> & displacement;
-    // evaluation data of the current displacement field
-    gsMapData<T> mdDisplacement;
-
+    /// Material handler
+    gsMaterialBase<T> * m_materialMat;
+    // elimination matrix to efficiently change Dirichlet degrees of freedom
+    gsSparseMatrix<T> * elimMat;
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, Ctemp, physGrad, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, I;
-    gsVector<T> geometricTangentTemp, Svec, localResidual;
-    T localStiffening;
+    gsMatrix<T> C, Ctemp,physGrad, B_i, tempK, B_j, K, I;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;
+
+    gsMatrix<T> matValues;
 };
 
 } // namespace gismo
