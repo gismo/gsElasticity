@@ -23,6 +23,8 @@
 #include <gsElasticity/gsLinearMaterial.h>
 #include <gsElasticity/gsLinearDegradedMaterial.h>
 #include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/gsCompositeMat.h>
+
 
 namespace gismo 
 {
@@ -208,19 +210,32 @@ int main(int argc, char *argv[]) {
   //! [Read input file]
 
   //! [Refinement]
-  gsMultiBasis<> dbasis(mp, true);
+  // gsMultiBasis<> dbasis(mp, true);
   const int dim = mp.geoDim();
 
-  // Elevate and p-refine the basis
-  dbasis.degreeElevate(n_deg_elevations);
+  // // Elevate and p-refine the basis
+  // dbasis.degreeElevate(n_deg_elevations);
 
-  // h-refine each basis
-  for (int r = 0; r < n_h_refinements; ++r) {
-    dbasis.uniformRefine();
-  }
+  // // h-refine each basis
+  // for (int r = 0; r < n_h_refinements; ++r) {
+  //   dbasis.uniformRefine();
+  // }
 
   mp_def = mp;
-  //! [Refinement]
+
+    // p-refine
+  if (n_deg_elevations!=0)
+      mp.degreeElevate(n_deg_elevations);
+
+  // h-refine
+  for (int r =0; r < n_h_refinements; ++r)
+      mp.uniformRefine();
+  
+  mp_def = mp;
+  // gsWriteParaview(mp,"mp",1000,true);
+
+  gsMultiBasis<> dbasis(mp);
+
 
   //! [Problem setup]
   gsExprAssembler<> A(1, 1);
@@ -294,19 +309,26 @@ int main(int argc, char *argv[]) {
   // Compute the system matrix and right-hand side
   auto phys_jacobian_space = ijac(w, G);
 
-  real_t E_modulus = 210e9;
-  real_t PoissonRatio = 0.0;
+  real_t E_modulus = 1e11;
+  real_t PoissonRatio = 0.25;
   gsFunctionExpr<> E(std::to_string(E_modulus),mp.geoDim());
   gsFunctionExpr<> nu(std::to_string(PoissonRatio),mp.geoDim());
   
   // ========== Initial phase-field profile ==========
-  gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.501) and (y > 0.5-0.05) and (y < 0.5+0.05)) { 1 } else { 0. };",mp.geoDim()); //3 dimension
+  gsFunctionExpr<> fun("if ((x> -0.05) and (x < 0.501) and (y > 0.5-0.01) and (y < 0.5+0.01)) { 1. } else { 0. };",mp.geoDim()); //3 dimension
   //gsFunctionExpr<> fun("if ((x> 0) and (x < 0.5) and (y > 0.5-0.005e-3) and (y < 0.5+0.005e-3)) { 1 } else { 0 };",3); //3 dimension
   gsMatrix<> anchors = dbasis.basis(0).anchors();
   gsMatrix<> vals = fun.eval(anchors);
   vals.transposeInPlace();
+  //gsDebugVar(vals);
   gsGeometry<>::uPtr geom_ptr = dbasis.basis(0).makeGeometry(give(vals));   
   gsWriteParaview(mp,*geom_ptr,"fun",1e5);
+  
+  // gsMatrix<> Dnew;
+  // gsL2Projection<real_t>::projectFunction(mp.basis(0), dbasis,*geom_ptr,mp,Dnew);
+  // gsGeometry<>::uPtr geom_l2 = dbasis.basis(0).makeGeometry(give(Dnew));   
+  // gsWriteParaview(mp,*geom_l2,"fun_l2",1e5);
+
   // gsWriteParaview(mp,fun,"damage",1e5);
   
   // gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp1); 
@@ -318,26 +340,50 @@ int main(int argc, char *argv[]) {
   // gsL2Projection<real_t>::projectFunction(dbasis,fun,mp,tmp); 
   // =================================================
 
+    // Material properties (0 deg ply)
+  real_t E11 = 25000; // in MPa (N/mm^2)
+  real_t E22 = E11/25;
+  real_t E33 = E11/25;
+  real_t G23 = 500;
+  real_t G12 = G23/2.5;
+  real_t G13 = G23/2.5;
+  real_t nu12 = 0.25;
+  real_t nu13 = 0.25;
+  real_t nu23 = 0.25;
+
+
+  // Donde las doy como input???????????????? Importante! :(
+  gsConstantFunction<> rot_0(0.0, 0.0, 0.0, mp.parDim()); // 3 is the dimension?
+  gsConstantFunction<> rot_90(0.0, 0.0, M_PI/2.0, mp.parDim()); // in radians?? or d
+
+  // ========== Material class ==========
+  gsMaterialBase<real_t> * ply_mat_0;
   gsMaterialBase<real_t> * SvK;
   gsMaterialBase<real_t> * SvK_undeg;
+
   if      (mp.geoDim()==2)
   {
-    SvK = new gsLinearDegradedMaterial<2,real_t>(E_modulus, PoissonRatio, mp, mp_def, fun);
+    SvK = new gsLinearDegradedMaterial<2,real_t>(E_modulus, PoissonRatio, mp, mp_def, *geom_ptr);
     SvK_undeg = new gsLinearMaterial<2,real_t>(E_modulus, PoissonRatio, mp, mp_def);
   }
   else if (mp.geoDim()==3)
   {
-    SvK = new gsLinearDegradedMaterial<3,real_t>(E_modulus, PoissonRatio, mp, mp_def, fun);
+    SvK = new gsLinearDegradedMaterial<3,real_t>(E_modulus, PoissonRatio, mp, mp_def, *geom_ptr);
     SvK_undeg = new gsLinearMaterial<3,real_t>(E_modulus, PoissonRatio, mp, mp_def);
+    ply_mat_0 = new gsCompositeMat<3,real_t>(E11,E22,E33,G12,G23,G13,nu12,nu23,nu13,rot_0,mp);
   }
   else
     GISMO_ERROR("Dimension not supported");
 
   //gsLinearMaterial<3,real_t> SvK(E_modulus, PoissonRatio, mp, mp_def); 
   gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(SvK, &mp_def);
-  gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S(SvK, &mp_def);
+  gsMaterialEval<real_t, gsMaterialOutput::S, false> SvK_S(SvK, &mp_def);
   gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(SvK, &mp_def);
   gsMaterialEval<real_t, gsMaterialOutput::Psi, true> SvK_Psi(SvK, &mp_def);
+
+  // NEW!
+  gsMaterialEval<real_t, gsMaterialOutput::S, false> compo_material(ply_mat_0, &mp_def);
+
 
   //gsLinearMaterial<3,real_t> SvK_undeg(E_modulus, PoissonRatio, mp, mp_def); 
   gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_undeg_C(SvK_undeg, &mp_def);
@@ -362,19 +408,28 @@ int main(int argc, char *argv[]) {
 
   auto C_elast = A.getCoeff(SvK_undeg_C);
 
-  //auto energy_pos = A.getCoeff(SvK_Psi);
+  auto energy_pos = A.getCoeff(SvK_Psi);
+
+  auto hola = A.getCoeff(SvK_S);
+
+  auto hola2 = A.getCoeff(compo_material);
+ 
+
+  //gsDebugVar(energy_pos);
+
 
   // A.clearMatrix();
 
   short_t sz = (mp.parDim()+1)*mp.parDim()/2;
-  gsDebugVar(C.rows());
-  gsDebugVar(C.cols());
+  // gsDebugVar(C.rows());
+  // gsDebugVar(C.cols());
 
   auto bilin_combined = delta_EE_voigt*reshape(C,sz,sz)*delta_EE_voigt.tr()*meas(G);
   
   // A.assemble(bilin_combined);
   // gsMatrix<> matrix_gsMat = A.matrix().toDense();
   // A.clearMatrix();
+  
 
   gsVector<> pt(mp.parDim());
   if (mp.parDim() == 2) 
@@ -385,9 +440,16 @@ int main(int argc, char *argv[]) {
     GISMO_ERROR("Dimension not supported");
 
   // gsDebugVar(SvK_C.piece(0).eval(pt)); // degraded C
-  // gsDebugVar(ev.eval(reshape(C,sz,sz),pt,0)); // degraded C
+  gsDebugVar(ev.eval(reshape(C,sz,sz),pt,0)); // degraded C
   // gsDebugVar(ev.eval(reshape(C_elast,sz,sz),pt,0));
   // gsDebugVar(SvK_Psi.piece(0).eval(pt));
+  //gsDebug(ev.eval(energy_pos,pt,0));
+
+  // gsDebugVar(SvK_E.piece(0).eval(pt)); // degraded S
+  gsDebugVar(SvK_S.piece(0).eval(pt)); // degraded S
+  gsInfo<<"hola\n";
+  gsDebugVar(compo_material.piece(0).eval(pt)); // degraded S
+  gsInfo<<"hola2\n";
 
   //gsDebugVar(ev.eval(energy_pos,pt,0));
 
@@ -402,9 +464,11 @@ int main(int argc, char *argv[]) {
   // Linear Form
   auto linear_form = w * source_function * meas(G);
 
-  A.assemble(bilin_combined,  // matrix
-                                linear_form      // rhs vector
-  );
+  // A.assemble(bilin_combined,  // matrix
+  //                               linear_form      // rhs vector
+  // );
+
+  A.assemble(bilin_combined);
 
   // Compute the Neumann terms (will not be used in default file)
   auto neumann_boundary_function = A.getBdrFunction(G);
@@ -423,7 +487,10 @@ int main(int argc, char *argv[]) {
 
   // Solve linear system
   linear_solver.compute(A.matrix());
+  // gsDebugVar(A.matrix().toDense());
   solution_vector = linear_solver.solve(A.rhs());
+  // gsDebugVar(solution_vector);
+  
   //! [Solver]
 
   slv_time += timer.stop();
@@ -486,6 +553,7 @@ int main(int argc, char *argv[]) {
 
   delete SvK;
   delete SvK_undeg;
+  delete ply_mat_0;
   return EXIT_SUCCESS;
 
 }  // end main

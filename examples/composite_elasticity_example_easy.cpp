@@ -18,7 +18,7 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
   To run script:
-  ./bin/composite_elasticity_example -r 4
+  ./bin/composite_elasticity_example -r 3
 
 */
 
@@ -49,10 +49,10 @@ int main(int argc, char *argv[]) {
   bool only_last = false;
   bool compute_error{false};
   index_t sample_rate{9};
-  index_t numPlotPoints = 10000;
+  index_t numPlotPoints = 5;
 
 
-  std::string file_name("composite_example_mp.xml");
+  std::string file_name("composite_example_singlepatch.xml");
 
   gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
   cmd.addInt("e", "degreeElevation",
@@ -78,11 +78,11 @@ int main(int argc, char *argv[]) {
 
   // Error is computed for an analytical solution with the following
   // Lame constants
-  real_t lame_lambda{80000.0}, lame_mu{80000.0};
-  cmd.addReal("L", "firstLame", "First Lame constant, material parameter",
-              lame_lambda);
-  cmd.addReal("M", "secondLame", "Second Lame constant, material parameter",
-              lame_mu);
+  // real_t lame_lambda{80000.0}, lame_mu{80000.0};
+  // cmd.addReal("L", "firstLame", "First Lame constant, material parameter",
+  //             lame_lambda);
+  // cmd.addReal("M", "secondLame", "Second Lame constant, material parameter",
+  //             lame_mu);
 
   //! [Parse command line]
   try {
@@ -97,10 +97,8 @@ int main(int argc, char *argv[]) {
   gsInfo << "Loaded file " << file_data.lastPath() << "\n";
 
   gsMultiPatch<> mp, mp_def;
-  mp_def=mp;
-  file_data.getId(0, mp);  // id=0: Multipatch domain
 
-  gsDebugVar(mp);
+  file_data.getId(0, mp);  // id=0: Multipatch domain
 
   gsBoundaryConditions<> bc;
   //file_data.getId(1, bc);  // id=2: boundary conditions
@@ -109,78 +107,49 @@ int main(int argc, char *argv[]) {
   // Dirichlet x
   bc.addCondition(0,boundary::east,condition_type::dirichlet,0,0);
   bc.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
-  bc.addCondition(1,boundary::east,condition_type::dirichlet,0,0);
-  bc.addCondition(1,boundary::west,condition_type::dirichlet,0,0);
-  bc.addCondition(2,boundary::east,condition_type::dirichlet,0,0);
-  bc.addCondition(2,boundary::west,condition_type::dirichlet,0,0);
   // Dirichlet y
   bc.addCondition(0,boundary::north,condition_type::dirichlet,0,1);
   bc.addCondition(0,boundary::south,condition_type::dirichlet,0,1);
-  bc.addCondition(1,boundary::north,condition_type::dirichlet,0,1);
-  bc.addCondition(1,boundary::south,condition_type::dirichlet,0,1);
-  bc.addCondition(2,boundary::north,condition_type::dirichlet,0,1);
-  bc.addCondition(2,boundary::south,condition_type::dirichlet,0,1);
   // Dirichlet z
   bc.addCondition(0,boundary::north,condition_type::dirichlet,0,2);
   bc.addCondition(0,boundary::south,condition_type::dirichlet,0,2);
   bc.addCondition(0,boundary::east,condition_type::dirichlet,0,2);
   bc.addCondition(0,boundary::west,condition_type::dirichlet,0,2);
-  bc.addCondition(1,boundary::north,condition_type::dirichlet,0,2);
-  bc.addCondition(1,boundary::south,condition_type::dirichlet,0,2);
-  bc.addCondition(1,boundary::east,condition_type::dirichlet,0,2);
-  bc.addCondition(1,boundary::west,condition_type::dirichlet,0,2);
-  bc.addCondition(2,boundary::north,condition_type::dirichlet,0,2);
-  bc.addCondition(2,boundary::south,condition_type::dirichlet,0,2);
-  bc.addCondition(2,boundary::east,condition_type::dirichlet,0,2);
-  bc.addCondition(2,boundary::west,condition_type::dirichlet,0,2);
+
 
   // Apply Neumann BC
-  gsFunctionExpr<>func("0","0","1",mp.parDim()); // tiene sentido?????
-  bc.addCondition(2,boundary::back,condition_type::neumann,&func);
-
-  // // Dirichlet BCs
-  // // Dirichlet x
-  // bc.addCondition(0,boundary::east,condition_type::dirichlet,0,0);
-  // bc.addCondition(0,boundary::west,condition_type::dirichlet,0,0);
-  // // Dirichlet y
-  // bc.addCondition(0,boundary::north,condition_type::dirichlet,0,1);
-  // bc.addCondition(0,boundary::south,condition_type::dirichlet,0,1);
-  // // Dirichlet z
-  // bc.addCondition(0,boundary::north,condition_type::dirichlet,0,2);
-  // bc.addCondition(0,boundary::south,condition_type::dirichlet,0,2);
-  // bc.addCondition(0,boundary::east,condition_type::dirichlet,0,2);
-  // bc.addCondition(0,boundary::west,condition_type::dirichlet,0,2);
-
-  // // Apply Neumann BC
-  // gsFunctionExpr<>func("0","0","1",mp.parDim()); // tiene sentido?????
-  // //gsFunctionExpr<>func("0","0","sin(pi*x/60)*sin(pi*y/60)",mp.parDim()); // tiene sentido?????
-  // bc.addCondition(0,boundary::back,condition_type::neumann,&func);
+  gsFunctionExpr<>func("0","0","sin(pi*x/60)*sin(pi*y/60)",mp.parDim()); // tiene sentido?????
+  bc.addCondition(0,boundary::back,condition_type::neumann,&func);
 
   bc.setGeoMap(mp);
   gsInfo << "Boundary conditions:\n" << bc << "\n";
-
-  // gsOptionList assembler_options = gsAssembler<>::defaultOptions();
-  // if (file_data.hasId(4)) {
-  //   file_data.getId(4, assembler_options);  // id=4: assembler options
-  // }
-  //! [Read input file]
 
   //! [Refinement]
   gsMultiBasis<> dbasis(mp, true);
   const int solution_field_dimension = mp.geoDim();
 
   // Elevate and p-refine the basis
-  dbasis.degreeElevate(n_deg_elevations);
-
-  // for (int r = 0; r < n_h_refinements; ++r) {
-  //   dbasis.uniformRefineComponent(0);
-  //   dbasis.uniformRefineComponent(1);
-  // }
+  // dbasis.degreeElevate(n_deg_elevations);
+  // dbasis.degreeElevate(5,0); // degree 6 in plane
+  // dbasis.degreeElevate(5,1); // degree 6 in plane
+  // dbasis.degreeElevate(3,2); // degree 4 through the thickness
+  // dbasis.degreeElevate(1,0); // degree 6 in plane
+  // dbasis.degreeElevate(1,1); // degree 6 in plane
+  // dbasis.degreeElevate(1,2); // degree 4 through the thickness
 
   // h-refine each basis
-  for (int r = 0; r < n_h_refinements; ++r) {
-    dbasis.uniformRefine();
-  }
+  dbasis.uniformRefine(20,1,0); // 5 elements in 0 direction
+  dbasis.uniformRefine(20,1,1); // 5 elements in 1 direction
+
+  // dbasis.uniformRefine(2,1,0); // 5 elements in 0 direction
+  // dbasis.uniformRefine(2,1,1); // 5 elements in 1 direction
+  // for (int r = 0; r < n_h_refinements; ++r) {
+  //   dbasis.uniformRefine();
+  // }
+
+  mp_def = mp;
+  gsDebugVar(mp_def);
+  
   //! [Refinement]
 
   // Material properties (0 deg ply)
@@ -203,6 +172,7 @@ int main(int argc, char *argv[]) {
   gsMaterialBase<real_t> * ply_mat_0;
   gsMaterialBase<real_t> * ply_mat_90;
   gsMaterialBase<real_t> * ply_mat_homogeneous;
+  gsMaterialBase<real_t> * ply_mat_elast;
 
   if      (mp.geoDim()==2)
   {
@@ -212,64 +182,37 @@ int main(int argc, char *argv[]) {
   else if (mp.geoDim()==3)
   {
     ply_mat_homogeneous  = new gsCompositeMat<3,real_t>(true,rot_0,mp);
+    ply_mat_elast  = new gsLinearMaterial<3,real_t>(E11,0.25,mp,mp_def);
     ply_mat_0  = new gsCompositeMat<3,real_t>(E11,E22,E33,G12,G23,G13,nu12,nu23,nu13,rot_0,mp);
     ply_mat_90 = new gsCompositeMat<3,real_t>(E11,E22,E33,G12,G23,G13,nu12,nu23,nu13,rot_90,mp);
   }     
   else
       GISMO_ERROR("Dimension not supported");
-
-  // if      (mp.geoDim()==2)
-  // {
-  //   mp_def = mp;
-  //   ply_mat_0  = new gsLinearMaterial<2,real_t>(E11,0.25,mp,mp_def);
-  //   ply_mat_90 = new gsLinearMaterial<2,real_t>(E22,0.25,mp,mp_def);
-  // }
-  // else if (mp.geoDim()==3)
-  // {
-  //   mp_def = mp;
-  //   ply_mat_0  = new gsLinearMaterial<3,real_t>(E11,0.25,mp,mp_def);
-  //   ply_mat_90 = new gsLinearMaterial<3,real_t>(E22,0.25,mp,mp_def);
-  // }     
-  // else
-  //     GISMO_ERROR("Dimension not supported");
-
   // ======================================
-
-  // Option 1
-  // gsMaterialContainer<real_t> container(3); // preallocated
-  // container.add(&ply_mat_90); // material 0 --> patch 0 (piece)
-  // container.add(&ply_mat_0);
-  // container.add(&ply_mat_90);
 
   // Option 2
   gsDebugVar(mp.nPatches());
-  gsMaterialContainer<real_t> container2(ply_mat_homogeneous,mp.nPatches());
-  gsMaterialContainer<real_t> container(ply_mat_90,mp.nPatches()); // 3 containers! preallocated (all patches have the properties of layered_mat_90)
-  container.set(1,ply_mat_0); //overload it to assign the material props of the ply 0 degrees
-  
+  //gsMaterialContainer<real_t> container(ply_mat_homogeneous,mp.nPatches());
+  gsMaterialContainer<real_t> container(ply_mat_homogeneous,mp.nPatches());
+
   gsConstantFunction<> g(0,0,0,mp.parDim()); // it is a gsFunction (body load?) comprobar??????? no entiendo!!
 
   // Call the elasticity assembler!
   gsElasticityAssembler<real_t> A(mp,dbasis,bc,g,container); // not with pointer
-
-  // // In the elasticity assemble.,
-  // gsInfo<<"Material1\n";
-  // gsMaterialEval<real_t, gsMaterialOutput::C, true> ply_mat_0_eval(ply_mat_0.get(),&mp); // angle?????
-  // gsInfo<<"Material2\n";
-  // gsMaterialEval<real_t, gsMaterialOutput::C, true> ply_mat_90_eval(ply_mat_90.get(),&mp); 
 
   //=============================================//
   //                    Assembly                 //
   //=============================================//
   gsStopwatch clock;
   clock.restart();
+  gsInfo << "Starting assembly...\n";
   A.assemble();
   gsInfo << "Assembled a system (matrix and load vector) with "
           << A.numDofs() << " dofs in " << clock.stop() << "s.\n";
   gsInfo << "Solving...\n";
   clock.restart();  
 
-  // Solve linear system
+  // // Solve linear system
   gsSparseSolver<>::SimplicialLDLT solver(A.matrix());
   gsVector<> solVector = solver.solve(A.rhs()); // displacements!?
   gsInfo << "Solved the system with EigenLDLT solver in " << clock.stop() <<"s.\n";
@@ -280,7 +223,7 @@ int main(int argc, char *argv[]) {
   
   // For the post-processing
   index_t materialLaw = material_law::hooke;
-  //index_t materialLaw = material_law::composite;
+  // index_t materialLaw = material_law::composite;
   A.options().setInt("MaterialLaw",materialLaw);
   gsDebugVar(A.options());
 
@@ -289,35 +232,77 @@ int main(int argc, char *argv[]) {
   A.constructSolution(solVector,A.allFixedDofs(),sol); //??? esto no se si esta bien... que resuelve esto?????? son displacements or deformation
   // constructing stresses
   gsPiecewiseFunction<> stresses;
+  //A.constructCauchyStresses(sol,stresses,stress_components::all_3D_matrix); // for hooke!
   A.constructCauchyStresses(sol,container,stresses,stress_components::all_3D_matrix);
   // Mirar que soluciones puedo tener ??
+
+  // Sol is the multipatch with the solution!
+  gsMaterialEval<real_t,gsMaterialOutput::E, true> strains(container,&sol); // ????
+  gsInfo<<"Strain\n";
+  gsMaterialEval<real_t,gsMaterialOutput::S, true> stresses_para(container,&sol); // ????
+
+  // short_t n = mp.targetDim();
+  // short_t d = mp.domainDim();
+
+  // // gsMatrix<> ab = mp.support();
+  // gsDebugVar(n);
+  // gsDebugVar(d);
+
+  // gsVector<> a = ab.col(0);
+  // gsVector<> b = ab.col(1);
+  // // gsVector<unsigned> np = distributePoints<real_t>(mp,10000);
+
+  // gsVector<> a(3), b(3);
+  // a.col(0)<<0.,0.,0.;
+  // b.col(0)<<1.,1.,1.;
+
+  // gsMatrix<> pts = gsPointGrid(a,b,10000);
+
+
+  // gsVector<> pt(3);
+  // pt.col(0)<<0.,0.,0.;
+  // strains.piece(0).eval(pt);
+  //gsDebugVar(strains.piece(0).eval(pt)); // degraded C
+
+  // gsWriteParaview(strains,"strains"); // how to make difference in eps_xx eps yy etc!
+
+
+  //gsMaterialEvalMatrix<real_t,gsMaterialOutput::E, true> strains(container,&sol); // ????
 
   // gsWriteParaview(mp,"multip");
   // gsDebugVar(mp.nPatches());
 
-  // gsMaterialEval<T,gsMaterialOutput::S, true> Seval(*m_cont,m_displacement);
-  // Seval.piece(m_patch).eval_into(u,result);
-
-  gsMaterialEval<T,gsMaterialOutput::S, true> Seval(*m_cont,m_displacement);
-  Seval.piece(0).eval_into(u,result);
-
+  // gsInfo<<"HOLA BEFORE WRITING PARAVIEW\n";
 
   if (numPlotPoints > 0)
   {
         // constructing an IGA field (mp + solution)
         gsField<> solutionField(A.patches(),sol);
         gsField<> stressField(A.patches(),stresses,true);
+        gsField<> stressField2(A.patches(),stresses_para,true);
+        gsField<> strainField(A.patches(),strains,true);
         // creating a container to plot all fields to one Paraview file
         std::map<std::string,const gsField<> *> fields;
         fields["Displacement"] = &solutionField; // not deformation!!!
         fields["Stresses"] = &stressField;
-        gsWriteParaviewMultiPhysics(fields,"composite_elast",numPlotPoints,true);
+        //fields["Strains"] = &strainField;
+        gsInfo<<"====================================\n"; 
+        gsInfo<<"         Stresses_evaluator         \n"; 
+        gsInfo<<"====================================\n"; 
+        gsWriteParaview(stressField,"stresses",numPlotPoints,true);
+        gsWriteParaview(stressField2,"stresses2",numPlotPoints,true);
+        gsInfo<<"==============================================\n"; 
+        gsInfo<<"         Stresses ElasticityFunctions         \n";
+        gsInfo<<"==============================================\n"; 
+        gsDebugVar(numPlotPoints);
+        //gsWriteParaviewMultiPhysics(fields,"composite_elast",numPlotPoints,true);
         gsInfo << "Open \"composite_elast.pvd\" in Paraview for visualization.\n";
   }
 
   delete ply_mat_0;
   delete ply_mat_90;
   delete ply_mat_homogeneous;
+  delete ply_mat_elast;
   return EXIT_SUCCESS;
 
 }  // end main

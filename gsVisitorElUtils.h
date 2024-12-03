@@ -110,12 +110,42 @@ inline void voigtStress(gsVector<T> & Svec, const gsMatrix<T> & S)
         Svec(i) = S(voigt(dim,i,0),voigt(dim,i,1));
 }
 
+// transform stress Svec in Voigt notation to stress tensor S 
+template <class T>
+inline void tensorStress(const index_t dim, const gsMatrix<T> & Svec, gsMatrix<T> & S)
+{
+    if (dim == 2)
+    {
+        S.setZero(dim,dim);
+        S(0,0) = Svec(0,0);
+        S(1,1) = Svec(1,0);
+        S(0,1) = Svec(2,0);
+        S(1,0) = Svec(2,0);
+    }
+    else if (dim == 3)
+    {
+        S.setZero(dim,dim);
+        S(0,0) = Svec(0,0);
+        S(1,1) = Svec(1,0);
+        S(2,2) = Svec(2,0);
+
+        S(0,1) = Svec(3,0); // tao_xy 
+        S(1,0) = Svec(3,0); // tao_xy 
+
+        S(0,2) = Svec(4,0); // tao_yz 
+        S(2,0) = Svec(4,0); // tao_yz
+
+        S(1,2) = Svec(5,0); // tao_xz
+        S(2,1) = Svec(5,0); // tao_xz
+    }
+}
+
 // transform strain tensor E to a vector in Voigt notation
 template <class T>
 inline void voigtStrain(gsVector<T> & Evec, const gsMatrix<T> & E)
 {
     short_t dim = E.cols();
-    gsDebugVar(dim);
+    //gsDebugVar(dim);
     short_t dimTensor = dim*(dim+1)/2;
     Evec.resize(dimTensor);
     for (short i = 0; i < dimTensor; ++i)

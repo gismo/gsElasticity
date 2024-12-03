@@ -269,6 +269,8 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev_u(A_u);
     gsExprEvaluator<> ev_d(A_d);
 
+    ev_d.options().setInt("plot.npts",3000);
+
     // Set the geometry map
     geometryMap G = A_u.getMap(mp); //????? no estoy seguro??? necesito mp or mp_u?
 
@@ -314,7 +316,8 @@ int main(int argc, char *argv[])
     
     // Extract variable to the corresponding multipatch
     unew.extract(mp_unew); 
-    //dnew.extract(mp_dnew); // I do this in the initial condition!
+    // needed
+//    dnew.extract(mp_dnew); // I do this in the initial condition!
 
     // =====================================
 
@@ -380,7 +383,9 @@ int main(int argc, char *argv[])
     // gsL2Projection<real_t>::projectFunction(dbasis.basis(0),fun,mp,coefs_interp);
     // gsGeometry<>::uPtr geom_l2 = dbasis.basis(0).makeGeometry(give(coefs_interp));   
     // gsWriteParaview(mp,*geom_l2,"fun2_l2",1e5);
-
+    
+    // do extract??? 
+    // dnew.extract(mp_dnew);
     mp_dnew.addPatch(*geom_ptr); // add a patch to mp_dnew
     dnew.insert(mp_dnew.patch(0),0); // CHECK! update the coefficients in the solution!
     dold.insert(mp_dnew.patch(0),0); // CHECK! update the coefficients in the solution!
@@ -629,7 +634,7 @@ int main(int argc, char *argv[])
                 gsInfo << "Done" << std::endl;
             }
 
-            for (index_t it_pf = 0; it_pf!=13; it_pf++)
+            for (index_t it_pf = 0; it_pf!=20; it_pf++)
             {                
                 A_d.clearMatrix();
                 A_d.clearRhs();
@@ -686,12 +691,20 @@ int main(int argc, char *argv[])
                 // gsDebugVar((jaco-K_d).norm());
 
                 gsInfo<<"==========================================\n";
-                gsDebugVar(ev_d.eval(dnew,pt,0));
-                gsDebugVar(ev_d.eval(dnew,pt1,0));
+                // gsDebugVar(ev_d.eval(dnew,pt,0));
+                // gsDebugVar(ev_d.eval(dnew,pt1,0));
 
                 // Compute solution
                 deltaD = solver.solve(-Q_d); // update damage vector
                 Dnew += deltaD;
+
+                // gsDebugVar(ev_d.eval(dnew,pt,0));
+                // gsDebugVar(ev_d.eval(dnew,pt1,0));
+
+                gsDebugVar(Dnew.maxCoeff());
+                gsDebugVar(Dnew.minCoeff());
+
+
 
                 //gsWriteParaview(dnew,"ParaviewOutput_fracture/damage_evol"); //??? no funciona que cojones?
                 // gsBSpline<> solution2(basis_plot,Dnew);
@@ -748,7 +761,7 @@ int main(int argc, char *argv[])
                 gsParaviewCollection collection2("ParaviewOutput_fracture/dmg", &ev_d);
                 collection2.options().setSwitch("plotElements", true);
                 collection2.options().setInt("plotElements.resolution", sample_rate);
-                collection2.options().setInt("numPoints", 10000); 
+                collection2.options().setInt("numPoints", 3000); 
                 collection2.options().setInt("precision", 7); // 1e-7
                 collection2.newTimeStep(&mp);
                 collection2.addField(dnew, "damage");

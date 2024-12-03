@@ -94,7 +94,35 @@ public:
         m_S(0,1) = m_S(1,0) = -nuxy/Exx; // Gxy
         m_S(0,2) = m_S(2,0) = -nuxz/Exx; // Gxz
         m_S(1,2) = m_S(2,1) = -nuyz/Eyy;
-        gsDebugVar(m_S);
+        //gsDebugVar(m_S);
+    }
+
+    gsCompositeMat(const bool homogenized,
+                    const gsFunctionSet<T> & alpha,
+                    const gsFunctionSet<T> & patches)
+    :   
+    m_alpha(&alpha),
+    Base(&patches)
+    {   
+        // HARD CODED FOR A 90/0/90 LAMINATE
+        m_C_hom.resize(6,6);
+        m_C_hom.setZero();
+        
+        m_C_hom(0,0) = -6.266666666666664e+03; 
+        m_C_hom(1,1) = 3.333333333333336e+03; 
+        m_C_hom(2,2) = 1200; 
+
+        // Gij = nuij + nuik*nukj / Ejj*Ekk
+        m_C_hom(0,1) = m_C_hom(1,0) = 2.706666666666666e+04; 
+        m_C_hom(0,2) = m_C_hom(2,0) = 3600; 
+        m_C_hom(1,2) = m_C_hom(2,1) = 6800; 
+
+        m_C_hom(3,3) = 2.000000000000001e+02; // Factor 2? ??????? CHECK!
+        m_C_hom(4,4) = 2.500000000000001e+02; // Factor 2?
+        m_C_hom(5,5) = 400; // Factor 2?
+        // gsDebugVar(m_C_hom);
+        // gsDebugVar(m_C_hom.cols());
+
     }
 
     gsCompositeMat( const T Exx,
@@ -124,10 +152,12 @@ public:
         // this -> setParameter(4,m_C(2,2));
     }
 
+    
+    
+
     // void computeHomogenizedStiffness(const index_t patch,  const gsMatrix<T> & u)
     // {
     //     // input a gsMultiPatch??????????
-    //     // input numpatches?
         
     //     // Compute the parameter data (writes into m_data.mine().m_parMat)
     //     this->_computeParameterData(patch,u);
@@ -199,40 +229,47 @@ public:
     //     }
     // }
 
-    // void eval_stress_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
-    // {
-    //     // Compute the parameter data (writes into m_data.mine().m_parMat)
-    //     this->_computeParameterData(patch,u);
-    //     // Compute the strain
-    //     gsMatrix<T> Eres,  stress_tensor, stress_voigt;
+    void eval_stress_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
+    {
+        // Compute the parameter data (writes into m_data.mine().m_parMat)
+        this->_computeParameterData(patch,u);
+        // Compute the strain
+        gsMatrix<T> Eres,  stress_tensor, stress_voigt;
+        gsVector<T> E_voigt;
 
-    //     Base::eval_strain_into(patch,u,Eres); // Eres in tensor notation
+        Base::eval_strain_into(patch,u,Eres); // Eres in tensor notation
 
-    //      // Resize the result
-    //     result.resize(d*d,u.cols());
-    //     stress_tensor.resize(d,d); 
+         // Resize the result
+        result.resize(d*d,u.cols());
+        stress_tensor.resize(d,d); 
 
-    //     // Voigt-size of the tensor
-    //     const index_t sz = (d+1)*d/2;
+        // Voigt-size of the tensor
+        const index_t sz = (d+1)*d/2;
 
-    //     gsMatrix<T> angles, Phi;
-    //     angles = m_alpha->piece(patch).eval(u);
-    //     // composite linear elasticity tensor
+        gsMatrix<T> angles, Phi;
+        angles = m_alpha->piece(patch).eval(u);
+        // composite linear elasticity tensor
 
-    //     for (index_t j=0; j!=u.cols(); j++)
-    //     {
-    //         gsMatrix<T> E_full = Eres.reshapeCol(j,d,d);
+        gsInfo<<"pasoporaqui\n";
 
-    //         gsVector<T> E_voigt;
-    //         voigtStrain(E_voigt,E_full); //E_vect in voigt
+        // gsDebugVar(Eres.cols());
+        // gsDebugVar(Eres.rows());
 
-    //         _makePhi(angles.col(patch),Phi);
 
-    //         stress_voigt = Phi.transpose() * m_C * Phi * E_voigt; // this gives the stress in Voigt notation
-    //         tensorStress(d,stress_voigt,stress_tensor);  // to get stress in tensor notation
-    //         result.reshapeCol(j,d,d) = stress_tensor; // this gives the stress in tensor notation
-    //     }
-    // }
+        for (index_t j=0; j!=u.cols(); j++)
+        {
+            // gsAsMatrix<T, Dynamic, Dynamic> E_tensor = Eres.reshapeCol(j,d,d); //?????
+            gsMatrix<T> E_full = Eres.reshapeCol(j,d,d);
+
+            voigtStrain(E_voigt,E_full); //E_vect in voigt
+
+            _makePhi(angles.col(patch),Phi);
+            //stress_voigt = Phi.transpose() * m_C * Phi * E_voigt; // this gives the stress in Voigt notation
+            stress_voigt = Phi.transpose() * m_C_hom * Phi * E_voigt; // this gives the stress in Voigt notation
+            tensorStress(d,stress_voigt,stress_tensor);  // to get stress in tensor notation
+            result.reshapeCol(j,d,d) = stress_tensor; // this gives the stress in tensor notation
+        }
+    }
 
     void eval_matrix_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
     {
@@ -254,7 +291,9 @@ public:
         for (index_t j=0; j!=u.cols(); j++)
         {
            _makePhi(angles.col(patch),Phi);
-           result.reshapeCol(j,sz,sz) = Phi.transpose() * m_C * Phi; // m_C is sz*sz?
+           result.reshapeCol(j,sz,sz) = Phi.transpose() * m_C_hom * Phi; // m_C is sz*sz?
+           //gsDebugVar(Phi.transpose() * m_C_hom * Phi);
+           //result.reshapeCol(j,sz,sz) = Phi.transpose() * m_C * Phi; // m_C is sz*sz?
         }
 
         //gsDebugVar(result);
@@ -378,6 +417,7 @@ protected:
     gsMatrix<T> m_C; // make stiffness matrix a member of the class-- constant over the whole domain
     gsMatrix<T> m_S; // make stiffness matrix a member of the class-- constant over the whole domain
     gsMatrix<T> m_C_homogenized; // make stiffness matrix a member of the class-- constant over the whole domain
+    gsMatrix<T> m_C_hom; // make stiffness matrix a member of the class-- constant over the whole domain
 
 
 };

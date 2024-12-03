@@ -397,9 +397,6 @@ public:
     { return m_deformed!=nullptr; }
     virtual bool hasDeformed() const { return m_deformed!=nullptr; }
 
-    virtual bool initialized() const
-    { GISMO_NO_IMPLEMENTATION; }
-
 protected:
 
     function_ptr m_undeformed;

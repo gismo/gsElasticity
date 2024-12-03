@@ -33,7 +33,7 @@
     0
     </Function>
     <Function type="FunctionExpr" dim="2" index="1">
-    1e-4
+    1e-3
     </Function>
     <bc type="Dirichlet" function="0" unknown="0" component="0">
     0 3
@@ -42,12 +42,19 @@
     <bc type="Dirichlet" function="0" unknown="0" component="1">
     0 3
     </bc>
-    <bc type="Dirichlet" function="1" unknown="0" component="1">
+    <!-- <bc type="Dirichlet" function="1" unknown="0" component="1">
     0 4
-    </bc>
+    </bc> -->
   </boundaryConditions>
   <Function type="FunctionExpr" dim="2" id="3">
     <c index="0">27 / 7 * x * x * y * z</c>
     <c index="1">- 1 / 7 * x * y * y * z</c>
   </Function>
+  <!-- Dirichlet options (for time stepping)-->
+ <OptionList id="5">
+  <int label="component" desc="Direction of displacement" value="1"/>
+  <int label="side" desc="Side of the patch" value="4"/>
+  <real label="maxDisp" desc="Maximum applied displacement" value="1e-3"/>
+  <int label="steps" desc="Maximum number of steps" value="10"/>
+ </OptionList>
 </xml>

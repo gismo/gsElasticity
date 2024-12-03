@@ -11,7 +11,8 @@
     Author(s): 
     
     To run the script in 2D:
-    ./bin/fracture_elasticity_example -f linear_elasticity_example_mp.xml -r 9 --plot
+    ./bin/fracture_elasticity_example_mp -f linear_elasticity_example_mp.xml -r 9 --plot
+    ./bin/fracture_elasticity_example_mp -f linear_elasticity_example_mp.xml -r 8 --plot
 */
 
 //! [Include namespace]
@@ -210,14 +211,23 @@ int main(int argc, char *argv[])
     ////////////////// no bc.addCondition(applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("direction"));
     bc.addCondition(2,applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("component"));
     bc.addCondition(3,applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("component"));
-
     bc.setGeoMap(mp);
-    
-    bc_d.addCondition(0,boundary::west,condition_type::clamped,0,0,false,0);
-    bc_d.addCondition(0,boundary::east,condition_type::clamped,0,0,false,0);
-    bc_d.addCondition(0,boundary::south,condition_type::clamped,0,0,false,0);
-    bc_d.addCondition(0,boundary::north,condition_type::clamped,0,0,false,0);
+
+    // Apply the right BCs (multi patch geometry!) (to be checked probably)
+    bc_d.addCondition(0,1,condition_type::clamped,0,0,false,0); // patch 100 (local index 0)
+    bc_d.addCondition(0,3,condition_type::clamped,0,0,false,0); // last input of the function?
+
+    bc_d.addCondition(1,2,condition_type::clamped,0,0,false,0); // patch 101 (local index 1)
+    bc_d.addCondition(1,3,condition_type::clamped,0,0,false,0); 
+
+    bc_d.addCondition(2,2,condition_type::clamped,0,0,false,0); // patch 102 (local index 2)
+    bc_d.addCondition(2,4,condition_type::clamped,0,0,false,0); 
+
+    bc_d.addCondition(3,1,condition_type::clamped,0,0,false,0); // patch 103 (local index 3)
+    bc_d.addCondition(3,4,condition_type::clamped,0,0,false,0); 
+
     bc_d.setGeoMap(mp);
+    // Do I need to add the condition for the precrack surfaces? (i am confused)
     gsInfo << "Boundary conditions disp:\n" << bc << "\n";
     gsInfo << "Boundary conditions dmg:\n" << bc_d << "\n";
 
@@ -351,7 +361,7 @@ int main(int argc, char *argv[])
     real_t c_w = 2.0;
     // Material properties for SEN tensile test (Greco et al.)
     real_t G_c = 2.7e-3; // in kN/mm
-    real_t ell = 0.01; // in mm
+    real_t ell = 0.015; // in mm
     //real_t ell = 0.0000015; // in mm
     real_t E_modulus = 210; // Young's modulus in kN/mm2
     real_t PoissonRatio = 0.3; // Poisson's ratio
@@ -452,8 +462,6 @@ int main(int argc, char *argv[])
     gsMaterialEval<real_t, gsMaterialOutput::Psi, true> SvK_Psi(SvK.get(), &mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(SvK.get(), &mp_def);
 
-    real_t lambda = 1/maxSteps;
-
     gsParaviewCollection collection_disp("ParaviewOutput_fracture/disp", &ev_u);
     collection_disp.options().setSwitch("plotElements", true);
     collection_disp.options().setInt("plotElements.resolution", 4);
@@ -464,11 +472,12 @@ int main(int argc, char *argv[])
     collection_dmg.options().setInt("plotElements.resolution", 4);
     collection_dmg.options().setInt("numPoints", 3000); 
 
-    for (index_t step = 0; step!=1; step++)
+    for (index_t step = 0; step!=maxSteps; step++)
     {
         // Update the applied displacement  
         real_t appl_displ_step = delta_disp*(step+1);
-        applied_displacement.setValue(appl_displ_step,mp.parDim()); // udpate the applied displacement!
+        applied_displacement.setValue(appl_displ_step,mp.parDim()); // udpate the applied displacement!d        // bc.addCondition(2,applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("component"));
+        // bc.addCondition(3,applied_disp_options.getInt("side"),condition_type::dirichlet,&applied_displacement,0,false,applied_disp_options.getInt("component"));
         w.setup(bc, dirichlet::l2Projection, 0); //  // compute again after updating the values of the applied displacement 
         
         gsInfo<<"================================================================================\n";
@@ -527,7 +536,7 @@ int main(int argc, char *argv[])
                 unew.setSolutionVector(Unew);
                 for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
                 {
-                    // unew.extract(mp_unew, k);
+                    // unew.extract(mp_unew, k); //???????
                     mp_def.patch(k).coefs() = mp.patch(k).coefs() + mp_unew.patch(k).coefs();
                 }
 
@@ -596,6 +605,9 @@ int main(int argc, char *argv[])
                     K_d = A_d.matrix();
                     Q_d = A_d.rhs();
                     solver.compute(K_d); // factorization of K
+
+                    gsDebugVar(ev_d.eval(dnew,pt,0));
+                    gsDebugVar(ev_d.eval(dnew,pt1,0));
           
                     // Compute solution
                     deltaD = solver.solve(-Q_d); // update damage vector

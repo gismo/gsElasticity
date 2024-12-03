@@ -53,9 +53,11 @@ public:
     }
 
     /// Constructor
-    gsMaterialContainer( const gsMaterialBase<T> * mat )
+    gsMaterialContainer( const gsMaterialBase<T> * mat, index_t size = 1 )
     {
-        this->add(mat);
+        m_container.reserve(size);
+        for (index_t i=0; i!=size; i++)
+            this->add(mat);
     }
 
     gsMaterialContainer(const gsMaterialContainer & other)

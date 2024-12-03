@@ -38,9 +38,6 @@ public:
     m_materials(materialMatrices),
     m_deformed(deformed)
     {
-        for (index_t p = 0; p!=deformed->nPieces(); ++p)
-            GISMO_ASSERT(materialMatrices.piece(p)->initialized(),"Material matrix "<<p<<" is incomplete!");
-
         this->_makePieces();
     }
 
@@ -51,7 +48,6 @@ public:
     m_materials(deformed->nPieces()),
     m_deformed(deformed)
     {
-        // GISMO_ASSERT(materialMatrix->initialized(),"Material matrix is incomplete!");
         for (index_t p = 0; p!=deformed->nPieces(); ++p)
             m_materials.set(p,materialMatrix);
         this->_makePieces();
@@ -65,9 +61,6 @@ public:
     m_materials(materialMatrices),
     m_deformed(deformed)
     {
-        for (index_t p = 0; p!=deformed->nPieces(); ++p)
-            GISMO_ASSERT(materialMatrices.piece(p)->initialized(),"Material matrix "<<p<<" is incomplete!");
-
         this->_makePieces(undeformed);
     }
 
@@ -79,7 +72,7 @@ public:
     m_materials(deformed->nPieces()),
     m_deformed(deformed)
     {
-        // GISMO_ASSERT(materialMatrix->initialized(),"Material matrix is incomplete!");
+        //gsInfo<<"4\n";
         for (index_t p = 0; p!=deformed->nPieces(); ++p)
             m_materials.set(p,materialMatrix);
         this->_makePieces(undeformed);
@@ -108,6 +101,9 @@ public:
     {
         return *m_pieces[p];
     }
+
+    /// Implementation of nPieces(), see \ref gsFunctionSet
+    index_t nPieces() const override{return m_pieces.size();}
 
     /// Implementation of eval_into, see \ref gsFunction
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -302,14 +298,6 @@ private:
         const short_t d = m_material->dim();
         result.resize(d*(d+1)/2,u.cols());
         calculate_voigt_stress(tmp, d, result);
-        // for (index_t k = 0; k < u.cols(); k++)
-        // {
-        //     // gsAsMatrix<T,Dynamic,Dynamic> E = tmp.reshapeCol(k,d,d); // in tensor notation
-        //     gsMatrix<T> S = tmp.reshapeCol(k,d,d); // in tensor notation
-        //     gsVector<T> S_voigt; // voigt strain
-        //     voigtStress(S_voigt,S);
-        //     result.col(k) = S_voigt;
-        // }
     }
 
     /// Specialisation of \ref eval_into for the material tensor
