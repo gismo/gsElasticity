@@ -39,7 +39,8 @@ public:
 
     /// @brief Assembles the stiffness matrix and the RHS
     /// @{
-    virtual void assemble(bool saveEliminationMatrix);
+    using Base::assemble;
+    virtual void assemble(bool /* saveEliminationMatrix */);
 
     virtual void assemble() { assemble(false); };
     /// @}

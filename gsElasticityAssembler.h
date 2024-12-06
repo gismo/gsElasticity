@@ -53,7 +53,7 @@ public:
     virtual void refresh();
 
     //--------------------- SYSTEM ASSEMBLY ----------------------------------//
-  
+
     /// @brief Assembles the stiffness matrix and the RHS for the LINEAR ELASTICITY
     /// set *assembleMatrix* to false to only assemble the RHS;
     /// @{

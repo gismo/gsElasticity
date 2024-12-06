@@ -36,6 +36,7 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+        GISMO_UNUSED(patchIndex);
         // a quadrature rule is defined by the basis for the auxiliary variable.
         // the same rule is used for the main variable
         rule = gsQuadrature::get(basisRefs.back(), options);
@@ -73,6 +74,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs                  // 0 | B^T = L
         localMat.setZero(N_M + N_A, N_M + N_A);         // --|--    matrix structure
         localRhs.setZero(N_M + N_A,pde_ptr->numRhs());  // B | A   = 0

@@ -43,8 +43,9 @@ public:
 
     virtual void assemble() { assemble(false); };
 
-    virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDDoFs)
+    using Base::assemble;
+    virtual bool assemble(const gsMatrix<T> & /* solutionVector */,
+                          const std::vector<gsMatrix<T> > & /* fixedDDoFs */)
     {assemble(); return true;}
     /// @}
 

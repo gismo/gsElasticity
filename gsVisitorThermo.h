@@ -81,6 +81,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs
         localRhs.setZero(dim*N_D, 1);
         // Loop over the quadrature nodes
@@ -106,6 +107,7 @@ public:
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T> & system)
     {
+        GISMO_UNUSED(eliminatedDofs);
         // computes global indices for displacement components
         for (short_t d = 0; d < dim; ++d)
         {

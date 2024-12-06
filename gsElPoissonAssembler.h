@@ -42,11 +42,13 @@ public:
 
     virtual void assemble() { assemble(false); };
 
-    virtual bool assemble(const gsMatrix<T> & solutionVector,
-                          const std::vector<gsMatrix<T> > & fixedDDoFs)
+    using Base::assemble;
+    virtual bool assemble(const gsMatrix<T> & /* solutionVector */,
+                          const std::vector<gsMatrix<T> > & /* fixedDDoFs */)
     {assemble(); return true;}
     /// @}
 
+    using Base::constructSolution;
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDoFs,
                                    gsMultiPatch<T> & displacement) const;

@@ -51,6 +51,7 @@ public:
         initialized = false;
     }
     /// set all fixed degrees of freedom
+    using Base::setFixedDofs;
     virtual void setFixedDofs(const std::vector<gsMatrix<T> > & ddofs)
     {
         Base::setFixedDofs(ddofs);
@@ -61,6 +62,7 @@ public:
     void makeTimeStep(T timeStep);
 
     /// assemble the linear system for the nonlinear solver
+    using Base::assemble;
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs);
 
@@ -85,6 +87,7 @@ public:
     index_t numberIterations() const { return numIters;}
 
     /// construct the solution using the stiffness matrix assembler
+    using Base::constructSolution;
     void constructSolution(gsMultiPatch<T> & velocity, gsMultiPatch<T> & pressure) const;
 
     /// assemblers' accessors

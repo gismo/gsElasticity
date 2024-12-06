@@ -63,6 +63,7 @@ public:
     void makeTimeStep(T timeStep);
 
     /// assemble the linear system for the nonlinear solver
+    using Base::assemble;
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs);
 
@@ -91,6 +92,7 @@ public:
     void constructSolution(gsMultiPatch<T> & displacement) const;
 
     /// construct displacement and pressure (if applicable) using the stiffness assembler
+    using Base::constructSolution;
     void constructSolution(gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// assemblers' accessors

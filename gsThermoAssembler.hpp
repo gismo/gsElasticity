@@ -43,6 +43,7 @@ gsThermoAssembler<T>::gsThermoAssembler(const gsMultiPatch<T> & patches,
 template <class T>
 void gsThermoAssembler<T>::assemble(bool saveEliminationMatrix)
 {
+    GISMO_UNUSED(saveEliminationMatrix);
     gsElasticityAssembler<T>::assemble();
     elastRhs = gsAssembler<T>::m_system.rhs();
     assembledElasticity = true;

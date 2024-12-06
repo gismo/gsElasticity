@@ -36,9 +36,9 @@ public:
                           const std::vector<gsMatrix<T> > & fixedDDoFs) = 0;
 
     /// assembly procedure for linear problems
-    virtual void assemble(bool saveEliminationMatrix) {};
+    virtual void assemble(bool /* saveEliminationMatrix */) {};
     virtual void assemble() { assemble(false); };
-    virtual void assemble(const gsMultiPatch<T> & curSolution)
+    virtual void assemble(const gsMultiPatch<T> & /* curSolution */)
     {GISMO_NO_IMPLEMENTATION}
 
     /// Returns number of free degrees of freedom
@@ -50,17 +50,17 @@ public:
                                    gsMultiPatch<T> & result,
                                    const gsVector<index_t> & unknowns) const;
 
-    virtual void constructSolution(const gsMatrix<T>& solVector,
-                                   gsMultiPatch<T>& result, short_t unk = 0) const
+    virtual void constructSolution(const gsMatrix<T>& /* solVector */,
+                                   gsMultiPatch<T>& /* result */, short_t /* unk */ = 0) const
     {GISMO_NO_IMPLEMENTATION}
-    virtual void constructSolution(const gsMatrix<T>& solVector,
-                                   gsMultiPatch<T>& result,
-                                   const gsVector<index_t>  & unknowns) const
+    virtual void constructSolution(const gsMatrix<T>& /* solVector */,
+                                   gsMultiPatch<T>& /* result */,
+                                   const gsVector<index_t>  & /* unknowns */) const
     {GISMO_NO_IMPLEMENTATION}
 
-    virtual void constructSolution(const gsMatrix<T> & solVector,
-                                   const std::vector<gsMatrix<T> > & fixedDDofs,
-                                   gsMultiPatch<T> & result) const {};
+    virtual void constructSolution(const gsMatrix<T> & /* solVector */,
+                                   const std::vector<gsMatrix<T> > & /* fixedDDofs */,
+                                   gsMultiPatch<T> & /* result */) const {};
 
     //--------------------- DIRICHLET BC SHENANIGANS ----------------------------------//
 

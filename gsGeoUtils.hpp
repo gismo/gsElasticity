@@ -868,6 +868,8 @@ template<class T>
 typename gsGeometry<T>::uPtr genSphere(gsKnotVector<T> & xiKnots, gsKnotVector<T> & etaKnots,
                                        T xi0, T xi1, T eta0, T eta1)
 {
+    GISMO_UNUSED(eta0);
+    GISMO_UNUSED(eta1);
     gsBSplineBasis<T> xiBasis(xiKnots);
     typename gsGeometry<T>::uPtr xiCircle = genCircle(xiBasis,(T)1.,(T)0.,(T)0.,xi0,xi1-xi0);
     gsBSplineBasis<T> etaBasis(etaKnots);
