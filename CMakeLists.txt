@@ -54,12 +54,17 @@ add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
 
 # add example files
 if(GISMO_BUILD_EXAMPLES)
-    add_custom_target(${PROJECT_NAME}-all)
+    add_custom_target(${PROJECT_NAME})
     add_custom_target(${PROJECT_NAME}-examples)
     add_subdirectory(examples)
 else()
     add_subdirectory(examples EXCLUDE_FROM_ALL)
 endif(GISMO_BUILD_EXAMPLES)
+
+# Print the contents of {PROJECT_NAME}-examples
+get_property(dirs TARGET ${PROJECT_NAME}-examples PROPERTY BUILDSYSTEM_TARGETS)
+message(STATUS "dirs: ${dirs}")
+
 
 # # add unittests
 # aux_gs_cpp_directory(${PROJECT_SOURCE_DIR}/unittests unittests_SRCS)
