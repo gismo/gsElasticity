@@ -24,80 +24,39 @@ namespace gismo
 {
 
 template <short_t d, class T>
-class gsCompositeMat : public gsMaterialBaseDim<d,T>
+class gsHomogenizedCompositeMat : public gsMaterialBaseDim<d,T>
 {
 
 public:
     using Base = gsMaterialBaseDim<d,T>;
 
-    gsCompositeMat( const T Exx,
-                    const T Eyy,
-                    const T Ezz,
-                    const T Gxy,
-                    const T Gyz,
-                    const T Gxz,
-                    const T nuxy,
-                    const T nuyz,
-                    const T nuxz,
+    gsHomogenizedCompositeMat(const bool homogenized,
                     const gsFunctionSet<T> & alpha,
                     const gsFunctionSet<T> & patches)
     :   
     m_alpha(&alpha),
     Base(&patches)
-    {
-        m_C.resize(6,6);
-        m_C.setZero();
-        T D = (1-nuxy*nuxy-nuyz*nuyz-nuxz*nuxz-2*nuxy*nuyz*nuxz) / (Exx*Eyy*Ezz); // determinant of the compliance matrix (S)
+    {   
+        // HARD CODED FOR A 90/0/90 LAMINATE
+        m_C_hom.resize(6,6);
+        m_C_hom.setZero();
         
-        m_C(0,0) = (1-nuyz*nuyz) / (Eyy*Ezz); // Gxx
-        m_C(1,1) = (1-nuxz*nuxz) / (Exx*Ezz); // Gyy
-        m_C(2,2) = (1-nuxy*nuxy) / (Exx*Eyy); // Gzz
+        m_C_hom(0,0) = -6.266666666666664e+03; 
+        m_C_hom(1,1) = 3.333333333333336e+03; 
+        m_C_hom(2,2) = 1200; 
 
         // Gij = nuij + nuik*nukj / Ejj*Ekk
-        m_C(0,1) = m_C(1,0) = (nuxy+nuxz*nuyz) / (Eyy*Ezz); // Gxy
-        m_C(0,2) = m_C(2,0) = (nuxz+nuxy*nuyz) / (Eyy*Ezz); // Gxz
-        m_C(1,2) = m_C(2,1) = (nuyz+nuxy*nuxz) / (Exx*Ezz); // Gyz
+        m_C_hom(0,1) = m_C_hom(1,0) = 2.706666666666666e+04; 
+        m_C_hom(0,2) = m_C_hom(2,0) = 3600; 
+        m_C_hom(1,2) = m_C_hom(2,1) = 6800; 
 
-        m_C *= 1.0/D;
+        m_C_hom(3,3) = 2.000000000000001e+02; // Factor 2? ??????? CHECK!
+        m_C_hom(4,4) = 2.500000000000001e+02; // Factor 2?
+        m_C_hom(5,5) = 400; // Factor 2?
 
-        m_C(3,3) = Gxy; // Factor 2? ??????? CHECK!
-        m_C(4,4) = Gyz; // Factor 2?
-        m_C(5,5) = Gxz; // Factor 2?
-
-        // Set parameter becuase they could vary (heterogeneous materials? short fiber?)
-        // Not sure about this ?
-        // this -> setParameter(0,m_C(0,0)); //????? comprobar!
-        // this -> setParameter(1,m_C(0,1));
-        // this -> setParameter(2,m_C(0,2));
-        // this -> setParameter(3,m_C(1,1));
-        // this -> setParameter(4,m_C(1,2));
-        // this -> setParameter(5,m_C(2,2));
-        // this -> setParameter(6,m_C(3,3));
-        // this -> setParameter(7,m_C(4,4));
-        // this -> setParameter(8,m_C(5,5));
-
-        //gsDebugVar(m_C);
-
-        // Compliance matrix
-        m_S.resize(6,6);
-        m_S.setZero();
-        
-        // Diagonal components
-        m_S(0,0) = 1/Exx; 
-        m_S(1,1) = 1/Eyy; 
-        m_S(2,2) = 1/Ezz; 
-        m_S(3,3) = 1.0/Gxy; // Factor 2? ??????? CHECK!
-        m_S(4,4) = 1.0/Gyz; // Factor 2?
-        m_S(5,5) = 1.0/Gxz; // Factor 2?
-
-        // Off-diagonal components
-        m_S(0,1) = m_S(1,0) = -nuxy/Exx; // Gxy
-        m_S(0,2) = m_S(2,0) = -nuxz/Exx; // Gxz
-        m_S(1,2) = m_S(2,1) = -nuyz/Eyy;
-        //gsDebugVar(m_S);
     }
 
-    gsCompositeMat( const T Exx,
+    gsHomogenizedCompositeMat( const T Exx,
                     const T Eyy,
                     const T Gxy,
                     const T nuxy,
@@ -151,15 +110,13 @@ public:
 
             voigtStrain(E_voigt,E_full); //E_vect in voigt
             
-            _makePhi(angles.col(patch),Phi);
-            stress_voigt = Phi.transpose() * m_C * Phi * E_voigt; // this gives the stress in Voigt notation
+            _makePhi(angles.col(patch),Phi); // delete
+
+            stress_voigt = m_C_hom * E_voigt; // this gives the stress in Voigt notation
             tensorStress(d,stress_voigt,stress_tensor);  // to get stress in tensor notation
             result.reshapeCol(j,d,d) = stress_tensor; // this gives the stress in tensor notation
-            
-            // gsDebugVar(Phi.transpose() * m_C * Phi);
         }
 
-        // gsDebugVar(u.maxCoeff());
     }
 
     void eval_matrix_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
@@ -177,14 +134,13 @@ public:
         angles = m_alpha->piece(patch).eval(u);
         // composite linear elasticity tensor
 
-        // gsDebugVar(u);
-        // gsDebugVar(angles);
+        //gsDebugVar(u);
 
         for (index_t j=0; j!=u.cols(); j++)
         {
+           //gsDebugVar(angles.col(0)); // da cero
            _makePhi(angles.col(patch),Phi);
-           result.reshapeCol(j,sz,sz) = Phi.transpose() * m_C * Phi; // m_C is sz*sz?
-           //gsDebugVar(Phi.transpose() * m_C * Phi);
+           result.reshapeCol(j,sz,sz) = m_C_hom; // m_C is sz*sz?
         }
     }
 
@@ -304,10 +260,7 @@ protected:
     using Base::m_data;
     const gsFunctionSet<T> * m_alpha;
     gsMatrix<T> m_C; // make stiffness matrix a member of the class-- constant over the whole domain
-    gsMatrix<T> m_S; // make stiffness matrix a member of the class-- constant over the whole domain
-    gsMatrix<T> m_C_homogenized; // make stiffness matrix a member of the class-- constant over the whole domain
     gsMatrix<T> m_C_hom; // make stiffness matrix a member of the class-- constant over the whole domain
-
 
 };
 
