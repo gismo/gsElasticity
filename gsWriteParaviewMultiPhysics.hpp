@@ -88,7 +88,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
         gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
-        collection.addPart(baseName + util::to_string(i) + ".vts", -1, "", i );
+        collection.addPart(baseName + util::to_string(i) + ".vts", -1, "Solution", i );
 
         if ( mesh )
         {
@@ -114,7 +114,7 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
     {
         std::string patchFileName = fn + util::to_string(time) + "_" + util::to_string(p);
         gsWriteParaviewMultiPhysicsSinglePatch(fields,p,patchFileName,npts);
-        collection.addPart(gsFileManager::getFilename(patchFileName),time,"solution",p);
+        collection.addPart(gsFileManager::getFilename(patchFileName),time,"Solution",p);
     }
 
 }

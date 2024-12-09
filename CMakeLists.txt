@@ -54,7 +54,6 @@ add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
 
 # add example files
 if(GISMO_BUILD_EXAMPLES)
-    add_custom_target(${PROJECT_NAME})
     add_custom_target(${PROJECT_NAME}-examples)
     add_subdirectory(examples)
 else()

@@ -39,7 +39,7 @@ int main(int argc, char* argv[]){
     gsVector<> fiberDirection(3);
     fiberDirection << 1.,0.,0.;
     // space discretization
-    index_t numUniRefDirX = 2;
+    index_t numUniRefDirX = 0;
     index_t numUniRef = 0;
     index_t numDegElev = 0;
     bool subgridOrTaylorHood = false;
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]){
     real_t timeSpan = 2;
     real_t timeStep = 0.1;
     // output
-    index_t numPlotPoints = 100000;
+    index_t numPlotPoints = 0;
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("This is a simulation of active muscle behavior.");
