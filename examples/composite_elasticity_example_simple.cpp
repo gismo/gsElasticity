@@ -116,6 +116,10 @@ int main(int argc, char *argv[]) {
   gsMultiBasis<> dbasis(mp, true);
   const int solution_field_dimension = mp.geoDim();
 
+  // p-refinement
+  dbasis.degreeElevate(1); // quadratic (for integragtion?????)
+  gsInfo<<"Maximum degree of the basis: "<<dbasis.basis(0).maxDegree()<<"\n";
+
   // h-refine each basis (knot insertion)
   dbasis.uniformRefine(20,1,0); // 21 elements in 0 direction
   dbasis.uniformRefine(20,1,1); // 21 elements in 1 direction
@@ -215,7 +219,11 @@ int main(int argc, char *argv[]) {
   //=============================================//
 
   gsMaterialEval<real_t,gsMaterialOutput::S, true> stresses(container_laminate,&sol); // ????
-  gsInfo<<"Hola\n";
+
+  // gsMatrix<> s1, s2, s3;
+  // stresses.piece(0).eval_into(pts.col(0),s1);
+  // stresses.piece(0).eval_into(pts.col(1),s2);
+  // stresses.piece(0).eval_into(pts.col(2),s3);
 
   std::vector <index_t> index = {0,1,3}; // indices of in-plane stresses 
 
@@ -230,12 +238,119 @@ int main(int argc, char *argv[]) {
   }  
 
   gsGeometry<>::uPtr stress_plane =  dbasis.basis(0).makeGeometry(give(coefs)); // create spline function with coefficients ()
-  gsInfo<<"hello\n";
-  gsWriteParaview(mp, *stress_plane,"stress_qi", numPlotPoints); 
+  gsWriteParaview(mp, *stress_plane,"stress_qi", numPlotPoints);
+  // Check the values of ths in plane stresses! are they correct? 
 
   // ================== Integration ==================
-  // Quadrature rule: two points per ply????????????
+  // Quadrature rule: selection of points???? Per ply????????????
 
+  //Gauss Legendre
+  gsGaussRule<real_t> rule(6); // number of quadrature points!!!!!!!
+  gsMatrix<> quPoints;
+  gsVector<> quWeights;
+  rule.mapTo(0.0,3.0,quPoints,quWeights); 
+  // gsDebugVar(quPoints);
+  // gsDebugVar(quWeights);
+
+  gsMatrix<> dS_in_plane;
+  stress_plane->deriv_into(quPoints,dS_in_plane); // in plane stresses evaluated at quPoints
+  // Body load!?!?!?!?
+
+  gsMatrix<> dS11_1 = dS_in_plane.row(0); // not sure .row()
+  gsMatrix<> dS22_2 = dS_in_plane.row(1);
+  gsMatrix<> dS12_2 = dS_in_plane.row(2); // no se 
+  gsMatrix<> dS12_1 = dS_in_plane.row(2); // no se 
+
+  gsMatrix<> S13 = - (dS11_1 + dS12_2) * quWeights; // missing body force and sigma at 0?????????
+  gsMatrix<> S23 = - (dS12_1 + dS22_2) * quWeights; // missing body force and sigma at 0?????????
+
+ // Create spline function with coefficients of out of plane stresses (sigma 23 and sigma 13)
+  gsGeometry<>::uPtr stress_13 =  dbasis.basis(0).makeGeometry(give(S13)); 
+  gsGeometry<>::uPtr stress_23 =  dbasis.basis(0).makeGeometry(give(S23)); 
+  // gsWriteParaview(mp, *stress_13,"stress_13", numPlotPoints);
+  // gsWriteParaview(mp, *stress_23,"stress_23", numPlotPoints);
+
+  gsMatrix<> dS13_1, dS23_2;
+  stress_13->deriv_into(quPoints,dS13_1); // in plane stresses evaluated at quPoints
+  stress_23->deriv_into(quPoints,dS23_2); // in plane stresses evaluated at quPoints
+
+  gsMatrix<> S33 = - (dS13_1 + dS23_2) * quWeights;
+
+  gsGeometry<>::uPtr stress_33 =  dbasis.basis(0).makeGeometry(give(S33)); 
+
+  // Then --> plot stresses (gsWriteParaview)
+
+
+  //Integration in the quasi interpolation
+  //   gsMatrix<T> bev, fev, pts, tmp;
+  //   gsVector<T> weights;
+  //   gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
+  //   gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
+  //   qRule.mapTo(ab.col(0),ab.col(1), pts, weights);//map points and weights on element (for quadrature)
+    
+  //   bb .eval_into(pts, bev);//evaluate basis on quadrature points (numbasis*pts)
+  //   fun.eval_into(pts, fev);//evaluate function on quadrature points (1*pts)
+  //   gsMatrix<T> M = bev * weights.asDiagonal() * bev.transpose(); // Mass matrix
+  //   gsMatrix<T> RHS = bev * weights.asDiagonal() * fev.transpose();
+  //   tmp = M.fullPivLu().solve(RHS); //solve on element
+
+
+  //   // find the i-th BS:
+  //   gsMatrix<index_t> act = bb.active(pts.col(0)); // the same basis functions will be active for the element in consideration!
+  //   index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
+  //   GISMO_ASSERT(c<act.size(), "Problem with basis function index");
+  //   return tmp.row(c);
+
+  // // Gauss Legendre
+  // gsOptionList legendreOpts;
+  // legendreOpts.addInt   ("quRule","Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",gsQuadrature::GaussLegendre);
+  // legendreOpts.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
+  // legendreOpts.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+  // legendreOpts.addSwitch("overInt","Apply over-integration or not?",false);
+  // gsQuadRule<real_t>::uPtr legendre = gsQuadrature::getPtr(dbasis.basis(0), legendreOpts);
+
+
+  // gsMatrix<> pts(3,rule.nPoints());
+  // pts.row(0).setConstant(pt[0]);
+  // pts.row(1).setConstant(pt[1]);
+  // pts.row(2) = quPoints.row(0);
+
+  // gsMatrix<> dS = SvK_S.deriv(pts);
+
+  // gsMatrix<> dS_int = dS * quWeights;
+
+
+  // gsExprAssembler<> A2(1,1);
+  // A2.setIntegrationElements(dbasis);
+  // gsExprEvaluator<> ev(A2);
+  // auto G = ev.getMap(mp); // is this correct?
+  // auto c_sinus_L2_local_fine = ev.getVariable(*fine_L2_local); // pointer to the L2 local
+
+
+  // For the approximation of the stresses!
+  // gsMatrix<> coefs;
+  // gsQuasiInterpolate<real_t>::localIntpl(mp.basis(0),SvK_S,coefs);
+  // gsGeometry<>::uPtr geo = mp.basis(0).makeGeometry(coefs);
+  // gsWriteParaview(mp_def.patch(0),SvK_S,"S");
+  // gsWriteParaview(mp_def.patch(0),*geo,"S_int");
+
+  // gsVector<> pt(2);
+  // pt.col(0)<<0.125,0.375;
+
+  // Gauss Legendre
+  // gsGaussRule<real_t> rule(4);
+  // gsMatrix<> quPoints;
+  // gsVector<> quWeights;
+  // rule.mapTo(0.0,1.0,quPoints,quWeights);
+
+  // gsMatrix<> pts(3,rule.nPoints());
+  // pts.row(0).setConstant(pt[0]);
+  // pts.row(1).setConstant(pt[1]);
+  // pts.row(2) = quPoints.row(0);
+
+  // gsMatrix<> dS = SvK_S.deriv(pts);
+
+  // gsMatrix<> dS_int = dS * quWeights;
 
 
 
