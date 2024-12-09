@@ -44,7 +44,7 @@ int main(int argc, char* argv[]){
     index_t numDegElev = 0;
     bool subgridOrTaylorHood = false;
     // time integration
-    real_t timeSpan = 2;
+    real_t timeSpan = 0.1; // was 2.0
     real_t timeStep = 0.1;
     // output
     index_t numPlotPoints = 0;

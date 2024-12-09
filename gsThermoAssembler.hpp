@@ -44,7 +44,7 @@ template <class T>
 void gsThermoAssembler<T>::assemble(bool saveEliminationMatrix)
 {
     GISMO_UNUSED(saveEliminationMatrix);
-    gsElasticityAssembler<T>::assemble();
+    Base::assemble(false);
     elastRhs = gsAssembler<T>::m_system.rhs();
     assembledElasticity = true;
 
