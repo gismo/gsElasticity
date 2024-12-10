@@ -16,14 +16,11 @@
 
 #include <gsElasticity/gsBaseAssembler.h>
 #include <gsElasticity/gsBaseUtils.h>
+#include <gsElasticity/gsNsAssembler.h>
+#include <gsElasticity/gsMassAssembler.h>
 
 namespace gismo
 {
-
-template <class T>
-class gsNsAssembler;
-template <class T>
-class gsMassAssembler;
 
 /** @brief Time integation for incompressible Navier-Stokes equations.
 */

@@ -16,14 +16,11 @@
 
 #include <gsElasticity/gsBaseAssembler.h>
 #include <gsElasticity/gsBaseUtils.h>
+#include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsMassAssembler.h>
 
 namespace gismo
 {
-
-template <class T>
-class gsElasticityAssembler;
-template <class T>
-class gsMassAssembler;
 
 /** @brief Time integation for equations of dynamic elasticity with implicit schemes
 */
