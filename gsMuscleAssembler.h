@@ -43,12 +43,14 @@ public:
     /// Assembles the tangential linear system for Newton's method given the current solution
     /// in the form of free and fixed/Dirichelt degrees of freedom.
     /// Checks if the current solution is valid (Newton's solver can exit safely if invalid).
+    using Base::assemble;
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs);
 
     //--------------------- SPECIALS ----------------------------------//
 
     /// @brief Construct Cauchy stresses for evaluation or visualization
+    using Base::constructCauchyStresses;
     virtual void constructCauchyStresses(const gsMultiPatch<T> & displacement,
                                          const gsMultiPatch<T> & pressure,
                                          gsPiecewiseFunction<T> & result,

@@ -35,6 +35,7 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+        GISMO_UNUSED(patchIndex);
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
         // saving necessary info
@@ -65,6 +66,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // initialize local matrix and rhs
         localMat.setZero(N,N);
         localRhs.setZero(N,pde_ptr->numRhs());

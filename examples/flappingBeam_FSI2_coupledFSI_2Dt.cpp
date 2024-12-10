@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
     index_t numUniRef = 3;
     // time integration
     real_t timeStep = 0.01;
-    real_t timeSpan = 15.;
+    real_t timeSpan = 0.02; //was 15.
     real_t thetaFluid = 0.5;
     real_t thetaSolid = 1.;
     index_t maxCouplingIter = 10;

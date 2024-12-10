@@ -26,7 +26,7 @@ class gsVisitorElasticityNeumann
 {
 public:
 
-    gsVisitorElasticityNeumann(const gsPde<T> & pde_,
+    gsVisitorElasticityNeumann(const gsPde<T> & /* pde_ */,
                                const boundary_condition<T> & s)
         : neumannFunction_ptr(s.function().get()),
           patchSide(s.side()) {}
@@ -36,6 +36,7 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+        GISMO_UNUSED(patchIndex);
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
@@ -70,6 +71,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs
         localRhs.setZero(dim*N_D,1);
         // loop over the quadrature nodes
@@ -90,6 +92,7 @@ public:
                                   const std::vector<gsMatrix<T> > & eliminatedDofs,
                                   gsSparseSystem<T> & system)
         {
+            GISMO_UNUSED(eliminatedDofs);
             // computes global indices for displacement components
             for (short_t d = 0; d < dim; ++d)
             {
@@ -100,7 +103,7 @@ public:
             system.pushToRhs(localRhs,globalIndices,blockNumbers);
         }
 
-protected:   
+protected:
     // problem info
     short_t dim;
     const gsFunctionSet<T> * neumannFunction_ptr;

@@ -47,7 +47,11 @@ public:
     using Base::assemble;
     
     /// @brief Assembly of the linear system for the Stokes problem
-    virtual void assemble(bool saveEliminationMatrix = false);
+    /// @{
+    virtual void assemble(bool saveEliminationMatrix);
+
+    virtual void assemble() { assemble(false); };
+    /// @}
 
     /// Assembles the tangential linear system for Newton's method given the current solution
     /// in the form of free and fixed/Dirichelt degrees of freedom.

@@ -65,8 +65,8 @@ int main(int argc, char* argv[]){
     for (size_t p = 0; p < geometry.nPatches(); ++p)
         for (index_t i = 0; i < numUniRefDirX; ++i)
         {
-            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(p)).knots(0).uniformRefine();
-            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(p   )).knots(0).uniformRefine();
+            basisDisplacement.basis(p).uniformRefine(1,1,0);
+            basisPressure.basis(p).uniformRefine(1,1,0);
         }
     // additional displacement refinement for stable mixed FEM
     if (!subgridOrTaylorHood) // subgrid
@@ -97,6 +97,8 @@ int main(int argc, char* argv[]){
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,gravity);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
+    assembler.options().setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
+
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method

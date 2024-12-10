@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
         basis.uniformRefine();
     for (index_t i = 0; i < numUniRefX; ++i)
         for (size_t p = 0; p < geometry.nPatches(); ++p)
-            static_cast<gsTensorBSplineBasis<3,real_t> &>(basis.basis(p)).knots(2).uniformRefine();
+        basis.basis(p).uniformRefine(1,1,2);
 
     //=============================================//
         // Setting loads and boundary conditions //

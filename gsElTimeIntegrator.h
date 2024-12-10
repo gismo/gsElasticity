@@ -16,14 +16,11 @@
 
 #include <gsElasticity/gsBaseAssembler.h>
 #include <gsElasticity/gsBaseUtils.h>
+#include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/gsMassAssembler.h>
 
 namespace gismo
 {
-
-template <class T>
-class gsElasticityAssembler;
-template <class T>
-class gsMassAssembler;
 
 /** @brief Time integation for equations of dynamic elasticity with implicit schemes
 */
@@ -63,6 +60,7 @@ public:
     void makeTimeStep(T timeStep);
 
     /// assemble the linear system for the nonlinear solver
+    using Base::assemble;
     virtual bool assemble(const gsMatrix<T> & solutionVector,
                           const std::vector<gsMatrix<T> > & fixedDoFs);
 
@@ -91,6 +89,7 @@ public:
     void constructSolution(gsMultiPatch<T> & displacement) const;
 
     /// construct displacement and pressure (if applicable) using the stiffness assembler
+    using Base::constructSolution;
     void constructSolution(gsMultiPatch<T> & displacement, gsMultiPatch<T> & pressure) const;
 
     /// assemblers' accessors

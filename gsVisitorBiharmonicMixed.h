@@ -1,4 +1,4 @@
-/** @file gsVisitorBiharmonic.h
+/** @file gsVisitorBiharmonicMixed.h
 
     @brief Visitor class for mixed formulation for the biharmonic equation
 
@@ -21,11 +21,11 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorBiharmonic
+class gsVisitorBiharmonicMixed
 {
 public:
 
-    gsVisitorBiharmonic(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
+    gsVisitorBiharmonicMixed(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
         : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde_)),
           N_M(), N_A(), localStiffening(),
           elimMat(elimMatrix)

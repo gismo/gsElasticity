@@ -99,6 +99,7 @@ void gsNsAssembler<T>::refresh()
 template<class T>
 void gsNsAssembler<T>::assemble(bool saveEliminationMatrix)
 {
+    GISMO_UNUSED(saveEliminationMatrix);
     m_system.matrix().setZero();
     reserve();
     m_system.rhs().setZero();
@@ -163,6 +164,7 @@ void gsNsAssembler<T>::constructPressure(const gsMatrix<T>& solVector,
                                          const std::vector<gsMatrix<T> > & fixedDoFs,
                                          gsMultiPatch<T>& pressure) const
 {
+    GISMO_UNUSED(fixedDoFs);
     gsVector<index_t> unknowns(1);
     unknowns.at(0) = m_dim;
     Base::constructSolution(solVector,m_ddof,pressure,unknowns);
