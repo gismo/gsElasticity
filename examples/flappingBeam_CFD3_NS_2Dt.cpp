@@ -86,7 +86,7 @@ int main(int argc, char* argv[]){
     index_t numBLRef = 1;
     bool subgridOrTaylorHood = false;
     // time integration
-    real_t timeSpan = 10;
+    real_t timeSpan = 0.01; // was 10
     real_t timeStep = 0.01;
     real_t theta = 0.5;
     bool imexOrNewton = false;
