@@ -104,6 +104,7 @@ int main(int argc, char* argv[]){
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,basisPressure,bcInfo,gravity);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
+    assembler.options().setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // creating mass assembler
