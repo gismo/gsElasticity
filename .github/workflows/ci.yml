@@ -37,4 +37,4 @@ jobs:
       - name: "Run for ${{ matrix.os }}"
         shell: bash
         working-directory: ${{runner.workspace}}
-        run: ctest -S ${{ github.event.repository.name }}/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="${{ github.event.repository.name }}_actions_$GITHUB_RUN_NUMBER" -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D LABELS_FOR_SUBPROJECTS="gsElasticity-examples" -D CTEST_SITE="${{ matrix.os }}_[actions]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_WITH_OPENMP=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="${{ github.event.repository.name }}" -Q
+        run: ctest -S ${{ github.event.repository.name }}/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="${{ github.event.repository.name }}_actions_$GITHUB_RUN_NUMBER" -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D LABELS_FOR_SUBPROJECTS="gsElasticity-examples" -D CTEST_SITE="${{ matrix.os }}_[actions]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="${{ github.event.repository.name }}" -Q
