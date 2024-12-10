@@ -98,7 +98,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
         if ( ctrlNet ) // Output the control net
         {
             writeSingleControlNet(fields.begin()->second->patch(i), fn + util::to_string(i) + "_cnet");
-            collection.addPart(baseName + util::to_string(i) + "_cnet" + ".vtp", -1, "ControlNet", i);
+            collection.addPart(baseName + util::to_string(i) + "_cnet" + ".vtp", -1, "Mesh", i);
         }
 
     }
