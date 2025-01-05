@@ -27,7 +27,7 @@ class gsVisitorMassElasticity
 public:
 
     gsVisitorMassElasticity(gsSparseMatrix<T> * elimMatrix = nullptr) :
-    elimMat(elimMatrix) {}
+    dim(0), density(0), N_D(0), assembleMatrix(false), elimMat(elimMatrix) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,

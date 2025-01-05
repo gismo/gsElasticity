@@ -29,7 +29,7 @@ class gsVisitorMixedLinearElasticity
 {
 public:
     gsVisitorMixedLinearElasticity(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)) {}
+    : dim(0), N_D(0), pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,

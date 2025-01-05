@@ -30,7 +30,7 @@ class gsVisitorLinearElasticity
 public:
 
     gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+    : dim(0), N_D(0), pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
           elimMat(elimMatrix)
     {}
 
