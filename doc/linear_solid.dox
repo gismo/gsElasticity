@@ -1,0 +1,17 @@
+namespace gismo {
+/**
+
+\page linear_solid linear_solid.cpp
+
+Static simulations of a solid
+
+\section linear_solid_Annotated Annotated source file
+
+Here is the full file \c linear_solid.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include linear_solid.cpp
+
+*/
+
+}
