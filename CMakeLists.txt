@@ -55,11 +55,15 @@ add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
 # add example files
 if(GISMO_BUILD_EXAMPLES)
   add_custom_target(${PROJECT_NAME}-examples)
+  add_custom_target(${PROJECT_NAME}-tutorials)
   add_subdirectory(examples)
+  add_subdirectory(tutorials)
   get_property(dirs TARGET ${PROJECT_NAME}-examples PROPERTY BUILDSYSTEM_TARGETS)
+  get_property(dirs TARGET ${PROJECT_NAME}-tutorials PROPERTY BUILDSYSTEM_TARGETS)
   message(STATUS "dirs: ${dirs}")
 else()
   add_subdirectory(examples EXCLUDE_FROM_ALL)
+  add_subdirectory(tutorials EXCLUDE_FROM_ALL)
 endif(GISMO_BUILD_EXAMPLES)
 
 
