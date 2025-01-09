@@ -11,7 +11,7 @@ aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR} FILES)
 foreach(file ${FILES})
     add_gismo_executable(${file})
     get_filename_component(tarname ${file} NAME_WE) # name without extension
-    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}-tutorials")
+    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
     if(GISMO_BUILD_EXAMPLES)
       set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
       add_dependencies(${PROJECT_NAME}-tutorials ${tarname})

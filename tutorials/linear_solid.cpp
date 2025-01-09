@@ -15,8 +15,6 @@
 
 //! [Includes]
 #include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
-#include <gsElasticity/gsGeoUtils.h>
 //! [Includes]
 
 using namespace gismo;
