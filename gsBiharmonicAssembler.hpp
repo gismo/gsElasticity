@@ -17,7 +17,7 @@
 #include <gsElasticity/gsBiharmonicAssembler.h>
 
 #include <gsPde/gsPoissonPde.h>
-#include <gsElasticity/gsVisitorBiharmonic.h>
+#include <gsElasticity/gsVisitorBiharmonicMixed.h>
 
 namespace gismo
 {
@@ -89,8 +89,8 @@ void gsBiharmonicAssembler<T>::assemble(bool saveEliminationMatrix)
         eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
     }
 
-    gsVisitorBiharmonic<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
-    Base::template push<gsVisitorBiharmonic<T> >(visitor);
+    gsVisitorBiharmonicMixed<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+    Base::template push<gsVisitorBiharmonicMixed<T> >(visitor);
 
     m_system.matrix().makeCompressed();
 

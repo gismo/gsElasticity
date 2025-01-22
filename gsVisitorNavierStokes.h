@@ -40,6 +40,7 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+        GISMO_UNUSED(patchIndex);
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first velocity component.
@@ -97,6 +98,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         if (assemblyType == 0)
             assembleOseen(element,quWeights);
         else if (assemblyType == 1)
@@ -128,6 +130,7 @@ protected:
     void assembleNewtonUpdate(gsDomainIterator<T> & element,
                               const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs                     // A | D
         localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
         localRhs.setZero(dim*N_V + N_P,1);                 // B | 0// roughly estimate h - diameter of the element ( for SUPG)
@@ -140,7 +143,7 @@ protected:
             // Compute physical gradients of the velocity basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md, q, basisValuesVel[1], physGradVel);
             // Compute physical Jacobian of the current velocity field
-            physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse()); 
+            physJacCurVel = mdVelocity.jacobian(q)*(md.jacobian(q).cramerInverse());
             // matrix A: diffusion
             block = weight*density*viscosity * physGradVel.transpose()*physGradVel;
             for (short_t d = 0; d < dim; ++d)
@@ -186,6 +189,7 @@ protected:
     void assembleNewtonFull(gsDomainIterator<T> & element,
                             const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs                     // A | D
         localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
         localRhs.setZero(dim*N_V + N_P,1);                 // B | 0// roughly estimate h - diameter of the element ( for SUPG)
@@ -233,6 +237,7 @@ protected:
     void assembleOseen(gsDomainIterator<T> & element,
                        const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs                     // A | D
         localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);    // --|--    matrix structure
         localRhs.setZero(dim*N_V + N_P,1);                 // B | 0

@@ -81,12 +81,12 @@ int main(int argc, char* argv[]){
     real_t meanVelocity = 2; // inflow velocity
     real_t density = 1.0e3;
     // space discretization
-    index_t numUniRef = 3;
+    index_t numUniRef = 1;// was 3
     index_t numDegElev = 0;
     index_t numBLRef = 1;
     bool subgridOrTaylorHood = false;
     // time integration
-    real_t timeSpan = 10;
+    real_t timeSpan = 0.01; // was 10
     real_t timeStep = 0.01;
     real_t theta = 0.5;
     bool imexOrNewton = false;

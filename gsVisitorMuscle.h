@@ -111,6 +111,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs                      // A | B^T
         localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
         localRhs.setZero(dim*N_D + N_P,1);                  // B | C

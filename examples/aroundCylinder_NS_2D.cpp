@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
     real_t meanVelocity = 0.2; // inflow velocity
     real_t density = 1.;
     // space discretization
-    index_t numUniRef = 3;
+    index_t numUniRef = 1; //was 3
     index_t numDegElev = 0;
     index_t numBLRef = 1;
     bool subgridOrTaylorHood = false;

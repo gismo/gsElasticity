@@ -172,7 +172,7 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
-        GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke,
+        GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke || m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff,
                      "Material law not specified OR not supported! Material law = "<<m_options.getInt("MaterialLaw"));
         if (saveEliminationMatrix)
         {

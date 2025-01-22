@@ -50,15 +50,25 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}"
   FILES_MATCHING PATTERN "*.h" )
 
 # add filedata folder
-add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/") 
+add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
 
 # add example files
-aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
-foreach(file ${FILES})
-    add_gismo_executable(${file})
-    get_filename_component(tarname ${file} NAME_WE) # name without extension
-    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
-    set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
-    # install the example executables (optionally)
-    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
-endforeach(file ${FILES})
+if(GISMO_BUILD_EXAMPLES)
+  add_custom_target(${PROJECT_NAME}-examples)
+  add_custom_target(${PROJECT_NAME}-tutorials)
+  add_subdirectory(examples)
+  add_subdirectory(tutorials)
+  get_property(dirs TARGET ${PROJECT_NAME}-examples PROPERTY BUILDSYSTEM_TARGETS)
+  get_property(dirs TARGET ${PROJECT_NAME}-tutorials PROPERTY BUILDSYSTEM_TARGETS)
+  message(STATUS "dirs: ${dirs}")
+else()
+  add_subdirectory(examples EXCLUDE_FROM_ALL)
+  add_subdirectory(tutorials EXCLUDE_FROM_ALL)
+endif(GISMO_BUILD_EXAMPLES)
+
+
+
+# # add unittests
+# aux_gs_cpp_directory(${PROJECT_SOURCE_DIR}/unittests unittests_SRCS)
+# set(gismo_UNITTESTS ${gismo_UNITTESTS} ${unittests_SRCS}
+#   CACHE INTERNAL "gismo list of unittests")

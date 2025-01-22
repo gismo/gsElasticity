@@ -29,13 +29,14 @@ class gsVisitorMixedLinearElasticity
 {
 public:
     gsVisitorMixedLinearElasticity(const gsPde<T> & pde_)
-        : pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)) {}
+    : dim(0), N_D(0), pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)) {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
                     const index_t patchIndex,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+        GISMO_UNUSED(patchIndex);
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first velocity component.
@@ -81,6 +82,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs                      // A | B^T
         localMat.setZero(dim*N_D + N_P, dim*N_D + N_P);     // --|--    matrix structure
         localRhs.setZero(dim*N_D + N_P,1);                  // B | C

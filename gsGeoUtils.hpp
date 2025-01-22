@@ -63,7 +63,7 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
     {
         collectionMesh.addPart(fileNameOnly + "_mesh.vtp",0,"Mesh",p);
         if (plotJac)
-            collectionJac.addPart(fileNameOnly + ".vts",0,"Jac",p);
+            collectionJac.addPart(fileNameOnly + ".vts",0,"Solution",p);
         else
             res = system(("rm " + fileName + util::to_string(p) + ".vts").c_str());
         GISMO_ENSURE(res == 0, "Problems with deleting files\n");
@@ -87,7 +87,7 @@ void plotGeometry(const gsMultiPatch<T> & domain, std::string const & fileName,
         domain.patch(p).evaluateMesh(mesh);
         std::string patchFileName = fileName + util::to_string(step) + "_" + util::to_string(p);
         gsWriteParaview(mesh,patchFileName,false);
-        collection.addPart(gsFileManager::getFilename(patchFileName),step,"",p);
+        collection.addPart(gsFileManager::getFilename(patchFileName),step,"Solution",p);
     }
 }
 
@@ -126,7 +126,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
     {
         collectionMesh.addPart(fileNameOnly + util::to_string(0) + util::to_string(p) + "_mesh.vtp",0,"Mesh",p);
         if (plotJac)
-            collectionJac.addPart(fileNameOnly + util::to_string(0) + util::to_string(p) + ".vts",0,"Jac",p);
+            collectionJac.addPart(fileNameOnly + util::to_string(0) + util::to_string(p) + ".vts",0,"Solution",p);
         else
         {
             res = system(("rm " + fileName + util::to_string(0) + util::to_string(p) + ".vts").c_str());
@@ -153,7 +153,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
         {
             collectionMesh.addPart(fileNameOnly + util::to_string(s+1) + util::to_string(p) +  "_mesh.vtp",s+1,"Mesh",p);
             if (plotJac)
-                collectionJac.addPart(fileNameOnly + util::to_string(s+1) + util::to_string(p) + ".vts",s+1,"Jac",p);
+                collectionJac.addPart(fileNameOnly + util::to_string(s+1) + util::to_string(p) + ".vts",s+1,"Solution",p);
             else
             {
                 res = system(("rm " + fileName + util::to_string(s+1) + util::to_string(p) + ".vts").c_str());
@@ -192,7 +192,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const gsMultiPatch<T> &
         configuration.patch(p).evaluateMesh(mesh);
         std::string patchFileName = fileName + util::to_string(step) + "_" + util::to_string(p);
         gsWriteParaview(mesh,patchFileName,false);
-        collection.addPart(gsFileManager::getFilename(patchFileName),step,"",p);
+        collection.addPart(gsFileManager::getFilename(patchFileName),step,"Solution",p);
     }
 }
 
@@ -868,6 +868,8 @@ template<class T>
 typename gsGeometry<T>::uPtr genSphere(gsKnotVector<T> & xiKnots, gsKnotVector<T> & etaKnots,
                                        T xi0, T xi1, T eta0, T eta1)
 {
+    GISMO_UNUSED(eta0);
+    GISMO_UNUSED(eta1);
     gsBSplineBasis<T> xiBasis(xiKnots);
     typename gsGeometry<T>::uPtr xiCircle = genCircle(xiBasis,(T)1.,(T)0.,(T)0.,xi0,xi1-xi0);
     gsBSplineBasis<T> etaBasis(etaKnots);

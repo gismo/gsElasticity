@@ -88,8 +88,8 @@ int main(int argc, char* argv[]){
     for (size_t p = 0; p < geometry.nPatches(); ++p)
         for (index_t i = 0; i < numUniRefDirX; ++i)
         {
-            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisDisplacement.basis(p)).knots(0).uniformRefine();
-            static_cast<gsTensorNurbsBasis<3,real_t> &>(basisPressure.basis(p)).knots(0).uniformRefine();
+            basisDisplacement.basis(p).uniformRefine(1,1,0);
+            basisPressure.basis(p).uniformRefine(1,1,0);
         }
     // additional displacement refinement for stable mixed FEM
     if (!subgridOrTaylorHood) // subgrid
@@ -105,7 +105,7 @@ int main(int argc, char* argv[]){
     gsConstantFunction<> prestressRight(prestress,0.,0.,3);
 
     // boundary conditions
-    gsBoundaryConditions<> bcInfo; 
+    gsBoundaryConditions<> bcInfo;
     for (size_t p = 0; p < geometry.nPatches(); ++p)
     {
         bcInfo.addCondition(p,boundary::west,condition_type::neumann,&prestressLeft);

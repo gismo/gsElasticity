@@ -43,7 +43,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
             fields.begin()->second->igaFunction(i).basis() : fields.begin()->second->patch(i).basis();
 
         gsWriteParaviewMultiPhysicsSinglePatch( fields, i, fn + util::to_string(i), npts);
-        collection.addPart(baseName + util::to_string(i) + ".vts", -1, "", i );
+        collection.addPart(baseName + util::to_string(i) + ".vts", -1, "Solution", i );
 
         if ( mesh )
         {
@@ -53,7 +53,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
         if ( ctrlNet ) // Output the control net
         {
             writeSingleControlNet(fields.begin()->second->patch(i), fn + util::to_string(i) + "_cnet");
-            collection.addPart(baseName + util::to_string(i) + "_cnet" + ".vtp", -1, "ControlNet", i);
+            collection.addPart(baseName + util::to_string(i) + "_cnet" + ".vtp", -1, "Mesh", i);
         }
 
     }
@@ -69,7 +69,7 @@ void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> 
     {
         std::string patchFileName = fn + util::to_string(time) + "_" + util::to_string(p);
         gsWriteParaviewMultiPhysicsSinglePatch(fields,p,patchFileName,npts);
-        collection.addPart(gsFileManager::getFilename(patchFileName),time,"",p);
+        collection.addPart(gsFileManager::getFilename(patchFileName),time,"Solution",p);
     }
 
 }

@@ -36,6 +36,7 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+        GISMO_UNUSED(patchIndex);
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first velocity component.
@@ -77,6 +78,7 @@ public:
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
+        GISMO_UNUSED(element);
         // Initialize local matrix/rhs                          // A | B^T
         localMat.setZero(dim*N_V + N_P, dim*N_V + N_P);         // --|--    matrix structure
         localRhs.setZero(dim*N_V + N_P,1);                      // B | 0
