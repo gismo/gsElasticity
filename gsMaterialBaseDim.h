@@ -22,7 +22,7 @@
 namespace gismo
 {
 
-template<class T> 
+template<class T>
 class gsMaterialData;
 
 template <short_t d, class T>
@@ -112,7 +112,7 @@ public:
             // deformation gradient F = I + du/dx
             gsAsMatrix<T, Dynamic,Dynamic> F = result.reshapeCol(i,d,d);
 
-            F = physDefJac; 
+            F = physDefJac;
 
         }
     }
@@ -140,7 +140,6 @@ public:
 
             E = 0.5 * (F.transpose() * F - I);
             // E = 0.5 * ((F-I).transpose() + (F-I)); // small strains
-
         }
     }
 
@@ -153,7 +152,7 @@ public:
 
     virtual void setDeformed(const gsFunctionSet<T> * deformed) override
     {
-        GISMO_ASSERT(deformed->targetDim()==d,"Geometric dimension and the template dimension are not the same!");
+        GISMO_ASSERT(deformed->targetDim()==d,"Geometric dimension and the template dimension are not the same! deformed->targetDim()="<<deformed->targetDim()<<" d="<<d);
         function_ptr f_ptr = memory::make_shared_not_owned(deformed);
         Base::setDeformed(f_ptr);
     }
@@ -186,13 +185,13 @@ protected:
         {
             m_data.mine().m_jac_ori.reshapeCol(k,d,d) = map_ori.jacobian(k);
             m_data.mine().m_jac_def.reshapeCol(k,d,d) = map_def.jacobian(k);
-        }   
+        }
     }
 
     void _computeParameterData(index_t patch, const gsMatrix<T>& u) const
     {
         m_data.mine().m_parmat.resize(m_pars.size(),u.cols());
-     
+
         gsMatrix<T> tmp;
 
         gsMapData<T> map;
@@ -214,7 +213,7 @@ protected:
 protected:
 
     void membersSetZero()
-    {   
+    {
         m_data.mine().membersSetZero();
     }
 

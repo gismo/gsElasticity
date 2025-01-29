@@ -35,7 +35,7 @@ public:
     gsVisitorLinearElasticityMM(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
                                 const gsMaterialContainer<T> & materials,
                                       gsSparseMatrix<T> * elimMatrix = nullptr)
-    : 
+    :
     pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
     m_materials(materials),
     elimMat(elimMatrix)
@@ -87,8 +87,10 @@ public:
         // Compute C per Qnode
         //materialFunctions_ptr->at(i)->eval(...)
 
-        gsMaterialEval<T,gsMaterialOutput::C, true> Ceval(m_materials,&geo);
-        Ceval.piece(geo.id()).eval_into(quNodes,matValues);
+        // Construct a material evaluator for matrix with id geo.id()
+        gsMaterialEval<T,gsMaterialOutput::C, true> Ceval(m_materials.piece(geo.id()),&geo);
+        // The evaluator is single-piece, hence we use piece(0)
+        Ceval.piece(0).eval_into(quNodes,matValues);
         // gsMaterialEval<T,false> materialVector(m_materialMat);
         // materialVector.eval_into(quNodes,matValues);
 

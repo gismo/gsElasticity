@@ -152,7 +152,7 @@ public:
      * @param[in]  patch  The patch
      * @param[in]  u      The in-plane shell coordinates to be eveluated on
      *
-     * @return     
+     * @return
      */
     virtual inline void eval_deformation_gradient_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
     { GISMO_NO_IMPLEMENTATION; }
@@ -164,7 +164,7 @@ public:
      * @param[in]  patch  The patch
      * @param[in]  u      The in-plane shell coordinates to be eveluated on
      *
-     * @return     
+     * @return
      */
     virtual inline void eval_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
     { GISMO_NO_IMPLEMENTATION; }
@@ -176,7 +176,7 @@ public:
      * @param[in]  patch  The patch
      * @param[in]  u      The in-plane shell coordinates to be eveluated on
      *
-     * @return     
+     * @return
      */
     virtual inline void eval_stress_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
     { GISMO_NO_IMPLEMENTATION; }
@@ -187,7 +187,7 @@ public:
      * @param[in]  patch  The patch
      * @param[in]  u      The in-plane shell coordinates to be eveluated on
      *
-     * @return     
+     * @return
      */
     virtual inline void eval_matrix_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
     { GISMO_NO_IMPLEMENTATION; }
@@ -198,7 +198,7 @@ public:
      * @param[in]  patch  The patch
      * @param[in]  u      The in-plane shell coordinates to be eveluated on
      *
-     * @return     
+     * @return
      */
     virtual inline void eval_matrix_pos_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
     { GISMO_NO_IMPLEMENTATION; }
@@ -209,7 +209,7 @@ public:
      * @param[in]  patch  The patch
      * @param[in]  u      The in-plane shell coordinates to be eveluated on
      *
-     * @return     
+     * @return
      */
     virtual inline void eval_energy_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & result) const
     { GISMO_NO_IMPLEMENTATION; }

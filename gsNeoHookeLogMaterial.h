@@ -24,13 +24,13 @@ namespace gismo
 {
 
 template <class T>
-class gsNeoHookLogMaterial : public gsMaterialBase<T>
+class gsNeoHookeLogMaterial : public gsMaterialBase<T>
 {
 
 public:
     using Base = gsMaterialBase<T>;
 
-    gsNeoHookLogMaterial(   const T E,
+    gsNeoHookeLogMaterial(   const T E,
                         const T nu,
                         const gsFunctionSet<T> * patches,
                         const gsFunctionSet<T> * deformed)
@@ -42,7 +42,7 @@ public:
         m_PoissonRatio.push_back(nu);
     }
 
-    gsNeoHookLogMaterial(std::vector<T> E,
+    gsNeoHookeLogMaterial(std::vector<T> E,
                      std::vector<T> nu,
                      const gsFunctionSet<T> * patches,
                      const gsFunctionSet<T> * deformed)

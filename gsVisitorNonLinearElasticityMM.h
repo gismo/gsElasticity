@@ -27,18 +27,74 @@ namespace gismo
 {
 
 template <class T>
+class gsAsDeformed : public gsFunction<T>
+{
+public:
+    gsAsDeformed(const gsFunction<T> & undeformed_,
+                 const gsFunction<T> & deformed_)
+    :
+    undeformed(undeformed_),
+    deformed(deformed_)
+    {
+    }
+
+    short_t targetDim() const override { return undeformed.targetDim(); }
+    short_t domainDim() const override { return undeformed.domainDim(); }
+
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+    {
+        undeformed.eval_into(u,result);
+        result += deformed.eval(u);
+    }
+
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+    {
+        undeformed.deriv_into(u,result);
+        result += deformed.deriv(u);
+    }
+
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+    {
+        undeformed.deriv2_into(u,result);
+        result += deformed.deriv2(u);
+    }
+
+    void evalAllDers_into(const gsMatrix<T> & u, const int n, std::vector<gsMatrix<T> > & result, bool sameElement) const
+    {
+        std::vector<gsMatrix<T>> defResult;
+        undeformed.evalAllDers_into(u,n,result,sameElement);
+        deformed.evalAllDers_into(u,n,defResult,sameElement);
+        for (index_t i = 0; i <= n; ++i)
+            result[i] += defResult[i];
+    }
+
+    std::ostream &print(std::ostream &os) const
+    {
+        gsInfo<<"As deformed function\n";
+        undeformed.print(os);
+        deformed.print(os);
+        return os;
+    }
+
+protected:
+    const gsFunction<T> & undeformed;
+    const gsFunction<T> & deformed;
+};
+
+
+
+template <class T>
 class gsVisitorNonLinearElasticityMM
 {
 public:
     gsVisitorNonLinearElasticityMM( const gsPde<T> & pde_,
                                     const gsMaterialContainer<T> & materials,
                                     const gsMultiPatch<T> & displacement_)
-    : 
+    :
     pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
     m_materials(materials),
-    displacement(displacement_) 
-    { 
-
+    displacement(displacement_)
+    {
     }
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -64,6 +120,7 @@ public:
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
     {
+        GISMO_ASSERT(geo.id()==patch,"Geometry id ("<<geo.id()<<") does not match with the considered patch index ("<<patch<<")");
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
         // NEED_VALUE to get points in the physical domain for evaluation of the RHS
@@ -86,10 +143,14 @@ public:
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
 
-        gsMaterialEval<T,gsMaterialOutput::S, true> Seval(m_materials,&displacement);
-        gsMaterialEval<T,gsMaterialOutput::C, true> Ceval(m_materials,&displacement);
-        Seval.piece(geo.id()).eval_into(quNodes,vecValues);
-        Ceval.piece(geo.id()).eval_into(quNodes,matValues);
+        gsAsDeformed<T> def(geo,displacement.patch(patch));
+
+        // Construct a material evaluator for matrix with id geo.id()
+        gsMaterialEvalSingle<T,gsMaterialOutput::S,false> Seval(0,m_materials.piece(geo.id()),&geo,&def);
+        gsMaterialEvalSingle<T,gsMaterialOutput::C, true> Ceval(0,m_materials.piece(geo.id()),&geo,&def);
+        // The evaluator is single-piece, hence we use piece(0)
+        Seval.eval_into(quNodes,vecValues);
+        Ceval.eval_into(quNodes,matValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,

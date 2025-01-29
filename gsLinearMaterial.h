@@ -44,11 +44,30 @@ public:
                      const gsFunctionSet<T> & patches,
                      const gsFunctionSet<T> & deformed)
     :
-    Base(&patches,&deformed,nullptr)
+    Base(&patches,&deformed)
     {
         this->setParameter(0,E);
         this->setParameter(1,nu);
     }
+
+    gsLinearMaterial(   const T E,
+                        const T nu,
+                        const gsFunctionSet<T> & patches)
+    :
+    gsLinearMaterial(gsConstantFunction<T>(E,d),gsConstantFunction<T>(nu,d),patches)
+    {
+    }
+
+    gsLinearMaterial(const gsFunctionSet<T> & E,
+                     const gsFunctionSet<T> & nu,
+                     const gsFunctionSet<T> & patches)
+    :
+    Base(&patches)
+    {
+        this->setParameter(0,E);
+        this->setParameter(1,nu);
+    }
+
 
     void eval_stress_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
     {
@@ -57,6 +76,9 @@ public:
         // Compute the strain
         gsMatrix<T> Eres;
         Base::eval_strain_into(patch,u,Eres);
+
+        // Resize the result
+        result.resize(d*d,u.cols());
 
         // Lamé parameters
         T E, nu;
@@ -71,9 +93,9 @@ public:
             mu     = E / ( 2. * ( 1. + nu ) );
 
             gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,d,d);
-            result = lambda*E.trace()*I + 2*mu*E;
+            gsAsMatrix<T, Dynamic, Dynamic> S = result.reshapeCol(i,d,d);
+            S = lambda*E.trace()*I + 2*mu*E;
         }
-
     }
 
     void eval_matrix_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
@@ -89,7 +111,6 @@ public:
 
         // Resize the result
         result.resize(sz*sz,u.cols());
-        //gsDebugVar(result.rows());
 
         // Identity tensor
         gsMatrix<T> I = gsMatrix<T>::Identity(d,d);
@@ -103,7 +124,7 @@ public:
         T E, nu;
         T lambda, mu;
         for (index_t i=0; i!=u.cols(); i++)
-        {   
+        {
             E = m_data.mine().m_parmat(0,i);
             nu= m_data.mine().m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );

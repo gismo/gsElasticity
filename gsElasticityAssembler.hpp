@@ -73,7 +73,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
                                                 const gsFunction<T> & body_force,
                                                 const gsMaterialBase<T> * material)
 :
-gsElasticityAssembler(patches,basis,bconditions,body_force,gsMaterialContainer<T>(material))
+gsElasticityAssembler(patches,basis,bconditions,body_force,gsMaterialContainer<T>(material,patches.nPatches()))
 {}
 
 template<class T>

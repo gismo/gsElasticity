@@ -22,7 +22,7 @@
 namespace gismo
 {
 
-template <class T, enum gsMaterialOutput out, bool voigt> 
+template <class T, enum gsMaterialOutput out, bool voigt>
 class gsMaterialEvalSingle;
 
 template <class T, enum gsMaterialOutput out, bool voigt = true>
@@ -137,7 +137,7 @@ protected:
  * @tparam     T     Real type
  * @tparam     out   Output type (see \ref MaterialOutput)
  * @tparam     voigt   Voigt notation (true: Voigt, false: tensor)
- * 
+ *
  * @ingroup    Elasticity
  */
 template <class T, enum gsMaterialOutput out, bool voigt = true>
@@ -165,7 +165,7 @@ public:
     m_pIndex(patch),
     m_material(materialMatrix)
     {
-        m_material->setDeformed(undeformed);
+        m_material->setUndeformed(undeformed);
         m_material->setDeformed(deformed);
     }
 
@@ -183,55 +183,55 @@ private:
 
     /// Implementation of \ref targetDim for density (TODO), energy
     template<enum gsMaterialOutput _out, bool _voigt>
-    typename std::enable_if<_out==gsMaterialOutput::Psi, short_t>::type targetDim_impl() const 
-    { 
-        return 1; 
+    typename std::enable_if<_out==gsMaterialOutput::Psi, short_t>::type targetDim_impl() const
+    {
+        return 1;
     };
 
     /// Implementation of \ref targetDim for strain, stress
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<(_out==gsMaterialOutput::E ||
-                            _out==gsMaterialOutput::S) && !_voigt , short_t>::type targetDim_impl() const 
-    { 
+                            _out==gsMaterialOutput::S) && !_voigt , short_t>::type targetDim_impl() const
+    {
         const short_t d = m_material->dim();
-        return d*d; 
+        return d*d;
     };
 
     /// Implementation of \ref targetDim for strain, stress
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<(_out==gsMaterialOutput::E ||
-                            _out==gsMaterialOutput::S) && _voigt , short_t>::type targetDim_impl() const 
-    { 
+                            _out==gsMaterialOutput::S) && _voigt , short_t>::type targetDim_impl() const
+    {
         const short_t d = m_material->dim();
         return d*(d+1)/2;
     };
 
     /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2)) -- in Voigt
     template<enum gsMaterialOutput _out, bool _voigt>
-    typename std::enable_if<_out==gsMaterialOutput::C  && _voigt, short_t>::type targetDim_impl() const 
-    { 
-        return math::pow((m_material->dim()+1)*m_material->dim()/2,2); 
+    typename std::enable_if<_out==gsMaterialOutput::C  && _voigt, short_t>::type targetDim_impl() const
+    {
+        return math::pow((m_material->dim()+1)*m_material->dim()/2,2);
     };
 
     /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2))
     template<enum gsMaterialOutput _out, bool _voigt>
-    typename std::enable_if<_out==gsMaterialOutput::C  && !_voigt, short_t>::type targetDim_impl() const 
-    { 
-        GISMO_NO_IMPLEMENTATION; 
+    typename std::enable_if<_out==gsMaterialOutput::C  && !_voigt, short_t>::type targetDim_impl() const
+    {
+        GISMO_NO_IMPLEMENTATION;
     };
 
         /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2)) -- in Voigt
     template<enum gsMaterialOutput _out, bool _voigt>
-    typename std::enable_if<_out==gsMaterialOutput::C_pos  && _voigt, short_t>::type targetDim_impl() const 
-    { 
-        return math::pow((m_material->dim()+1)*m_material->dim()/2,2); 
+    typename std::enable_if<_out==gsMaterialOutput::C_pos  && _voigt, short_t>::type targetDim_impl() const
+    {
+        return math::pow((m_material->dim()+1)*m_material->dim()/2,2);
     };
 
     /// Implementation of \ref targetDim for matrix C (size = ((d+1)*d/2) x ((d+1)*d/2))
     template<enum gsMaterialOutput _out, bool _voigt>
-    typename std::enable_if<_out==gsMaterialOutput::C_pos  && !_voigt, short_t>::type targetDim_impl() const 
-    { 
-        GISMO_NO_IMPLEMENTATION; 
+    typename std::enable_if<_out==gsMaterialOutput::C_pos  && !_voigt, short_t>::type targetDim_impl() const
+    {
+        GISMO_NO_IMPLEMENTATION;
     };
 
 protected:
@@ -310,7 +310,7 @@ private:
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::C && !_voigt , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        GISMO_NO_IMPLEMENTATION; 
+        GISMO_NO_IMPLEMENTATION;
     }
 
     /// Specialisation of \ref eval_into for the material tensor
@@ -323,7 +323,7 @@ private:
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::C_pos && !_voigt , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        GISMO_NO_IMPLEMENTATION; 
+        GISMO_NO_IMPLEMENTATION;
     }
 
     void calculate_voigt_stress(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& result) const
