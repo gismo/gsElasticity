@@ -1,4 +1,4 @@
-/** @file gsVisitorLinearElasticity.h
+/** @file gsVisitorLinearElasticityMM.h
 
     @brief Visitor class for volumetric integration of the linear elasticity system.
 
@@ -17,6 +17,9 @@
 
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsMaterialEval.h>
+#include <gsElasticity/gsMaterialContainer.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>
@@ -25,13 +28,17 @@ namespace gismo
 {
 
 template <class T>
-class gsVisitorLinearElasticity
+class gsVisitorLinearElasticityMM //material matrix
 {
 public:
 
-    gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
-    : dim(0), N_D(0), pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
-          elimMat(elimMatrix)
+    gsVisitorLinearElasticityMM(const gsPde<T> & pde_,// const gsPieceWiseFunction<T> &mmat,
+                                const gsMaterialContainer<T> & materials,
+                                      gsSparseMatrix<T> * elimMatrix = nullptr)
+    :
+    pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+    m_materials(materials),
+    elimMat(elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -39,24 +46,19 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        GISMO_UNUSED(patchIndex);
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
         rule = gsQuadrature::get(basisRefs.front(), options);
-        // saving necessary info
-        T E = options.getReal("YoungsModulus");
-        T pr = options.getReal("PoissonsRatio");
-        lambda = E * pr / ( ( 1. + pr ) * ( 1. - 2. * pr ) );
-        mu     = E / ( 2. * ( 1. + pr ) );
-        forceScaling = options.getReal("ForceScaling");
+        forceScaling    = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
-        // linear elasticity tensor
+        // saving necessary info
+        //---------------------------------------
+        // T E = options.getReal("YoungsModulus");
+        // T pr = options.getReal("PoissonsRatio");
+        // m_materialMat = new gsElasticityMaterial(E,pr,dim);
+        //---------------------------------------
         I = gsMatrix<T>::Identity(dim,dim);
-        matrixTraceTensor<T>(C,I,I);
-        C *= lambda;
-        symmetricIdentityTensor<T>(Ctemp,I);
-        C += mu*Ctemp;
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
@@ -81,12 +83,22 @@ public:
         basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
+
+        // Compute C per Qnode
+        //materialFunctions_ptr->at(i)->eval(...)
+
+        // Construct a material evaluator for matrix with id geo.id()
+        gsMaterialEval<T,gsMaterialOutput::C, true> Ceval(m_materials.piece(geo.id()),&geo);
+        // The evaluator is single-piece, hence we use piece(0)
+        Ceval.piece(0).eval_into(quNodes,matValues);
+        // gsMaterialEval<T,false> materialVector(m_materialMat);
+        // materialVector.eval_into(quNodes,matValues);
+
     }
 
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T> & quWeights)
     {
-        GISMO_UNUSED(element);
         // initialize local matrix and rhs
         localMat.setZero(dim*N_D,dim*N_D);
         localRhs.setZero(dim*N_D,1);
@@ -95,15 +107,16 @@ public:
         {
             // Multiply quadrature weight by the geometry measure
             const T weightForce = quWeights[q] * md.measure(q);
-            const T weightBody = quWeights[q] * pow(md.measure(q),1-localStiffening);
+            const T weightBody = quWeights[q] * math::pow(md.measure(q),1-localStiffening);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md,q,basisValuesDisp[1],physGrad);
+            C = matValues.reshapeCol(q,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
             // loop over active basis functions (v_j)
             for (index_t i = 0; i < N_D; i++)
             {
                 // stiffness matrix K = B_i^T * C * B_j;
                 setB<T>(B_i,I,physGrad.col(i));
-                tempK = B_i.transpose() * C; //.reshapeCol(q,dim,dim)
+                tempK = B_i.transpose() * C;
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {
@@ -177,6 +190,8 @@ protected:
     std::vector<gsMatrix<T> > basisValuesDisp;
     // RHS values at quadrature points at the current element; stored as a dim x numQuadPoints matrix
     gsMatrix<T> forceValues;
+    /// Material handler
+    const gsMaterialContainer<T> & m_materials;
     // elimination matrix to efficiently change Dirichlet degrees of freedom
     gsSparseMatrix<T> * elimMat;
     // all temporary matrices defined here for efficiency
@@ -184,6 +199,8 @@ protected:
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;
+
+    gsMatrix<T> matValues;
 };
 
 } // namespace gismo

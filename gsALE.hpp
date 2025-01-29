@@ -42,7 +42,7 @@ gsALE<T>::gsALE(gsMultiPatch<T> & geometry, const gsMultiPatch<T> & displacement
     for (gsMultiPatch<>::const_biterator it = geometry.bBegin(); it != geometry.bEnd(); ++it)
         for (index_t d = 0; d < geometry.parDim(); ++d)
             bcInfo.addCondition(it->patch,it->side(),condition_type::dirichlet,0,d);
-    gsConstantFunction<T> rhs(gsVector<>::Zero(geometry.parDim()),geometry.parDim());
+    gsConstantFunction<T> rhs(gsVector<T>::Zero(geometry.parDim()),geometry.parDim());
 
     // define assembler according to the method
     if (methodALE == ale_method::TINE || methodALE == ale_method::TINE_StVK || methodALE == ale_method::ILE || methodALE == ale_method::LE)
