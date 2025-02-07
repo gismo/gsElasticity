@@ -178,8 +178,8 @@ protected:
         gsMapData<T> map_ori, map_def;
         map_def.flags = map_ori.flags = NEED_JACOBIAN;
         map_def.points = map_ori.points = u;
-        static_cast<const gsFunction<T>&>(Base::m_undeformed->piece(patch)   ).computeMap(map_ori);
-        static_cast<const gsFunction<T>&>(Base::m_deformed  ->piece(patch)   ).computeMap(map_def);
+        m_undeformed->function(patch).computeMap(map_ori);
+        m_deformed->function(patch).computeMap(map_def);
 
         for (index_t k=0; k!= u.cols(); k++)
         {
