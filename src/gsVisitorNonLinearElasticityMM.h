@@ -120,7 +120,7 @@ public:
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
     {
-        GISMO_ASSERT(geo.id()==patch,"Geometry id ("<<geo.id()<<") does not match with the considered patch index ("<<patch<<")");
+        GISMO_ASSERT((index_t)geo.id()==patch,"Geometry id ("<<geo.id()<<") does not match with the considered patch index ("<<patch<<")");
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
         // NEED_VALUE to get points in the physical domain for evaluation of the RHS
@@ -148,9 +148,21 @@ public:
         // Construct a material evaluator for matrix with id geo.id()
         gsMaterialEvalSingle<T,gsMaterialOutput::S,false> Seval(0,m_materials.piece(geo.id()),&geo,&def);
         gsMaterialEvalSingle<T,gsMaterialOutput::C, true> Ceval(0,m_materials.piece(geo.id()),&geo,&def);
+
+        // The lines below are faster than calling gsMaterialEval(Single),
+        // Since we precompute the geometric and parameter data only once
+        gsMaterialBase<T> * material = m_materials.piece(geo.id());
+        material->setUndeformed(&geo);
+        material->setDeformed(&def);
+        material->precompute(0,quNodes);
+        material->eval_stress_into(vecValues);
+        material->eval_matrix_into(matValues);
+
+
+
         // The evaluator is single-piece, hence we use piece(0)
-        Seval.eval_into(quNodes,vecValues);
-        Ceval.eval_into(quNodes,matValues);
+        // Seval.eval_into(quNodes,vecValues);
+        // Ceval.eval_into(quNodes,matValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,

@@ -16,26 +16,28 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialBaseDim.h>
+#include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsUtils/gsThreaded.h>
+#include <gsCore/gsConstantFunction.h>
 
 namespace gismo
 {
 
-template <short_t d, class T>
-class gsLinearMaterial : public gsMaterialBaseDim<d,T>
+template <class T>
+class gsLinearMaterial : public gsMaterialBase<T>
 {
 
 public:
-    using Base = gsMaterialBaseDim<d,T>;
+    using Base = gsMaterialBase<T>;
 
     gsLinearMaterial(   const T E,
                         const T nu,
                         const gsFunctionSet<T> & patches,
                         const gsFunctionSet<T> & deformed)
     :
-    gsLinearMaterial(gsConstantFunction<T>(E,d),gsConstantFunction<T>(nu,d),patches,deformed)
+    gsLinearMaterial(gsConstantFunction<T>(E,patches.domainDim()),
+                     gsConstantFunction<T>(nu,patches.domainDim()),patches,deformed)
     {
     }
 
@@ -54,7 +56,8 @@ public:
                         const T nu,
                         const gsFunctionSet<T> & patches)
     :
-    gsLinearMaterial(gsConstantFunction<T>(E,d),gsConstantFunction<T>(nu,d),patches)
+    gsLinearMaterial(gsConstantFunction<T>(E,patches.domainDim()),
+                     gsConstantFunction<T>(nu,patches.domainDim()),patches)
     {
     }
 
@@ -68,52 +71,62 @@ public:
         this->setParameter(1,nu);
     }
 
-
-    void eval_stress_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
+    gsLinearMaterial(   const T E,
+                        const T nu,
+                        const size_t dim)
+    :
+    gsLinearMaterial(gsConstantFunction<T>(E,dim),gsConstantFunction<T>(nu,dim))
     {
-        // Compute the parameter data (writes into m_data.mine().m_parMat)
-        this->_computeParameterData(patch,u);
-        // Compute the strain
-        gsMatrix<T> Eres;
-        Base::eval_strain_into(patch,u,Eres);
+    }
+
+    gsLinearMaterial(const gsFunctionSet<T> & E,
+                     const gsFunctionSet<T> & nu)
+    :
+    Base()
+    {
+        this->setParameter(0,E);
+        this->setParameter(1,nu);
+    }
+
+    void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
+    {
+        const short_t dim = data.dim;
+        const index_t N = data.size;
 
         // Resize the result
-        result.resize(d*d,u.cols());
+        Sresult.resize(dim*dim,N);
 
         // Lamé parameters
         T E, nu;
         T lambda, mu;
-        gsMatrix<T,d,d> I = gsMatrix<T>::Identity(d,d);
+        gsMatrix<T> I = gsMatrix<T>::Identity(dim,dim);
 
-        for (index_t i=0; i!=u.cols(); i++)
+        for (index_t i=0; i!=N; i++)
         {
             E = m_data.mine().m_parmat(0,i);
             nu= m_data.mine().m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
 
-            gsAsMatrix<T, Dynamic, Dynamic> E = Eres.reshapeCol(i,d,d);
-            gsAsMatrix<T, Dynamic, Dynamic> S = result.reshapeCol(i,d,d);
+            gsAsMatrix<T, Dynamic, Dynamic> E = data.m_E.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
             S = lambda*E.trace()*I + 2*mu*E;
         }
     }
 
-    void eval_matrix_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T> & result) const
+    void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
     {
-        // Compute the parameter data (writes into m_data.mine().m_parMat)
-        this->_computeParameterData(patch,u);
-        // Compute the strain
-        gsMatrix<T> Eres;
-        Base::eval_strain_into(patch,u,Eres);
+        const short_t dim = data.dim;
+        const index_t N = data.size;
 
         // Voigt-size of the tensor
-        const index_t sz = (d+1)*d/2;
+        const index_t sz = (dim+1)*dim/2;
 
         // Resize the result
-        result.resize(sz*sz,u.cols());
+        Cresult.resize(sz*sz,N);
 
         // Identity tensor
-        gsMatrix<T> I = gsMatrix<T>::Identity(d,d);
+        gsMatrix<T> I = gsMatrix<T>::Identity(dim,dim);
 
         // C tensors
         gsMatrix<T> Clambda, Cmu;
@@ -123,14 +136,14 @@ public:
         // Lamé parameters
         T E, nu;
         T lambda, mu;
-        for (index_t i=0; i!=u.cols(); i++)
+        for (index_t i=0; i!=N; i++)
         {
             E = m_data.mine().m_parmat(0,i);
             nu= m_data.mine().m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
             // Compute C
-            result.reshapeCol(i,sz,sz) = lambda*Clambda + mu*Cmu;
+            Cresult.reshapeCol(i,sz,sz) = lambda*Clambda + mu*Cmu;
         }
     }
 

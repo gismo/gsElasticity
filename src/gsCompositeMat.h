@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialBaseDim.h>
+#include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsVisitorElUtils.h>
 #include <gsUtils/gsThreaded.h>
 
@@ -24,11 +24,11 @@ namespace gismo
 {
 
 template <short_t d, class T>
-class gsCompositeMat : public gsMaterialBaseDim<d,T>
+class gsCompositeMat : public gsMaterialBase<T>
 {
 
 public:
-    using Base = gsMaterialBaseDim<d,T>;
+    using Base = gsMaterialBase<T>;
 
     gsCompositeMat( const T Exx,
                     const T Eyy,
@@ -41,14 +41,14 @@ public:
                     const T nuxz,
                     const gsFunctionSet<T> & alpha,
                     const gsFunctionSet<T> & patches)
-    :   
+    :
     m_alpha(&alpha),
     Base(&patches)
     {
         m_C.resize(6,6);
         m_C.setZero();
         T D = (1-nuxy*nuxy-nuyz*nuyz-nuxz*nuxz-2*nuxy*nuyz*nuxz) / (Exx*Eyy*Ezz); // determinant of the compliance matrix (S)
-        
+
         m_C(0,0) = (1-nuyz*nuyz) / (Eyy*Ezz); // Gxx
         m_C(1,1) = (1-nuxz*nuxz) / (Exx*Ezz); // Gyy
         m_C(2,2) = (1-nuxy*nuxy) / (Exx*Eyy); // Gzz
@@ -81,11 +81,11 @@ public:
         // Compliance matrix
         m_S.resize(6,6);
         m_S.setZero();
-        
+
         // Diagonal components
-        m_S(0,0) = 1/Exx; 
-        m_S(1,1) = 1/Eyy; 
-        m_S(2,2) = 1/Ezz; 
+        m_S(0,0) = 1/Exx;
+        m_S(1,1) = 1/Eyy;
+        m_S(2,2) = 1/Ezz;
         m_S(3,3) = 1.0/Gxy; // Factor 2? ??????? CHECK!
         m_S(4,4) = 1.0/Gyz; // Factor 2?
         m_S(5,5) = 1.0/Gxz; // Factor 2?
@@ -103,7 +103,7 @@ public:
                     const T nuxy,
                     const gsFunctionSet<T> & alpha,
                     const gsFunctionSet<T> & patches)
-    :   
+    :
     m_alpha(&alpha),
     Base(&patches)
     // Base(&patches,nullptr,nullptr), in this case it will check the dimension of mp_def
@@ -136,7 +136,7 @@ public:
 
          // Resize the result
         result.resize(d*d,u.cols());
-        stress_tensor.resize(d,d); 
+        stress_tensor.resize(d,d);
 
         // Voigt-size of the tensor
         const index_t sz = (d+1)*d/2;
@@ -150,12 +150,12 @@ public:
             gsMatrix<T> E_full = Eres.reshapeCol(j,d,d);
 
             voigtStrain(E_voigt,E_full); //E_vect in voigt
-            
+
             _makePhi(angles.col(patch),Phi);
             stress_voigt = Phi.transpose() * m_C * Phi * E_voigt; // this gives the stress in Voigt notation
             tensorStress(d,stress_voigt,stress_tensor);  // to get stress in tensor notation
             result.reshapeCol(j,d,d) = stress_tensor; // this gives the stress in tensor notation
-            
+
             // gsDebugVar(Phi.transpose() * m_C * Phi);
         }
 

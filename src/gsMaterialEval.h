@@ -79,8 +79,8 @@ public:
     }
 
     /// Destructor
-    ~gsMaterialEval() 
-    { 
+    ~gsMaterialEval()
+    {
         freeAll(m_pieces);
     }
 
@@ -326,7 +326,8 @@ private:
         GISMO_NO_IMPLEMENTATION;
     }
 
-    void calculate_voigt_stress(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& result) const
+public:
+    static void calculate_voigt_stress(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& result)
     {
         for (index_t k = 0; k < result.cols(); k++)
         {
@@ -337,7 +338,7 @@ private:
         }
     }
 
-    void calculate_voigt_strain(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& result) const
+    static void calculate_voigt_strain(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& result)
     {
         for (index_t k = 0; k < result.cols(); k++)
         {
@@ -347,6 +348,16 @@ private:
             result.col(k) = E_voigt;
         }
     }
+
+public:
+
+    /// Precompute the geometric data
+    void precompute(const gsMatrix<T>& u)
+    {
+        m_material->precomputeData(m_pIndex,u);
+    }
+
+    /// Get the geometric data
 
 protected:
     index_t m_pIndex;

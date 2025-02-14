@@ -123,6 +123,8 @@ bool gsIterative<T>::compute()
     if (!assembler.assemble(solVector,fixedDoFs))
         return false;
 
+    gsDebug<<"------------------------------------------------\n";
+
     gsVector<T> solutionVector;
     if (m_options.getInt("Solver") == linear_solver::LU)
     {

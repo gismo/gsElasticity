@@ -72,18 +72,18 @@ int main(int argc, char* argv[]){
                   // Solving //
     //=============================================//
 
-    // gsNeoHookeLogMaterial<2,real_t> materialMat(youngsModulus,poissonsRatio,
-    //                                             geometry);
-    gsLinearMaterial<2,real_t> materialMat(youngsModulus,poissonsRatio,
-                                           geometry);
+    gsNeoHookeLogMaterial<real_t> materialMat(youngsModulus,poissonsRatio,
+                                                geometry);
+    // gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio,
+    //                                        geometry);
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,g,&materialMat);
     // gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,g);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
-    // assembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
-    assembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
+    assembler.options().setInt("MaterialLaw",material_law::neo_hooke_ln);
+    // assembler.options().setInt("MaterialLaw",material_law::saint_venant_kirchhoff);
     gsInfo << "Initialized system with " << assembler.numDofs() << " dofs.\n";
 
     // setting Newton's method
