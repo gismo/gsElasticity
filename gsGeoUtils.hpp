@@ -214,16 +214,20 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
                 numNodes.at(i) = domain.basis(p).degree(i)+1;
             gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
-            typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
-#ifdef _OPENMP
+            // Initialize domain element iterator
+            typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginBdr(boundary::none);
+            typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endBdr(boundary::none);
+
+#           ifdef _OPENMP
             const int tid = omp_get_thread_num();
             const int nt  = omp_get_num_threads();
-            for ( domIt->next(tid); domIt->good() && continueIt; domIt->next(nt) )
-#else
-            for (; domIt->good() && continueIt; domIt->next() )
-#endif
+            domIt += tid;
+            for ( ; domIt<domItEnd; domIt+=nt )
+#           else
+            for (; domIt<domItEnd && continueIt; ++domIt )
+#           endif
             {
-                genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+                genSamplingPoints(domIt.lowerCorner(),domIt.upperCorner(),quRule,points);
                 md.points = points;
                 domain.patch(p).computeMap(md);
                 for (index_t q = 0; q < points.cols() && continueIt; ++q)
@@ -260,16 +264,20 @@ index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const 
                 numNodes.at(i) = displacement.basis(p).degree(i)+1;
             gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
-            typename gsBasis<T>::domainIter domIt = displacement.basis(p).makeDomainIterator(boundary::none);
-#ifdef _OPENMP
+            // Initialize domain element iterator
+            typename gsBasis<T>::domainIter domIt    = displacement.basis(p).domain()->beginBdr(boundary::none);
+            typename gsBasis<T>::domainIter domItEnd = displacement.basis(p).domain()->endBdr(boundary::none);
+
+#           ifdef _OPENMP
             const int tid = omp_get_thread_num();
             const int nt  = omp_get_num_threads();
-            for ( domIt->next(tid); domIt->good() && continueIt; domIt->next(nt) )
-#else
-            for (; domIt->good() && continueIt; domIt->next() )
-#endif
+            domIt += tid;
+            for ( ; domIt<domItEnd; domIt+=nt )
+#           else
+            for (; domIt<domItEnd && continueIt; ++domIt )
+#           endif
             {
-                genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+                genSamplingPoints(domIt.lowerCorner(),domIt.upperCorner(),quRule,points);
                 mdG.points = points;
                 mdU.points = points;
                 domain.patch(p).computeMap(mdG);
@@ -308,16 +316,20 @@ T normL2(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & solution)
                 numNodes.at(i) = solution.basis(p).degree(i)+1;
             gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
-            typename gsBasis<T>::domainIter domIt = solution.basis(p).makeDomainIterator(boundary::none);
-#ifdef _OPENMP
+            // Initialize domain element iterator
+            typename gsBasis<T>::domainIter domIt    = solution.basis(p).domain()->beginBdr(boundary::none);
+            typename gsBasis<T>::domainIter domItEnd = solution.basis(p).domain()->endBdr(boundary::none);
+
+#           ifdef _OPENMP
             const int tid = omp_get_thread_num();
             const int nt  = omp_get_num_threads();
-            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#else
-            for (; domIt->good(); domIt->next() )
-#endif
+            domIt += tid;
+            for ( ; domIt<domItEnd; domIt+=nt )
+#           else
+            for (; domIt<domItEnd; ++domIt )
+#           endif
             {
-                quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+                quRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights );
                 mdGeo.points = quNodes;
                 domain.patch(p).computeMap(mdGeo);
                 solution.patch(p).eval_into(quNodes,values);
@@ -347,10 +359,12 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
             numNodes.at(i) = domain.basis(p).degree(i)+1;
         gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
-        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
-        for (; domIt->good(); domIt->next())
+        // Initialize domain element iterator
+        typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginBdr(boundary::none);
+        typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endBdr(boundary::none);
+        for (; domIt<domItEnd; ++domIt )
         {
-            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+            genSamplingPoints(domIt.lowerCorner(),domIt.upperCorner(),quRule,points);
             md.points = points;
             domain.patch(p).computeMap(md);
 
@@ -390,10 +404,12 @@ T displacementJacRatio(const gsMultiPatch<T> & domain,const gsMultiPatch<T> & di
             numNodes.at(i) = displacement.basis(p).degree(i)+1;
         gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
-        typename gsBasis<T>::domainIter domIt = domain.basis(p).makeDomainIterator(boundary::none);
-        for (; domIt->good(); domIt->next())
+        // Initialize domain element iterator
+        typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginBdr(boundary::none);
+        typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endBdr(boundary::none);
+        for (; domIt<domItEnd; ++domIt )
         {
-            genSamplingPoints(domIt->lowerCorner(),domIt->upperCorner(),quRule,points);
+            genSamplingPoints(domIt.lowerCorner(),domIt.upperCorner(),quRule,points);
             mdG.points = points;
             mdU.points = points;
             domain.patch(p).computeMap(mdG);
@@ -520,10 +536,12 @@ T curveLength(const gsGeometry<T> & geo)
     gsMapData<T> md;
     md.flags = NEED_DERIV;
 
-    typename gsBasis<>::domainIter domIt = geo.basis().makeDomainIterator(boundary::none);
-    for (; domIt->good(); domIt->next())
+    // Initialize domain element iterator
+    typename gsBasis<T>::domainIter domIt    = geo.basis().domain()->beginBdr(boundary::none);
+    typename gsBasis<T>::domainIter domItEnd = geo.basis().domain()->endBdr(boundary::none);
+    for (; domIt<domItEnd; ++domIt )
     {
-        quRule.mapTo(domIt->lowerCorner(),domIt->upperCorner(),qPoints,qWeights);
+        quRule.mapTo(domIt.lowerCorner(),domIt.upperCorner(),qPoints,qWeights);
         md.points = qPoints;
         geo.computeMap(md);
         for (index_t q = 0; q < qWeights.rows(); ++q)
