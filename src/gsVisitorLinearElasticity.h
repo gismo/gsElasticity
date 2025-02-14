@@ -30,8 +30,11 @@ class gsVisitorLinearElasticity
 public:
 
     gsVisitorLinearElasticity(const gsPde<T> & pde_, gsSparseMatrix<T> * elimMatrix = nullptr)
-    : dim(0), pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)), N_D(0),
-          elimMat(elimMatrix)
+    :
+    dim(0),
+    pde_ptr(static_cast<const gsBasePde<T>*>(&pde_)),
+    N_D(0),
+    elimMat(elimMatrix)
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
@@ -103,7 +106,7 @@ public:
             {
                 // stiffness matrix K = B_i^T * C * B_j;
                 setB<T>(B_i,I,physGrad.col(i));
-                tempK = B_i.transpose() * C;
+                tempK = B_i.transpose() * C; //.reshapeCol(q,dim,dim)
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {

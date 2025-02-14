@@ -7,6 +7,10 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsIterative.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/gsLinearMaterial.h>
+#include <gsElasticity/gsCompositeMaterial.h>
+#include <gsElasticity/gsCompositeMatrix.cpp>
 
 using namespace gismo;
 
@@ -18,7 +22,6 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"terrific.xml";
     real_t youngsModulus = 74e9;
     real_t poissonsRatio = 0.33;
     index_t materialLaw = material_law::saint_venant_kirchhoff;
@@ -39,8 +42,11 @@ int main(int argc, char* argv[]){
     //=============================================//
 
     // scanning geometry
-    gsMultiPatch<> geometry;
-    gsReadFile<>(filename, geometry);
+    gsMultiPatch<> patch, geometry;
+    patch.addPatch(gsNurbsCreator<>::BSplineCube());
+    patch.patch(0).coefs().col(0)*=10;
+    geometry = patch.uniformSplit(0);
+    geometry.computeTopology();
     // creating basis
     gsMultiBasis<> basis(geometry);
     for (index_t i = 0; i < numDegElev; ++i)
@@ -55,20 +61,17 @@ int main(int argc, char* argv[]){
     // source function, rhs
     gsConstantFunction<> f(0.,0.,0.,3);
     // surface load, neumann BC
-    gsConstantFunction<> g(15e7, -10.5e7, 0,3);
+    gsConstantFunction<> g(0, 0, -1e8,3);
 
     // boundary conditions
     gsBoundaryConditions<> bcInfo;
     // Dirichlet BC are imposed separately for every component (coordinate)
     for (index_t d = 0; d < 3; d++)
     {
-        bcInfo.addCondition(0,boundary::back,condition_type::dirichlet,0,d);
-        bcInfo.addCondition(1,boundary::back,condition_type::dirichlet,0,d);
-        bcInfo.addCondition(2,boundary::south,condition_type::dirichlet,0,d);
+        bcInfo.addCondition(0,boundary::west,condition_type::dirichlet,0,d);
     }
     // Neumann BC are imposed as one function
-    bcInfo.addCondition(13,boundary::front,condition_type::neumann,&g);
-    bcInfo.addCondition(14,boundary::north,condition_type::neumann,&g);
+    bcInfo.addCondition(1,boundary::east,condition_type::neumann,&g);
 
     //=============================================//
                   // Solving //
@@ -78,7 +81,8 @@ int main(int argc, char* argv[]){
                                            geometry);
 
     // creating assembler
-    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
+    gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f,&materialMat);
+    // gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);
     assembler.options().setReal("YoungsModulus",youngsModulus);
     assembler.options().setReal("PoissonsRatio",poissonsRatio);
     assembler.options().setInt("MaterialLaw",materialLaw);

@@ -55,6 +55,36 @@ inline void symmetricIdentityTensor(gsMatrix<T> & C, const gsMatrix<T> & R)
                         R(voigt(dim,i,0),voigt(dim,j,1))*R(voigt(dim,i,1),voigt(dim,j,0)));
 }
 
+// Deviatoric matrix operator in 2D and 3D
+template <class T> //template it with dimension
+inline void deviatoricTensor(gsMatrix<T> & C, const gsMatrix<T> & R)
+{
+    short_t dim = R.cols();
+    short_t dimTensor = dim*(dim+1)/2;
+    C.setZero(dimTensor,dimTensor);
+
+    C.block(0,0,dim,dim).setConstant(-1.0/3.0);
+    C.block(0,0,dim,dim).diagonal().setConstant(2.0/3.0);
+    C.block(dim,dim,dimTensor-dim,dimTensor-dim).diagonal().setConstant(0.5);
+
+    // if (dim == 2) 
+    // {
+    // C <<2.0/3.0, -1.0/3.0, 0.,
+    //     -1.0/3.0, 2.0/3.0, 0.,
+    //     0., 0., 1.0/2.0;
+    // } 
+    // else if (dim == 3) 
+    // {
+    // C << 2.0/3.0, -1.0/3.0, -1.0/3.0, 0.0, 0.0, 0.0,
+    //     -1.0/3.0, 2.0/3.0, -1.0/3.0, 0.0, 0.0, 0.0,
+    //     -1.0/3.0, -1.0/3.0, 2.0/3.0, 0.0, 0.0, 0.0,
+    //     0.0, 0.0, 0.0, 1.0/2.0, 0.0, 0.0,
+    //     0.0, 0.0, 0.0, 0.0, 1.0/2.0, 0.0,
+    //     0.0, 0.0, 0.0, 0.0, 0.0, 1.0/2.0;
+    // }
+}
+
+
 // construct a fourth order matrix-trace tensor C based on two second order symmetric tensors R and S
 // C_ijkl = R_ij*S_kl in Voigt notation
 template <class T>
@@ -78,6 +108,51 @@ inline void voigtStress(gsVector<T> & Svec, const gsMatrix<T> & S)
     Svec.resize(dimTensor);
     for (short i = 0; i < dimTensor; ++i)
         Svec(i) = S(voigt(dim,i,0),voigt(dim,i,1));
+}
+
+// transform stress Svec in Voigt notation to stress tensor S 
+template <class T>
+inline void tensorStress(const index_t dim, const gsMatrix<T> & Svec, gsMatrix<T> & S)
+{
+    if (dim == 2)
+    {
+        S.setZero(dim,dim);
+        S(0,0) = Svec(0,0);
+        S(1,1) = Svec(1,0);
+        S(0,1) = Svec(2,0);
+        S(1,0) = Svec(2,0);
+    }
+    else if (dim == 3)
+    {
+        S.setZero(dim,dim);
+        S(0,0) = Svec(0,0);
+        S(1,1) = Svec(1,0);
+        S(2,2) = Svec(2,0);
+
+        S(0,1) = Svec(3,0); // tao_xy 
+        S(1,0) = Svec(3,0); // tao_xy 
+
+        S(0,2) = Svec(4,0); // tao_yz 
+        S(2,0) = Svec(4,0); // tao_yz
+
+        S(1,2) = Svec(5,0); // tao_xz
+        S(2,1) = Svec(5,0); // tao_xz
+    }
+}
+
+// transform strain tensor E to a vector in Voigt notation
+template <class T>
+inline void voigtStrain(gsVector<T> & Evec, const gsMatrix<T> & E)
+{
+    short_t dim = E.cols();
+    //gsDebugVar(dim);
+    short_t dimTensor = dim*(dim+1)/2;
+    Evec.resize(dimTensor);
+    for (short i = 0; i < dimTensor; ++i)
+        if (voigt(dim,i,0) != voigt(dim,i,1))
+            Evec(i) = E(voigt(dim,i,0),voigt(dim,i,1)) + E(voigt(dim,i,1),voigt(dim,i,0)); // off-diagonal terms
+        else
+            Evec(i) = E(voigt(dim,i,0),voigt(dim,i,1)); // diagonal terms
 }
 
 // auxiliary matrix B such that E:S = B*Svec in the weak form
