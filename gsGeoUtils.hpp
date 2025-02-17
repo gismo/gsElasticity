@@ -215,8 +215,8 @@ index_t checkGeometry(gsMultiPatch<T> const & domain)
             gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
             // Initialize domain element iterator
-            typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginBdr(boundary::none);
-            typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endBdr(boundary::none);
+            typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endAll();
 
 #           ifdef _OPENMP
             const int tid = omp_get_thread_num();
@@ -265,8 +265,8 @@ index_t checkDisplacement(gsMultiPatch<T> const & domain, gsMultiPatch<T> const 
             gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
             // Initialize domain element iterator
-            typename gsBasis<T>::domainIter domIt    = displacement.basis(p).domain()->beginBdr(boundary::none);
-            typename gsBasis<T>::domainIter domItEnd = displacement.basis(p).domain()->endBdr(boundary::none);
+            typename gsBasis<T>::domainIter domIt    = displacement.basis(p).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = displacement.basis(p).domain()->endAll();
 
 #           ifdef _OPENMP
             const int tid = omp_get_thread_num();
@@ -317,8 +317,8 @@ T normL2(gsMultiPatch<T> const & domain, gsMultiPatch<T> const & solution)
             gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
             // Initialize domain element iterator
-            typename gsBasis<T>::domainIter domIt    = solution.basis(p).domain()->beginBdr(boundary::none);
-            typename gsBasis<T>::domainIter domItEnd = solution.basis(p).domain()->endBdr(boundary::none);
+            typename gsBasis<T>::domainIter domIt    = solution.basis(p).domain()->beginAll();
+            typename gsBasis<T>::domainIter domItEnd = solution.basis(p).domain()->endAll();
 
 #           ifdef _OPENMP
             const int tid = omp_get_thread_num();
@@ -360,8 +360,8 @@ T geometryJacRatio(gsMultiPatch<T> const & domain)
         gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
         // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginBdr(boundary::none);
-        typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endBdr(boundary::none);
+        typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             genSamplingPoints(domIt.lowerCorner(),domIt.upperCorner(),quRule,points);
@@ -405,8 +405,8 @@ T displacementJacRatio(const gsMultiPatch<T> & domain,const gsMultiPatch<T> & di
         gsQuadRule<T> quRule = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,numNodes);
 
         // Initialize domain element iterator
-        typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginBdr(boundary::none);
-        typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endBdr(boundary::none);
+        typename gsBasis<T>::domainIter domIt    = domain.basis(p).domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = domain.basis(p).domain()->endAll();
         for (; domIt<domItEnd; ++domIt )
         {
             genSamplingPoints(domIt.lowerCorner(),domIt.upperCorner(),quRule,points);
@@ -537,8 +537,8 @@ T curveLength(const gsGeometry<T> & geo)
     md.flags = NEED_DERIV;
 
     // Initialize domain element iterator
-    typename gsBasis<T>::domainIter domIt    = geo.basis().domain()->beginBdr(boundary::none);
-    typename gsBasis<T>::domainIter domItEnd = geo.basis().domain()->endBdr(boundary::none);
+    typename gsBasis<T>::domainIter domIt    = geo.basis().domain()->beginAll();
+    typename gsBasis<T>::domainIter domItEnd = geo.basis().domain()->endAll();
     for (; domIt<domItEnd; ++domIt )
     {
         quRule.mapTo(domIt.lowerCorner(),domIt.upperCorner(),qPoints,qWeights);
