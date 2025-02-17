@@ -78,7 +78,7 @@ public:
         basisRefs.front().eval_into(quNodes,basisValuesDisp);
     }
 
-    inline void assemble(gsDomainIterator<T> & element,
+    inline void assemble(gsDomainIteratorWrapper<T> & element,
                          const gsVector<T> & quWeights)
     {
         GISMO_UNUSED(element);

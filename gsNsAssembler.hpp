@@ -199,11 +199,14 @@ gsMatrix<T> gsNsAssembler<T>::computeForce(const gsMultiPatch<T> & velocity, con
         // setting quadrature rule for the boundary side
         gsGaussRule<T> bdQuRule(basis,1.0,1,it->second.direction());
         // loop over elements of the side
-        typename gsBasis<T>::domainIter elem = basis.makeDomainIterator(it->second);
-        for (; elem->good(); elem->next())
+
+        // Initialize domain element iterator
+        typename gsBasis<T>::domainIter domIt    = basis.domain()->beginBdr(it->second);
+        typename gsBasis<T>::domainIter domItEnd = basis.domain()->endBdr(it->second);
+        for (; domIt<domItEnd; ++domIt )
         {
             // mapping quadrature rule to the element
-            bdQuRule.mapTo(elem->lowerCorner(),elem->upperCorner(),quNodes,quWeights);
+            bdQuRule.mapTo(domIt.lowerCorner(),domIt.upperCorner(),quNodes,quWeights);
             // evaluate geoemtry mapping at the quad points
             mdGeo.points = quNodes;
             m_pde_ptr->patches().patch(it->first).computeMap(mdGeo);

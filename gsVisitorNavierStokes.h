@@ -95,7 +95,7 @@ public:
         pressure.patch(patch).eval_into(quNodes,pressureValues);
     }
 
-    inline void assemble(gsDomainIterator<T> & element,
+    inline void assemble(gsDomainIteratorWrapper<T> & element,
                          const gsVector<T> & quWeights)
     {
         GISMO_UNUSED(element);
@@ -127,7 +127,7 @@ public:
 
 protected:
 
-    void assembleNewtonUpdate(gsDomainIterator<T> & element,
+    void assembleNewtonUpdate(gsDomainIteratorWrapper<T> & element,
                               const gsVector<T> & quWeights)
     {
         GISMO_UNUSED(element);
@@ -186,7 +186,7 @@ protected:
         }
     }
 
-    void assembleNewtonFull(gsDomainIterator<T> & element,
+    void assembleNewtonFull(gsDomainIteratorWrapper<T> & element,
                             const gsVector<T> & quWeights)
     {
         GISMO_UNUSED(element);
@@ -234,7 +234,7 @@ protected:
         }
     }
 
-    void assembleOseen(gsDomainIterator<T> & element,
+    void assembleOseen(gsDomainIteratorWrapper<T> & element,
                        const gsVector<T> & quWeights)
     {
         GISMO_UNUSED(element);
