@@ -26,60 +26,62 @@
 namespace gismo
 {
 
-template <class T>
-class gsAsDeformed : public gsFunction<T>
-{
-public:
-    gsAsDeformed(const gsFunction<T> & undeformed_,
-                 const gsFunction<T> & deformed_)
-    :
-    undeformed(undeformed_),
-    deformed(deformed_)
-    {
-    }
+// template <class T>
+// class gsAsDeformed : public gsFunction<T>
+// {
+// public:
+//     gsAsDeformed(const gsFunction<T> & undeformed_,
+//                  const gsFunction<T> & deformed_)
+//     :
+//     undeformed(undeformed_),
+//     deformed(deformed_)
+//     {
+//     }
 
-    short_t targetDim() const override { return undeformed.targetDim(); }
-    short_t domainDim() const override { return undeformed.domainDim(); }
+//     short_t targetDim() const override { return undeformed.targetDim(); }
+//     short_t domainDim() const override { return undeformed.domainDim(); }
 
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-    {
-        undeformed.eval_into(u,result);
-        result += deformed.eval(u);
-    }
+//     void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+//     {
+//         undeformed.eval_into(u,result);
+//         result += deformed.eval(u);
+//     }
 
-    void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-    {
-        undeformed.deriv_into(u,result);
-        result += deformed.deriv(u);
-    }
+//     void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+//     {
+//         undeformed.deriv_into(u,result);
+//         result += deformed.deriv(u);
+//     }
 
-    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-    {
-        undeformed.deriv2_into(u,result);
-        result += deformed.deriv2(u);
-    }
+//     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+//     {
+//         undeformed.deriv2_into(u,result);
+//         result += deformed.deriv2(u);
+//     }
 
-    void evalAllDers_into(const gsMatrix<T> & u, const int n, std::vector<gsMatrix<T> > & result, bool sameElement) const
-    {
-        std::vector<gsMatrix<T>> defResult;
-        undeformed.evalAllDers_into(u,n,result,sameElement);
-        deformed.evalAllDers_into(u,n,defResult,sameElement);
-        for (index_t i = 0; i <= n; ++i)
-            result[i] += defResult[i];
-    }
+//     void evalAllDers_into(const gsMatrix<T> & u, const int n, std::vector<gsMatrix<T> > & result, bool sameElement) const
+//     {
+//         std::vector<gsMatrix<T>> defResult;
+//         undeformed.evalAllDers_into(u,n,result,sameElement);
+//         deformed.evalAllDers_into(u,n,defResult,sameElement);
+//         for (index_t i = 0; i <= n; ++i)
+//             result[i] += defResult[i];
+//     }
 
-    std::ostream &print(std::ostream &os) const
-    {
-        gsInfo<<"As deformed function\n";
-        undeformed.print(os);
-        deformed.print(os);
-        return os;
-    }
+//     std::ostream &print(std::ostream &os) const
+//     {
+//         gsInfo<<"As deformed function\n";
+//         undeformed.print(os);
+//         deformed.print(os);
+//         return os;
+//     }
 
-protected:
-    const gsFunction<T> & undeformed;
-    const gsFunction<T> & deformed;
-};
+//     GISMO_CLONE_FUNCTION(gsAsDeformed)
+
+// protected:
+//     const gsFunction<T> & undeformed;
+//     const gsFunction<T> & deformed;
+// };
 
 
 
@@ -143,26 +145,27 @@ public:
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
 
-        gsAsDeformed<T> def(geo,displacement.patch(patch));
+        mdDeformed = mdDisplacement;
+        mdDeformed.values[1] += md.values[1];
 
-        // Construct a material evaluator for matrix with id geo.id()
-        gsMaterialEvalSingle<T,gsMaterialOutput::S,false> Seval(0,m_materials.piece(geo.id()),&geo,&def);
-        gsMaterialEvalSingle<T,gsMaterialOutput::C, true> Ceval(0,m_materials.piece(geo.id()),&geo,&def);
+        // gsAsDeformed<T> def(geo,displacement.patch(patch));
 
-        // The lines below are faster than calling gsMaterialEval(Single),
-        // Since we precompute the geometric and parameter data only once
-        gsMaterialBase<T> * material = m_materials.piece(geo.id());
-        material->setUndeformed(&geo);
-        material->setDeformed(&def);
-        material->precompute(0,quNodes);
-        material->eval_stress_into(vecValues);
-        material->eval_matrix_into(matValues);
+        // // Construct a material evaluator for matrix with id geo.id()
+        // gsMaterialEvalSingle<T,gsMaterialOutput::S,false> Seval(0,m_materials.piece(geo.id()),geo,def);
+        // gsMaterialEvalSingle<T,gsMaterialOutput::C, true> Ceval(0,m_materials.piece(geo.id()),geo,def);
 
-
-
-        // The evaluator is single-piece, hence we use piece(0)
+        // // The evaluator is single-piece, hence we use piece(0)
         // Seval.eval_into(quNodes,vecValues);
         // Ceval.eval_into(quNodes,matValues);
+
+        // The lines below are faster than calling gsMaterialEval(Single),
+        // Since we re-use the geometric data and compute the parameter data only once
+        gsMaterialData<T> data;
+        gsMaterialBase<T> * material = m_materials.piece(geo.id());
+        material->precompute(md,mdDeformed,data);
+        material->eval_deformation_gradient_into(data,defGradValues); // re-use the pre-computed ones
+        material->eval_stress_into(data,vecValues);
+        material->eval_matrix_into(data,matValues);
     }
 
     inline void assemble(gsDomainIterator<T> & element,
@@ -177,10 +180,8 @@ public:
             const T weightForce = quWeights[q] * md.measure(q);
             // Compute physical gradients of basis functions at q as a dim x numActiveFunction matrix
             transformGradients(md,q,basisValuesDisp[1],physGrad);
-            // physical jacobian of displacemnt du/dx = du/dxi * dxi/dx
-            physDispJac = mdDisplacement.jacobian(q)*(md.jacobian(q).cramerInverse());
-            // deformation gradient F = I + du/dx
-            F = I + physDispJac;
+            // deformation gradient
+            F = defGradValues.reshapeCol(q,dim,dim);
             const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
             // Elasticity tensor
             C = matValues.reshapeCol(q,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
@@ -264,6 +265,7 @@ protected:
     const gsMultiPatch<T> & displacement;
     // evaluation data of the current displacement field
     gsMapData<T> mdDisplacement;
+    gsMapData<T> mdDeformed;
 
     // all temporary matrices defined here for efficiency
     gsMatrix<T> C, Ctemp, physGrad, physDispJac, F, RCG, E, S, RCGinv, B_i, materialTangentTemp, B_j, materialTangent, I;
@@ -275,6 +277,7 @@ protected:
 
     gsMatrix<T> matValues;
     gsMatrix<T> vecValues;
+    gsMatrix<T> defGradValues;
 
 };
 

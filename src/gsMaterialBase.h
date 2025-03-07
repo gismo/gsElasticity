@@ -24,6 +24,13 @@
 namespace gismo
 {
 
+/*
+    NOTE ON THREADING:
+    The gsMaterialEvalSingle and gsMaterialEval classes contain a thread-safe data object m_data
+    which is used to store the material data for each thread. This is done to avoid
+
+ */
+
 template<class T>
 class gsMaterialData;
 
@@ -41,80 +48,28 @@ public:
     /// Unique pointer for gsMaterialBase
     typedef memory::unique_ptr< gsMaterialBase > uPtr;
 
-
     gsMaterialBase()
     :
-    gsMaterialBase(nullptr,nullptr,nullptr)
+    gsMaterialBase(nullptr)
     {
     }
 
-    gsMaterialBase( const gsFunctionSet<T> * mp)
+    gsMaterialBase( const gsFunctionSet<T> & Density)
     :
-    gsMaterialBase(mp,nullptr,nullptr)
+    gsMaterialBase(memory::make_shared(Density.clone().release()))
     {
     }
 
-    gsMaterialBase( const gsFunctionSet<T> * mp,
-                    const gsFunctionSet<T> * mp_def)
+    gsMaterialBase( const gsFunctionSet<T> * Density)
     :
-    gsMaterialBase(mp,mp_def,nullptr)
+    gsMaterialBase(memory::make_shared_not_owned(Density))
     {
     }
 
-    gsMaterialBase( const gsFunctionSet<T> & mp)
-    :
-    gsMaterialBase(&mp,nullptr,nullptr)
-    {
-    }
-
-    gsMaterialBase( const gsFunctionSet<T> & mp,
-                    const gsFunctionSet<T> & mp_def)
-    :
-    gsMaterialBase(&mp,&mp_def,nullptr)
-    {
-    }
-
-    // gsMaterialBase( const gsFunctionSet<T> & mp)
-    // :
-    // gsMaterialBase(mp,nullptr,nullptr)
-    // {
-    // }
-
-    // gsMaterialBase( const gsFunctionSet<T> & mp,
-    //                 const gsFunctionSet<T> & mp_def)
-    // :
-    // gsMaterialBase(mp,mp_def,nullptr)
-    // {
-    // }
-
-    gsMaterialBase( const gsFunctionSet<T> & mp,
-                    const gsFunctionSet<T> & mp_def,
-                    const gsFunctionSet<T> & Density)
-    :
-    gsMaterialBase(memory::make_shared(mp.clone().release()),
-                   memory::make_shared(mp_def.clone().release()),
-                   memory::make_shared(Density.clone().release()))
-    {
-    }
-
-    gsMaterialBase( const gsFunctionSet<T> * mp,
-                    const gsFunctionSet<T> * mp_def,
-                    const gsFunctionSet<T> * Density)
-    :
-    gsMaterialBase(memory::make_shared_not_owned(mp),
-                   memory::make_shared_not_owned(mp_def),
-                   memory::make_shared_not_owned(Density))
-    {
-    }
-
-    gsMaterialBase( const function_ptr & mp,
-                    const function_ptr & mp_def,
-                    const function_ptr & Density)
+    gsMaterialBase( const function_ptr & Density)
     :
     m_density(Density)
     {
-        m_undeformed.mine() = mp;
-        m_deformed.mine() = mp_def;
     }
 
     GISMO_UPTR_FUNCTION_NO_IMPLEMENTATION(gsMaterialBase, clone)
@@ -138,8 +93,6 @@ public:
     {
         if (this!=&other)
         {
-            m_undeformed.mine() = other.m_undeformed.mine();
-            m_deformed.mine() = other.m_deformed.mine();
             m_options = other.m_options;
 
             m_pars = other.m_pars;
@@ -150,8 +103,6 @@ public:
 
     gsMaterialBase<T> & operator= ( gsMaterialBase<T> && other )
     {
-        m_undeformed.mine() = give(other.m_undeformed.mine());
-        m_deformed.mine() = give(other.m_deformed.mine());
         m_options = give(other.m_options);
 
 
@@ -174,17 +125,6 @@ public:
     virtual inline gsOptionList & options() { return m_options; }
 
     /**
-     * @brief      Returns the dimension
-     *
-     * @return     The dimension
-     */
-    virtual inline short_t dim() const
-    {
-        GISMO_ASSERT(m_undeformed.mine()!=nullptr,"Undeformed geometry is not set!");
-        return m_undeformed.mine()->domainDim();
-    }
-
-    /**
      * @brief      Sets the options
      *
      * @param[in]  opt   \ref gsOptionList
@@ -194,9 +134,33 @@ public:
     /**
      *
      */
-    virtual void precompute(const index_t patch, const gsMatrix<T> & u) const
+
+    virtual void precompute(const gsFunctionSet<T> * undeformed,
+                            const index_t patch,
+                            const gsMatrix<T> & u,
+                            gsMaterialData<T> & data) const
     {
-        this->_computeGeometricData(patch,u,m_data.mine());
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(undeformed,nullptr,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+    }
+
+    virtual void precompute(const gsFunctionSet<T> * undeformed,
+                            const gsFunctionSet<T> * deformed,
+                            const index_t patch,
+                            const gsMatrix<T> & u,
+                            gsMaterialData<T> & data) const
+    {
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(undeformed,deformed,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+    }
+
+    virtual void precompute(const gsMapData<T> & map_ori,
+                            const gsMapData<T> & map_def,
+                            gsMaterialData<T> & data) const
+    {
+        this->_computeStrains(map_ori,map_def,data);
     }
 
     /**
@@ -207,16 +171,18 @@ public:
      *
      * @return
      */
-    virtual void eval_deformation_gradient_into(gsMatrix<T> & Fresult)
-    {
-        this->eval_deformation_gradient_into(m_data.mine(),Fresult);
-    }
-
-    virtual void eval_deformation_gradient_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & Fresult) const
+    virtual void eval_deformation_gradient_into(const gsFunctionSet<T> & undeformed,
+                                                const gsFunctionSet<T> & deformed,
+                                                const index_t patch,
+                                                const gsMatrix<T>& u,
+                                                gsMatrix<T> & Fresult) const
     {
         // Compute map and parameters
-        this->_computeGeometricData(patch,u,m_data.mine());
-        this->eval_deformation_gradient_into(m_data.mine(),Fresult);
+        gsMaterialData<T> data;
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+        this->eval_deformation_gradient_into(data,Fresult);
     }
 
     virtual void eval_deformation_gradient_into(const gsMaterialData<T> & data, gsMatrix<T> & Fresult) const
@@ -233,16 +199,18 @@ public:
      *
      * @return
      */
-    virtual void eval_strain_into(gsMatrix<T> & Eresult)
-    {
-        this->eval_strain_into(m_data.mine(),Eresult);
-    }
-
-    virtual void eval_strain_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & Eresult) const
+    virtual void eval_strain_into(  const gsFunctionSet<T> & undeformed,
+                                    const gsFunctionSet<T> & deformed,
+                                    const index_t patch,
+                                    const gsMatrix<T>& u,
+                                    gsMatrix<T> & Eresult) const
     {
         // Compute map and parameters
-        this->_computeGeometricData(patch,u,m_data.mine());
-        this->eval_strain_into(m_data.mine(),Eresult);
+        gsMaterialData<T> data;
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+        this->eval_strain_into(data,Eresult);
     }
 
     virtual void eval_strain_into(const gsMaterialData<T> & data, gsMatrix<T> & Eresult) const
@@ -259,16 +227,18 @@ public:
      *
      * @return
      */
-    virtual void eval_stress_into(gsMatrix<T> & Sresult)
-    {
-        this->eval_stress_into(m_data.mine(),Sresult);
-    }
-
-    virtual void eval_stress_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & Sresult) const
+    virtual void eval_stress_into(  const gsFunctionSet<T> & undeformed,
+                                    const gsFunctionSet<T> & deformed,
+                                    const index_t patch,
+                                    const gsMatrix<T>& u,
+                                    gsMatrix<T> & Sresult) const
     {
         // Compute map and parameters
-        this->_computeGeometricData(patch,u,m_data.mine());
-        this->eval_stress_into(m_data.mine(),Sresult);
+        gsMaterialData<T> data;
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+        this->eval_stress_into(data,Sresult);
     }
 
     virtual void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
@@ -282,16 +252,18 @@ public:
      *
      * @return
      */
-    virtual void eval_matrix_into(gsMatrix<T> & Cresult)
-    {
-        this->eval_matrix_into(m_data.mine(),Cresult);
-    }
-
-    virtual void eval_matrix_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & Cresult) const
+    virtual void eval_matrix_into(  const gsFunctionSet<T> & undeformed,
+                                    const gsFunctionSet<T> & deformed,
+                                    const index_t patch,
+                                    const gsMatrix<T>& u,
+                                    gsMatrix<T> & Cresult) const
     {
         // Compute map and parameters
-        this->_computeGeometricData(patch,u,m_data.mine());
-        this->eval_matrix_into(m_data.mine(),Cresult);
+        gsMaterialData<T> data;
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+        this->eval_matrix_into(data,Cresult);
     }
 
     virtual void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
@@ -305,16 +277,18 @@ public:
      *
      * @return
      */
-    virtual void eval_matrix_pos_into(gsMatrix<T> & Cresult)
-    {
-        this->eval_matrix_pos_into(m_data.mine(),Cresult);
-    }
-
-    virtual void eval_matrix_pos_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & Cresult) const
+    virtual void eval_matrix_pos_into(  const gsFunctionSet<T> & undeformed,
+                                        const gsFunctionSet<T> & deformed,
+                                        const index_t patch,
+                                        const gsMatrix<T>& u,
+                                        gsMatrix<T> & Cresult) const
     {
         // Compute map and parameters
-        this->_computeGeometricData(patch,u,m_data.mine());
-        this->eval_matrix_pos_into(m_data.mine(),Cresult);
+        gsMaterialData<T> data;
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+        this->eval_matrix_pos_into(data,Cresult);
     }
 
     virtual void eval_matrix_pos_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
@@ -328,16 +302,18 @@ public:
      *
      * @return
      */
-    virtual void eval_energy_into(gsMatrix<T> & Presult)
-    {
-        this->eval_energy_into(m_data.mine(),Presult);
-    }
-
-    virtual void eval_energy_into(const index_t patch, const gsMatrix<T>& u, gsMatrix<T> & Presult) const
+    virtual void eval_energy_into(  const gsFunctionSet<T> & undeformed,
+                                    const gsFunctionSet<T> & deformed,
+                                    const index_t patch,
+                                    const gsMatrix<T>& u,
+                                    gsMatrix<T> & Presult) const
     {
         // Compute map and parameters
-        this->_computeGeometricData(patch,u,m_data.mine());
-        this->eval_energy_into(m_data.mine(),Presult);
+        gsMaterialData<T> data;
+        gsMapData<T> map_ori, map_def;
+        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
+        this->_computeStrains(map_ori,map_def,data);
+        this->eval_energy_into(data,Presult);
     }
 
     virtual void eval_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Presult) const
@@ -427,72 +403,54 @@ public:
         m_pars.resize(0);
     }
 
-    virtual inline void setUndeformed(const gsFunctionSet<T> * undeformed)
-    {
-        function_ptr f_ptr = memory::make_shared_not_owned(undeformed);
-        m_undeformed.mine() = f_ptr;
-    }
-    virtual inline void setDeformed(const gsFunctionSet<T> * deformed)
-    {
-        function_ptr f_ptr = memory::make_shared_not_owned(deformed);
-        m_deformed.mine() = f_ptr;
-    }
-
-    virtual inline void setUndeformed(const function_ptr undeformed)
-    {
-        m_undeformed.mine() = undeformed;
-    }
-    virtual inline void setDeformed(const function_ptr deformed)
-    {
-        m_deformed.mine() = deformed;
-    }
-
-    const inline function_ptr getUndeformed() const { return m_undeformed.mine(); }
-    const inline function_ptr getDeformed()  const { return m_deformed.mine(); }
-
-    virtual inline bool hasUndeformed() const
-    { return m_deformed.mine()!=nullptr; }
-    virtual inline bool hasDeformed() const { return m_deformed.mine()!=nullptr; }
-
-    void precomputeData(index_t patch, const gsMatrix<T>& u)
-    {
-        this->computeGeometricData(patch,u);
-    }
-
-    /**
-     *
-     */
-    const gsMaterialData<T> & getData() const{ return m_data.mine(); }
-
-    void setData(const gsMaterialData<T> & data) { m_data.mine() = data; }
-
 protected:
 
-    GISMO_DEPRECATED
-    void _computeGeometricData(index_t patch, const gsMatrix<T>& u) const
+    void _computeStrains(const gsMapData<T> & map_ori,
+                         const gsMapData<T> & map_def,
+                               gsMaterialData<T> & data) const
     {
-        this->_computeGeometricData(patch,u,m_data.mine());
+        if (map_def.flags==0)
+            _computeStrains_impl(map_ori,data);
+        else
+            _computeStrains_impl(map_ori,map_def,data);
     }
 
-    void _computeGeometricData(index_t patch, const gsMatrix<T>& u, gsMaterialData<T> & data) const
+    void _computeStrains_impl(const gsMapData<T> & map_ori,
+                                    gsMaterialData<T> & data) const
     {
-        data.dim = u.rows();
-        data.size = u.cols();
-        GISMO_ASSERT(m_undeformed.mine()!=nullptr,"Undeformed function is not set");
-        GISMO_ASSERT(m_deformed.mine()!=nullptr,"Deformed function is not set");
-        GISMO_ASSERT(m_undeformed.mine()->domainDim()==data.dim,"Geometric dimension and the point dimension are not the same!");
-        GISMO_ASSERT(m_deformed.mine()->domainDim()==data.dim,"Geometric dimension and the point dimension are not the same!");
+        GISMO_ASSERT(map_ori.flags & NEED_VALUE,"The undeformed map data should contain the point values");
+        GISMO_ASSERT(map_ori.flags & NEED_JACOBIAN,"The undeformed map data should contain the Jacobian matrix");
+        data.dim = map_ori.points.rows();
+        data.size = map_ori.points.cols();
+        data.patch = (map_ori.patchId==-1) ? 0 : map_ori.patchId;
+        data.m_F.resize(0,data.size);
+        data.m_E.resize(0,data.size);
+        data.m_parmat.resize(m_pars.size(),data.size);
+
+        data.m_parmat.setZero();
+        gsMatrix<T> pars;
+        for (size_t v=0; v!=m_pars.size(); v++)
+        {
+            m_pars[v]->piece(data.patch).eval_into(map_ori.values[0], pars);
+            data.m_parmat.row(v) = pars;
+        }
+    }
+
+    void _computeStrains_impl(const gsMapData<T> & map_ori,
+                              const gsMapData<T> & map_def,
+                                    gsMaterialData<T> & data) const
+    {
+        GISMO_ASSERT(map_ori.flags & NEED_VALUE,"The undeformed map data should contain the point values");
+        GISMO_ASSERT(map_ori.flags & NEED_JACOBIAN,"The undeformed map data should contain the Jacobian matrix");
+        GISMO_ASSERT(map_def.flags & NEED_JACOBIAN,"The deformed map data should contain the Jacobian matrix");
+        GISMO_ASSERT(map_ori.points.cols() == map_def.points.cols(),"The number of points in the undeformed and deformed maps should be the same");
+        GISMO_ASSERT(map_ori.patchId == map_def.patchId,"The undeformed and deformed maps should be defined on the same patch");
+        data.dim = map_ori.points.rows();
+        data.size = map_ori.points.cols();
+        data.patch = (map_ori.patchId==-1) ? 0 : map_ori.patchId;
         data.m_F.resize(data.dim*data.dim,data.size);
         data.m_E.resize(data.dim*data.dim,data.size);
-        data.m_parmat.resize(m_pars.size(),u.cols());
-
-        gsMapData<T> map_ori, map_def;
-        map_ori.flags = NEED_VALUE;
-        map_ori.flags|= NEED_JACOBIAN;
-        map_def.flags = NEED_JACOBIAN;
-        map_def.points = map_ori.points = u;
-        m_undeformed.mine()->function(patch).computeMap(map_ori);
-        m_deformed.mine()->function(patch).computeMap(map_def);
+        data.m_parmat.resize(m_pars.size(),data.size);
 
         data.m_parmat.setZero();
         gsMatrix<T> pars;
@@ -506,54 +464,67 @@ protected:
             gsAsMatrix<T, Dynamic,Dynamic> F = data.m_F.reshapeCol(k,data.dim,data.dim);
             F = jac_def*(jac_ori.cramerInverse());;
             // strain tensor E = 0.5*(F'*F-I), a.k.a. full geometric strain tensor
-            gsAsMatrix<T, Dynamic,Dynamic> E = data.m_E.reshapeCol(k,data.dim,data.dim);
-            E = 0.5 * (F.transpose() * F - I);
+            gsAsMatrix<T, Dynamic,Dynamic> Emat = data.m_E.reshapeCol(k,data.dim,data.dim);
+            Emat = 0.5 * (F.transpose() * F - I);
         }
 
         for (size_t v=0; v!=m_pars.size(); v++)
         {
-            m_pars[v]->piece(patch).eval_into(map_ori.values[0], pars);
+            m_pars[v]->piece(data.patch).eval_into(map_ori.values[0], pars);
             data.m_parmat.row(v) = pars;
         }
     }
 
-    // void _computeParameterData(index_t patch, const gsMatrix<T>& u) const
-    // {
-    //     this->_computeParameterData(patch,u,m_data.mine());
-    // }
-
-    // void _computeParameterData(index_t patch, const gsMatrix<T>& u, gsMaterialData<T> & data) const
-    // {
-
-    //     gsMatrix<T> tmp;
-
-    //     gsMapData<T> map;
-    //     map.flags = NEED_VALUE;
-    //     map.points = u;
-    //     static_cast<const gsFunction<T>&>(m_undeformed.mine()->piece(patch)   ).computeMap(map);
-
-    //     data.m_parmat.resize(m_pars.size(),map.values[0].cols());
-    //     data.m_parmat.setZero();
-
-    //     for (size_t v=0; v!=m_pars.size(); v++)
-    //     {
-    //         m_pars[v]->piece(patch).eval_into(map.values[0], tmp);
-    //         data.m_parmat.row(v) = tmp;
-    //     }
-    // }
-
-
-protected:
-
-    void membersSetZero()
+    void _computeGeometricData(const gsFunctionSet<T> * undeformed,
+                               const gsFunctionSet<T> * deformed,
+                               const index_t patch,
+                               const gsMatrix<T>& u,
+                                     gsMapData<T> & map_ori,
+                                     gsMapData<T> & map_def) const
     {
-        m_data.mine().membersSetZero();
+        if (deformed==nullptr || deformed->nPieces()==0)
+            _computeGeometricData_impl(undeformed,patch,u,map_ori,map_def);
+        else
+            _computeGeometricData_impl(undeformed,deformed,patch,u,map_ori,map_def);
+    }
+
+    void _computeGeometricData_impl(const gsFunctionSet<T> * undeformed,
+                                    const index_t patch,
+                                    const gsMatrix<T>& u,
+                                          gsMapData<T> & map_ori,
+                                          gsMapData<T> & map_def) const
+    {
+        map_ori.clear();
+        map_def.clear();
+        GISMO_ASSERT(undeformed->domainDim()==u.rows(),"Geometric dimension and the point dimension are not the same!\n"<<undeformed->domainDim()<<"!="<<u.rows());
+        map_ori.flags = NEED_VALUE;
+        map_ori.points = u;
+        map_ori.patchId = patch;
+        undeformed->function(patch).computeMap(map_ori);
+    }
+
+    void _computeGeometricData_impl(const gsFunctionSet<T> * undeformed,
+                                    const gsFunctionSet<T> * deformed,
+                                    const index_t patch,
+                                    const gsMatrix<T>& u,
+                                          gsMapData<T> & map_ori,
+                                          gsMapData<T> & map_def) const
+    {
+        map_ori.clear();
+        map_def.clear();
+        GISMO_ASSERT(undeformed->domainDim()==deformed->domainDim(),"Geometric dimension and the point dimension are not the same!\n"<<undeformed->domainDim()<<"!="<<deformed->domainDim());
+        GISMO_ASSERT(undeformed->domainDim()==u.rows(),"Geometric dimension and the point dimension are not the same!\n"<<undeformed->domainDim()<<"!="<<u.rows());
+
+        map_ori.flags = NEED_VALUE;
+        map_ori.flags|= NEED_JACOBIAN;
+        map_def.flags = NEED_JACOBIAN;
+        map_def.points = map_ori.points = u;
+        map_ori.patchId = map_def.patchId = patch;
+        undeformed->function(patch).computeMap(map_ori);
+        deformed->function(patch).computeMap(map_def);
     }
 
 protected:
-
-    util::gsThreaded<function_ptr> m_undeformed;
-    util::gsThreaded<function_ptr> m_deformed;
 
     std::vector< function_ptr > m_pars;
     function_ptr m_density;
@@ -561,7 +532,7 @@ protected:
     gsOptionList m_options;
 
     // Geometric data point
-    mutable util::gsThreaded< gsMaterialData<T> > m_data;
+    // mutable util::gsThreaded< gsMaterialData<T> > m_data;
 
 public:
 
@@ -584,6 +555,9 @@ public:
         m_rhoMat.setZero();
     }
 
+    typename gsMaterialBase<T>::function_ptr m_undeformed;
+    typename gsMaterialBase<T>::function_ptr m_deformed;
+
     mutable gsMatrix<T> m_parmat;
     mutable gsMatrix<T> m_rhoMat;
     // mutable gsMatrix<T> m_jac_ori, m_jac_def;
@@ -591,6 +565,7 @@ public:
 
     mutable short_t dim;
     mutable index_t size;
+    mutable index_t patch;
 };
 
 

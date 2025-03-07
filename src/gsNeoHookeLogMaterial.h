@@ -17,8 +17,7 @@
 #pragma once
 
 #include <gsElasticity/gsMaterialBase.h>
-#include <gsElasticity/gsVisitorElUtils.h>
-#include <gsUtils/gsThreaded.h>
+#include <gsCore/gsConstantFunction.h>
 
 namespace gismo
 {
@@ -32,20 +31,17 @@ public:
 
     gsNeoHookeLogMaterial(  const T E,
                             const T nu,
-                            const gsFunctionSet<T> & patches,
-                            const gsFunctionSet<T> & deformed)
+                            short_t d)
     :
-    gsNeoHookeLogMaterial(gsConstantFunction<T>(E,patches.domainDim()),
-                     gsConstantFunction<T>(nu,patches.domainDim()),patches,deformed)
+    gsNeoHookeLogMaterial(gsConstantFunction<T>(E,d),
+                     gsConstantFunction<T>(nu,d))
     {
     }
 
     gsNeoHookeLogMaterial(  const gsFunctionSet<T> & E,
-                            const gsFunctionSet<T> & nu,
-                            const gsFunctionSet<T> & patches,
-                            const gsFunctionSet<T> & deformed)
+                            const gsFunctionSet<T> & nu)
     :
-    Base(&patches,&deformed)
+    Base()
     {
         this->setParameter(0,E);
         this->setParameter(1,nu);
@@ -86,8 +82,8 @@ public:
         T J;
         for (index_t i=0; i!=N; i++)
         {
-            E = m_data.mine().m_parmat(0,i);
-            nu= m_data.mine().m_parmat(1,i);
+            E = data.m_parmat(0,i);
+            nu= data.m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
 
@@ -127,8 +123,8 @@ public:
         T lambda, mu;
         for (index_t i=0; i!=N; i++)
         {
-            E = m_data.mine().m_parmat(0,i);
-            nu= m_data.mine().m_parmat(1,i);
+            E = data.m_parmat(0,i);
+            nu= data.m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
 
@@ -146,10 +142,6 @@ public:
             Cresult.reshapeCol(i,sz,sz) = C;
         }
     }
-
-protected:
-    using Base::m_data;
-
 };
 
 }

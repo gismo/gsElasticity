@@ -18,7 +18,6 @@
 
 #include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsVisitorElUtils.h>
-#include <gsUtils/gsThreaded.h>
 #include <gsCore/gsConstantFunction.h>
 
 namespace gismo
@@ -30,46 +29,6 @@ class gsLinearMaterial : public gsMaterialBase<T>
 
 public:
     using Base = gsMaterialBase<T>;
-
-    gsLinearMaterial(   const T E,
-                        const T nu,
-                        const gsFunctionSet<T> & patches,
-                        const gsFunctionSet<T> & deformed)
-    :
-    gsLinearMaterial(gsConstantFunction<T>(E,patches.domainDim()),
-                     gsConstantFunction<T>(nu,patches.domainDim()),patches,deformed)
-    {
-    }
-
-    gsLinearMaterial(const gsFunctionSet<T> & E,
-                     const gsFunctionSet<T> & nu,
-                     const gsFunctionSet<T> & patches,
-                     const gsFunctionSet<T> & deformed)
-    :
-    Base(&patches,&deformed)
-    {
-        this->setParameter(0,E);
-        this->setParameter(1,nu);
-    }
-
-    gsLinearMaterial(   const T E,
-                        const T nu,
-                        const gsFunctionSet<T> & patches)
-    :
-    gsLinearMaterial(gsConstantFunction<T>(E,patches.domainDim()),
-                     gsConstantFunction<T>(nu,patches.domainDim()),patches)
-    {
-    }
-
-    gsLinearMaterial(const gsFunctionSet<T> & E,
-                     const gsFunctionSet<T> & nu,
-                     const gsFunctionSet<T> & patches)
-    :
-    Base(&patches)
-    {
-        this->setParameter(0,E);
-        this->setParameter(1,nu);
-    }
 
     gsLinearMaterial(   const T E,
                         const T nu,
@@ -103,14 +62,14 @@ public:
 
         for (index_t i=0; i!=N; i++)
         {
-            E = m_data.mine().m_parmat(0,i);
-            nu= m_data.mine().m_parmat(1,i);
+            E = data.m_parmat(0,i);
+            nu= data.m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
 
-            gsAsMatrix<T, Dynamic, Dynamic> E = data.m_E.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
             gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
-            S = lambda*E.trace()*I + 2*mu*E;
+            S = lambda*Emat.trace()*I + 2*mu*Emat;
         }
     }
 
@@ -138,17 +97,14 @@ public:
         T lambda, mu;
         for (index_t i=0; i!=N; i++)
         {
-            E = m_data.mine().m_parmat(0,i);
-            nu= m_data.mine().m_parmat(1,i);
+            E = data.m_parmat(0,i);
+            nu= data.m_parmat(1,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
             // Compute C
             Cresult.reshapeCol(i,sz,sz) = lambda*Clambda + mu*Cmu;
         }
     }
-
-protected:
-    using Base::m_data;
 
 };
 

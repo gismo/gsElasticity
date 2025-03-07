@@ -88,8 +88,7 @@ int main(int argc, char* argv[])
     // gsConstantFunction<> G(Gmat,3);
     // creating assembler
 
-    gsLinearMaterial<3,real_t> materialMat(youngsModulus,poissonsRatio,
-                                           geometry);
+    gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio,3);
     // gsCompositeMaterial<real_t> materialMat(G,alpha);
 
     // creating assembler

@@ -77,8 +77,7 @@ int main(int argc, char* argv[]){
                   // Solving //
     //=============================================//
 
-    gsLinearMaterial<3,real_t> materialMat(youngsModulus,poissonsRatio,
-                                           geometry);
+    gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio,3);
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f,&materialMat);

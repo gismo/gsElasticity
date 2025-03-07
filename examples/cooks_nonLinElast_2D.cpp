@@ -72,10 +72,8 @@ int main(int argc, char* argv[]){
                   // Solving //
     //=============================================//
 
-    gsNeoHookeLogMaterial<real_t> materialMat(youngsModulus,poissonsRatio,
-                                                geometry);
-    // gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio,
-    //                                        geometry);
+    gsNeoHookeLogMaterial<real_t> materialMat(youngsModulus,poissonsRatio,2);
+    // gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio);
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basisDisplacement,bcInfo,g,&materialMat);

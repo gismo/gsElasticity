@@ -32,39 +32,17 @@ public:
 
     gsMooneyRivlinMaterial( const T c1,
                             const T c2,
-                            const gsFunctionSet<T> & patches,
-                            const gsFunctionSet<T> & deformed)
+                            short_t d)
     :
-    gsMooneyRivlinMaterial( gsConstantFunction<T>(c1,patches.domainDim()),
-                            gsConstantFunction<T>(c2,patches.domainDim()),patches,deformed)
+    gsMooneyRivlinMaterial( gsConstantFunction<T>(c1,d),
+                            gsConstantFunction<T>(c2,d))
     {
     }
 
     gsMooneyRivlinMaterial( const gsFunctionSet<T> & c1,
-                            const gsFunctionSet<T> & c2,
-                            const gsFunctionSet<T> & patches,
-                            const gsFunctionSet<T> & deformed)
+                            const gsFunctionSet<T> & c2)
     :
-    Base(&patches,&deformed)
-    {
-        this->setParameter(0,c1);
-        this->setParameter(1,c2);
-    }
-
-    gsMooneyRivlinMaterial( const T c1,
-                            const T c2,
-                            const gsFunctionSet<T> & patches)
-    :
-    gsMooneyRivlinMaterial(gsConstantFunction<T>(c1,patches.domainDim()),
-                           gsConstantFunction<T>(c2,patches.domainDim()),patches)
-    {
-    }
-
-    gsMooneyRivlinMaterial( const gsFunctionSet<T> & c1,
-                            const gsFunctionSet<T> & c2,
-                            const gsFunctionSet<T> & patches)
-    :
-    Base(&patches)
+    Base()
     {
         this->setParameter(0,c1);
         this->setParameter(1,c2);

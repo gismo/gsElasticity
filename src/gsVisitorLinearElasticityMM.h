@@ -84,15 +84,12 @@ public:
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
 
-        // Compute C per Qnode
-        //materialFunctions_ptr->at(i)->eval(...)
-
-        // Construct a material evaluator for matrix with id geo.id()
-        gsMaterialEval<T,gsMaterialOutput::C, true> Ceval(m_materials.piece(geo.id()),&geo);
-        // The evaluator is single-piece, hence we use piece(0)
-        Ceval.piece(0).eval_into(quNodes,matValues);
-        // gsMaterialEval<T,false> materialVector(m_materialMat);
-        // materialVector.eval_into(quNodes,matValues);
+        // Use the precomputed geometry data to evaluate the material matrix
+        gsMapData<T> mdDeformed;
+        gsMaterialData<T> data;
+        gsMaterialBase<T> * material = m_materials.piece(geo.id());
+        material->precompute(md,mdDeformed,data);
+        material->eval_matrix_into(data,matValues);
 
     }
 
