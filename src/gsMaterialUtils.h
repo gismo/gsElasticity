@@ -19,6 +19,10 @@ namespace gismo
 
 enum class gsMaterialOutput : short_t
 {
+    /// @brief Deformation gradient
+    F       = 00,
+    /// @brief Deformation gradient in Voigt notation
+    F_voigt = 01,
     /// @brief Strain
     E       = 10,
     /// @brief Strain in Voigt notation

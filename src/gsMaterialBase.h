@@ -568,5 +568,4 @@ public:
     mutable index_t patch;
 };
 
-
 }

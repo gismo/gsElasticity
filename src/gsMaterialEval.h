@@ -186,16 +186,18 @@ private:
 
     /// Implementation of \ref targetDim for strain, stress
     template<enum gsMaterialOutput _out, bool _voigt>
-    typename std::enable_if<(_out==gsMaterialOutput::E ||
-                            _out==gsMaterialOutput::S) && !_voigt , short_t>::type targetDim_impl() const
+    typename std::enable_if<(_out==gsMaterialOutput::F ||
+                             _out==gsMaterialOutput::E ||
+                             _out==gsMaterialOutput::S) && !_voigt , short_t>::type targetDim_impl() const
     {
         return m_dim*m_dim;
     };
 
     /// Implementation of \ref targetDim for strain, stress
     template<enum gsMaterialOutput _out, bool _voigt>
-    typename std::enable_if<(_out==gsMaterialOutput::E ||
-                            _out==gsMaterialOutput::S) && _voigt , short_t>::type targetDim_impl() const
+    typename std::enable_if<(_out==gsMaterialOutput::F ||
+                             _out==gsMaterialOutput::E ||
+                             _out==gsMaterialOutput::S) && _voigt , short_t>::type targetDim_impl() const
     {
         return m_dim*(m_dim+1)/2;
     };
@@ -248,6 +250,23 @@ private:
         m_material->eval_energy_into(*m_undeformed,*m_deformed,m_pIndex,u,result);
     }
 
+    /// Specialisation of \ref eval_into for the deformation gradient
+    template<enum gsMaterialOutput _out, bool _voigt>
+    typename std::enable_if<_out==gsMaterialOutput::F  && !_voigt, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        m_material->eval_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,result);
+    }
+
+    /// Specialisation of \ref eval_into for the deformation gradient
+    template<enum gsMaterialOutput _out, bool _voigt>
+    typename std::enable_if<_out==gsMaterialOutput::F && _voigt   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        gsMatrix<T> tmp;
+        m_material->eval_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,result);
+        result.resize(m_dim*(m_dim+1)/2,u.cols());
+        calculate_voigt_strain(tmp, m_dim, result);
+    }
+
     /// Specialisation of \ref eval_into for the strain tensor
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::E  && !_voigt, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
@@ -263,15 +282,6 @@ private:
         m_material->eval_strain_into(*m_undeformed,*m_deformed,m_pIndex,u,result);
         result.resize(m_dim*(m_dim+1)/2,u.cols());
         calculate_voigt_strain(tmp, m_dim, result);
-        // for (index_t k = 0; k < u.cols(); k++)
-        // {
-        //     // gsAsMatrix<T,Dynamic,Dynamic> E = tmp.reshapeCol(k,d,d); // in tensor notation
-        //     gsMatrix<T> E = tmp.reshapeCol(k,d,d); // in tensor notation
-        //     gsVector<T> E_voigt; // voigt strain
-        //     voigtStress(E_voigt,E);
-        //     result.col(k) = E_voigt;
-        // }
-
     }
 
     /// Specialisation of \ref eval_into for the stress tensor

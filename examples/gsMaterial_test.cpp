@@ -79,11 +79,11 @@ int main (int argc, char** argv)
     // ============================================================
     // Using gsMaterialEval
     time.restart();
-    // gsMaterialEval<real_t, gsMaterialOutput::F, true> SvK_F(&SvK, mp, mp_def);
+    gsMaterialEval<real_t, gsMaterialOutput::F, true> SvK_F(&SvK, mp, mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::E, true> SvK_E(&SvK, mp, mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::S, true> SvK_S(&SvK, mp, mp_def);
     gsMaterialEval<real_t, gsMaterialOutput::C, true> SvK_C(&SvK, mp, mp_def);
-    // SvK_F.eval_into(pts,Fres);
+    SvK_F.piece(0).eval_into(pts,Fres);
     SvK_E.piece(0).eval_into(pts,Eres);
     SvK_S.piece(0).eval_into(pts,Sres);
     SvK_C.piece(0).eval_into(pts,Cres);
