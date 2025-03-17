@@ -338,7 +338,7 @@ public:
      *
      * @param[in]  pars  Function pointers for the parameters in a container
      */
-    virtual inline void setParameters(const std::vector<function_ptr> &pars)
+    virtual inline void setParameters(const std::vector<std::pair<function_ptr,bool>> &pars)
     {
         m_pars = pars;
     }
@@ -347,22 +347,13 @@ public:
      * @brief      Sets the material parameters.
      *
      * @param[in]  pars  Function pointers for the parameters in a container
+     * @param[in]  parametric If true, the parameters are considered to be parametric
      */
-    virtual inline void setParameter(const index_t i, const function_ptr &par)
-    {
-        m_pars[i] = par;
-    }
-
-    /**
-     * @brief      Sets the material parameters.
-     *
-     * @param[in]  pars  Function pointers for the parameters in a container
-     */
-    virtual inline void setParameters(const std::vector<gsFunctionSet<T> *> &pars)
+    virtual inline void setParameters(const std::vector<function_ptr> &pars, bool parametric = true)
     {
         m_pars.resize(pars.size());
         for (size_t k = 0; k!=pars.size(); k++)
-            m_pars[k] = memory::make_shared_not_owned(pars[k]);
+            m_pars[k] = std::make_pair(pars[k],true);
     }
 
     /**
@@ -370,11 +361,50 @@ public:
      *
      * @param[in]  pars  Function pointers for the parameters in a container
      */
-    virtual inline void setParameter(const index_t i, const gsFunctionSet<T> &par)
+    virtual inline void setParameter(const index_t i, const function_ptr &par, bool parametric = true)
     {
         if ((index_t)m_pars.size() < i+1)
             m_pars.resize(i+1);
-        m_pars[i] = memory::make_shared(par.clone().release());
+
+        m_pars[i] = std::make_pair(par,parametric);
+    }
+
+    /**
+     * @brief      Sets the material parameters.
+     *
+     * @param[in]  pars  Function pointers for the parameters in a container
+     */
+    virtual inline void setParameters(const std::vector<std::pair<gsFunctionSet<T> *,bool>> &pars)
+    {
+        m_pars.resize(pars.size());
+        for (size_t k = 0; k!=pars.size(); k++)
+            m_pars[k] = std::make_pair(memory::make_shared_not_owned(pars[k].first),pars[k].second);
+    }
+
+    /**
+     * @brief      Sets the material parameters.
+     *
+     * @param[in]  pars  Function pointers for the parameters in a container
+     * @param[in]  parametric If true, the parameters are considered to be parametric
+     */
+    virtual inline void setParameters(const std::vector<gsFunctionSet<T> *> &pars, bool parametric = true)
+    {
+        m_pars.resize(pars.size());
+        for (size_t k = 0; k!=pars.size(); k++)
+            m_pars[k] = std::make_pair(memory::make_shared_not_owned(pars[k]),parametric);
+    }
+
+    /**
+     * @brief      Sets the material parameters.
+     *
+     * @param[in]  pars  Function pointers for the parameters in a container
+     */
+    virtual inline void setParameter(const index_t i, const gsFunctionSet<T> &par, bool parametric = true)
+    {
+        if ((index_t)m_pars.size() < i+1)
+            m_pars.resize(i+1);
+
+        m_pars[i] = std::make_pair(memory::make_shared(par.clone().release()),parametric);
     }
 
     /**
@@ -387,7 +417,7 @@ public:
     virtual inline const function_ptr getParameter(const index_t i)  const
     {
         GISMO_ASSERT(i < (index_t)m_pars.size(),"Parameter "<<i<<" is unavailable");
-        return m_pars[i] ;
+        return m_pars[i].first ;
     }
 
     /**
@@ -431,7 +461,10 @@ protected:
         gsMatrix<T> pars;
         for (size_t v=0; v!=m_pars.size(); v++)
         {
-            m_pars[v]->piece(data.patch).eval_into(map_ori.values[0], pars);
+            m_pars[v].first->piece(data.patch).eval_into((m_pars[v].second) ?
+                                                            map_ori.points :
+                                                            map_ori.values[0],
+                                                            pars);
             data.m_parmat.row(v) = pars;
         }
     }
@@ -470,7 +503,7 @@ protected:
 
         for (size_t v=0; v!=m_pars.size(); v++)
         {
-            m_pars[v]->piece(data.patch).eval_into(map_ori.values[0], pars);
+            m_pars[v].first->piece(data.patch).eval_into(map_ori.values[0], pars);
             data.m_parmat.row(v) = pars;
         }
     }
@@ -526,7 +559,7 @@ protected:
 
 protected:
 
-    std::vector< function_ptr > m_pars;
+    std::vector< std::pair<function_ptr,bool> > m_pars;
     function_ptr m_density;
 
     gsOptionList m_options;

@@ -50,7 +50,7 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
                                                 const gsBoundaryConditions<T> & bconditions,
                                                 const gsFunction<T> & body_force)
 :
-m_materials(0)
+m_materials((index_t)0)
 {
     // same as above
     gsPiecewiseFunction<T> rightHandSides;

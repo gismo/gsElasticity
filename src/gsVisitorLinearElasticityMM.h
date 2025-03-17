@@ -85,7 +85,8 @@ public:
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
 
         // Use the precomputed geometry data to evaluate the material matrix
-        gsMapData<T> mdDeformed;
+        gsMapData<T> mdDeformed = md;
+
         gsMaterialData<T> data;
         gsMaterialBase<T> * material = m_materials.piece(geo.id());
         material->precompute(md,mdDeformed,data);
