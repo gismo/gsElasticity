@@ -35,7 +35,9 @@ public:
     explicit gsPSOR( const gsSparseMatrix<T> & mat)
     : m_mat(mat),
       m_max_iters(1000),
-      m_tol(1e-10),
+      m_tolU(1e-10),
+      m_tolNeg(1e-10),
+      m_tolPos(1e-10),
       m_num_iter(-1),
       m_rhs_norm(-1),
       m_error(-1)
@@ -48,8 +50,9 @@ public:
     void defaultOptions()
     {
         m_options.addInt   ("MaxIterations"    , "Maximum number of iterations", 1000       );
-        m_options.addReal  ("Tolerance"        , "Tolerance for the error criteria on the "
-                                           "relative residual error",      1e-10      );
+        m_options.addReal  ("tolU"  , "Tolerance for the error criteria on the relative residual error",      1e-10      );
+        m_options.addReal  ("tolNeg", "Tolerance for the error criteria on the relative residual error",      1e-10      );
+        m_options.addReal  ("tolPos", "Tolerance for the error criteria on the relative residual error",      1e-10      );
     }
 
     const gsOptionList & options() const { return m_options; } ///< Access the options
@@ -64,8 +67,10 @@ public:
     // Register options
     void getOptions()
     {
-        m_max_iters        = m_options.askInt   ("MaxIterations"    , m_max_iters        );
-        m_tol              = m_options.askReal  ("Tolerance"        , m_tol              );
+        m_max_iters        = m_options.askInt   ("MaxIterations"  , m_max_iters        );
+        m_tolU             = m_options.askReal  ("tolU"           , m_tolU             );
+        m_tolNeg           = m_options.askReal  ("tolNeg"         , m_tolNeg           );
+        m_tolPos           = m_options.askReal  ("tolPos"         , m_tolPos           );
     }
 
     void solve(const gsMatrix<T> & rhs, gsMatrix<T> & x)
@@ -120,18 +125,27 @@ public:
         // update solution @ previous iteration x_im1
         gsMatrix<T> x_im1 = x;
 
+        std::vector<T> err_d_vec (m_mat.cols(), 0);
+        std::vector<T> err_a0_vec(m_mat.cols(), 0);
+        std::vector<T> err_ap_vec(m_mat.cols(), 0);
+        T err_d = 0;
+        T err_a0 = 0;
+        T err_ap = 0;
+        T act;
+
         T Qx = 0;   // scalar product Q*x_im1
         T Ldx = 0;  // scalar product L*(x_i-x_im1)
         T D_m1 = 0; // scalar         Q_{jj}^-1
 
         index_t Irow;
 
-        T err_d = 0;
-        T err_a0 = 0;
-        T err_ap = 0;
-        T act;
+#pragma omp parallel private(Irow,Qx,Ldx,D_m1) shared(err_d,err_a0,err_ap)
+{
+
         // loop over solution components (i.e. Q matrix columns)
-        for (index_t Jcol = 0; Jcol != m_mat.rows(); ++Jcol)
+
+#       pragma omp for
+        for (index_t Jcol = 0; Jcol != m_mat.cols(); ++Jcol)
         {
             Qx = Ldx = D_m1 = 0; // reset
             // loop over matrix rows
@@ -152,9 +166,11 @@ public:
         }
 
         // compute error
-        for (index_t Jcol = 0; Jcol != m_mat.rows(); ++Jcol)
+#       pragma omp for
+        for (index_t Jcol = 0; Jcol != m_mat.cols(); ++Jcol)
         {
-            err_d = math::max(err_d, math::abs(x(Jcol) - x_im1(Jcol)));
+            err_d_vec[Jcol] = math::abs(x(Jcol) - x_im1(Jcol));
+            // err_d = math::max(err_d, math::abs(x(Jcol) - x_im1(Jcol))); // non-parallel
             Qx = 0;
             for (typename gsSparseMatrix<T>::iterator mIt = m_mat.begin(Jcol);
                                                       mIt; ++mIt)
@@ -164,13 +180,21 @@ public:
             }
             act = Qx + rhs(Jcol);
             if ( x(Jcol) > 0)
-                err_ap = math::max(err_ap, math::abs(act) );
+                err_ap_vec[Jcol] = math::abs(act);
+                // err_ap = math::max(err_ap, math::abs(act) ); // non-parallel
             else
-                err_a0 = math::max(err_a0, act);
+                err_a0_vec[Jcol] = act;
+                // err_a0 = math::max(err_a0, act); // non-parallel
         }
+} // omp parallel
 
-        return (err_d < m_tol);
-        // return (err_d < m_tol_d && err_ap < m_tol_ap && err_a0 < m_tol_a0);
+        // compute error
+        err_d = *std::max_element(err_d_vec.begin(), err_d_vec.end());
+        err_ap = *std::max_element(err_ap_vec.begin(), err_ap_vec.end());
+        err_a0 = *std::max_element(err_a0_vec.begin(), err_a0_vec.end());
+
+        // return (err_d < m_tol);
+        return (err_d < m_tolU && err_ap < m_tolPos && err_a0 < m_tolNeg);
     }
 
     virtual void finalizeIteration( const gsMatrix<T> & ) {}          ///< Some post-processing might be required
@@ -179,7 +203,7 @@ public:
 private:
     const gsSparseMatrix<T> & m_mat;
     index_t m_max_iters;
-    T m_tol;
+    T m_tolU, m_tolNeg, m_tolPos;
     index_t m_num_iter;
     T m_rhs_norm;
     T m_error;

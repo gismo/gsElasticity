@@ -323,10 +323,10 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
     auto w = m_assembler.trialSpace(0);
 
     m_assembler.assemble(
-                m_Gc / m_l0 *
+                m_Gc *
                 (
-                w*w.tr() +
-                math::pow(m_l0,2)*igrad(w,G) * igrad(w,G).tr()
+                w*w.tr() / m_l0 +
+                igrad(w,G) * igrad(w,G).tr() * m_l0
                 ) * meas(G)
                 ); // K_laplacian
 }
@@ -349,11 +349,11 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
     m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
 
     m_assembler.assemble(
-                m_Gc / m_l0 *
+                m_Gc *
                 (
-                w*w.tr() +
-                1./2. * math::pow(m_l0,2) *igrad(w,G) * igrad(w,G).tr() +
-                1./16.* math::pow(m_l0,4) * ilapl(w,G) * ilapl(w,G).tr()
+                w*w.tr() / m_l0 +
+                1./2. *igrad(w,G) * igrad(w,G).tr() * m_l0 +
+                1./16.* ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
                 ) * meas(G)); // K_laplacian
 }
 
