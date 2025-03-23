@@ -54,13 +54,13 @@ int main(int argc, char *argv[])
 
     //// Material parameters
     // Young's modulus [N/mm^2]
-    real_t E = 210e3; // 210 kN/mm^2
-    // real_t E = 210; // 210e3 N/mm^2
+    // real_t E = 210e3; // 210 kN/mm^2
+    real_t E = 210; // 210e3 N/mm^2
     // Poisson's ratio [-]
     real_t nu= 0.3;
     // Toughness [N/mm]
-    real_t Gc= 2.7; // 2.7e-3 kN/mm
-    // real_t Gc= 2.7e-3; // 2.7 N/mm
+    // real_t Gc= 2.7; // 2.7e-3 kN/mm
+    real_t Gc= 2.7e-3; // 2.7 N/mm
 
     //// Phase-field parameters
     // Internal length [mm]
@@ -77,6 +77,8 @@ int main(int argc, char *argv[])
     h = 1./N;
     // N /= 2;
     // N *= 2;
+
+    gsInfo<<"h = "<<h<<", N = "<<N<<"\n";
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //PROBLEM SETUP////////////////////////////////////////////////////////////////////////
@@ -99,8 +101,8 @@ int main(int argc, char *argv[])
         gsInfo<<"Basis "<<b<<":\n"<<mb.basis(b)<<"\n";
 
     // Boundary conditions
-    real_t umax = 9e-3;
-    real_t ustep= 1.5e-4;
+    real_t umax = 6e-3;
+    real_t ustep= 1e-4;
     real_t ucurr= 0.0;
     ucurr += ustep;
     gsConstantFunction<> u_y(ucurr,2);
@@ -114,6 +116,8 @@ int main(int argc, char *argv[])
     // u_y.setValue(ustep,2);
 
     gsBoundaryConditions<> bc_d;
+    // bc_d.addCondition(boundary::north,condition_type::dirichlet,0,0);
+    // bc_d.addCondition(boundary::north,condition_type::clamped,0,0);
     bc_d.setGeoMap(mp);
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -130,8 +134,8 @@ int main(int argc, char *argv[])
     else
         beta = l0 / (3.0*numHRef);
     gsInfo<<"beta = "<<beta<<"\n";
-    beta = math::ceil(0.5*(mb.degree()+1))*h;
-    gsInfo<<"beta = "<<beta<<"\n";
+    // beta = math::ceil(0.5*(mb.degree()+1))*h;
+    // gsInfo<<"beta = "<<beta<<"\n";
     gsMatrix<> cSupp(2,2);
     cSupp.row(0)<<0.0,l/L; // x
     cSupp.row(1)<<0.5-(beta)/L,0.5+(beta)/L; // y
@@ -160,7 +164,7 @@ int main(int argc, char *argv[])
     index_t nnz = (A.rhs().array() > 0).count();
     gsMatrix<> f(nnz,1), m(nnz,1);
     for (index_t i = 0, j = 0; i < A.rhs().rows(); ++i)
-        if (A.rhs()(i) > 0)
+        if (A.rhs()(i,0) > 0)
         {
             f(j,0) = A.rhs()(i,0);
             m(j,0) = mm(i,0);
@@ -168,14 +172,16 @@ int main(int argc, char *argv[])
         }
 
     // gsSparseSolver<>::LU L2solver;
-    // L2solver.compute(m.asDiagonal());
+    // gsMatrix<> tmppp = m.asDiagonal();
+    // gsSparseMatrix<> M = tmppp.sparseView();
+    // L2solver.compute(M);
     // gsMatrix<> tmpCoefs = L2solver.solve(f);
 
     gsMatrix<> tmpCoefs = m.cwiseInverse().cwiseProduct(f);
     coefs.resize(w.mapper().freeSize(),1);
     coefs.setZero();
     for (index_t i = 0, j = 0; i < w.mapper().size(); ++i)
-        if (A.rhs()(i))
+        if (A.rhs()(i,0) > 0)
             coefs(i,0) = tmpCoefs(j++,0);
 
 
@@ -198,6 +204,10 @@ int main(int argc, char *argv[])
     gsElasticityAssembler<real_t> elAssembler(mp,mb,bc_u,bodyForce,&material);
     std::vector<gsMatrix<> > fixedDofs = elAssembler.allFixedDofs();
     // elAssembler.assemble();
+    gsBoundaryConditions<> bc_u_dummy;
+    bc_u_dummy.setGeoMap(mp);
+    gsElasticityAssembler<real_t> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
+    std::vector<gsMatrix<> > dummyFixedDofs = fullElAssembler.allFixedDofs();
 
     // Initialize the phase-field assembler
     gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2> pfAssembler(mp,mb,bc_d);
@@ -209,8 +219,8 @@ int main(int argc, char *argv[])
     // SOLVE THE PROBLEM/////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    real_t  tol = 1e-5;
-    index_t maxIt = 100;
+    real_t  tol = 1e-6;
+    index_t maxIt = 2000;
     gsMatrix<> u(elAssembler.numDofs(),1), du;
     u.setZero();
 
@@ -239,6 +249,17 @@ int main(int argc, char *argv[])
     gsParaviewCollection displCollection("displacement");
     gsStopwatch clock;
 
+    std::vector<std::vector<real_t>> data;
+
+    // pfAssembler.assembleMatrix();
+    // pfAssembler.matrix_into(QPhi);
+    // pfAssembler.constructSolution(damage,D);
+    // gsInfo<<"D_0 = "<<(0.5 * D.transpose() * QPhi * D).value()<<"\n";
+    //     gsWriteParaview(mp,damage,"damage_ini",100000);
+
+    std::ofstream file("results.txt");
+    file<<"u,Fx,Fy,E_u,E_d\n";
+    file.close();
     while (ucurr<=umax)
     {
         // Update the boundary conditions
@@ -304,21 +325,19 @@ int main(int argc, char *argv[])
             pfAssemblyTime = clock.stop();
 
             clock.restart();
+            // solver.compute(Q);
+            // deltaD = solver.solve(-R);
+            // gsDebugVar(deltaD.norm());
             gsPSOR<real_t> PSORsolver(Q);
+            PSORsolver.options().setInt("MaxIterations",100);
+            PSORsolver.options().setSwitch("Verbose",false);
+            PSORsolver.options().setReal("tolU",1e-4);
+            PSORsolver.options().setReal("tolNeg",1e-6);
+            PSORsolver.options().setReal("tolPos",1e-6);
             PSORsolver.solve(R,deltaD); // deltaD = Q \ R
             pfSolverTime = clock.stop();
 
             D += deltaD;
-
-            // COMPUTE ENERGIES
-            // Deformation energy
-            gsInfo<<"Deformation energy = "<<0.5 * u.transpose() * K * u<<"\n";
-
-            // Dissipation energy
-            // gsInfo<<"Dissipation energy = "<<0.5 * D.transpose() * Qphi * D + d * qphi<<"\n"; // for AT-1
-            gsInfo<<"Dissipation energy = "<<0.5 * D.transpose() * QPhi * D<<"\n"; // for AT-2
-
-            // External energy (computed via the full deformation field (including boundary conditions))
 
             // Update damage spline
             pfAssembler.constructSolution(D,damage);
@@ -329,20 +348,57 @@ int main(int argc, char *argv[])
 
         std::string filename;
         filename = "damage_" + util::to_string(step);
-        gsWriteParaview(mp,damage,filename,10000);
+        gsWriteParaview(mp,damage,filename,100000);
+        // gsField<> damage_step(zone,damage,false);
+        // gsWriteParaview(damage_step,filename,1000);
         filename += "0";
         damageCollection.addPart(filename,step,"Solution",0);
 
         gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
         filename = "Psi_"+util::to_string(step);
-        gsWriteParaview(mp,Psi,filename,10000);
+        gsWriteParaview(mp,Psi,filename,100000);
         filename += "0";
         psiCollection.addPart(filename,step,"Solution",0);
 
         filename = "displacement_"+util::to_string(step);
-        gsWriteParaview(mp,displacement,filename,10000);
+        gsWriteParaview(mp,displacement,filename,1000);
         filename += "0";
         displCollection.addPart(filename,step,"Solution",0);
+
+        // =========================================================================
+        // Compute resulting force and energies
+        gsMatrix<> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
+        fullElAssembler.assemble(ufull,dummyFixedDofs);
+        gsMatrix<> Rfull = fullElAssembler.rhs();
+        // sum the reaction forces in Y direction
+        gsDofMapper mapper(mb,2);
+        mapper.finalize();
+        gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::north);
+        real_t Fx = 0, Fy = 0;
+        for (index_t k=0; k!=boundary.size(); k++)
+        {
+            Fx += Rfull(mapper.index(boundary(k,0),0,0),0); // DoF index, patch, component
+            Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
+        }
+
+        std::vector<real_t> stepData(5);
+        stepData[0] = ucurr;
+        stepData[1] = Fx;
+        stepData[2] = Fy;
+        stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
+        stepData[4] = (0.5 * D.transpose() * QPhi * D).value();
+        data.push_back(stepData);
+
+        gsInfo<<"Rx = "<<-stepData[1]<<", "
+              <<"Ry = "<<-stepData[2]<<", "
+              <<"E_u = "<<stepData[3]<<", "
+              <<"E_d = "<<stepData[4]<<"\n";
+
+        std::ofstream file("results.txt",std::ios::app);
+        // for (size_t i = 0; i != data.size(); ++i)
+        //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
+        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<"\n";
+        file.close();
 
         ucurr += ustep;
         step++;

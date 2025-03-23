@@ -7,7 +7,7 @@
               \f[
                 \begin{aligned}
                     x^T (M x + q) &= 0,\\
-                    M x + b &>= 0, \\
+                    M x + q &>= 0, \\
                     x &>= 0.
                 \end{aligned}
                 \f]
@@ -40,7 +40,8 @@ public:
       m_tolPos(1e-10),
       m_num_iter(-1),
       m_rhs_norm(-1),
-      m_error(-1)
+      m_error(-1),
+      m_verbose(false)
     {
         GISMO_ASSERT(m_mat.rows()     == m_mat.cols(),     "The matrix is not square."                     );
         this->defaultOptions();
@@ -53,6 +54,7 @@ public:
         m_options.addReal  ("tolU"  , "Tolerance for the error criteria on the relative residual error",      1e-10      );
         m_options.addReal  ("tolNeg", "Tolerance for the error criteria on the relative residual error",      1e-10      );
         m_options.addReal  ("tolPos", "Tolerance for the error criteria on the relative residual error",      1e-10      );
+        m_options.addSwitch("Verbose", "Print information about the iteration", false);
     }
 
     const gsOptionList & options() const { return m_options; } ///< Access the options
@@ -71,6 +73,7 @@ public:
         m_tolU             = m_options.askReal  ("tolU"           , m_tolU             );
         m_tolNeg           = m_options.askReal  ("tolNeg"         , m_tolNeg           );
         m_tolPos           = m_options.askReal  ("tolPos"         , m_tolPos           );
+        m_verbose          = m_options.askSwitch("Verbose"        , m_verbose          );
     }
 
     void solve(const gsMatrix<T> & rhs, gsMatrix<T> & x)
@@ -83,7 +86,7 @@ public:
             m_num_iter++;
             if (step(rhs,x)) break;
         }
-
+        GISMO_ASSERT(m_num_iter < m_max_iters, "The PSOR solver did not converge.");
         finalizeIteration(x);
     }
 
@@ -139,7 +142,7 @@ public:
 
         index_t Irow;
 
-#pragma omp parallel private(Irow,Qx,Ldx,D_m1) shared(err_d,err_a0,err_ap)
+#pragma omp parallel private(Irow,Qx,Ldx,D_m1) shared(err_d_vec,err_a0_vec,err_ap_vec)
 {
 
         // loop over solution components (i.e. Q matrix columns)
@@ -191,7 +194,9 @@ public:
         // compute error
         err_d = *std::max_element(err_d_vec.begin(), err_d_vec.end());
         err_ap = *std::max_element(err_ap_vec.begin(), err_ap_vec.end());
-        err_a0 = *std::max_element(err_a0_vec.begin(), err_a0_vec.end());
+        err_a0 = *std::min_element(err_a0_vec.begin(), err_a0_vec.end());
+
+        if (m_verbose) gsInfo<<"PSOR It. "<<m_num_iter<<": err_d = "<<err_d<<", err_ap = "<<err_ap<<", err_a0 = "<<err_a0<<"\n";
 
         // return (err_d < m_tol);
         return (err_d < m_tolU && err_ap < m_tolPos && err_a0 < m_tolNeg);
@@ -199,6 +204,7 @@ public:
 
     virtual void finalizeIteration( const gsMatrix<T> & ) {}          ///< Some post-processing might be required
 
+    index_t numIter() const { return m_num_iter; } ///< Returns the number of iterations
 
 private:
     const gsSparseMatrix<T> & m_mat;
@@ -207,6 +213,7 @@ private:
     index_t m_num_iter;
     T m_rhs_norm;
     T m_error;
+    bool m_verbose;
     gsOptionList m_options;
 };
 

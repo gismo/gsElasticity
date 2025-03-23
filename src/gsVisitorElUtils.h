@@ -57,23 +57,23 @@ inline void symmetricIdentityTensor(gsMatrix<T> & C, const gsMatrix<T> & R)
 
 // Deviatoric matrix operator in 2D and 3D
 template <class T> //template it with dimension
-inline void deviatoricTensor(gsMatrix<T> & C, const gsMatrix<T> & R)
+inline gsMatrix<T> deviatoricTensor(const short_t & dim)
 {
-    short_t dim = R.cols();
     short_t dimTensor = dim*(dim+1)/2;
-    C.setZero(dimTensor,dimTensor);
+    gsMatrix<T> C = gsMatrix<T>::Zero(dimTensor,dimTensor);
 
     C.block(0,0,dim,dim).setConstant(-1.0/3.0);
     C.block(0,0,dim,dim).diagonal().setConstant(2.0/3.0);
     C.block(dim,dim,dimTensor-dim,dimTensor-dim).diagonal().setConstant(0.5);
+    return C;
 
-    // if (dim == 2) 
+    // if (dim == 2)
     // {
     // C <<2.0/3.0, -1.0/3.0, 0.,
     //     -1.0/3.0, 2.0/3.0, 0.,
     //     0., 0., 1.0/2.0;
-    // } 
-    // else if (dim == 3) 
+    // }
+    // else if (dim == 3)
     // {
     // C << 2.0/3.0, -1.0/3.0, -1.0/3.0, 0.0, 0.0, 0.0,
     //     -1.0/3.0, 2.0/3.0, -1.0/3.0, 0.0, 0.0, 0.0,
@@ -84,6 +84,15 @@ inline void deviatoricTensor(gsMatrix<T> & C, const gsMatrix<T> & R)
     // }
 }
 
+template <class T>
+inline gsMatrix<T> volumetricTensor(const short_t & dim)
+{
+    short_t dimTensor = dim*(dim+1)/2;
+    gsMatrix<T> C = gsMatrix<T>::Zero(dimTensor,dimTensor);
+
+    C.block(0,0,dim,dim).setConstant(1.0);
+    return C;
+}
 
 // construct a fourth order matrix-trace tensor C based on two second order symmetric tensors R and S
 // C_ijkl = R_ij*S_kl in Voigt notation
@@ -110,7 +119,7 @@ inline void voigtStress(gsVector<T> & Svec, const gsMatrix<T> & S)
         Svec(i) = S(voigt(dim,i,0),voigt(dim,i,1));
 }
 
-// transform stress Svec in Voigt notation to stress tensor S 
+// transform stress Svec in Voigt notation to stress tensor S
 template <class T>
 inline void tensorStress(const index_t dim, const gsMatrix<T> & Svec, gsMatrix<T> & S)
 {
@@ -129,10 +138,10 @@ inline void tensorStress(const index_t dim, const gsMatrix<T> & Svec, gsMatrix<T
         S(1,1) = Svec(1,0);
         S(2,2) = Svec(2,0);
 
-        S(0,1) = Svec(3,0); // tao_xy 
-        S(1,0) = Svec(3,0); // tao_xy 
+        S(0,1) = Svec(3,0); // tao_xy
+        S(1,0) = Svec(3,0); // tao_xy
 
-        S(0,2) = Svec(4,0); // tao_yz 
+        S(0,2) = Svec(4,0); // tao_yz
         S(2,0) = Svec(4,0); // tao_yz
 
         S(1,2) = Svec(5,0); // tao_xz
