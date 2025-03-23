@@ -34,17 +34,25 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numHRef = 0;
     index_t numElev = 0;
+    std::string out;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Number of degree elevation steps to perform before solving",numElev);
     cmd.addInt("r", "numHRef","Number of Uniform h-refinement loops", numHRef);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
+    cmd.addString("o", "out", "Output directory", out);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //DEFINE PROBLEM PARAMETERS////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////
+    if (out.empty())
+        out = "./output/";
+
+    std::string outdir = out + gsFileManager::getNativePathSeparator();
+    gsFileManager::mkdir(out);
+
 
     //// Geometry parameters
     // Domain length (and height) [mm]
@@ -92,7 +100,7 @@ int main(int argc, char *argv[])
     mp.addPatch(basis.makeGeometry(coefs));
     mp.degreeIncrease(numElev);
 
-    if (plot) gsWriteParaview(mp,"mp",10,true);
+    if (plot) gsWriteParaview(mp,outdir+"mp",10,true);
 
     // Construct the basis
     gsMultiBasis<> mb(mp);
@@ -148,7 +156,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> zone;
     zone.addPatch(gsNurbsCreator<>::BSplineRectangle(cSupp(0,0),cSupp(1,0)-0.01,cSupp(0,1),cSupp(1,1)+0.01));
     gsField<> cini(zone,c_ini,false);
-    if (plot) gsWriteParaview(cini,"cini_supp",1000);
+    if (plot) gsWriteParaview(cini,outdir+"cini_supp",1000);
 
     /// L2 projection
     gsExprAssembler<> A(1,1);
@@ -191,7 +199,7 @@ int main(int argc, char *argv[])
     // gsL2Projection<real_t>::project(mb.basis(0),mp.patch(0),c_ini,coefs,projectionOptions); // Lumped version will remove negative entries
     damage.addPatch(mp.basis(0).makeGeometry(give(coefs)));
     gsField<> cini_approx(zone,damage,false);
-    if (plot) gsWriteParaview(cini_approx,"cini_approx_supp",1000);
+    if (plot) gsWriteParaview(cini_approx,outdir+"cini_approx_supp",1000);
 
     // Initialize the solution (deformed geometry)
     gsMultiPatch<> mp_def = mp;
@@ -257,7 +265,7 @@ int main(int argc, char *argv[])
     // gsInfo<<"D_0 = "<<(0.5 * D.transpose() * QPhi * D).value()<<"\n";
     //     gsWriteParaview(mp,damage,"damage_ini",100000);
 
-    std::ofstream file("results.txt");
+    std::ofstream file(outdir+"results.txt");
     file<<"u,Fx,Fy,E_u,E_d\n";
     file.close();
     while (ucurr<=umax)
@@ -348,7 +356,7 @@ int main(int argc, char *argv[])
 
         std::string filename;
         filename = "damage_" + util::to_string(step);
-        gsWriteParaview(mp,damage,filename,100000);
+        gsWriteParaview(mp,damage,outdir+filename,100000);
         // gsField<> damage_step(zone,damage,false);
         // gsWriteParaview(damage_step,filename,1000);
         filename += "0";
@@ -356,12 +364,12 @@ int main(int argc, char *argv[])
 
         gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
         filename = "Psi_"+util::to_string(step);
-        gsWriteParaview(mp,Psi,filename,100000);
+        gsWriteParaview(mp,Psi,outdir+filename,100000);
         filename += "0";
         psiCollection.addPart(filename,step,"Solution",0);
 
         filename = "displacement_"+util::to_string(step);
-        gsWriteParaview(mp,displacement,filename,1000);
+        gsWriteParaview(mp,displacement,outdir+filename,1000);
         filename += "0";
         displCollection.addPart(filename,step,"Solution",0);
 
