@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     real_t umax = 6e-3;
     real_t ustep= 1e-4;
     real_t ucurr= 0.0;
-    ucurr += ustep;
+    // ucurr += ustep;
     gsConstantFunction<> u_y(ucurr,2);
     gsBoundaryConditions<> bc_u;
     bc_u.addCondition(boundary::south,condition_type::dirichlet,0,0);
@@ -328,12 +328,6 @@ int main(int argc, char *argv[])
             elSolverTime = clock.stop();
             u += du;
 
-            if (du.norm()/u.norm() < tol)
-            {
-                gsInfo<<"Converged\n";
-                break;
-            }
-
             elAssembler.setFixedDofs(fixedDofs);
             elAssembler.constructSolution(u,fixedDofs,displacement);
             for (size_t p=0; p!=mp.nPatches(); ++p)
@@ -376,6 +370,13 @@ int main(int argc, char *argv[])
 
                 // Update damage spline
                 pfAssembler->constructSolution(D,damage);
+
+                if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 )&& deltaD.norm()/D.norm() < tol)
+                {
+                    gsInfo<<"Converged\n";
+                    break;
+                }
+
             }
 
             // Print
