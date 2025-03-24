@@ -404,7 +404,7 @@ int main(int argc, char *argv[])
         stepData[1] = Fx;
         stepData[2] = Fy;
         stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
-        stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + D.transpose() * q;
+        stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
         data.push_back(stepData);
 
         gsInfo<<"Rx = "<<-stepData[1]<<", "
