@@ -86,7 +86,7 @@ public:
             m_num_iter++;
             if (step(rhs,x)) break;
         }
-        GISMO_ASSERT(m_num_iter < m_max_iters, "The PSOR solver did not converge.");
+        GISMO_ASSERT(m_num_iter < m_max_iters, "The PSOR solver did not converge. It = " << m_num_iter << "/" << m_max_iters);
         finalizeIteration(x);
     }
 

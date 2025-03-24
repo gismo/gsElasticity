@@ -54,6 +54,11 @@ public:
     virtual void assembleMatrix() = 0;
 
     /**
+     * @brief Assembles the vector (zero for AT-2 model)
+     */
+    virtual void assembleVector() = 0;
+
+    /**
      * @brief Assembles the residual vector
      */
     virtual void assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC) = 0;
@@ -152,15 +157,15 @@ public:
      */
     void setSpaceBasis(const gsFunctionSet<T> & spaceBasis) override;
 
-    // /**
-    //  * @brief Assembles the mass matrix separately
-    //  */
-    // void assembleMassMatrix();
-
     /**
      * @brief Assembles the matrix \Phi (see Greco et al 2024)
      */
     void assembleMatrix() override;
+
+    /**
+     * @brief Assembles the vector (zero for AT-2 model)
+     */
+    void assembleVector() override;
 
     /**
      * @brief Assembles the residual
@@ -275,7 +280,21 @@ private:
     typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
     _assembleMatrix_impl();
 
+    template <enum PForder _order, enum PFmode _mode>
+    typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
+    _assembleVector_impl();
 
+    template <enum PForder _order, enum PFmode _mode>
+    typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT1), void>::type
+    _assembleVector_impl();
+
+    template <enum PForder _order, enum PFmode _mode>
+    typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT2), void>::type
+    _assembleVector_impl();
+
+    template <enum PForder _order, enum PFmode _mode>
+    typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
+    _assembleVector_impl();
 
     template <enum PForder _order, enum PFmode _mode>
     typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
@@ -301,7 +320,7 @@ protected:
     typedef typename gsExprAssembler<T>::element     element;
 
     mutable index_t m_continuity;
-    mutable T m_l0, m_Gc;
+    mutable T m_l0, m_cw, m_Gc;
     // mutable T m_penalty;
 
     gsExprAssembler<T> m_assembler;
