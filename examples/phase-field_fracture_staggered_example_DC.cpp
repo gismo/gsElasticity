@@ -35,16 +35,23 @@ int main(int argc, char *argv[])
     index_t numHRef = 0;
     index_t numElev = 0;
     bool fourthOrder = false;
+    index_t order = -1;
+    index_t AT = -1;
     std::string out;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Number of degree elevation steps to perform before solving",numElev);
     cmd.addInt("r", "numHRef","Number of Uniform h-refinement loops", numHRef);
+    cmd.addInt("O", "order","Order of the basis functions", order);
+    cmd.addInt("A", "AT","AT-1 or AT-2 model", AT);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("fourth", "Use fourth order phase-field model", fourthOrder);
     cmd.addString("o", "out", "Output directory", out);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+    GISMO_ASSERT(order == 2 || order == 4, "Please specify the order of the model (2 or 4).");
+    GISMO_ASSERT(AT == 1 || AT == 2, "Please specify the AT model (1 or 2).");
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //DEFINE PROBLEM PARAMETERS////////////////////////////////////////////////////////////
@@ -221,10 +228,19 @@ int main(int argc, char *argv[])
 
     // Initialize the phase-field assembler
     gsPhaseFieldAssemblerBase<real_t> * pfAssembler;
-    if (!fourthOrder)
+    if      (order == 2 && AT == 1)
+        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
+    else if (order == 4 && AT == 1)
+    {
+        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
+        pfAssembler->options().setReal("cw",4.44847);
+    }
+    else if (order == 2 && AT == 2)
         pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
-    else
+    else if (order == 4 && AT == 2)
         pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
+    else
+        GISMO_ERROR("Invalid order and/or AT model");
 
     pfAssembler->options().setReal("l0",l0);
     pfAssembler->options().setReal("Gc",Gc);
@@ -234,7 +250,7 @@ int main(int argc, char *argv[])
     // SOLVE THE PROBLEM/////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    real_t  tol = 1e-6;
+    real_t  tol = 1e-8;
     index_t maxIt = 2000;
     gsMatrix<> u(elAssembler.numDofs(),1), du;
     u.setZero();
@@ -291,11 +307,10 @@ int main(int argc, char *argv[])
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
         gsInfo<<std::setw(20)<<"Iteration"<<std::setw(20)<<"||dU||/||U||"<<std::setw(20)<<"||dD||/||D||"<<std::setw(20)<<"el. assembly"<<std::setw(20)<<"el. solver"<<std::setw(20)<<"pf. assembly"<<std::setw(20)<<"pf. solver"<<"\n";
 
-        elAssembler.assemble();
-        K = elAssembler.matrix();
-        R = elAssembler.rhs();
-        solver.compute(K);
-        du = solver.solve(R);
+        du.setZero();
+        deltaD.setZero();
+        elAssemblyTime = elSolverTime = 0.0;
+        pfAssemblyTime = pfSolverTime = 0.0;
         for (index_t it=0; it!=maxIt; ++it)
         {
             // if (it!=0)
@@ -328,37 +343,40 @@ int main(int argc, char *argv[])
             gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
 
             // ==================================================================================
-            // Phase-field problem
-            clock.restart();
-            // gsInfo<<"Assembling phase-field problem"<<std::flush;
-            pfAssembler->assemblePsiMatrix(Psi);
-            pfAssembler->matrix_into(QPsi);
-            pfAssembler->assemblePsiVector(Psi);
-            pfAssembler->rhs_into(qpsi);
-            Q = QPhi + QPsi;
-            // gsInfo<<". Done\n";
+            if (it>0)
+            {
+                // Phase-field problem
+                clock.restart();
+                // gsInfo<<"Assembling phase-field problem"<<std::flush;
+                pfAssembler->assemblePsiMatrix(Psi);
+                pfAssembler->matrix_into(QPsi);
+                pfAssembler->assemblePsiVector(Psi);
+                pfAssembler->rhs_into(qpsi);
+                Q = QPhi + QPsi;
+                // gsInfo<<". Done\n";
 
-            pfAssembler->constructSolution(damage,D);
-            R = Q * D - qpsi + q;
-            pfAssemblyTime = clock.stop();
+                pfAssembler->constructSolution(damage,D);
+                R = Q * D - qpsi + q;
+                pfAssemblyTime = clock.stop();
 
-            clock.restart();
-            // solver.compute(Q);
-            // deltaD = solver.solve(-R);
-            // gsDebugVar(deltaD.norm());
-            gsPSOR<real_t> PSORsolver(Q);
-            PSORsolver.options().setInt("MaxIterations",10000);
-            PSORsolver.options().setSwitch("Verbose",false);
-            PSORsolver.options().setReal("tolU",1e-4);
-            PSORsolver.options().setReal("tolNeg",1e-6);
-            PSORsolver.options().setReal("tolPos",1e-6);
-            PSORsolver.solve(R,deltaD); // deltaD = Q \ R
-            pfSolverTime = clock.stop();
+                clock.restart();
+                // solver.compute(Q);
+                // deltaD = solver.solve(-R);
+                // gsDebugVar(deltaD.norm());
+                gsPSOR<real_t> PSORsolver(Q);
+                PSORsolver.options().setInt("MaxIterations",10000);
+                PSORsolver.options().setSwitch("Verbose",false);
+                PSORsolver.options().setReal("tolU",1e-4);
+                PSORsolver.options().setReal("tolNeg",1e-6);
+                PSORsolver.options().setReal("tolPos",1e-6);
+                PSORsolver.solve(R,deltaD); // deltaD = Q \ R
+                pfSolverTime = clock.stop();
 
-            D += deltaD;
+                D += deltaD;
 
-            // Update damage spline
-            pfAssembler->constructSolution(D,damage);
+                // Update damage spline
+                pfAssembler->constructSolution(D,damage);
+            }
 
             // Print
             gsInfo<<std::setw(20)<<it<<std::setw(20)<<du.norm()/u.norm()<<std::setw(20)<<deltaD.norm()/D.norm()<<std::setw(20)<<elAssemblyTime<<std::setw(20)<<elSolverTime<<std::setw(20)<<pfAssemblyTime<<std::setw(20)<<pfSolverTime<<"\n";
