@@ -332,7 +332,7 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
                 (m_Gc / m_cw) *
                 (
                 2. *igrad(w,G) * igrad(w,G).tr() * m_l0 +
-                2.* ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
+                2. * ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
                 ) * meas(G));
 }
 
