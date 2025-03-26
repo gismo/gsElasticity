@@ -10,8 +10,6 @@
 #include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsLinearMaterial.h>
 #include <gsElasticity/gsNeoHookeLogMaterial.h>
-#include <gsElasticity/gsCompositeMaterial.h>
-#include <gsElasticity/gsCompositeMatrix.cpp>
 
 using namespace gismo;
 

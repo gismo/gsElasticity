@@ -20,9 +20,6 @@ using namespace gismo;
 
 int main (int argc, char** argv)
 {
-    int material = 0;
-    int impl = 1;
-    int Compressibility = 0;
     gsCmdLine cmd(".");
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }

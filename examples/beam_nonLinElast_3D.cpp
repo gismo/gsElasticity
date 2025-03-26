@@ -9,8 +9,6 @@
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsLinearMaterial.h>
-#include <gsElasticity/gsCompositeMaterial.h>
-#include <gsElasticity/gsCompositeMatrix.cpp>
 
 using namespace gismo;
 
