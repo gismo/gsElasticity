@@ -89,7 +89,7 @@ public:
     }
 
     /// Domain dimension
-    short_t domainDim() const {return this->piece(0).domainDim();}
+    short_t domainDim() const override {return this->piece(0).domainDim();}
 
     /**
      * @brief      Target dimension
@@ -98,19 +98,19 @@ public:
      *
      * @return     Returns the target dimension depending on the specified type (scalar, vector, matrix etc.)
      */
-    short_t targetDim() const { return this->piece(0).targetDim(); }
+    short_t targetDim() const override { return this->piece(0).targetDim(); }
 
     /// Implementation of piece, see \ref gsFunction
-    const gsFunction<T> & piece(const index_t p) const
+    const gsFunction<T> & piece(const index_t p) const override
     {
         return *m_pieces[p];
     }
 
     /// Implementation of nPieces(), see \ref gsFunctionSet
-    index_t nPieces() const override{return m_pieces.size();}
+    index_t nPieces() const override {return m_pieces.size();}
 
     /// Implementation of eval_into, see \ref gsFunction
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     { GISMO_NO_IMPLEMENTATION; }
 
 protected:
@@ -165,14 +165,14 @@ public:
     {
     }
 
-    short_t domainDim() const {return m_dim;}
+    short_t domainDim() const override {return m_dim;}
 
     /**
      * @brief      Target dimension
      *
      * @return     Returns the target dimension depending on the specified type (scalar, vector, matrix etc.)
      */
-    short_t targetDim() const {return targetDim_impl<out,voigt>();}
+    short_t targetDim() const override {return targetDim_impl<out,voigt>();}
 
 
 private:
@@ -237,7 +237,7 @@ protected:
 public:
 
     /// Implementation of eval_into, see \ref gsFunction
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         this->eval_into_impl<out, voigt>(u,result);
     }

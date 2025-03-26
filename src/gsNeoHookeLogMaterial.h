@@ -96,7 +96,7 @@ public:
         }
     }
 
-    void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
+    void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const override
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
