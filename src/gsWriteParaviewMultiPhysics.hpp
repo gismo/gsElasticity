@@ -32,7 +32,6 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
                                  std::string const & fn,
                                  unsigned npts, bool mesh, bool ctrlNet)
 {
-    gsDebugVar(fn);
     const unsigned numP = fields.begin()->second->patches().nPatches();
     gsParaviewCollection collection(fn);
     std::string baseName = gsFileManager::getFilename(fn); // file name without a path

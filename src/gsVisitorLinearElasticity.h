@@ -86,7 +86,7 @@ public:
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
     }
 
-    inline void assemble(gsDomainIterator<T> & element,
+    inline void assemble(gsDomainIteratorWrapper<T> & element,
                          const gsVector<T> & quWeights)
     {
         GISMO_UNUSED(element);
