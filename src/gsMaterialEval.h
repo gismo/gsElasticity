@@ -25,6 +25,13 @@ namespace gismo
 template <class T, enum gsMaterialOutput out, bool voigt>
 class gsMaterialEvalSingle;
 
+/**
+ * @brief This class serves as the evaluator of materials, based on \ref gsMaterialBase
+ * @tparam T Real type
+ * @tparam out Output type (see \ref MaterialOutput)
+ * @tparam voigt Voigt notation (true: Voigt, false: tensor)
+ * @ingroup Elasticity
+ */
 template <class T, enum gsMaterialOutput out, bool voigt = true>
 class gsMaterialEval : public gsFunctionSet<T>
 {
@@ -32,7 +39,11 @@ class gsMaterialEval : public gsFunctionSet<T>
 
 public:
 
-    /// Constructor
+    /**
+     * @brief Constructor
+     * @param materialMatrices Material matrices
+     * @param undeformed Undeformed geometry
+     */
     gsMaterialEval( const gsMaterialContainer<T> & materialMatrices,
                     const gsFunctionSet<T>       & undeformed)
     :
@@ -43,7 +54,11 @@ public:
         this->_makePieces(m_undeformed);
     }
 
-    /// Constructor
+    /**
+     * @brief Constructor
+     * @param materialMatrix Material matrix
+     * @param undeformed Undeformed geometry
+     */
     gsMaterialEval(       gsMaterialBase<T> * materialMatrix,
                     const gsFunctionSet<T>    & undeformed)
     :
@@ -56,7 +71,12 @@ public:
         this->_makePieces(m_undeformed);
     }
 
-    /// Constructor
+    /**
+     * @brief Constructor
+     * @param materialMatrices Material matrices
+     * @param undeformed Undeformed geometry
+     * @param deformed Deformed geometry
+     */
     gsMaterialEval( const gsMaterialContainer<T> & materialMatrices,
                     const gsFunctionSet<T>       & undeformed,
                     const gsFunctionSet<T>       & deformed)
@@ -68,7 +88,12 @@ public:
         this->_makePieces(m_undeformed,m_deformed);
     }
 
-    /// Constructor
+    /**
+     * @brief Constructor
+     * @param materialMatrix Material matrix
+     * @param undeformed Undeformed geometry
+     * @param deformed Deformed geometry
+     */
     gsMaterialEval(       gsMaterialBase<T> * materialMatrix,
                     const gsFunctionSet<T>    & undeformed,
                     const gsFunctionSet<T>    & deformed)
@@ -88,7 +113,7 @@ public:
         freeAll(m_pieces);
     }
 
-    /// Domain dimension
+    /// Implementation of domainDimension, see \ref gsFunctionSet
     short_t domainDim() const override {return this->piece(0).domainDim();}
 
     /**
@@ -114,6 +139,7 @@ public:
     { GISMO_NO_IMPLEMENTATION; }
 
 protected:
+    /// Makes function pieces
     void _makePieces(function_ptr undeformed)
     {
         m_pieces.resize(undeformed->nPieces());
@@ -121,6 +147,7 @@ protected:
             m_pieces.at(p) = new gsMaterialEvalSingle<T,out,voigt>(p,m_materials.piece(p),undeformed,nullptr);
     }
 
+    /// Makes function pieces
     void _makePieces(function_ptr undeformed, function_ptr deformed)
     {
         m_pieces.resize(deformed->nPieces());
@@ -151,7 +178,13 @@ class gsMaterialEvalSingle : public gsFunction<T>
 
 public:
 
-    /// Constructor
+    /**
+     * @brief Constructor
+     * @param patch Patch index
+     * @param materialMatrix Material matrix
+     * @param undeformed Undeformed geometry
+     * @param deformed Deformed geometry
+     */
     gsMaterialEvalSingle(   index_t patch,
                             gsMaterialBase<T>   * materialMatrix,
                             function_ptr undeformed,
@@ -165,6 +198,7 @@ public:
     {
     }
 
+    /// Implementation of domainDimension, see \ref gsFunction
     short_t domainDim() const override {return m_dim;}
 
     /**
@@ -177,7 +211,8 @@ public:
 
 private:
 
-    /// Implementation of \ref targetDim for density (TODO), energy
+    /// Implementation of \ref targetDim for density, energy
+    /// @todo Implement density
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::Psi, short_t>::type targetDim_impl() const
     {

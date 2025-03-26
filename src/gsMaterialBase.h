@@ -1,6 +1,6 @@
 /** @file gsMaterialBase.h
 
-    @brief
+    @brief Provides the base class for material models
 
     This file is part of the G+Smo library.
 
@@ -34,7 +34,11 @@ namespace gismo
 template<class T>
 class gsMaterialData;
 
-
+/**
+ * @brief Base class for material models
+ * @tparam T
+ * @ingroup Elasticity
+ */
 template <class T>
 class gsMaterialBase
 {
@@ -48,24 +52,37 @@ public:
     /// Unique pointer for gsMaterialBase
     typedef memory::unique_ptr< gsMaterialBase > uPtr;
 
+    /// Default constructor
     gsMaterialBase()
     :
     gsMaterialBase(nullptr)
     {
     }
 
+    /**
+     * @brief Constructor with a given density function
+     * @param Density Density function
+     */
     gsMaterialBase( const gsFunctionSet<T> & Density)
     :
     gsMaterialBase(memory::make_shared(Density.clone().release()))
     {
     }
 
+    /**
+     * @brief Constructor with a given density function
+     * @param Density Density function
+     */
     gsMaterialBase( const gsFunctionSet<T> * Density)
     :
     gsMaterialBase(memory::make_shared_not_owned(Density))
     {
     }
 
+    /**
+     * @brief Constructor with a given density function
+     * @param Density Density function
+     */
     gsMaterialBase( const function_ptr & Density)
     :
     m_density(Density)
@@ -89,6 +106,7 @@ public:
         operator=(give(other));
     }
 
+    /// Copy assignment
     gsMaterialBase<T> & operator= ( const gsMaterialBase<T> & other )
     {
         if (this!=&other)
@@ -101,6 +119,7 @@ public:
         return *this;
     }
 
+    /// Move assignment
     gsMaterialBase<T> & operator= ( gsMaterialBase<T> && other )
     {
         m_options = give(other.m_options);
@@ -132,9 +151,13 @@ public:
     virtual void setOptions(gsOptionList opt) {m_options.update(opt,gsOptionList::addIfUnknown); }
 
     /**
+     * @brief      Precomputes the material data.
      *
+     * @param[in]   undeformed  The undeformed configuration
+     * @param[in]   patch       The patch index
+     * @param[in]   u           The displacement field
+     * @param[out]  data        The material data
      */
-
     virtual void precompute(const gsFunctionSet<T> * undeformed,
                             const index_t patch,
                             const gsMatrix<T> & u,
@@ -145,6 +168,15 @@ public:
         this->_computeStrains(map_ori,map_def,data);
     }
 
+    /**
+     * @brief      Precomputes the material data.
+     *
+     * @param[in]   undeformed  The undeformed configuration
+     * @param[in]   deformed    The deformed configuration
+     * @param[in]   patch       The patch index
+     * @param[in]   u           The displacement field
+     * @param[out]  data        The material data
+     */
     virtual void precompute(const gsFunctionSet<T> * undeformed,
                             const gsFunctionSet<T> * deformed,
                             const index_t patch,
@@ -156,6 +188,13 @@ public:
         this->_computeStrains(map_ori,map_def,data);
     }
 
+    /**
+     * @brief      Precomputes the material data from map data.
+     *
+     * @param[in]   map_ori     The undeformed map data
+     * @param[in]   map_def     The deformed map data
+     * @param[out]  data        The material data
+     */
     virtual void precompute(const gsMapData<T> & map_ori,
                             const gsMapData<T> & map_def,
                             gsMaterialData<T> & data) const
@@ -435,6 +474,13 @@ public:
 
 protected:
 
+    /**
+     * @brief      Computes the strains
+     *
+     * @param[in]  map_ori  The undeformed map data
+     * @param[in]  map_def  The deformed map data
+     * @param[out] data     The material data
+     */
     void _computeStrains(const gsMapData<T> & map_ori,
                          const gsMapData<T> & map_def,
                                gsMaterialData<T> & data) const
@@ -445,6 +491,12 @@ protected:
             _computeStrains_impl(map_ori,map_def,data);
     }
 
+    /**
+     * @brief      Computes the strains from undeformed map data only
+     *
+     * @param[in]  map_ori  The undeformed map data
+     * @param[out] data     The material data
+     */
     void _computeStrains_impl(const gsMapData<T> & map_ori,
                                     gsMaterialData<T> & data) const
     {
@@ -469,6 +521,13 @@ protected:
         }
     }
 
+    /**
+     * @brief      Computes the strains from undeformed and deformed map data
+     *
+     * @param[in]  map_ori  The undeformed map data
+     * @param[in]  map_def  The deformed map data
+     * @param[out] data     The material data
+     */
     void _computeStrains_impl(const gsMapData<T> & map_ori,
                               const gsMapData<T> & map_def,
                                     gsMaterialData<T> & data) const
@@ -508,6 +567,16 @@ protected:
         }
     }
 
+    /**
+     * @brief      Computes the geometric data
+     *
+     * @param[in]  undeformed  The undeformed configuration
+     * @param[in]  deformed    The deformed configuration
+     * @param[in]  patch       The patch index
+     * @param[in]  u           The displacement field
+     * @param[out] map_ori     The undeformed map data
+     * @param[out] map_def     The deformed map data
+     */
     void _computeGeometricData(const gsFunctionSet<T> * undeformed,
                                const gsFunctionSet<T> * deformed,
                                const index_t patch,
@@ -521,6 +590,15 @@ protected:
             _computeGeometricData_impl(undeformed,deformed,patch,u,map_ori,map_def);
     }
 
+    /**
+     * @brief      Computes the geometric data from undeformed configuration only
+     *
+     * @param[in]  undeformed  The undeformed configuration
+     * @param[in]  patch       The patch index
+     * @param[in]  u           The displacement field
+     * @param[out] map_ori     The undeformed map data
+     * @param[out] map_def     The deformed map data
+     */
     void _computeGeometricData_impl(const gsFunctionSet<T> * undeformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
@@ -536,6 +614,16 @@ protected:
         undeformed->function(patch).computeMap(map_ori);
     }
 
+    /**
+     * @brief      Computes the geometric data from undeformed and deformed configurations
+     *
+     * @param[in]  undeformed  The undeformed configuration
+     * @param[in]  deformed    The deformed configuration
+     * @param[in]  patch       The patch index
+     * @param[in]  u           The displacement field
+     * @param[out] map_ori     The undeformed map data
+     * @param[out] map_def     The deformed map data
+     */
     void _computeGeometricData_impl(const gsFunctionSet<T> * undeformed,
                                     const gsFunctionSet<T> * deformed,
                                     const index_t patch,
@@ -575,6 +663,12 @@ public:
 
 };
 
+/**
+ * @brief      Material data container
+ *             This class contains deformation gradients and strains
+ * @tparam     T     Real type
+ * @ingroup    Elasticity
+ */
 template<class T>
 class gsMaterialData
 {
