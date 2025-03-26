@@ -6,6 +6,7 @@
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsIterative.h>
+#include <gsElasticity/gsLinearMaterial.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
@@ -73,6 +74,8 @@ int main(int argc, char* argv[]){
     //=============================================//
                   // Solving //
     //=============================================//
+
+    gsLinearMaterial<real_t> materialMat(youngsModulus,poissonsRatio,3);
 
     // creating assembler
     gsElasticityAssembler<real_t> assembler(geometry,basis,bcInfo,f);

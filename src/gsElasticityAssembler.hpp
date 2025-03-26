@@ -24,9 +24,11 @@
 
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
+#include <gsElasticity/gsVisitorLinearElasticityMM.h>
 #include <gsElasticity/gsVisitorMixedLinearElasticity.h>
 #include <gsElasticity/gsVisitorMixedNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinearElasticity.h>
+#include <gsElasticity/gsVisitorNonLinearElasticityMM.h>
 #include <gsElasticity/gsVisitorElasticityNeumann.h>
 
 namespace gismo
@@ -37,6 +39,51 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
                                                 const gsMultiBasis<T> & basis,
                                                 const gsBoundaryConditions<T> & bconditions,
                                                 const gsFunction<T> & body_force)
+:
+gsElasticityAssembler(patches,basis,bconditions,body_force,gsMaterialContainer<T>())
+{}
+
+template<class T>
+gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                                                gsMultiBasis<T> const & basisDisp,
+                                                gsMultiBasis<T> const & basisPres,
+                                                const gsBoundaryConditions<T> & bconditions,
+                                                const gsFunction<T> & body_force)
+:
+m_materials((index_t)0)
+{
+    // same as above
+    gsPiecewiseFunction<T> rightHandSides;
+    rightHandSides.addPiece(body_force);
+    typename gsPde<T>::Ptr pde( new gsBasePde<T>(patches,bconditions,rightHandSides) );
+    // same as above
+    m_dim = body_force.targetDim();
+    for (short_t d = 0; d < m_dim; ++d)
+        m_bases.push_back(basisDisp);
+    m_bases.push_back(basisPres);
+
+    Base::initialize(pde, m_bases, defaultOptions());
+    m_options.setInt("MaterialLaw",material_law::mixed_hooke);
+}
+
+template<class T>
+gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                                                const gsMultiBasis<T> & basis,
+                                                const gsBoundaryConditions<T> & bconditions,
+                                                const gsFunction<T> & body_force,
+                                                const gsMaterialBase<T> * material)
+:
+gsElasticityAssembler(patches,basis,bconditions,body_force,gsMaterialContainer<T>(material,patches.nPatches()))
+{}
+
+template<class T>
+gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
+                                                const gsMultiBasis<T> & basis,
+                                                const gsBoundaryConditions<T> & bconditions,
+                                                const gsFunction<T> & body_force,
+                                                      gsMaterialContainer<T> materials)
+:
+m_materials(materials)
 {
     // Originally concieved as a meaningful class, now gsPde is just a container for
     // the domain, boundary conditions and the right-hand side;
@@ -53,27 +100,6 @@ gsElasticityAssembler<T>::gsElasticityAssembler(const gsMultiPatch<T> & patches,
         m_bases.push_back(basis);
 
     Base::initialize(pde, m_bases, defaultOptions());
-}
-
-template<class T>
-gsElasticityAssembler<T>::gsElasticityAssembler(gsMultiPatch<T> const & patches,
-                                                gsMultiBasis<T> const & basisDisp,
-                                                gsMultiBasis<T> const & basisPres,
-                                                gsBoundaryConditions<T> const & bconditions,
-                                                const gsFunction<T> & body_force)
-{
-    // same as above
-    gsPiecewiseFunction<T> rightHandSides;
-    rightHandSides.addPiece(body_force);
-    typename gsPde<T>::Ptr pde( new gsBasePde<T>(patches,bconditions,rightHandSides) );
-    // same as above
-    m_dim = body_force.targetDim();
-    for (short_t d = 0; d < m_dim; ++d)
-        m_bases.push_back(basisDisp);
-    m_bases.push_back(basisPres);
-
-    Base::initialize(pde, m_bases, defaultOptions());
-    m_options.setInt("MaterialLaw",material_law::mixed_hooke);
 }
 
 template <class T>
@@ -147,7 +173,7 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
     {
         GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::hooke || m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff,
-                     "Material law not specified OR not supported!");
+                     "Material law not specified OR not supported! Material law = "<<m_options.getInt("MaterialLaw"));
         if (saveEliminationMatrix)
         {
             eliminationMatrix.resize(Base::numDofs(),Base::numFixedDofs());
@@ -155,8 +181,21 @@ void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
             eliminationMatrix.reservePerColumn(m_system.numColNz(m_bases[0],m_options));
         }
 
-        gsVisitorLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
-        Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+        // if !composite
+
+        // else
+
+
+        if (m_materials.size()!=0)
+        {
+            gsVisitorLinearElasticityMM<T> visitor(*m_pde_ptr,m_materials, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+            Base::template push<gsVisitorLinearElasticityMM<T> >(visitor);
+        }
+        else
+        {
+            gsVisitorLinearElasticity<T> visitor(*m_pde_ptr, saveEliminationMatrix ? &eliminationMatrix : nullptr);
+            Base::template push<gsVisitorLinearElasticity<T> >(visitor);
+        }
 
         if (saveEliminationMatrix)
         {
@@ -205,15 +244,27 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
 {
     GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::saint_venant_kirchhoff ||
                  m_options.getInt("MaterialLaw") == material_law::neo_hooke_ln ||
-                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_quad,
+                 m_options.getInt("MaterialLaw") == material_law::neo_hooke_quad ||
+                 m_materials.size()!=0,
                  "Material law not specified OR not supported!");
     m_system.matrix().setZero();
     reserve();
     m_system.rhs().setZero();
 
     // Compute volumetric integrals and write to the global linear system
-    gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
-    Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    if (m_materials.size()!=0)
+    {
+        // gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
+        // Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+        gsVisitorNonLinearElasticityMM<T> visitor(*m_pde_ptr,m_materials,displacement);
+        Base::template push<gsVisitorNonLinearElasticityMM<T> >(visitor);
+    }
+    else
+    {
+        gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
+        Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
+    }
+
     // Compute surface integrals and write to the global rhs vector
     // change to reuse rhs from linear system
     Base::template push<gsVisitorElasticityNeumann<T> >(m_pde_ptr->bc().neumannSides());
