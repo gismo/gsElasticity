@@ -1,6 +1,7 @@
 /** @file gsNeoHookeQuadMaterial.h
 
-    @brief
+    @brief Provides a neo-Hookean material model
+    @todo equation
 
     This file is part of the G+Smo library.
 
@@ -9,8 +10,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-    O. Weeger    (2012 - 2015, TU Kaiserslautern),
-    A.Shamanskiy (2016 - 2020, TU Kaiserslautern),
     H.M.Verhelst (2019 - ...., TU Delft)
 */
 
@@ -22,6 +21,11 @@
 namespace gismo
 {
 
+/**
+ * @brief The gsNeoHookeQuadMaterial class provides a neo-Hookean material model
+ * @ingroup Elasticity
+ * @tparam T
+ */
 template <class T>
 class gsNeoHookeQuadMaterial : public gsMaterialBase<T>
 {
@@ -29,6 +33,12 @@ class gsNeoHookeQuadMaterial : public gsMaterialBase<T>
 public:
     using Base = gsMaterialBase<T>;
 
+    /**
+     * @brief Constructor with constant parameters
+     * @param E Young's modulus
+     * @param nu Poisson's ratio
+     * @param dim Dimension of the problem
+     */
     gsNeoHookeQuadMaterial( const T E,
                             const T nu,
                             short_t d)
@@ -38,6 +48,11 @@ public:
     {
     }
 
+    /**
+     * @brief Constructor with function parameters
+     * @param E Young's modulus
+     * @param nu Poisson's ratio
+     */
     gsNeoHookeQuadMaterial( const gsFunctionSet<T> & E,
                             const gsFunctionSet<T> & nu)
     :
@@ -47,6 +62,7 @@ public:
         this->setParameter(1,nu);
     }
 
+    /// See \ref gsMaterialBase.h for more details
     void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
     {
         const short_t dim = data.dim;
@@ -77,6 +93,7 @@ public:
         }
     }
 
+    /// See \ref gsMaterialBase.h for more details
     void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
     {
         const short_t dim = data.dim;

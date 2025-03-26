@@ -1,6 +1,12 @@
 /** @file gsNeoHookeLogMaterial.h
 
-    @brief
+    @brief Provides a neo-Hookean material model with logarithmic strain
+    @todo check equation:
+    \f{align*}{
+        \Psi(\mathbf{F}) &= \frac{\lambda}{2} \log^2(J) - \mu \log(J) + \frac{\mu}{2} \text{tr}(\mathbf{C}^{\text{vol}})\\
+        \mathbf{S} &= \lambda \log(J) \mathbf{C}^{-1} + \mu \mathbf{I}\\
+        \mathbf{C} &= \lambda \mathbf{C}^{\text{vol}} + \mu \mathbf{C}^{\text{dev}}
+    \f}
 
     This file is part of the G+Smo library.
 
@@ -9,8 +15,6 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s):
-    O. Weeger    (2012 - 2015, TU Kaiserslautern),
-    A.Shamanskiy (2016 - 2020, TU Kaiserslautern),
     H.M.Verhelst (2019 - ...., TU Delft)
 */
 
@@ -22,6 +26,11 @@
 namespace gismo
 {
 
+/**
+ * @brief The gsNeoHookeLogMaterial class provides a neo-Hookean material model with logarithmic strain
+ * @ingroup Elasticity
+ * @tparam T
+ */
 template <class T>
 class gsNeoHookeLogMaterial : public gsMaterialBase<T>
 {
@@ -29,6 +38,12 @@ class gsNeoHookeLogMaterial : public gsMaterialBase<T>
 public:
     using Base = gsMaterialBase<T>;
 
+    /**
+     * @brief Constructor with constant parameters
+     * @param E Young's modulus
+     * @param nu Poisson's ratio
+     * @param dim Dimension of the problem
+     */
     gsNeoHookeLogMaterial(  const T E,
                             const T nu,
                             short_t d)
@@ -38,6 +53,11 @@ public:
     {
     }
 
+    /**
+     * @brief Constructor with function parameters
+     * @param E Young's modulus
+     * @param nu Poisson's ratio
+     */
     gsNeoHookeLogMaterial(  const gsFunctionSet<T> & E,
                             const gsFunctionSet<T> & nu)
     :
@@ -47,25 +67,7 @@ public:
         this->setParameter(1,nu);
     }
 
-    gsNeoHookeLogMaterial(  const T E,
-                            const T nu,
-                            const gsFunctionSet<T> & patches)
-    :
-    gsNeoHookeLogMaterial(gsConstantFunction<T>(E,patches.domainDim()),
-                          gsConstantFunction<T>(nu,patches.domainDim()),patches)
-    {
-    }
-
-    gsNeoHookeLogMaterial(  const gsFunctionSet<T> & E,
-                            const gsFunctionSet<T> & nu,
-                            const gsFunctionSet<T> & patches)
-    :
-    Base(&patches)
-    {
-        this->setParameter(0,E);
-        this->setParameter(1,nu);
-    }
-
+    /// See \ref gsMaterialBase.h for more details
     void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override
     {
         const short_t dim = data.dim;
@@ -96,6 +98,7 @@ public:
         }
     }
 
+    /// See \ref gsMaterialBase.h for more details
     void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const override
     {
         const short_t dim = data.dim;
