@@ -168,7 +168,7 @@ public:
         material->eval_matrix_into(data,matValues);
     }
 
-    inline void assemble(gsDomainIterator<T> & element,
+    inline void assemble(gsDomainIteratorWrapper<T> & element,
                          const gsVector<T> & quWeights)
     {
         // initialize local matrix and rhs
