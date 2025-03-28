@@ -37,79 +37,99 @@ int main(int argc, char *argv[])
     bool fourthOrder = false;
     index_t order = -1;
     index_t AT = -1;
-    std::string out;
+    std::string output;
+    std::string input;
+    std::string geoInput;
+    index_t testCase = 0;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Number of degree elevation steps to perform before solving",numElev);
     cmd.addInt("r", "numHRef","Number of Uniform h-refinement loops", numHRef);
     cmd.addInt("O", "order","Order of the basis functions", order);
     cmd.addInt("A", "AT","AT-1 or AT-2 model", AT);
+    cmd.addInt("t", "testCase","Test case: 0 - SEN-tensile, 1 - SEN-shear", testCase);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("fourth", "Use fourth order phase-field model", fourthOrder);
-    cmd.addString("o", "out", "Output directory", out);
+    cmd.addString("o", "output", "Output directory", output);
+    cmd.addString("i", "input", "Input XML file", input);
+    cmd.addString("g", "geometry", "Geometry file", geoInput);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
+    GISMO_ASSERT(!input.empty(),"Input file not provided");
     GISMO_ASSERT(order == 2 || order == 4, "Please specify the order of the model (2 or 4).");
     GISMO_ASSERT(AT == 1 || AT == 2, "Please specify the AT model (1 or 2).");
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //DEFINE PROBLEM PARAMETERS////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////
-    if (out.empty())
-        out = "./output/";
+    if (output.empty())
+        output = "./output/";
 
-    std::string outdir = out + gsFileManager::getNativePathSeparator();
-    gsFileManager::mkdir(out);
+    std::string outputdir = output + gsFileManager::getNativePathSeparator();
+    gsFileManager::mkdir(output);
 
 
-    //// Geometry parameters
-    // Domain length (and height) [mm]
-    real_t L = 1.0;
-    // Crack length [mm]
-    real_t l = L/2.;
+    gsFileData<> fd;
+    fd.read(geoInput);
+    gsInfo << "Input geometry file "<< fd.lastPath() <<"\n";
+    GISMO_ASSERT(fd.hasLabel("geometry"), "Geometry not found in the input file.");
+    gsMultiPatch<> mp;
+    fd.getLabel("geometry", mp);
+    if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
+
+
+    fd.read(input);
+    gsInfo << "Input parameter file "<< fd.lastPath() <<"\n";
+    GISMO_ASSERT(fd.hasLabel("material"), "Material parameters not found in the input file.");
+    GISMO_ASSERT(fd.hasLabel("control"), "Displacement-Control parameters not found in the input file.");
+    GISMO_ASSERT(fd.hasLabel("initial"), "Geometry not found in the input file.");
+    GISMO_ASSERT(fd.hasLabel("BCs"), "Boundary conditions not found in the input file.");
 
     //// Material parameters
+    gsOptionList materialParameters;
+    fd.getLabel("material", materialParameters);
     // Young's modulus [N/mm^2]
-    // real_t E = 210e3; // 210 kN/mm^2
-    real_t E = 210; // 210e3 N/mm^2
+    real_t E = materialParameters.getReal("E");
     // Poisson's ratio [-]
-    real_t nu= 0.3;
+    real_t nu = materialParameters.getReal("nu");
     // Toughness [N/mm]
-    // real_t Gc= 2.7; // 2.7e-3 kN/mm
-    real_t Gc= 2.7e-3; // 2.7 N/mm
-
-    //// Phase-field parameters
+    real_t Gc = materialParameters.getReal("Gc");
     // Internal length [mm]
-    real_t l0= 0.015;
+    real_t l0 = materialParameters.getReal("l0");
 
-    //// Mesh parameters
-    // Initial mesh size (par. domain) [mm]
-    real_t h = l0/2.;
-    // Mesh degree
-    index_t p= 2;
-    // Number of elements
-    index_t N= math::ceil(L/h);
-    N *= (numHRef+1);
-    h = 1./N;
-    // N /= 2;
-    // N *= 2;
+    //// Boundary control parameters
+    gsOptionList controlParameters;
+    fd.getLabel("control", controlParameters);
+    // Maximum displacement [mm]
+    real_t uend = controlParameters.getReal("uend");
+    // Displacement step [mm]
+    real_t ustep = controlParameters.getReal("ustep");
+    // Initial displacement [mm]
+    real_t ucurr = controlParameters.getReal("umin");
+    // Maximum number of iterations
+    index_t maxIt = controlParameters.getInt("maxIt");
+    // Tolerance
+    real_t tol = controlParameters.getReal("tol");
+    // Fixed side patch id
+    index_t fixedSidePatch = controlParameters.getInt("patchId");
+    // Fixed side id
+    index_t fixedSideId = controlParameters.getInt("side");
+    // Fixed side direction
+    index_t fixedSideDir = controlParameters.getInt("direction");
 
-    gsInfo<<"h = "<<h<<", N = "<<N<<"\n";
+    //// Boundary conditions
+    gsBoundaryConditions<> bc_u;
+    fd.getLabel("BCs", bc_u);
+
+    //// Initial condition
+    gsFunctionExpr<> c_ini;
+    fd.getLabel("initial", c_ini);
+    gsInfo<<"Initial condition function "<< c_ini << "\n";
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //PROBLEM SETUP////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////
-
-    // Construct the geometry
-    gsMultiPatch<> mp;
-    gsKnotVector<> kv(0,1,N-1,p+1,1,p); // start, end, num. interior knots (nelements-1), multiplicity of end knots, degree
-    gsTensorBSplineBasis<2,real_t> basis(kv,kv);
-    gsMatrix<> coefs = basis.anchors().transpose();
-    mp.addPatch(basis.makeGeometry(coefs));
-    mp.degreeIncrease(numElev);
-
-    if (plot) gsWriteParaview(mp,outdir+"mp",10,true);
 
     // Construct the basis
     gsMultiBasis<> mb(mp);
@@ -118,16 +138,8 @@ int main(int argc, char *argv[])
         gsInfo<<"Basis "<<b<<":\n"<<mb.basis(b)<<"\n";
 
     // Boundary conditions
-    real_t umax = 6e-3;
-    real_t ustep= 1e-4;
-    real_t ucurr= 0.0;
-    // ucurr += ustep;
-    gsConstantFunction<> u_y(ucurr,2);
-    gsBoundaryConditions<> bc_u;
-    bc_u.addCondition(boundary::south,condition_type::dirichlet,0,0);
-    bc_u.addCondition(boundary::south,condition_type::dirichlet,0,1);
-    bc_u.addCondition(boundary::north,condition_type::dirichlet,0,0);
-    bc_u.addCondition(boundary::north,condition_type::dirichlet,&u_y,1);
+    gsConstantFunction<> displ(ucurr,2);
+    bc_u.addCondition(fixedSideId,condition_type::dirichlet,&displ,fixedSideDir);
     bc_u.setGeoMap(mp);
 
     // u_y.setValue(ustep,2);
@@ -144,29 +156,6 @@ int main(int argc, char *argv[])
     // Initialize the damage field
     gsMultiPatch<> damage;
 
-    // Parametric support of the crack
-    real_t beta;
-    if (numHRef==0)
-        beta = 0.75*l0; // for h=l0/2
-    else
-        beta = l0 / (3.0*numHRef);
-    gsInfo<<"beta = "<<beta<<"\n";
-    // beta = math::ceil(0.5*(mb.degree()+1))*h;
-    // gsInfo<<"beta = "<<beta<<"\n";
-    gsMatrix<> cSupp(2,2);
-    cSupp.row(0)<<0.0,l/L; // x
-    cSupp.row(1)<<0.5-(beta)/L,0.5+(beta)/L; // y
-    gsFunctionExpr<> c_ini("if((x>="+util::to_string(cSupp(0,0))+") and \
-                               (x<="+util::to_string(cSupp(0,1))+") and \
-                               (y>="+util::to_string(cSupp(1,0))+") and \
-                               (y<="+util::to_string(cSupp(1,1))+"), 1, 0)",2);
-
-    // Create a small rectangular geometry for plotting of the crack zone
-    gsMultiPatch<> zone;
-    zone.addPatch(gsNurbsCreator<>::BSplineRectangle(cSupp(0,0),cSupp(1,0)-0.01,cSupp(0,1),cSupp(1,1)+0.01));
-    gsField<> cini(zone,c_ini,false);
-    if (plot) gsWriteParaview(cini,outdir+"cini_supp",1000);
-
     /// L2 projection
     gsExprAssembler<> A(1,1);
     A.setIntegrationElements(mb);
@@ -179,7 +168,7 @@ int main(int argc, char *argv[])
     gsMatrix<> mm = A.matrix() * gsMatrix<>::Ones(A.matrix().rows(),1);
     // count nonzeros in the rhs
     index_t nnz = (A.rhs().array() > 0).count();
-    gsMatrix<> f(nnz,1), m(nnz,1);
+    gsMatrix<> f(nnz,1), m(nnz,1), coefs;
     for (index_t i = 0, j = 0; i < A.rhs().rows(); ++i)
         if (A.rhs()(i,0) > 0)
         {
@@ -207,8 +196,7 @@ int main(int argc, char *argv[])
     // projectionOptions.addSwitch("Lumped","",true);
     // gsL2Projection<real_t>::project(mb.basis(0),mp.patch(0),c_ini,coefs,projectionOptions); // Lumped version will remove negative entries
     damage.addPatch(mp.basis(0).makeGeometry(give(coefs)));
-    gsField<> cini_approx(zone,damage,false);
-    if (plot) gsWriteParaview(cini_approx,outdir+"cini_approx_supp",1000);
+    if (plot) gsWriteParaview(mp,damage,outputdir+"cini_approx",100000);
 
     // Initialize the solution (deformed geometry)
     gsMultiPatch<> mp_def = mp;
@@ -250,8 +238,6 @@ int main(int argc, char *argv[])
     // SOLVE THE PROBLEM/////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    real_t  tol = 1e-8;
-    index_t maxIt = 2000;
     gsMatrix<> u(elAssembler.numDofs(),1), du;
     u.setZero();
 
@@ -293,14 +279,15 @@ int main(int argc, char *argv[])
     // gsInfo<<"D_0 = "<<(0.5 * D.transpose() * QPhi * D).value()<<"\n";
     //     gsWriteParaview(mp,damage,"damage_ini",100000);
 
-    std::ofstream file(outdir+"results.txt");
+    std::ofstream file(outputdir+"results.txt");
     file<<"u,Fx,Fy,E_u,E_d\n";
     file.close();
-    while (ucurr<=umax)
+
+    while (ucurr<=uend)
     {
         // Update the boundary conditions
-        u_y.setValue(ucurr,2);
-        elAssembler.computeDirichletDofs(1); // NOTE: This computes the DDofs for **unknown** 1, which should be component 1. This is a bug in the gsElasticity assembler
+        displ.setValue(ucurr,2);
+        elAssembler.computeDirichletDofs(fixedSideDir); // NOTE: This computes the DDofs for **unknown** 1, which should be component 1. This is a bug in the gsElasticity assembler
         fixedDofs = elAssembler.allFixedDofs();
         elAssembler.setFixedDofs(fixedDofs);
 
@@ -371,6 +358,7 @@ int main(int argc, char *argv[])
                 // Update damage spline
                 pfAssembler->constructSolution(D,damage);
 
+                gsDebug<<"du.norm() = "<<du.norm()<<", u.norm() = "<<u.norm()<<", deltaD.norm() = "<<deltaD.norm()<<", D.norm() = "<<D.norm()<<"\n";
                 if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 )&& deltaD.norm()/D.norm() < tol)
                 {
                     gsInfo<<"Converged\n";
@@ -385,7 +373,7 @@ int main(int argc, char *argv[])
 
         std::string filename;
         filename = "damage_" + util::to_string(step);
-        gsWriteParaview(mp,damage,outdir+filename,100000);
+        gsWriteParaview(mp,damage,outputdir+filename,100000);
         // gsField<> damage_step(zone,damage,false);
         // gsWriteParaview(damage_step,filename,1000);
         filename += "0";
@@ -393,12 +381,12 @@ int main(int argc, char *argv[])
 
         gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
         filename = "Psi_"+util::to_string(step);
-        gsWriteParaview(mp,Psi,outdir+filename,100000);
+        gsWriteParaview(mp,Psi,outputdir+filename,100000);
         filename += "0";
         psiCollection.addPart(filename,step,"Solution",0);
 
         filename = "displacement_"+util::to_string(step);
-        gsWriteParaview(mp,displacement,outdir+filename,1000);
+        gsWriteParaview(mp,displacement,outputdir+filename,1000);
         filename += "0";
         displCollection.addPart(filename,step,"Solution",0);
 
@@ -431,7 +419,7 @@ int main(int argc, char *argv[])
               <<"E_u = "<<stepData[3]<<", "
               <<"E_d = "<<stepData[4]<<"\n";
 
-        std::ofstream file(outdir+"results.txt",std::ios::app);
+        std::ofstream file(outputdir+"results.txt",std::ios::app);
         // for (size_t i = 0; i != data.size(); ++i)
         //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
         file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<"\n";

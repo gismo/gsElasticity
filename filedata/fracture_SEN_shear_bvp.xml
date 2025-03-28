@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+    <!-- Material parameters -->
+    <OptionList id="0" label="material">
+        <real   label="E"
+                desc="Young's Modulus [N/mm^2]"
+                value="210"/>
+        <real   label="nu"
+                desc="Poisson Ratio [-]"
+                value="0.3"/>
+        <real   label="Gc"
+                desc="Toughness [N/mm]"
+                value="2.7e-3"/>
+        <real   label="l0"
+                desc="Internal crack length [mm]"
+                value="0.010"/>
+    </OptionList>
+
+    <!-- Control parameters -->
+    <OptionList id="1" label="control">
+        <real   label="umin"
+                desc="Initial displacement [mm]"
+                value="0e-4"/>
+        <real   label="uend"
+                desc="Final displacement [mm]"
+                value="6e-3"/>
+        <real   label="ustep"
+                desc="Displacement step [mm]"
+                value="1e-4"/>
+        <int    label="patchId"
+                desc="Patch ID for the controlled boundary"
+                value="0"/>
+        <int    label="side"
+                desc="Side ID for the controlled boundary"
+                value="4"/>
+        <int    label="direction"
+                desc="Direction of the controlled boundary"
+                value="0"/>
+        <int    label="maxIt"
+                desc="Maximum number of iterations"
+                value="10000"/>
+        <real   label="tol"
+                desc="Tolerance for the Newton method"
+                value="1e-5"/>
+    </OptionList>
+
+    <!-- Computational domain -->
+    <MultiPatch parDim="2" id="0" label="geometry" >
+        <patches type="id_range">500 500</patches>
+    </MultiPatch>
+
+    <!-- Initial condition -->
+    <Function type="FunctionExpr" id="1" dim="2" label="initial">
+    if (( x&gt;=0.0) and (x&lt;=0.5) and (y&gt;=0.5-0.010/2.) and (y&lt;=0.5+0.010/2.),1,0)
+    </Function>
+
+    <!-- The boundary conditions (multipatch=number of patches)-->
+    <boundaryConditions id="2" multipatch="0" label="BCs">
+        <Function type="FunctionExpr" dim="2" index="0">0</Function>
+
+        <!-- Dirichlet conditions (patch,side) -->
+        <bc type="Dirichlet" function="0" unknown="0">
+        0 3
+        0 4
+        </bc>
+
+        <bc type="Dirichlet" function="0" unknown="0">
+        0 3
+        </bc>
+    </boundaryConditions>
+
+    <!-- Spline data -->
+    <Geometry type="TensorBSpline2" id="500">
+        <Basis type="TensorBSplineBasis2">
+            <Basis type="BSplineBasis" index="0">
+                <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+            </Basis>
+            <Basis type="BSplineBasis" index="1">
+                <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+            </Basis>
+        </Basis>
+        <coefs geoDim="3">
+            0 0 0
+            1 0 0
+            0 1 0
+            1 1 0
+        </coefs>
+    </Geometry>
+
+
+</xml>
