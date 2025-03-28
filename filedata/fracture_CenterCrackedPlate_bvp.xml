@@ -84,11 +84,11 @@
                 <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
             </Basis>
         </Basis>
-        <coefs geoDim="3">
-            0  0   0
-            20 0   0
-            0  200 0
-            20 200 0
+        <coefs geoDim="2">
+            0  0
+            20 0
+            0  200
+            20 200
         </coefs>
     </Geometry>
 

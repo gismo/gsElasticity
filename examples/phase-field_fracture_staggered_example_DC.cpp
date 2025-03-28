@@ -78,6 +78,9 @@ int main(int argc, char *argv[])
     fd.getLabel("geometry", mp);
     if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
 
+    mp.degreeIncrease(numElev);
+    for (index_t i = 0; i<numHRef; ++i)
+        mp.uniformRefine(1);
 
     fd.read(input);
     gsInfo << "Input parameter file "<< fd.lastPath() <<"\n";
