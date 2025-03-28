@@ -99,8 +99,8 @@ public:
                     const gsFunctionSet<T>    & deformed)
     :
     m_materials(deformed.nPieces()),
-    m_undeformed(memory::make_shared_not_owned(undeformed.clone().release())),
-    m_deformed(memory::make_shared_not_owned(deformed.clone().release()))
+    m_undeformed(memory::make_shared(undeformed.clone().release())),
+    m_deformed(memory::make_shared(deformed.clone().release()))
     {
         for (index_t p = 0; p!=deformed.nPieces(); ++p)
             m_materials.set(p,materialMatrix);

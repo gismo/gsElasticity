@@ -682,8 +682,8 @@ public:
         m_rhoMat.setZero();
     }
 
-    typename gsMaterialBase<T>::function_ptr m_undeformed;
-    typename gsMaterialBase<T>::function_ptr m_deformed;
+    // typename gsMaterialBase<T>::function_ptr m_undeformed;
+    // typename gsMaterialBase<T>::function_ptr m_deformed;
 
     mutable gsMatrix<T> m_parmat;
     mutable gsMatrix<T> m_rhoMat;
