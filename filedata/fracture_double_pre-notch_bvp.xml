@@ -13,7 +13,7 @@
                 value="2.7e-3"/>
         <real   label="l0"
                 desc="Internal crack length [mm]"
-                value="0.05"/> <!-- for simulation -->
+                value="0.0075"/> <!-- for simulation -->
                 <!-- value="0.05"/> for mesh generation -->
     </OptionList>
 
@@ -27,7 +27,13 @@
                 value="6e-3"/>
         <real   label="ustep"
                 desc="Displacement step [mm]"
-                value="3e-4"/>
+                value="5e-4"/>
+        <real   label="utrans"
+                desc="Displacement for transition [mm]"
+                value="3e-3"/>
+        <real   label="ured"
+                desc="Displacement reduction factor [-]"
+                value="5."/>
         <int    label="patchId"
                 desc="Patch ID for the controlled boundary"
                 value="0"/>

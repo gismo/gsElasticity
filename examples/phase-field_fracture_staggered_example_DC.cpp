@@ -107,6 +107,10 @@ int main(int argc, char *argv[])
     real_t ustep = controlParameters.getReal("ustep");
     // Initial displacement [mm]
     real_t ucurr = controlParameters.getReal("umin");
+    // Step transition [mm]
+    real_t utrans = controlParameters.askReal("utrans",uend);
+    // Step reduction factor [-]
+    real_t ured = controlParameters.askReal("ured",1.);
     // Maximum number of iterations
     index_t maxIt = controlParameters.getInt("maxIt");
     // Tolerance
@@ -425,7 +429,8 @@ int main(int argc, char *argv[])
         file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<"\n";
         file.close();
 
-        ucurr += ustep;
+        ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
+
         step++;
     }
 
