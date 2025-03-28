@@ -67,11 +67,11 @@
         <!-- Dirichlet conditions (patch,side) -->
         <bc type="Dirichlet" function="0" unknown="0">
         0 3
-        0 4
         </bc>
 
         <bc type="Dirichlet" function="0" unknown="0">
         0 3
+        0 4
         </bc>
     </boundaryConditions>
 
