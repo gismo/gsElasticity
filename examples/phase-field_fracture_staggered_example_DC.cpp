@@ -362,8 +362,7 @@ int main(int argc, char *argv[])
                 // Update damage spline
                 pfAssembler->constructSolution(D,damage);
 
-                gsDebug<<"du.norm() = "<<du.norm()<<", u.norm() = "<<u.norm()<<", deltaD.norm() = "<<deltaD.norm()<<", D.norm() = "<<D.norm()<<"\n";
-                if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 )&& deltaD.norm()/D.norm() < tol)
+                if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 ));//&& deltaD.norm()/D.norm() < tol)
                 {
                     gsInfo<<"Converged\n";
                     break;
