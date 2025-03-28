@@ -69,7 +69,7 @@
         0 3
         </bc>
 
-        <bc type="Dirichlet" function="0" unknown="0">
+        <bc type="Dirichlet" function="0" unknown="1">
         0 3
         0 4
         </bc>
