@@ -562,7 +562,10 @@ protected:
 
         for (size_t v=0; v!=m_pars.size(); v++)
         {
-            m_pars[v].first->piece(data.patch).eval_into(map_ori.values[0], pars);
+            m_pars[v].first->piece(data.patch).eval_into((m_pars[v].second) ?
+                                                            map_ori.points :
+                                                            map_ori.values[0],
+                                                            pars);
             data.m_parmat.row(v) = pars;
         }
     }

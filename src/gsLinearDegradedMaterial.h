@@ -36,8 +36,8 @@ public:
                                 const gsFunctionSet<T> & damage,
                                 short_t d)
     :
-    gsLinearDegradedMaterial(gsConstantFunction<T>(E,d),
-                             gsConstantFunction<T>(nu,d),damage)
+    gsLinearDegradedMaterial(gsConstantFunction<T>(E,d),true,
+                             gsConstantFunction<T>(nu,d),true,damage,true)
     {
     }
 
@@ -45,11 +45,28 @@ public:
                                 const gsFunctionSet<T> & nu,
                                 const gsFunctionSet<T> & damage)
     :
+    gsLinearDegradedMaterial(E,true,nu,true,damage,true)
+    {
+    }
+
+    /**
+     * @brief Constructor
+     * @param E Young's modulus field
+     * @param E_param true if E is defined in the parametric domain
+     * @param nu Poisson's ratio field
+     * @param nu_param true if nu is defined in the parametric domain
+     * @param damage Damage field
+     * @param d_param true if damage is defined in the parametric domain
+     */
+    gsLinearDegradedMaterial(   const gsFunctionSet<T> & E,     bool E_param,
+                                const gsFunctionSet<T> & nu,    bool nu_param,
+                                const gsFunctionSet<T> & damage,bool d_param)
+    :
     Base()
     {
-        this->setParameter(0,E);
-        this->setParameter(1,nu);
-        this->setParameter(2,damage);
+    this->setParameter(0,E,E_param);
+    this->setParameter(1,nu,nu_param);
+    this->setParameter(2,damage,d_param);
     }
 
     void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
