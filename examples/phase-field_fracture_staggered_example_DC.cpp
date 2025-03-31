@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
                 // deltaD = solver.solve(-R);
                 // gsDebugVar(deltaD.norm());
                 gsPSOR<real_t> PSORsolver(Q);
-                PSORsolver.options().setInt("MaxIterations",10000);
+                PSORsolver.options().setInt("MaxIterations",300);
                 PSORsolver.options().setSwitch("Verbose",false);
                 PSORsolver.options().setReal("tolU",1e-4);
                 PSORsolver.options().setReal("tolNeg",1e-6);

@@ -140,28 +140,29 @@ public:
         T Ldx = 0;  // scalar product L*(x_i-x_im1)
         T D_m1 = 0; // scalar         Q_{jj}^-1
 
-        index_t Irow;
+        index_t Irow, Jcol;
 
-#pragma omp parallel private(Irow,Qx,Ldx,D_m1) shared(err_d_vec,err_a0_vec,err_ap_vec)
+#pragma omp parallel private(Irow,Jcol,Qx,Ldx,D_m1) shared(err_d_vec,err_a0_vec,err_ap_vec)
 {
 
         // loop over solution components (i.e. Q matrix columns)
 
 #       pragma omp for
-        for (index_t Jcol = 0; Jcol != m_mat.cols(); ++Jcol)
+        for (index_t j = 0; j < m_mat.outerSize(); ++j)
         {
             Qx = Ldx = D_m1 = 0; // reset
             // loop over matrix rows
-            for (typename gsSparseMatrix<T>::iterator mIt = m_mat.begin(Jcol);
-                                                      mIt; ++mIt)
+            typename gsSparseMatrix<T>::iterator mIt = m_mat.begin(j);
+            Jcol = mIt.col();
+            for ( ; mIt; ++mIt)
             {
                 Irow = mIt.index();
                 Qx += mIt.value() * x_im1(Irow);
                 // Diagonal term
-                if (Irow == Jcol)
+                if (Irow == mIt.col())
                     D_m1 = math::pow(mIt.value(),-1.0);
                 // strict upper triangular term
-                if (Irow < Jcol)
+                if (Irow < mIt.col())
                     Ldx += mIt.value() * (x(Irow) - x_im1(Irow));
             }
 
@@ -170,24 +171,29 @@ public:
 
         // compute error
 #       pragma omp for
-        for (index_t Jcol = 0; Jcol != m_mat.cols(); ++Jcol)
+        for (index_t j = 0; j < m_mat.outerSize(); ++j)
         {
-            err_d_vec[Jcol] = math::abs(x(Jcol) - x_im1(Jcol));
-            // err_d = math::max(err_d, math::abs(x(Jcol) - x_im1(Jcol))); // non-parallel
             Qx = 0;
-            for (typename gsSparseMatrix<T>::iterator mIt = m_mat.begin(Jcol);
-                                                      mIt; ++mIt)
+            typename gsSparseMatrix<T>::iterator mIt = m_mat.begin(j);
+            Jcol = mIt.col();
+            for ( ; mIt; ++mIt)
             {
                 Irow = mIt.index();
                 Qx += mIt.value() * x(Irow);
             }
             act = Qx + rhs(Jcol);
-            if ( x(Jcol) > 0)
-                err_ap_vec[Jcol] = math::abs(act);
-                // err_ap = math::max(err_ap, math::abs(act) ); // non-parallel
-            else
-                err_a0_vec[Jcol] = act;
-                // err_a0 = math::max(err_a0, act); // non-parallel
+
+            err_d_vec[Jcol] = math::abs(x(Jcol) - x_im1(Jcol));
+            err_ap_vec[Jcol] = (x(Jcol) > 0) ? math::abs(act) : 0;
+            err_a0_vec[Jcol] = (x(Jcol) > 0) ? 0 : act;
+
+            // err_d = math::max(err_d, math::abs(x(Jcol) - x_im1(Jcol))); // non-parallel
+            // if ( x(Jcol) > 0)
+            //     // err_ap_vec[Jcol] = math::abs(act);
+            //     err_ap = math::max(err_ap, math::abs(act) ); // non-parallel
+            // else
+            //     // err_a0_vec[Jcol] = act;
+            //     err_a0 = math::min(err_a0, act); // non-parallel
         }
 } // omp parallel
 
