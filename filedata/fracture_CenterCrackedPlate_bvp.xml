@@ -26,7 +26,7 @@
                 value="12e-3"/>
         <real   label="ustep"
                 desc="Displacement step [mm]"
-                value="2.5e-4"/>
+                value="1.25e-4"/>
         <real   label="utrans"
                 desc="Displacement for transition [mm]"
                 value="1e-3"/>
