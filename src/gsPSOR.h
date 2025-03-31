@@ -40,7 +40,7 @@ public:
       m_tolPos(1e-10),
       m_num_iter(-1),
       m_rhs_norm(-1),
-      m_error(-1),
+      m_error{{-1,-1,-1}},
       m_verbose(false)
     {
         GISMO_ASSERT(m_mat.rows()     == m_mat.cols(),     "The matrix is not square."                     );
@@ -86,7 +86,7 @@ public:
             m_num_iter++;
             if (step(rhs,x)) break;
         }
-        GISMO_ASSERT(m_num_iter < m_max_iters, "The PSOR solver did not converge. It = " << m_num_iter << "/" << m_max_iters);
+        GISMO_ASSERT(m_num_iter < m_max_iters, "The PSOR solver did not converge. It = " << m_num_iter << "/" << m_max_iters << ", errors = " << m_error[0] << ", " << m_error[1] << ", " << m_error[2]);
         finalizeIteration(x);
     }
 
@@ -105,7 +105,7 @@ public:
         if (0 == m_rhs_norm) // special case of zero rhs
         {
             x.setZero(rhs.rows(),rhs.cols()); // for sure zero is a solution
-            m_error = 0.;
+            m_error = {0.,0.,0.};
             return true; // iteration is finished
         }
 
@@ -199,6 +199,7 @@ public:
         if (m_verbose) gsInfo<<"PSOR It. "<<m_num_iter<<": err_d = "<<err_d<<", err_ap = "<<err_ap<<", err_a0 = "<<err_a0<<"\n";
 
         // return (err_d < m_tol);
+        m_error = {err_d, err_ap, err_a0};
         return (err_d < m_tolU && err_ap < m_tolPos && err_a0 < m_tolNeg);
     }
 
@@ -206,13 +207,15 @@ public:
 
     index_t numIter() const { return m_num_iter; } ///< Returns the number of iterations
 
+    std::array<T,3> errors() const { return m_error; }
+
 private:
     const gsSparseMatrix<T> & m_mat;
     index_t m_max_iters;
     T m_tolU, m_tolNeg, m_tolPos;
     index_t m_num_iter;
     T m_rhs_norm;
-    T m_error;
+    std::array<T,3> m_error;
     bool m_verbose;
     gsOptionList m_options;
 };
