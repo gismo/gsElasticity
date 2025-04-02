@@ -163,6 +163,8 @@ public:
 protected:
     // problem info
     short_t dim;
+    // number of displacement basis functions active at the current element
+    index_t N_D;
     const gsBasePde<T> * pde_ptr;
     // Lame coefficients and force scaling factor
     T lambda, mu, forceScaling, localStiffening;
@@ -173,8 +175,6 @@ protected:
     gsMatrix<T> localRhs;
     // local indices (at the current patch) of the displacement basis functions active at the current element
     gsMatrix<index_t> localIndicesDisp;
-    // number of displacement basis functions active at the current element
-    index_t N_D;
     // values and derivatives of displacement basis functions at quadrature points at the current element
     // values are stored as a N_D x numQuadPoints matrix; not sure about derivatives, must be smth like N_D*dim x numQuadPoints
     std::vector<gsMatrix<T> > basisValuesDisp;
