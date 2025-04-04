@@ -326,8 +326,6 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
     // Set the discretization space
     auto w = m_assembler.trialSpace(0);
 
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-
     m_assembler.assemble(
                 (m_Gc / m_cw) *
                 (
@@ -425,7 +423,7 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleVector_impl()
     // Set the discretization space
     auto w = m_assembler.trialSpace(0);
 
-    m_assembler.assemble( m_Gc  * w / m_cw  * meas(G) );
+    m_assembler.assemble( m_Gc / m_cw  * w / m_l0  * meas(G) );
 }
 
 template <class T, enum PForder order, enum PFmode mode>

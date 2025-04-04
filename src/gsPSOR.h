@@ -142,12 +142,13 @@ public:
 
         index_t Irow, Jcol;
 
-#pragma omp parallel private(Irow,Jcol,Qx,Ldx,D_m1) shared(err_d_vec,err_a0_vec,err_ap_vec)
-{
+/*
+        NOTE ON PARALLELIZATION:
 
+        This algorithm cannot be parallelized since the strict upper-triangular terms
+        depend on x(Irow), which might be updated by another thread.
+*/
         // loop over solution components (i.e. Q matrix columns)
-
-#       pragma omp for
         for (index_t j = 0; j < m_mat.outerSize(); ++j)
         {
             Qx = Ldx = D_m1 = 0; // reset
@@ -170,7 +171,6 @@ public:
         }
 
         // compute error
-#       pragma omp for
         for (index_t j = 0; j < m_mat.outerSize(); ++j)
         {
             Qx = 0;
@@ -183,26 +183,15 @@ public:
             }
             act = Qx + rhs(Jcol);
 
-            err_d_vec[Jcol] = math::abs(x(Jcol) - x_im1(Jcol));
-            err_ap_vec[Jcol] = (x(Jcol) > 0) ? math::abs(act) : 0;
-            err_a0_vec[Jcol] = (x(Jcol) > 0) ? 0 : act;
-
-            // err_d = math::max(err_d, math::abs(x(Jcol) - x_im1(Jcol))); // non-parallel
-            // if ( x(Jcol) > 0)
-            //     // err_ap_vec[Jcol] = math::abs(act);
-            //     err_ap = math::max(err_ap, math::abs(act) ); // non-parallel
-            // else
-            //     // err_a0_vec[Jcol] = act;
-            //     err_a0 = math::min(err_a0, act); // non-parallel
+            err_d = math::max(err_d, math::abs(x(Jcol) - x_im1(Jcol))); // non-parallel
+            if ( x(Jcol) > 0)
+                err_ap = math::max(err_ap, math::abs(act) ); // non-parallel
+            else
+                err_a0 = math::min(err_a0, act); // non-parallel
         }
-} // omp parallel
 
-        // compute error
-        err_d = *std::max_element(err_d_vec.begin(), err_d_vec.end());
-        err_ap = *std::max_element(err_ap_vec.begin(), err_ap_vec.end());
-        err_a0 = *std::min_element(err_a0_vec.begin(), err_a0_vec.end());
-
-        if (m_verbose) gsInfo<<"PSOR It. "<<m_num_iter<<": err_d = "<<err_d<<", err_ap = "<<err_ap<<", err_a0 = "<<err_a0<<"\n";
+        gsDebugVar((x-x_im1).norm());
+        if (m_verbose) gsInfo<<"PSOR It. "<<m_num_iter<<": ||x|| = "<<x.norm()<<", err_d = "<<err_d<<", err_ap = "<<err_ap<<", err_a0 = "<<err_a0<<"\n";
 
         // return (err_d < m_tol);
         m_error = {err_d, err_ap, err_a0};
