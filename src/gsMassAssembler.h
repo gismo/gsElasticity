@@ -71,5 +71,5 @@ protected:
 } // namespace gismo ends
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsElMassAssembler.hpp)
+#include GISMO_HPP_HEADER(gsMassAssembler.hpp)
 #endif

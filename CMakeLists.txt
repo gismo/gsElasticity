@@ -18,14 +18,11 @@ include(gsConfig)
 
 ## Collect files
 aux_header_directory     (${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_H  )
-aux_cpp_directory        (${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_CPP)
+aux_cpp_noins_directory  (${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_CPP)
 aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_HPP)
 
-if( (NOT GISMO_BUILD_LIB) )
-  aux_instance_directory (${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_INS)
-  if(${PROJECT_NAME}_INS)
-    LIST( REMOVE_ITEM ${PROJECT_NAME}_CPP ${${PROJECT_NAME}_INS})
-  endif()
+if(GISMO_BUILD_LIB)
+  aux_instance_directory (${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_INS)
 endif()
 
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
@@ -34,7 +31,9 @@ endif()
 add_library(${PROJECT_NAME} OBJECT
   ${${PROJECT_NAME}_H}
   ${${PROJECT_NAME}_HPP}
-  ${${PROJECT_NAME}_CPP} )
+  ${${PROJECT_NAME}_CPP}
+  ${${PROJECT_NAME}_INS}
+  )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
   COMPILE_DEFINITIONS gismo_EXPORTS
@@ -52,9 +51,6 @@ execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOUR
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}"
   DESTINATION include/gismo
   FILES_MATCHING PATTERN "*.h" )
-
-# add filedata folder
-add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
 
 # add example files
 if(GISMO_BUILD_EXAMPLES)
