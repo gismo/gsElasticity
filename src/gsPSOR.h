@@ -190,7 +190,6 @@ public:
                 err_a0 = math::min(err_a0, act); // non-parallel
         }
 
-        gsDebugVar((x-x_im1).norm());
         if (m_verbose) gsInfo<<"PSOR It. "<<m_num_iter<<": ||x|| = "<<x.norm()<<", err_d = "<<err_d<<", err_ap = "<<err_ap<<", err_a0 = "<<err_a0<<"\n";
 
         // return (err_d < m_tol);

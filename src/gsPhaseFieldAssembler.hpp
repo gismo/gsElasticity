@@ -433,6 +433,7 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleVector_impl()
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
     m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
+    m_assembler.initVector();
 }
 
 template <class T, enum PForder order, enum PFmode mode>
@@ -442,6 +443,7 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleVector_impl()
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
     m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
+    m_assembler.initVector();
 }
 
 
