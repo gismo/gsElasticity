@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
                     // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/flow_around_cylinder.xml";
+    std::string filename = gsElasticity_DATA"/flow_around_cylinder.xml";
     real_t viscosity = 0.001; // kinematic viscosity
     real_t meanVelocity = 1; // inflow velocity
     real_t density = 1.0;

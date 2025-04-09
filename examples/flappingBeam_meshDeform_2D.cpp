@@ -34,8 +34,8 @@ int main(int argc, char* argv[])
 {
     gsInfo << "Testing the ALE mapping construction in 2D.\n";
 
-    std::string filenameALE = ELAST_DATA_DIR"/flappingBeam_flow.xml";
-    std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
+    std::string filenameALE = gsElasticity_DATA"/flappingBeam_flow.xml";
+    std::string filenameBeam = gsElasticity_DATA"/flappingBeam_beam.xml";
     index_t numUniRef = 3; // number of h-refinements
     index_t numPlotPoints = 1000;
     real_t youngsModulus = 1.4e6;

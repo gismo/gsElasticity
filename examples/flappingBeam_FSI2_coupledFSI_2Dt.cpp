@@ -65,13 +65,13 @@ int main(int argc, char* argv[])
     //=====================================//
 
     // beam parameters
-    std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
+    std::string filenameBeam = gsElasticity_DATA"/flappingBeam_beam.xml";
     real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t densitySolid = 1.0e4;
     real_t beamLoad = 0.0;
     // flow parameters
-    std::string filenameFlow = ELAST_DATA_DIR"/flappingBeam_flow.xml";
+    std::string filenameFlow = gsElasticity_DATA"/flappingBeam_flow.xml";
     real_t viscosity = 0.001;
     real_t meanVelocity = 1.;
     real_t densityFluid = 1.0e3;

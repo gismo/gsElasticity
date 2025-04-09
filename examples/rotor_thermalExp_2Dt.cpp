@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/rotor_2D.xml";
+    std::string filename = gsElasticity_DATA"/rotor_2D.xml";
     real_t fluxValue = 100.; // heat flux on the north boundary
     real_t thExpCoef = 2e-4; // thermal expansion coeffcient of the material
     real_t initTemp = 20.; // initial temperature

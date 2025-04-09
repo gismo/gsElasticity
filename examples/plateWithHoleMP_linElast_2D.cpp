@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/plateWithHoleMP.xml";
+    std::string filename = gsElasticity_DATA"/plateWithHoleMP.xml";
     index_t numUniRef = 5;
     index_t numDegElev = 0;
     index_t numPlotPoints = 10000;

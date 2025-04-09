@@ -19,7 +19,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/cooks.xml";
+    std::string filename = gsElasticity_DATA"/cooks.xml";
     real_t youngsModulus = 240.565e6;
     real_t poissonsRatio = 0.4;
     index_t materialLaw = material_law::mixed_neo_hooke_ln;
