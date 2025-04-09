@@ -46,7 +46,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/flappingBeam_flow.xml";
+    std::string filename = gsElasticity_DATA"/flappingBeam_flow.xml";
     real_t viscosity = 0.001; // kinematic viscosity
     real_t meanVelocity = 0.2; // inflow velocity
     real_t density = 1.0e3;

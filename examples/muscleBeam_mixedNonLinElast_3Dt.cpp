@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/muscleBeamMP.xml";
+    std::string filename = gsElasticity_DATA"/muscleBeamMP.xml";
     real_t youngsModulus = 3.0e5; // shear modulus 1e5;
     real_t poissonsRatio = 0.5;
     real_t density = 9e2;

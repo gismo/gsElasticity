@@ -69,8 +69,8 @@ int main(int argc, char* argv[]){
 
     // scanning geometry
     gsMultiPatch<> geometry;
-    gsReadFile<>(rightOrLeft ? ELAST_DATA_DIR"/bicepsRightMP.xml" :
-                               ELAST_DATA_DIR"/bicepsLeftMP.xml", geometry);
+    gsReadFile<>(rightOrLeft ? gsElasticity_DATA"/bicepsRightMP.xml" :
+                               gsElasticity_DATA"/bicepsLeftMP.xml", geometry);
     geometry.computeTopology();
 
     // creating bases

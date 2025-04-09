@@ -52,6 +52,9 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}"
   DESTINATION include/gismo
   FILES_MATCHING PATTERN "*.h" )
 
+# add filedata folder
+add_definitions(-D${PROJECT_NAME}_DATA="${CMAKE_CURRENT_SOURCE_DIR}/filedata/")
+
 # add example files
 if(GISMO_BUILD_EXAMPLES)
   add_custom_target(${PROJECT_NAME}-examples)

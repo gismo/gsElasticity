@@ -21,7 +21,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/muscleBeamMP.xml";
+    std::string filename = gsElasticity_DATA"/muscleBeamMP.xml";
     real_t youngsModulusMuscle = 3.0e5; // shear modulus 1e5;
     real_t youngsModulusTendon = 3.0e6; // shear modulus 1e6;
     real_t poissonsRatioMuscle = 0.5;

@@ -18,7 +18,7 @@ int main(int argc, char* argv[]){
                 // Input //
     //=====================================//
 
-    std::string filename = ELAST_DATA_DIR"/flappingBeam_beam.xml";
+    std::string filename = gsElasticity_DATA"/flappingBeam_beam.xml";
     real_t poissonsRatio = 0.4;
     real_t youngsModulus = 1.4e6;
     real_t density = 1.0e3;
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]){
     gsStopwatch clock;
     clock.restart();
     solver.solve();
-    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";  
+    gsInfo << "Solved the system in " << clock.stop() <<"s.\n";
 
     //=============================================//
                       // Output //

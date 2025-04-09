@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     //=====================================//
 
     // input file with a set of 4 compatible boundary curves ordered "west-east-south-north"
-    std::string filename = ELAST_DATA_DIR"/puzzle3_bdry.xml";
+    std::string filename = gsElasticity_DATA"/puzzle3_bdry.xml";
     index_t numUniRef = 0;
     /// Initial domain options
     index_t fittingDegree = 0;
