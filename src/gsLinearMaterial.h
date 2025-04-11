@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialBase.h>
-#include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/src/gsMaterialBase.h>
+#include <gsElasticity/src/gsVisitorElUtils.h>
 #include <gsCore/gsConstantFunction.h>
 
 namespace gismo

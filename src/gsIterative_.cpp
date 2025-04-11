@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsElasticity/gsIterative.h>
-#include <gsElasticity/gsIterative.hpp>
+#include <gsElasticity/src/gsIterative.h>
+#include <gsElasticity/src/gsIterative.hpp>
 
 namespace gismo
 {

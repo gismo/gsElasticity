@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <gsElasticity/gsBaseAssembler.h>
-#include <gsElasticity/gsBaseUtils.h>
-#include <gsElasticity/gsNsAssembler.h>
-#include <gsElasticity/gsMassAssembler.h>
+#include <gsElasticity/src/gsBaseAssembler.h>
+#include <gsElasticity/src/gsBaseUtils.h>
+#include <gsElasticity/src/gsNsAssembler.h>
+#include <gsElasticity/src/gsMassAssembler.h>
 
 namespace gismo
 {

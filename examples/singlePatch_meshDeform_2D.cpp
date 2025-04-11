@@ -2,9 +2,9 @@
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
-#include <gsElasticity/gsGeoUtils.h>
-#include <gsElasticity/gsALE.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsGeoUtils.h>
+#include <gsElasticity/src/gsALE.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

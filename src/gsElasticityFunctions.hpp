@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsElasticityFunctions.h>
+#include <gsElasticity/src/gsElasticityFunctions.h>
 #include <gsCore/gsFuncData.h>
 #include <gsAssembler/gsAssembler.h>
 

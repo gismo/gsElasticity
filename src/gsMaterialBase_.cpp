@@ -1,7 +1,7 @@
 // #include <gsCore/gsTemplateTools.h>
 
-// #include <gsElasticity/src/gsMaterialBase.h>
-// #include <gsElasticity/src/gsMaterialBase.hpp>
+// #include <gsElasticity/src/src/gsMaterialBase.h>
+// #include <gsElasticity/src/src/gsMaterialBase.hpp>
 
 // namespace gismo
 // {

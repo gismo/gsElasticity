@@ -6,9 +6,9 @@
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
-#include <gsElasticity/gsNsAssembler.h>
-#include <gsElasticity/gsIterative.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsNsAssembler.h>
+#include <gsElasticity/src/gsIterative.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsElasticity/gsNsTimeIntegrator.h>
-#include <gsElasticity/gsNsTimeIntegrator.hpp>
+#include <gsElasticity/src/gsNsTimeIntegrator.h>
+#include <gsElasticity/src/gsNsTimeIntegrator.hpp>
 
 namespace gismo
 {

@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialBase.h>
-#include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/src/gsMaterialBase.h>
+#include <gsElasticity/src/gsVisitorElUtils.h>
 #include <gsUtils/gsThreaded.h>
 
 namespace gismo

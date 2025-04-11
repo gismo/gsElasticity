@@ -1,6 +1,6 @@
 #include <gsCore/gsTemplateTools.h>
-#include <gsElasticity/gsThermoAssembler.h>
-#include <gsElasticity/gsThermoAssembler.hpp>
+#include <gsElasticity/src/gsThermoAssembler.h>
+#include <gsElasticity/src/gsThermoAssembler.hpp>
 
 namespace gismo
 {

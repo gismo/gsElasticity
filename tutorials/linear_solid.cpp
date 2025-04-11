@@ -14,7 +14,7 @@
 #include <gismo.h>
 
 //! [Includes]
-#include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
 //! [Includes]
 
 using namespace gismo;

@@ -4,15 +4,15 @@
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
-#include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElTimeIntegrator.h>
-#include <gsElasticity/gsNsAssembler.h>
-#include <gsElasticity/gsNsTimeIntegrator.h>
-#include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsALE.h>
-#include <gsElasticity/gsPartitionedFSI.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
-#include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsElTimeIntegrator.h>
+#include <gsElasticity/src/gsNsAssembler.h>
+#include <gsElasticity/src/gsNsTimeIntegrator.h>
+#include <gsElasticity/src/gsMassAssembler.h>
+#include <gsElasticity/src/gsALE.h>
+#include <gsElasticity/src/gsPartitionedFSI.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsGeoUtils.h>
 
 using namespace gismo;
 

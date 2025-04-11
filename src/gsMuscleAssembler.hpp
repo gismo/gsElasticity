@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include <gsElasticity/gsMuscleAssembler.h>
+#include <gsElasticity/src/gsMuscleAssembler.h>
 
-#include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/src/gsGeoUtils.h>
 
 // Element visitors
-#include <gsElasticity/gsVisitorMuscle.h>
-#include <gsElasticity/gsVisitorElasticityNeumann.h>
+#include <gsElasticity/src/gsVisitorMuscle.h>
+#include <gsElasticity/src/gsVisitorElasticityNeumann.h>
 
 namespace gismo
 {

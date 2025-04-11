@@ -12,8 +12,8 @@
 */
 
 #include <gismo.h>
-#include <gsElasticity/gsMaterialEval.h>
-#include <gsElasticity/gsLinearMaterial.h>
+#include <gsElasticity/src/gsMaterialEval.h>
+#include <gsElasticity/src/gsLinearMaterial.h>
 #include <gsUtils/gsStopwatch.h>
 
 using namespace gismo;

@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialUtils.h>
-#include <gsElasticity/gsMaterialContainer.h>
-#include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/src/gsMaterialUtils.h>
+#include <gsElasticity/src/gsMaterialContainer.h>
+#include <gsElasticity/src/gsVisitorElUtils.h>
 #include <gsCore/gsFunction.h>
 
 namespace gismo

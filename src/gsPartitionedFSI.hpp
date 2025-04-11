@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include <gsElasticity/gsPartitionedFSI.h>
+#include <gsElasticity/src/gsPartitionedFSI.h>
 
-#include <gsElasticity/gsNsTimeIntegrator.h>
-#include <gsElasticity/gsElTimeIntegrator.h>
-#include <gsElasticity/gsALE.h>
+#include <gsElasticity/src/gsNsTimeIntegrator.h>
+#include <gsElasticity/src/gsElTimeIntegrator.h>
+#include <gsElasticity/src/gsALE.h>
 #include <gsUtils/gsStopwatch.h>
-#include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/src/gsGeoUtils.h>
 
 namespace gismo
 {

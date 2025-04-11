@@ -6,12 +6,12 @@
 /// The ALE mapping is computed using the nonlinear elasticity method with Jacobian-based local stiffening.
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
-#include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElTimeIntegrator.h>
-#include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
-#include <gsElasticity/gsGeoUtils.h>
-#include <gsElasticity/gsALE.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsElTimeIntegrator.h>
+#include <gsElasticity/src/gsMassAssembler.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsGeoUtils.h>
+#include <gsElasticity/src/gsALE.h>
 
 using namespace gismo;
 

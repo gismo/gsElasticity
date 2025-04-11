@@ -15,11 +15,11 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorElUtils.h>
-#include <gsElasticity/gsBasePde.h>
-#include <gsElasticity/gsMaterialBase.h>
-#include <gsElasticity/gsMaterialEval.h>
-#include <gsElasticity/gsMaterialContainer.h>
+#include <gsElasticity/src/gsVisitorElUtils.h>
+#include <gsElasticity/src/gsBasePde.h>
+#include <gsElasticity/src/gsMaterialBase.h>
+#include <gsElasticity/src/gsMaterialEval.h>
+#include <gsElasticity/src/gsMaterialContainer.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>

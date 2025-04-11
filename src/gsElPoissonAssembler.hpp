@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <gsElasticity/gsElPoissonAssembler.h>
+#include <gsElasticity/src/gsElPoissonAssembler.h>
 
 #include <gsPde/gsPoissonPde.h>
-#include <gsElasticity/gsVisitorElPoisson.h>
+#include <gsElasticity/src/gsVisitorElPoisson.h>
 
 namespace gismo
 {

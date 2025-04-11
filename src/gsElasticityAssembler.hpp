@@ -15,21 +15,21 @@
 
 #pragma once
 
-#include <gsElasticity/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
 
 #include <gsUtils/gsPointGrid.h>
-#include <gsElasticity/gsBaseUtils.h>
-#include <gsElasticity/gsGeoUtils.h>
-#include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/src/gsBaseUtils.h>
+#include <gsElasticity/src/gsGeoUtils.h>
+#include <gsElasticity/src/gsBasePde.h>
 
 // Element visitors
-#include <gsElasticity/gsVisitorLinearElasticity.h>
-#include <gsElasticity/gsVisitorLinearElasticityMM.h>
-#include <gsElasticity/gsVisitorMixedLinearElasticity.h>
-#include <gsElasticity/gsVisitorMixedNonLinearElasticity.h>
-#include <gsElasticity/gsVisitorNonLinearElasticity.h>
-#include <gsElasticity/gsVisitorNonLinearElasticityMM.h>
-#include <gsElasticity/gsVisitorElasticityNeumann.h>
+#include <gsElasticity/src/gsVisitorLinearElasticity.h>
+#include <gsElasticity/src/gsVisitorLinearElasticityMM.h>
+#include <gsElasticity/src/gsVisitorMixedLinearElasticity.h>
+#include <gsElasticity/src/gsVisitorMixedNonLinearElasticity.h>
+#include <gsElasticity/src/gsVisitorNonLinearElasticity.h>
+#include <gsElasticity/src/gsVisitorNonLinearElasticityMM.h>
+#include <gsElasticity/src/gsVisitorElasticityNeumann.h>
 
 namespace gismo
 {

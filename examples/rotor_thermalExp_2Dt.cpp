@@ -6,8 +6,8 @@
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
-#include <gsElasticity/gsThermoAssembler.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsThermoAssembler.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

@@ -1,8 +1,8 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsMassAssembler.hpp>
+#include <gsElasticity/src/gsMassAssembler.h>
+#include <gsElasticity/src/gsMassAssembler.hpp>
 
 namespace gismo
 {
