@@ -1,8 +1,8 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.hpp>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.hpp>
 
 namespace gismo
 {

@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsElasticity/gsBiharmonicAssembler.h>
-#include <gsElasticity/gsBiharmonicAssembler.hpp>
+#include <gsElasticity/src/gsBiharmonicAssembler.h>
+#include <gsElasticity/src/gsBiharmonicAssembler.hpp>
 
 namespace gismo
 {

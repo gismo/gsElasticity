@@ -14,14 +14,14 @@
 
 #pragma once
 
-#include <gsElasticity/gsNsAssembler.h>
+#include <gsElasticity/src/gsNsAssembler.h>
 
-#include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/src/gsBasePde.h>
 #include <gsUtils/gsPointGrid.h>
 
 // Element visitors
-#include <gsElasticity/gsVisitorStokes.h>
-#include <gsElasticity/gsVisitorNavierStokes.h>
+#include <gsElasticity/src/gsVisitorStokes.h>
+#include <gsElasticity/src/gsVisitorNavierStokes.h>
 
 namespace gismo
 {

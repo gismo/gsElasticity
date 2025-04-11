@@ -1,6 +1,6 @@
 #include <gsCore/gsTemplateTools.h>
-#include <gsElasticity/gsMuscleAssembler.h>
-#include <gsElasticity/gsMuscleAssembler.hpp>
+#include <gsElasticity/src/gsMuscleAssembler.h>
+#include <gsElasticity/src/gsMuscleAssembler.hpp>
 
 namespace gismo
 {

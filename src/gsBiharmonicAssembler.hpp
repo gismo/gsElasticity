@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <gsElasticity/gsBiharmonicAssembler.h>
+#include <gsElasticity/src/gsBiharmonicAssembler.h>
 
 #include <gsPde/gsPoissonPde.h>
-#include <gsElasticity/gsVisitorBiharmonicMixed.h>
+#include <gsElasticity/src/gsVisitorBiharmonicMixed.h>
 
 namespace gismo
 {

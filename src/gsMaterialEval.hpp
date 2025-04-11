@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialEval.h>
+#include <gsElasticity/src/gsMaterialEval.h>
 
 namespace gismo
 {

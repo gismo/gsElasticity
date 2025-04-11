@@ -15,8 +15,8 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorElUtils.h>
-#include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/src/gsVisitorElUtils.h>
+#include <gsElasticity/src/gsBasePde.h>
 
 #include <gsAssembler/gsQuadrature.h>
 #include <gsCore/gsFuncData.h>

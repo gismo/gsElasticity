@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/src/gsGeoUtils.h>
 
 #include <gsCore/gsField.h>
 #include <gsCore/gsFuncData.h>
@@ -26,9 +26,9 @@
 #include <gsAssembler/gsQuadrature.h>
 #include <gsModeling/gsCoonsPatch.h>
 
-#include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElasticityFunctions.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsElasticityFunctions.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsIO/gsWriteParaview.h>
 

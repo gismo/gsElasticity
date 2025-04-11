@@ -15,8 +15,8 @@
 
 #pragma once
 
-#include <gsElasticity/gsBaseAssembler.h>
-#include <gsElasticity/gsBaseUtils.h>
+#include <gsElasticity/src/gsBaseAssembler.h>
+#include <gsElasticity/src/gsBaseUtils.h>
 
 namespace gismo
 {
@@ -45,7 +45,7 @@ public:
     //--------------------- SYSTEM ASSEMBLY ----------------------------------//
 
     using Base::assemble;
-    
+
     /// @brief Assembly of the linear system for the Stokes problem
     /// @{
     virtual void assemble(bool saveEliminationMatrix);

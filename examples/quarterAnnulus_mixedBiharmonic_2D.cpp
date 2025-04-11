@@ -2,8 +2,8 @@
 ///
 /// Authors: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
-#include <gsElasticity/gsBiharmonicAssembler.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsBiharmonicAssembler.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
 
 using namespace gismo;
 

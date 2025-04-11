@@ -18,7 +18,7 @@
 #include <gsCore/gsFuncData.h>
 #include <algorithm>
 
-#include <gsElasticity/gsBasePde.h>
+#include <gsElasticity/src/gsBasePde.h>
 
 namespace gismo
 {

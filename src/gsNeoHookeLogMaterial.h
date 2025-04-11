@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsMaterialBase.h>
+#include <gsElasticity/src/gsMaterialBase.h>
 #include <gsCore/gsConstantFunction.h>
 
 namespace gismo

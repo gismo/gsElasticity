@@ -1,8 +1,8 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsElasticity/gsLinearMaterial.h>
-#include <gsElasticity/gsNeoHookeLogMaterial.h>
-#include <gsElasticity/gsNeoHookeQuadMaterial.h>
+#include <gsElasticity/src/gsLinearMaterial.h>
+#include <gsElasticity/src/gsNeoHookeLogMaterial.h>
+#include <gsElasticity/src/gsNeoHookeQuadMaterial.h>
 
 namespace gismo
 {

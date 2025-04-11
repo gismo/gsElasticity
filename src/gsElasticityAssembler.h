@@ -15,11 +15,11 @@
 
 #pragma once
 
-#include <gsElasticity/gsBaseAssembler.h>
-#include <gsElasticity/gsElasticityFunctions.h>
-#include <gsElasticity/gsBaseUtils.h>
-#include <gsElasticity/gsMaterialBase.h>
-#include <gsElasticity/gsMaterialContainer.h>
+#include <gsElasticity/src/gsBaseAssembler.h>
+#include <gsElasticity/src/gsElasticityFunctions.h>
+#include <gsElasticity/src/gsBaseUtils.h>
+#include <gsElasticity/src/gsMaterialBase.h>
+#include <gsElasticity/src/gsMaterialContainer.h>
 
 namespace gismo
 {
@@ -39,7 +39,7 @@ public:
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
-                          const gsFunction<T> & body_force);   
+                          const gsFunction<T> & body_force);
 
     /// @brief Constructor of mixed formulation (displacement + pressure)
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
@@ -53,14 +53,14 @@ public:
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T>   & body_force,
-                          const gsMaterialBase<T> * material);   
+                          const gsMaterialBase<T> * material);
 
     /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force,
-                                gsMaterialContainer<T> materials);   
+                                gsMaterialContainer<T> materials);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();

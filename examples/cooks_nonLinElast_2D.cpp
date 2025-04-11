@@ -4,12 +4,12 @@
 ///
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
-#include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsIterative.h>
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
-#include <gsElasticity/gsMaterialBase.h>
-#include <gsElasticity/gsLinearMaterial.h>
-#include <gsElasticity/gsNeoHookeLogMaterial.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsIterative.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsMaterialBase.h>
+#include <gsElasticity/src/gsLinearMaterial.h>
+#include <gsElasticity/src/gsNeoHookeLogMaterial.h>
 
 using namespace gismo;
 

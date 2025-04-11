@@ -15,9 +15,9 @@
 
 #pragma once
 
-#include <gsElasticity/gsIterative.h>
+#include <gsElasticity/src/gsIterative.h>
 
-#include <gsElasticity/gsBaseAssembler.h>
+#include <gsElasticity/src/gsBaseAssembler.h>
 
 #include <sstream>
 

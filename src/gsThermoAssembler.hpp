@@ -15,10 +15,10 @@
 
 #pragma once
 
-#include <gsElasticity/gsThermoAssembler.h>
+#include <gsElasticity/src/gsThermoAssembler.h>
 
-#include <gsElasticity/gsVisitorThermo.h>
-#include <gsElasticity/gsVisitorThermoBoundary.h>
+#include <gsElasticity/src/gsVisitorThermo.h>
+#include <gsElasticity/src/gsVisitorThermoBoundary.h>
 
 namespace gismo
 {

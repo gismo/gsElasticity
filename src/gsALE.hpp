@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include <gsElasticity/gsALE.h>
+#include <gsElasticity/src/gsALE.h>
 
-#include <gsElasticity/gsElasticityAssembler.h>
-#include <gsElasticity/gsElPoissonAssembler.h>
-#include <gsElasticity/gsBiharmonicAssembler.h>
-#include <gsElasticity/gsIterative.h>
-#include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/src/gsElasticityAssembler.h>
+#include <gsElasticity/src/gsElPoissonAssembler.h>
+#include <gsElasticity/src/gsBiharmonicAssembler.h>
+#include <gsElasticity/src/gsIterative.h>
+#include <gsElasticity/src/gsGeoUtils.h>
 #include <gsCore/gsConstantFunction.h>
 
 namespace gismo

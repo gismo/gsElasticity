@@ -16,7 +16,7 @@
 #pragma once
 
 #include <gsCore/gsMultiPatch.h>
-#include <gsElasticity/gsBaseUtils.h>
+#include <gsElasticity/src/gsBaseUtils.h>
 #include <gsIO/gsOptionList.h>
 
 namespace gismo

@@ -15,11 +15,11 @@
 
 #pragma once
 
-#include <gsElasticity/gsNsTimeIntegrator.h>
+#include <gsElasticity/src/gsNsTimeIntegrator.h>
 
-#include <gsElasticity/gsNsAssembler.h>
-#include <gsElasticity/gsMassAssembler.h>
-#include <gsElasticity/gsIterative.h>
+#include <gsElasticity/src/gsNsAssembler.h>
+#include <gsElasticity/src/gsMassAssembler.h>
+#include <gsElasticity/src/gsIterative.h>
 
 namespace gismo
 {

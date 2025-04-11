@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsElasticity/gsPartitionedFSI.h>
-#include <gsElasticity/gsPartitionedFSI.hpp>
+#include <gsElasticity/src/gsPartitionedFSI.h>
+#include <gsElasticity/src/gsPartitionedFSI.hpp>
 
 namespace gismo
 {

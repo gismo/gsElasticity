@@ -12,13 +12,13 @@
     Inspired by gsWriteParaview.hpp by A. Mantzaflaris
 */
 
-#include <gsElasticity/gsWriteParaviewMultiPhysics.h>
+#include <gsElasticity/src/gsWriteParaviewMultiPhysics.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsField.h>
 #include <gsIO/gsWriteParaview.h>
-#include <gsElasticity/gsGeoUtils.h>
+#include <gsElasticity/src/gsGeoUtils.h>
 
 
 #define PLOT_PRECISION 11
