@@ -67,6 +67,7 @@ public:
         this->setParameter(1,nu);
     }
 
+    using Base::eval_stress_into;
     /// See \ref gsMaterialBase.h for more details
     void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
     {
@@ -76,24 +77,22 @@ public:
         // Resize the result
         Sresult.resize(dim*dim,N);
 
-        // Lamé parameters
-        T E, nu;
-        T lambda, mu;
         gsMatrix<T> I = gsMatrix<T>::Identity(dim,dim);
-
+        // Lamé parameters
+        gsMatrix<T> lambda(1,N), mu(1,N);
+        gsMatrix<T> E     = data.m_pars[0];
+        gsMatrix<T> nu    = data.m_pars[1];
+        lambda.array() = E.array() * nu.array() / ( ( 1. + nu.array() ) * ( 1. - 2. * nu.array() ) );
+        mu.array()     = E.array() / ( 2. * ( 1. + nu.array() ) );
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
-            lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
-            mu     = E / ( 2. * ( 1. + nu ) );
-
             gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
             gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
-            S = lambda*Emat.trace()*I + 2*mu*Emat;
+            S = lambda(0,i)*Emat.trace()*I + 2*mu(0,i)*Emat;
         }
     }
 
+    using Base::eval_matrix_into;
     /// See \ref gsMaterialBase.h for more details
     void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
     {
@@ -115,16 +114,15 @@ public:
         symmetricIdentityTensor<T>(Cmu,I);
 
         // Lamé parameters
-        T E, nu;
-        T lambda, mu;
+        gsMatrix<T> lambda(1,N), mu(1,N);
+        gsMatrix<T> E     = data.m_pars[0];
+        gsMatrix<T> nu    = data.m_pars[1];
+        lambda.array() = E.array() * nu.array() / ( ( 1. + nu.array() ) * ( 1. - 2. * nu.array() ) );
+        mu.array()     = E.array() / ( 2. * ( 1. + nu.array() ) );
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
-            lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
-            mu     = E / ( 2. * ( 1. + nu ) );
             // Compute C
-            Cresult.reshapeCol(i,sz,sz) = lambda*Clambda + mu*Cmu;
+            Cresult.reshapeCol(i,sz,sz) = lambda(0,i)*Clambda + mu(0,i)*Cmu;
         }
     }
 

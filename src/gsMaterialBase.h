@@ -280,7 +280,7 @@ public:
         this->eval_stress_into(data,Sresult);
     }
 
-    virtual void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
+    virtual void eval_stress_into(const gsMaterialData<T> & /* data */, gsMatrix<T> & /* Sresult */) const
     { GISMO_NO_IMPLEMENTATION; }
 
     /**
@@ -305,7 +305,7 @@ public:
         this->eval_matrix_into(data,Cresult);
     }
 
-    virtual void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
+    virtual void eval_matrix_into(const gsMaterialData<T> & /* data */, gsMatrix<T> & /* Cresult */) const
     { GISMO_NO_IMPLEMENTATION; }
 
     /**
@@ -330,7 +330,7 @@ public:
         this->eval_matrix_pos_into(data,Cresult);
     }
 
-    virtual void eval_matrix_pos_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
+    virtual void eval_matrix_pos_into(const gsMaterialData<T> & /* data */, gsMatrix<T> & /* Cresult */) const
     { GISMO_NO_IMPLEMENTATION; }
 
     /**
@@ -355,7 +355,7 @@ public:
         this->eval_energy_into(data,Presult);
     }
 
-    virtual void eval_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Presult) const
+    virtual void eval_energy_into(const gsMaterialData<T> & /* data */, gsMatrix<T> & /* Presult */) const
     { GISMO_NO_IMPLEMENTATION; }
 
     /// Sets the density
@@ -392,7 +392,7 @@ public:
     {
         m_pars.resize(pars.size());
         for (size_t k = 0; k!=pars.size(); k++)
-            m_pars[k] = std::make_pair(pars[k],true);
+            m_pars[k] = std::make_pair(pars[k],parametric);
     }
 
     /**
@@ -507,9 +507,8 @@ protected:
         data.patch = (map_ori.patchId==-1) ? 0 : map_ori.patchId;
         data.m_F.resize(0,data.size);
         data.m_E.resize(0,data.size);
-        data.m_parmat.resize(m_pars.size(),data.size);
+        data.m_pars.resize(m_pars.size());
 
-        data.m_parmat.setZero();
         gsMatrix<T> pars;
         for (size_t v=0; v!=m_pars.size(); v++)
         {
@@ -517,7 +516,7 @@ protected:
                                                             map_ori.points :
                                                             map_ori.values[0],
                                                             pars);
-            data.m_parmat.row(v) = pars;
+            data.m_pars[v] = pars;
         }
     }
 
@@ -542,9 +541,8 @@ protected:
         data.patch = (map_ori.patchId==-1) ? 0 : map_ori.patchId;
         data.m_F.resize(data.dim*data.dim,data.size);
         data.m_E.resize(data.dim*data.dim,data.size);
-        data.m_parmat.resize(m_pars.size(),data.size);
+        data.m_pars.resize(m_pars.size());
 
-        data.m_parmat.setZero();
         gsMatrix<T> pars;
         gsMatrix<T> jac_ori, jac_def;
         gsMatrix<T> I = gsMatrix<T>::Identity(data.dim,data.dim);
@@ -563,7 +561,7 @@ protected:
         for (size_t v=0; v!=m_pars.size(); v++)
         {
             m_pars[v].first->piece(data.patch).eval_into(map_ori.values[0], pars);
-            data.m_parmat.row(v) = pars;
+            data.m_pars[v] = pars;
         }
     }
 
@@ -685,7 +683,7 @@ public:
     typename gsMaterialBase<T>::function_ptr m_undeformed;
     typename gsMaterialBase<T>::function_ptr m_deformed;
 
-    mutable gsMatrix<T> m_parmat;
+    mutable std::vector<gsMatrix<T>> m_pars;
     mutable gsMatrix<T> m_rhoMat;
     // mutable gsMatrix<T> m_jac_ori, m_jac_def;
     mutable gsMatrix<T> m_F, m_E;

@@ -67,6 +67,7 @@ public:
         this->setParameter(1,nu);
     }
 
+    using Base::eval_stress_into;
     /// See \ref gsMaterialBase.h for more details
     void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override
     {
@@ -77,27 +78,27 @@ public:
         Sresult.resize(dim*dim,N);
 
         // Lamé parameters
-        T E, nu;
-        T lambda, mu;
+        gsMatrix<T> lambda(1,N), mu(1,N);
+        gsMatrix<T> E     = data.m_pars[0];
+        gsMatrix<T> nu    = data.m_pars[1];
+        lambda.array() = E.array() * nu.array() / ( ( 1. + nu.array() ) * ( 1. - 2. * nu.array() ) );
+        mu.array()     = E.array() / ( 2. * ( 1. + nu.array() ) );
+
         gsMatrix<T> I = gsMatrix<T>::Identity(dim,dim);
         gsMatrix<T> RCG, RCGinv;
         T J;
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
-            lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
-            mu     = E / ( 2. * ( 1. + nu ) );
-
             gsAsMatrix<T, Dynamic, Dynamic> F = data.m_F.reshapeCol(i,dim,dim);
             gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
             J = F.determinant();
             RCG = F.transpose() * F;
             RCGinv = RCG.cramerInverse();
-            S = (lambda*log(J)-mu)*RCGinv + mu*I;
+            S = (lambda(0,i)*log(J)-mu(0,i))*RCGinv + mu(0,i)*I;
         }
     }
 
+    using Base::eval_matrix_into;
     /// See \ref gsMaterialBase.h for more details
     void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const override
     {
@@ -122,15 +123,13 @@ public:
         symmetricIdentityTensor<T>(Cmu,I);
 
         // Lamé parameters
-        T E, nu;
-        T lambda, mu;
+        gsMatrix<T> lambda(1,N), mu(1,N);
+        gsMatrix<T> E     = data.m_pars[0];
+        gsMatrix<T> nu    = data.m_pars[1];
+        lambda.array() = E.array() * nu.array() / ( ( 1. + nu.array() ) * ( 1. - 2. * nu.array() ) );
+        mu.array()     = E.array() / ( 2. * ( 1. + nu.array() ) );
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
-            lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
-            mu     = E / ( 2. * ( 1. + nu ) );
-
             gsAsMatrix<T, Dynamic, Dynamic> F = data.m_F.reshapeCol(i,dim,dim);
 
             J = F.determinant();
@@ -139,9 +138,9 @@ public:
 
             // Compute C
             matrixTraceTensor<T>(C,RCGinv,RCGinv);
-            C *= lambda;
+            C *= lambda(0,i);
             symmetricIdentityTensor<T>(Ctemp,RCGinv);
-            C += (mu-lambda*log(J))*Ctemp;
+            C += (mu(0,i)-lambda(0,i)*log(J))*Ctemp;
             Cresult.reshapeCol(i,sz,sz) = C;
         }
     }
