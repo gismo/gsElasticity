@@ -42,7 +42,7 @@ public:
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
-                    const index_t patchIndex,
+                    const index_t /* patchIndex */,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
@@ -94,7 +94,7 @@ public:
 
     }
 
-    inline void assemble(gsDomainIteratorWrapper<T> & element,
+    inline void assemble(gsDomainIteratorWrapper<T> & /* element */,
                          const gsVector<T> & quWeights)
     {
         // initialize local matrix and rhs
