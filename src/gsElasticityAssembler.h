@@ -39,7 +39,7 @@ public:
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
-                          const gsFunction<T> & body_force);   
+                          const gsFunction<T> & body_force);
 
     /// @brief Constructor of mixed formulation (displacement + pressure)
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
@@ -53,14 +53,14 @@ public:
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T>   & body_force,
-                          const gsMaterialBase<T> * material);   
+                          const gsMaterialBase<T> * material);
 
     /// @brief Constructor for displacement formulation
     gsElasticityAssembler(const gsMultiPatch<T> & patches,
                           const gsMultiBasis<T> & basis,
                           const gsBoundaryConditions<T> & bconditions,
                           const gsFunction<T> & body_force,
-                                gsMaterialContainer<T> materials);   
+                                gsMaterialContainer<T> materials);
 
     /// @brief Returns the list of default options for assembly
     static gsOptionList defaultOptions();
@@ -101,6 +101,10 @@ protected:
 public:
 
     using Base::constructSolution;
+
+    /// @brief Construct solution vector from displacement multipatch
+    virtual void constructSolution(const gsMultiPatch<T> & displacement,
+                                         gsMatrix<T> & solVector) const;
 
     /// @brief Construct displacement from computed solution vector and fixed degrees of freedom
     virtual void constructSolution(const gsMatrix<T> & solVector,

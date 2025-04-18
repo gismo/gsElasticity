@@ -44,6 +44,10 @@ public:
     /// Returns number of free degrees of freedom
     virtual int numDofs() const { return gsAssembler<T>::numDofs(); }
 
+    virtual void constructSolution(const gsMultiPatch<T> & solution,
+                                         gsMatrix<T> & result,
+                                   const gsVector<index_t> & unknowns) const;
+
     /// Constructs solution as a gsMultiPatch object from the solution vector and fixed DoFs
     virtual void constructSolution(const gsMatrix<T> & solVector,
                                    const std::vector<gsMatrix<T> > & fixedDDofs,

@@ -19,6 +19,42 @@
 namespace gismo
 {
 
+
+template <class T>
+void gsBaseAssembler<T>::constructSolution(const gsMultiPatch<T> & solution,
+                                                 gsMatrix<T> & result,
+                                           const gsVector<index_t> & unknowns) const
+{
+    GISMO_ENSURE(unknowns.rows() > 0, "No unknowns provided!");
+    GISMO_ENSURE(solution.nPatches() == m_pde_ptr->domain().nPatches(),
+                 "The number of patches in the solution and the assembler do not match.");
+    index_t idx;
+
+    // total number of unknowns
+    index_t totalSize = 0;
+    for (index_t i = 0; i < unknowns.rows(); ++i)
+        totalSize += m_system.colMapper(unknowns[i]).freeSize();
+    result.resize(totalSize,1);
+
+    for (size_t p = 0; p < solution.nPatches(); ++p)
+    {
+        index_t size  = m_bases[unknowns[0]][p].size();
+        // check that all unknowns have the same basis size
+        for (index_t i = 1; i < unknowns.rows(); ++i)
+        {
+            GISMO_ENSURE(m_bases[unknowns[i]][p].size() == size,"Unknowns do not have the same size!");
+        }
+
+        for (index_t unk = 0; unk < unknowns.rows(); ++unk)
+            for (index_t i = 0; i < size; ++i)
+                if (m_system.colMapper(unknowns[unk]).is_free(i,p)) // DoF is in the result
+                {
+                    m_system.mapToGlobalColIndex(i,p,idx,unknowns[unk]);
+                    result(idx,0) = solution.patch(p).coefs()(i,unk);
+                }
+    }
+}
+
 template <class T>
 void gsBaseAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                                            const std::vector<gsMatrix<T> > & fixedDoFs,

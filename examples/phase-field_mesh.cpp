@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
                 if (
                     (domIt.centerPoint()[1] >= 0.5-l0 && domIt.centerPoint()[1] <= 0.5+l0) ||
                     (domIt.lowerCorner()[1] >= 0.5-l0 && domIt.lowerCorner()[1] <= 0.5+l0) ||
-                    (domIt.upperCorner()[1] >= 0.5-l0 && domIt.centerPoint()[1] <= 0.5+l0)
+                    (domIt.upperCorner()[1] >= 0.5-l0 && domIt.upperCorner()[1] <= 0.5+l0)
                    )
                 {
                     hmin = math::min(hmin,(domIt.upperCorner()[0] - domIt.lowerCorner()[0])/2);

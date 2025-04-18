@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     index_t numHRef = 0;
-    index_t numElev = 0;
+    index_t numElev = 1;
     bool fourthOrder = false;
     index_t order = -1;
     index_t AT = -1;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     mp.addPatch(tb);
     if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
 
-    mp.degreeIncrease(numElev);
+    mp.degreeElevate(numElev);
     for (index_t i = 0; i<numHRef; ++i)
         mp.uniformRefine(1);
 
@@ -292,17 +292,9 @@ int main(int argc, char *argv[])
                 Q = QPhi + QPsi;
                 // gsInfo<<". Done\n";
 
-                gsDebug<<"||Q|| = "<<Q.norm()<<", ||QPhi|| = "<<QPhi.norm()<<", ||QPsi|| = "<<QPsi.norm()<<"\n";
-
-                // gsDebugVar(Q.toDense());
-
                 pfAssembler->constructSolution(damage,D);
                 R = Q * D - qpsi + q;
-                // gsDebugVar(R.transpose());
                 pfAssemblyTime = clock.stop();
-
-                gsDebug<<"||D|| = "<<D.norm()<<", ||qpsi|| = "<<qpsi.norm()<<", ||q|| = "<<q.norm()<<"\n";
-                gsDebug<<"||R|| = "<<R.norm()<<"\n";
 
                 clock.restart();
                 gsPSOR<real_t> PSORsolver(Q);

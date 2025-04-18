@@ -296,6 +296,16 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
 //--------------------- SOLUTION CONSTRUCTION ----------------------------------//
 
 template <class T>
+void gsElasticityAssembler<T>::constructSolution(const gsMultiPatch<T> & displacement,
+                                                       gsMatrix<T> & solVector) const
+{
+    gsVector<index_t> unknowns(m_dim);
+    for (short_t d = 0; d < m_dim; ++d)
+        unknowns.at(d) = d;
+    Base::constructSolution(displacement,solVector,unknowns);
+}
+
+template <class T>
 void gsElasticityAssembler<T>::constructSolution(const gsMatrix<T> & solVector,
                                                  const std::vector<gsMatrix<T> > & fixedDoFs,
                                                  gsMultiPatch<T> & result) const
