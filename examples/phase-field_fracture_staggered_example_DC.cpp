@@ -28,6 +28,8 @@
 using namespace gismo;
 //! [Include namespace]
 
+#define PRINT(w) std::setw(w)<<std::left
+
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -127,7 +129,15 @@ int main(int argc, char *argv[])
     real_t ured = controlParameters.askReal("ured",1.);
     // Maximum number of iterations
     index_t maxIt = controlParameters.getInt("maxIt");
-    // Tolerance
+    // Maximum number of iterations for elasticity problem
+    index_t maxItEl = controlParameters.getInt("maxItEl");
+    // Maximum number of iterations for phase-field problem
+    index_t maxItPf = controlParameters.getInt("maxItPf");
+    // Tolerance for the elasticity problem
+    real_t tolEl = controlParameters.getReal("tolEl");
+    // Tolerance for the phase-field problem
+    real_t tolPf = controlParameters.getReal("tolPf");
+    // Staggered tolerance
     real_t tol = controlParameters.getReal("tol");
     // Fixed side patch id
     index_t fixedSidePatch = controlParameters.getInt("patchId");
@@ -226,6 +236,7 @@ int main(int argc, char *argv[])
     real_t elSolverTime = 0.0;
     real_t pfAssemblyTime = 0.0;
     real_t pfSolverTime = 0.0;
+    real_t iterationTime  = 0.0;
 
     gsMatrix<> D, deltaD;
     gsSparseMatrix<> Q, QPhi, QPsi;
@@ -241,7 +252,7 @@ int main(int argc, char *argv[])
     gsParaviewCollection damageCollection("damage");
     gsParaviewCollection psiCollection("Psi");
     gsParaviewCollection displCollection("displacement");
-    gsStopwatch clock;
+    gsStopwatch smallClock, bigClock;
 
     std::vector<std::vector<real_t>> data;
 
@@ -263,35 +274,45 @@ int main(int argc, char *argv[])
         fixedDofs = elAssembler.allFixedDofs();
         elAssembler.setFixedDofs(fixedDofs);
 
-        gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
-        gsInfo<<std::setw(20)<<"Iteration"<<std::setw(20)<<"||R||"<<std::setw(20)<<"||dU||/||U||"<<std::setw(20)<<"||dD||/||D||"<<std::setw(20)<<"el. assembly"<<std::setw(20)<<"el. solver"<<std::setw(20)<<"pf. assembly"<<std::setw(20)<<"pf. solver"<<"\n";
+        gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
+        gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n\n";
 
         du.setZero();
         deltaD.setZero();
-        elAssemblyTime = elSolverTime = 0.0;
-        pfAssemblyTime = pfSolverTime = 0.0;
-
-        clock.restart();
-        material.setParameter(2,damage);
-        elAssembler.homogenizeFixedDofs(-1);
-        elAssembler.assemble(u,fixedDofs);
-        elAssemblyTime = clock.stop();
         for (index_t it=0; it!=maxIt; ++it)
         {
-            // if (it!=0)
-            // material.setParameter(2,damage);
-            // elAssembler.homogenizeFixedDofs(-1);
+            elAssemblyTime = elSolverTime = 0.0;
+            pfAssemblyTime = pfSolverTime = 0.0;
+            iterationTime  = 0.0;
+            bigClock.restart();
+            gsInfo<<" - Staggered iteration "<<it<<":\n";
 
-            // clock.restart();
-            // elAssembler.assemble(u,fixedDofs);
-            // elAssemblyTime = clock.stop();
-            K = elAssembler.matrix();
-            R = elAssembler.rhs();
-            clock.restart();
-            solver.compute(K);
-            du = solver.solve(R);
-            elSolverTime = clock.stop();
-            u += du;
+            material.setParameter(2,damage);
+            elAssembler.homogenizeFixedDofs(-1);
+            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            for (index_t elIt=0; elIt!=maxItEl; ++elIt)
+            {
+                // Assemble
+                smallClock.restart();
+                elAssembler.assemble(u,fixedDofs);
+                elAssemblyTime += smallClock.stop();
+                K = elAssembler.matrix();
+                R = elAssembler.rhs();
+
+                // Solve
+                smallClock.restart();
+                solver.compute(K);
+                du = solver.solve(R);
+                elSolverTime += smallClock.stop();
+                u += du;
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<R.norm()<<PRINT(14)<<du.norm()/u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+                // if (R.norm() < tolEl || u.norm() < 1e-12)
+                if (du.norm()/u.norm() < tolEl || u.norm() < 1e-12)
+                    break;
+                else if (elIt == maxItEl-1 && maxItEl != 1)
+                    GISMO_ERROR("Staggered iterations problem did not converge.");
+            }
+
 
             elAssembler.setFixedDofs(fixedDofs);
             elAssembler.constructSolution(u,fixedDofs,displacement);
@@ -303,74 +324,72 @@ int main(int argc, char *argv[])
 
             // ==================================================================================
 
+            gsInfo<<"\t"<<PRINT(20)<<"* Phase-field:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+
             // Phase-field problem
-            clock.restart();
-            // gsInfo<<"Assembling phase-field problem"<<std::flush;
+            smallClock.restart();
+            // gsInfo<<"Assembling phase-field problem"<<"\n";
             pfAssembler->assemblePsiMatrix(Psi);
             pfAssembler->matrix_into(QPsi);
             pfAssembler->assemblePsiVector(Psi);
             pfAssembler->rhs_into(qpsi);
             Q = QPhi + QPsi;
+            // Reconstruct the solution from the damage field
+            pfAssembler->constructSolution(damage,D);
+            pfAssemblyTime = smallClock.stop();
             // gsInfo<<". Done\n";
 
-            pfAssembler->constructSolution(damage,D);
-            R = Q * D - qpsi + q;
-            pfAssemblyTime = clock.stop();
-
-            clock.restart();
-            // solver.compute(Q);
-            // deltaD = solver.solve(-R);
-            // gsDebugVar(deltaD.norm());
+            // Initialize the PSOR solver
+            smallClock.restart();
             gsPSOR<real_t> PSORsolver(Q);
             PSORsolver.options().setInt("MaxIterations",30000);
             PSORsolver.options().setSwitch("Verbose",false);
             PSORsolver.options().setReal("tolU",1e-4);
             PSORsolver.options().setReal("tolNeg",1e-6);
             PSORsolver.options().setReal("tolPos",1e-6);
-            PSORsolver.solve(R,deltaD); // deltaD = Q \ R
-            pfSolverTime = clock.stop();
+            pfSolverTime = smallClock.stop();
+            for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
+            {
+                // Assemble
+                smallClock.restart();
+                R = Q * D - qpsi + q;
+                pfAssemblyTime += smallClock.stop();
 
-            D += deltaD;
+                // Solve
+                smallClock.restart();
+                // solver.compute(Q);
+                // deltaD = solver.solve(-R);
+                // gsDebugVar(deltaD.norm());
+                PSORsolver.solve(R,deltaD); // deltaD = Q \ R
+                pfSolverTime += smallClock.stop();
+                D += deltaD;
+
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
+                if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
+                    break;
+                else if (pfIt == maxItPf-1 && maxItPf != 1)
+                    GISMO_ERROR("Staggered iterations problem did not converge.");
+            }
 
             // Update damage spline
             pfAssembler->constructSolution(D,damage);
 
-            clock.restart();
+            smallClock.restart();
             material.setParameter(2,damage);
             elAssembler.homogenizeFixedDofs(-1);
             elAssembler.assemble(u,fixedDofs);
             R = elAssembler.rhs();
-            elAssemblyTime = clock.stop();
+            elAssemblyTime += smallClock.stop();
             // if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 ))//&& deltaD.norm()/D.norm() < tol)
 
-            // Print
-            gsInfo<<std::setw(20)<<it<<std::setw(20)<<R.norm()<<std::setw(20)<<du.norm()/u.norm()<<std::setw(20)<<deltaD.norm()/D.norm()<<std::setw(20)<<elAssemblyTime<<std::setw(20)<<elSolverTime<<std::setw(20)<<pfAssemblyTime<<std::setw(20)<<pfSolverTime<<"\n";
-
-            if (R.norm() < 1e-7)
-            {
-                gsInfo<<"Converged\n";
+            iterationTime = bigClock.stop();
+            gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||" <<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
+            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<R.norm()<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
+            if (R.norm() < tol)
                 break;
-            }
+            else if (it == maxIt-1)
+                GISMO_ERROR("Staggered iterations problem did not converge.");
         }
-
-        std::string filename;
-        filename = "damage_" + util::to_string(step);
-        gsWriteParaview(mp,damage,outputdir+filename,100000);
-        // gsField<> damage_step(zone,damage,false);
-        // gsWriteParaview(damage_step,filename,1000);
-        filename += "0";
-        damageCollection.addPart(filename,step,"Solution",0);
-
-        gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
-        filename = "Psi_"+util::to_string(step);
-        gsWriteParaview(mp,Psi,outputdir+filename,100000);
-        filename += "0";
-        psiCollection.addPart(filename,step,"Solution",0);
-
-        filename = "displacement_"+util::to_string(step);
-        gsWriteParaview(mp,displacement,outputdir+filename,1000);
-        filename += "0";
-        displCollection.addPart(filename,step,"Solution",0);
 
         // =========================================================================
         // Compute resulting force and energies
@@ -396,11 +415,33 @@ int main(int argc, char *argv[])
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
         data.push_back(stepData);
 
-        gsInfo<<"Rx = "<<-stepData[1]<<", "
-              <<"Ry = "<<-stepData[2]<<", "
-              <<"E_u = "<<stepData[3]<<", "
-              <<"E_d = "<<stepData[4]<<"\n";
+        gsInfo<<"\n";
+        gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<1e-7<<", ||R|| = "<<R.norm()<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
+        // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
+        // =========================================================================
+        // PLOT
+        std::string filename;
+        filename = "damage_" + util::to_string(step);
+        gsWriteParaview(mp,damage,outputdir+filename,100000);
+        // gsField<> damage_step(zone,damage,false);
+        // gsWriteParaview(damage_step,filename,1000);
+        filename += "0";
+        damageCollection.addPart(filename,step,"Solution",0);
+
+        gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+        filename = "Psi_"+util::to_string(step);
+        gsWriteParaview(mp,Psi,outputdir+filename,100000);
+        filename += "0";
+        psiCollection.addPart(filename,step,"Solution",0);
+
+        filename = "displacement_"+util::to_string(step);
+        gsWriteParaview(mp,displacement,outputdir+filename,1000);
+        filename += "0";
+        displCollection.addPart(filename,step,"Solution",0);
+
+        // =========================================================================
+        // Write data
         std::ofstream file(outputdir+"results.txt",std::ios::app);
         // for (size_t i = 0; i != data.size(); ++i)
         //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
@@ -408,7 +449,6 @@ int main(int argc, char *argv[])
         file.close();
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
-
         step++;
     }
 

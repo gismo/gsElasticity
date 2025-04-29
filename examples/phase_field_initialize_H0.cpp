@@ -31,7 +31,9 @@ int main(int argc, char *argv[])
     index_t numUHRef = 0;
     index_t numElev = 0;
     std::string output;
-    std::string input, geometry;
+    std::string parInput;
+    std::string geoInput;
+    std::string inputDir;
     bool THB = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
@@ -40,12 +42,18 @@ int main(int argc, char *argv[])
     cmd.addInt("R", "numUHRef","Number of pre-refinements", numUHRef);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
     cmd.addString("o", "output", "Output directory", output);
-    cmd.addString("i", "input", "Input XML file", input);
-    cmd.addString("g", "geometry", "Geometry XML file", geometry);
+    cmd.addString("i", "parInput", "Input XML file", parInput);
+    cmd.addString("g", "geoInput", "Geometry XML file", geoInput);
+    cmd.addString("I", "inputDir", "Input directory", inputDir);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-    GISMO_ASSERT(!input.empty(),"Input file not provided");
-    GISMO_ASSERT(!geometry.empty(),"Geometry file not provided");
 
+    inputDir = inputDir + gsFileManager::getNativePathSeparator();
+    std::string parInputPath = (parInput.empty() ? inputDir + "parameters.xml" : parInput);
+    std::string geoInputPath = (geoInput.empty() ? inputDir + "geometry.xml" : geoInput);
+    GISMO_ASSERT(gsFileManager::fileExists(parInputPath), "Input parameter file "<<parInputPath<<" not found.");
+    GISMO_ASSERT(gsFileManager::fileExists(geoInputPath), "Input geometry file "<<geoInputPath<<" not found.");
+    gsInfo << "Input parameter file "<< parInputPath <<"\n";
+    gsInfo << "Input geometry file "<< geoInputPath <<"\n";
 
     if (output.empty())
         output = "./output/";
@@ -59,17 +67,15 @@ int main(int argc, char *argv[])
     /// Read the input files
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    gsFileData<> fd(input);
-    gsInfo << "Input file "<< fd.lastPath() <<"\n";
-
-    GISMO_ASSERT(fd.hasLabel("crack"), "Crack not found in the input file.");
-    GISMO_ASSERT(fd.hasLabel("material"), "Material parameters not found in the input file.");
+    gsFileData<> fd_pars(parInput.empty() ? inputDir + "parameters.xml" : parInput);
+    GISMO_ASSERT(fd_pars.hasLabel("material"), "Material parameters not found in the input file.");
+    GISMO_ASSERT(fd_pars.hasLabel("crack"), "Crack not found in the input file.");
 
     gsMultiPatch<> crack;
-    fd.getLabel("crack", crack);
+    fd_pars.getLabel("crack", crack);
 
     gsOptionList materialParameters;
-    fd.getLabel("material", materialParameters);
+    fd_pars.getLabel("material", materialParameters);
 
     real_t l0 = materialParameters.getReal("l0");
     real_t Gc = materialParameters.getReal("Gc");
@@ -79,13 +85,9 @@ int main(int argc, char *argv[])
     GISMO_ASSERT(order == 2 || order == 4, "Please specify the order of the model (2 or 4).");
     GISMO_ASSERT(AT == 1 || AT == 2, "Please specify the AT model (1 or 2).");
 
-    fd.clear();
-    fd.read(geometry);
-    gsInfo << "Geometry file "<< fd.lastPath() <<"\n";
-    // GISMO_ASSERT(fd.hasLabel("geometry"), "Material parameters not found in the input file.");
-    // fd.getLabel("geometry", mp);
+    gsFileData<> fd_geo(geoInput.empty() ? inputDir + "geometry.xml" : geoInput);
     gsMultiPatch<> mp;
-    fd.getFirst(mp);
+    fd_geo.getFirst(mp);
     gsMultiBasis<> mb(mp);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -6,7 +6,46 @@
   <patches type="id_range">10 10</patches>
  </MultiPatch>
 
- <Geometry type="TensorBSpline2" id="10">
+ <Geometry type="TensorBSpline3" id="10">
+   <Basis type="TensorBSplineBasis3">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="2">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+  <coefs geoDim="3">
+    0 0 0
+    1 0 0
+    0 1 0
+    1 1 0
+    0 0 1
+    1 0 1
+    0 1 1
+    1 1 1
+  </coefs>
+ </Geometry>
+
+ <MultiPatch parDim="2" id="2" label="crack">
+  <patches type="id_range">20 20</patches>
+ </MultiPatch>
+
+ <!-- <Geometry type="BSpline" id="20">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="1">0 0 1 1</KnotVector>
+    </Basis>
+  <coefs geoDim="3">
+  	0   0.5 0.5
+  	0.5 0.5 0.5
+  </coefs>
+ </Geometry> -->
+
+
+ <Geometry type="TensorBSpline2" id="20">
    <Basis type="TensorBSplineBasis2">
     <Basis type="BSplineBasis" index="0">
      <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
@@ -15,27 +54,23 @@
      <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
     </Basis>
    </Basis>
-  <coefs geoDim="2">
-    0 0
-    1 0
-    0 1
-    1 1
+  <coefs geoDim="3">
+    0.25 0    0.5
+    0.75 0    0.5
+    0.25 0.5 0.5
+    0.75 0.5 0.5
   </coefs>
  </Geometry>
 
- <MultiPatch parDim="2" id="2" label="crack">
-  <patches type="id_range">20 20</patches>
- </MultiPatch>
-
- <Geometry type="BSpline" id="20">
-    <Basis type="BSplineBasis">
-     <KnotVector degree="1">0 0 1 1</KnotVector>
-    </Basis>
-  <coefs geoDim="2">
-  	0   0.5
-  	0.5 0.5
-  </coefs>
- </Geometry>
+<!-- Phase-field model settings -->
+<OptionList label="phase-field">
+<int    label="order"
+        desc="Phase-field model order"
+        value="4"/>
+<int    label="AT"
+        desc="Phase-field model AT-Number"
+        value="2"/>
+</OptionList>
 
 <!-- Material parameters -->
 <OptionList id="0" label="material">
@@ -53,10 +88,10 @@
         value="0.015"/>
 <real   label="beta"
         desc="Crack thickness [mm]"
-        value="0.005"/> <!-- 0.005 for IPF, 0.00375 for H0 -->
+        value="0.0075"/> <!-- 0.01125 for IPF, 0.0075 for H0 -->
 <int    label="order"
         desc="Phase-field model order"
-        value="2"/>
+        value="4"/>
 <int    label="AT"
         desc="Phase-field model AT-Number"
         value="2"/>
@@ -85,12 +120,12 @@
         <int    label="side"
                 desc="Side ID for the controlled boundary"
                 value="4"/>
-        <string label="function"
-                desc="Function on the controlled boundary"
-                value="u"/>
         <int    label="direction"
                 desc="Direction of the controlled boundary"
                 value="1"/>
+        <string label="function"
+                desc="Function on the controlled boundary"
+                value="u"/>
         <int    label="maxIt"
                 desc="Maximum number of iterations"
                 value="10000"/>

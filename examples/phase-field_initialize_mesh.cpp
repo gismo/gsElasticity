@@ -35,23 +35,31 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numElX = 0;
     index_t numElY = 0;
+    index_t numElZ = 0;
     index_t numElev = 0;
     std::string output;
-    std::string input;
+    std::string parInput;
+    std::string inputDir;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Degree elevation",numElev);
     cmd.addInt("x", "numElX","Number of elements in the x direction", numElX);
     cmd.addInt("y", "numElY","Number of elements in the y direction", numElY);
+    cmd.addInt("z", "numElZ","Number of elements in the z direction", numElZ);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
     cmd.addString("o", "output", "Output directory", output);
-    cmd.addString("i", "input", "Input XML file", input);
+    cmd.addString("i", "parInput", "Input XML file", parInput);
+    cmd.addString("I", "inputDir", "Input directory", inputDir);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+    inputDir = inputDir + gsFileManager::getNativePathSeparator();
+    std::string parInputPath = (parInput.empty() ? inputDir + "parameters.xml" : parInput);
+    GISMO_ASSERT(gsFileManager::fileExists(parInputPath), "Input parameter file "<<parInputPath<<" not found.");
+    gsInfo << "Input parameter file "<< parInputPath <<"\n";
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //DEFINE PROBLEM PARAMETERS////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////
-    GISMO_ASSERT(!input.empty(),"Input file not provided");
 
     if (output.empty())
         output = "./output/";
@@ -60,17 +68,20 @@ int main(int argc, char *argv[])
     gsFileManager::mkdir(output);
 
 
-    gsFileData<> fd(input);
-    gsInfo << "Input file "<< fd.lastPath() <<"\n";
+    gsFileData<> fd_pars(parInput.empty() ? inputDir + "parameters.xml" : parInput);
+    gsInfo << "Input file "<< fd_pars.lastPath() <<"\n";
 
-    GISMO_ASSERT(fd.hasLabel("geometry"), "Geometry not found in the input file.");
+    GISMO_ASSERT(fd_pars.hasLabel("geometry"), "Geometry not found in the input file.");
+    GISMO_ASSERT(fd_pars.hasLabel("crack"), "Crack not found in the input file.");
+    GISMO_ASSERT(fd_pars.hasLabel("material"), "Material parameters not found in the input file.");
 
     gsMultiPatch<> mp;
-    fd.getLabel("geometry", mp);
-
+    fd_pars.getLabel("geometry", mp);
     mp.degreeIncrease(numElev);
     mp.uniformRefine(numElX,1,0);
     mp.uniformRefine(numElY,1,1);
+    if (mp.geoDim() == 3)
+        mp.uniformRefine(numElZ,1,2);
 
     for (size_t p=0; p!=mp.nPatches(); ++p)
         gsInfo<<"Patch "<<p<<": "<<mp.basis(p)<<"\n";
@@ -79,7 +90,12 @@ int main(int argc, char *argv[])
     fd_out.addWithLabel(mp,outputdir+"geometry");
     fd_out.save(outputdir+"geometry");
 
-    if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
+    if (plot)
+    {
+        gsMesh<> mesh(mp.basis(0));
+        gsWriteParaview(mesh,outputdir+"THB_mesh",false);
+    }
+
 
     return 0;
 } // end main
