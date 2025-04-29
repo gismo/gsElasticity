@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
                 if (du.norm()/u.norm() < tolEl || u.norm() < 1e-12)
                     break;
                 else if (elIt == maxItEl-1 && maxItEl != 1)
-                    GISMO_ERROR("Staggered iterations problem did not converge.");
+                    GISMO_ERROR("Elasticity problem did not converge.");
             }
 
 
@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
                 if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
                     break;
                 else if (pfIt == maxItPf-1 && maxItPf != 1)
-                    GISMO_ERROR("Staggered iterations problem did not converge.");
+                    GISMO_ERROR("Phase-field problem did not converge.");
             }
 
             // Update damage spline

@@ -134,7 +134,7 @@
                 value="50"/>
         <int    label="maxItPf"
                 desc="Maximum number of iterations for the phase-field problem"
-                value="50"/>
+                value="1"/>
         <real   label="tol"
                 desc="Tolerance for the Newton method"
                 value="1e-7"/>
