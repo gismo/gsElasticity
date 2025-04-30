@@ -463,7 +463,7 @@ void solve(gsOptionList & materialParameters,
         data.push_back(stepData);
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<tol<<<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
+        gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================
