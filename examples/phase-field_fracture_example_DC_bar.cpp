@@ -366,8 +366,6 @@ void solve(gsOptionList & materialParameters,
     gsParaviewCollection displCollection(outputdir+"displacement");
     gsStopwatch smallClock, bigClock;
 
-    std::vector<std::vector<T>> data;
-
     // pfAssembler->assembleMatrix();
     // pfAssembler->matrix_into(QPhi);
     // pfAssembler->constructSolution(damage,D);
@@ -510,7 +508,7 @@ void solve(gsOptionList & materialParameters,
         fullElAssembler.assemble(ufull,dummyFixedDofs);
         gsMatrix<T> Rfull = fullElAssembler.rhs();
         // sum the reaction forces in Y direction
-        gsDofMapper mapper(mb,2);
+        gsDofMapper mapper(mb,dim);
         mapper.finalize();
         gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::east);
         T Fx = 0, Fy = 0;
@@ -526,7 +524,6 @@ void solve(gsOptionList & materialParameters,
         stepData[2] = Fy;
         stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-        data.push_back(stepData);
 
         gsInfo<<"\n";
         gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";

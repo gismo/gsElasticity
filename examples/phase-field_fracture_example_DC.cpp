@@ -38,12 +38,14 @@ void solve(gsOptionList & materialParameters,
            gsBoundaryConditions<T> & bc_u,
            gsBoundaryConditions<T> & bc_d,
            bool plot,
+           index_t plotmod,
            std::string & outputdir);
 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    index_t plotmod = 1;
     index_t numHRef = 0;
     index_t numElev = 0;
     std::string output;
@@ -56,6 +58,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Number of degree elevation steps to perform before solving",numElev);
     cmd.addInt("r", "numHRef","Number of Uniform h-refinement loops", numHRef);
+    cmd.addInt("p", "plotmod","Modulo for plotting", plotmod);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
     cmd.addString("o", "output", "Output directory", output);
     cmd.addString("d", "damage", "Damage file", damageInput);
@@ -89,7 +92,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd_geo(geoInput.empty() ? inputDir + "geometry.xml" : geoInput);
     gsMultiPatch<> mp;
     fd_geo.getFirst(mp);
-    mp.degreeIncrease(numElev);
+    if (numElev > 0)
+        mp.degreeIncrease(numElev);
     for (index_t i = 0; i<numHRef; ++i)
         mp.uniformRefine(1);
     if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
@@ -127,10 +131,10 @@ int main(int argc, char *argv[])
     switch (mp.domainDim())
     {
         case 2:
-            solve<2>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,outputdir);
+            solve<2>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,plotmod,outputdir);
             break;
         case 3:
-            solve<3>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,outputdir);
+            solve<3>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,plotmod,outputdir);
             break;
         default:
             GISMO_ERROR("Invalid domain dimension");
@@ -147,6 +151,7 @@ void solve(gsOptionList & materialParameters,
            gsBoundaryConditions<T> & bc_u,
            gsBoundaryConditions<T> & bc_d,
            bool plot,
+           index_t plotmod,
            std::string & outputdir)
 {
     ////////////////////////////////////////////////////////////////////////////////////
@@ -301,8 +306,6 @@ void solve(gsOptionList & materialParameters,
     gsParaviewCollection displCollection(outputdir+"displacement");
     gsStopwatch smallClock, bigClock;
 
-    std::vector<std::vector<T>> data;
-
     // pfAssembler->assembleMatrix();
     // pfAssembler->matrix_into(QPhi);
     // pfAssembler->constructSolution(damage,D);
@@ -444,7 +447,7 @@ void solve(gsOptionList & materialParameters,
         fullElAssembler.assemble(ufull,dummyFixedDofs);
         gsMatrix<T> Rfull = fullElAssembler.rhs();
         // sum the reaction forces in Y direction
-        gsDofMapper mapper(mb,2);
+        gsDofMapper mapper(mb,dim);
         mapper.finalize();
         gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::north);
         T Fx = 0, Fy = 0;
@@ -460,7 +463,6 @@ void solve(gsOptionList & materialParameters,
         stepData[2] = Fy;
         stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-        data.push_back(stepData);
 
         gsInfo<<"\n";
         gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
@@ -468,24 +470,27 @@ void solve(gsOptionList & materialParameters,
 
         // =========================================================================
         // PLOT
-        std::string filename;
-        filename = "damage_" + util::to_string(step);
-        if (plot) gsWriteParaview(mp,damage,outputdir+filename,100000);
-        // gsField<T> damage_step(zone,damage,false);
-        // gsWriteParaview(damage_step,filename,1000);
-        filename += "0";
-        damageCollection.addPart(filename,step,"Solution",0);
+        if (plot && step%plotmod==0)
+        {
+            std::string filename;
+            filename = "damage_" + util::to_string(step);
+            if (plot) gsWriteParaview(mp,damage,outputdir+filename,100000);
+            // gsField<T> damage_step(zone,damage,false);
+            // gsWriteParaview(damage_step,filename,1000);
+            filename += "0";
+            damageCollection.addPart(filename,step,"Solution",0);
 
-        gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
-        filename = "Psi_"+util::to_string(step);
-        if (plot) gsWriteParaview(mp,Psi,outputdir+filename,100000);
-        filename += "0";
-        psiCollection.addPart(filename,step,"Solution",0);
+            gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+            filename = "Psi_"+util::to_string(step);
+            if (plot) gsWriteParaview(mp,Psi,outputdir+filename,100000);
+            filename += "0";
+            psiCollection.addPart(filename,step,"Solution",0);
 
-        filename = "displacement_"+util::to_string(step);
-        if (plot) gsWriteParaview(mp,displacement,outputdir+filename,1000);
-        filename += "0";
-        displCollection.addPart(filename,step,"Solution",0);
+            filename = "displacement_"+util::to_string(step);
+            if (plot) gsWriteParaview(mp,displacement,outputdir+filename,1000);
+            filename += "0";
+            displCollection.addPart(filename,step,"Solution",0);
+        }
 
         // =========================================================================
         // Write data
