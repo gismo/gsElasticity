@@ -30,6 +30,16 @@ using namespace gismo;
 
 #define PRINT(w) std::setw(w)<<std::left
 
+template <short_t dim, class T>
+void solve(gsOptionList & materialParameters,
+           gsOptionList & controlParameters,
+           gsMultiPatch<T> & mp,
+           gsMultiPatch<T> & damage,
+           gsBoundaryConditions<T> & bc_u,
+           gsBoundaryConditions<T> & bc_d,
+           bool plot,
+           std::string & outputdir);
+
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -98,55 +108,10 @@ int main(int argc, char *argv[])
     //// Material parameters
     gsOptionList materialParameters;
     fd_pars.getLabel("material", materialParameters);
-    // Young's modulus [N/mm^2]
-    real_t E = materialParameters.getReal("E");
-    // Poisson's ratio [-]
-    real_t nu = materialParameters.getReal("nu");
-    // Toughness [N/mm]
-    real_t Gc = materialParameters.getReal("Gc");
-    // Internal length [mm]
-    real_t l0 = materialParameters.getReal("l0");
-    // Order of the phase-field model
-    index_t order = materialParameters.getInt("order");
-    // AT model
-    index_t AT = materialParameters.getInt("AT");
-
-    GISMO_ASSERT(order == 2 || order == 4, "Please specify the order of the model (2 or 4).");
-    GISMO_ASSERT(AT == 1 || AT == 2, "Please specify the AT model (1 or 2).");
 
     //// Boundary control parameters
     gsOptionList controlParameters;
     fd_pars.getLabel("control", controlParameters);
-    // Maximum displacement [mm]
-    real_t uend = controlParameters.getReal("uend");
-    // Displacement step [mm]
-    real_t ustep = controlParameters.getReal("ustep");
-    // Initial displacement [mm]
-    real_t ucurr = controlParameters.getReal("umin");
-    // Step transition [mm]
-    real_t utrans = controlParameters.askReal("utrans",uend);
-    // Step reduction factor [-]
-    real_t ured = controlParameters.askReal("ured",1.);
-    // Maximum number of iterations
-    index_t maxIt = controlParameters.getInt("maxIt");
-    // Maximum number of iterations for elasticity problem
-    index_t maxItEl = controlParameters.getInt("maxItEl");
-    // Maximum number of iterations for phase-field problem
-    index_t maxItPf = controlParameters.getInt("maxItPf");
-    // Tolerance for the elasticity problem
-    real_t tolEl = controlParameters.getReal("tolEl");
-    // Tolerance for the phase-field problem
-    real_t tolPf = controlParameters.getReal("tolPf");
-    // Staggered tolerance
-    real_t tol = controlParameters.getReal("tol");
-    // Fixed side patch id
-    index_t fixedSidePatch = controlParameters.getInt("patchId");
-    // Fixed side id
-    index_t fixedSideId = controlParameters.getInt("side");
-    // Fixed side direction
-    index_t fixedSideDir = controlParameters.getInt("direction");
-    // Function on the boundary
-    std::string bcFunction = controlParameters.askString("function","u");
 
     //// Boundary conditions
     gsBoundaryConditions<> bc_u;
@@ -157,17 +122,98 @@ int main(int argc, char *argv[])
     fd_pars.getLabel("BCs_d", bc_d);
 
     ///////////////////////////////////////////////////////////////////////////////////////
+    // Call the dimensional solver
+    ///////////////////////////////////////////////////////////////////////////////////////
+    switch (mp.domainDim())
+    {
+        case 2:
+            solve<2>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,outputdir);
+            break;
+        case 3:
+            solve<3>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,outputdir);
+            break;
+        default:
+            GISMO_ERROR("Invalid domain dimension");
+    }
+
+    return 0;
+} // end main
+
+template <short_t dim, class T>
+void solve(gsOptionList & materialParameters,
+           gsOptionList & controlParameters,
+           gsMultiPatch<T> & mp,
+           gsMultiPatch<T> & damage,
+           gsBoundaryConditions<T> & bc_u,
+           gsBoundaryConditions<T> & bc_d,
+           bool plot,
+           std::string & outputdir)
+{
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Load parameters
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Young's modulus [N/mm^2]
+    T E = materialParameters.getReal("E");
+    // Poisson's ratio [-]
+    T nu = materialParameters.getReal("nu");
+    // Toughness [N/mm]
+    T Gc = materialParameters.getReal("Gc");
+    // Internal length [mm]
+    T l0 = materialParameters.getReal("l0");
+    // Order of the phase-field model
+    index_t order = materialParameters.getInt("order");
+    // AT model
+    index_t AT = materialParameters.getInt("AT");
+
+    GISMO_ASSERT(order == 2 || order == 4, "Please specify the order of the model (2 or 4).");
+    GISMO_ASSERT(AT == 1 || AT == 2, "Please specify the AT model (1 or 2).");
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Boundary control parameters
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Maximum displacement [mm]
+    T uend = controlParameters.getReal("uend");
+    // Displacement step [mm]
+    T ustep = controlParameters.getReal("ustep");
+    // Initial displacement [mm]
+    T ucurr = controlParameters.getReal("umin");
+    // Step transition [mm]
+    T utrans = controlParameters.askReal("utrans",uend);
+    // Step reduction factor [-]
+    T ured = controlParameters.askReal("ured",1.);
+    // Maximum number of iterations
+    index_t maxIt = controlParameters.getInt("maxIt");
+    // Maximum number of iterations for elasticity problem
+    index_t maxItEl = controlParameters.getInt("maxItEl");
+    // Maximum number of iterations for phase-field problem
+    index_t maxItPf = controlParameters.getInt("maxItPf");
+    // Tolerance for the elasticity problem
+    T tolEl = controlParameters.getReal("tolEl");
+    // Tolerance for the phase-field problem
+    T tolPf = controlParameters.getReal("tolPf");
+    // Staggered tolerance
+    T tol = controlParameters.getReal("tol");
+    // Fixed side patch id
+    index_t fixedSidePatch = controlParameters.getInt("patchId");
+    // Fixed side id
+    index_t fixedSideId = controlParameters.getInt("side");
+    // Fixed side direction
+    index_t fixedSideDir = controlParameters.getInt("direction");
+    // Function on the boundary
+    std::string bcFunction = controlParameters.askString("function","u");
+
+    ///////////////////////////////////////////////////////////////////////////////////////
     //PROBLEM SETUP////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////
 
     // Construct the basis
-    gsMultiBasis<> mb(mp);
+    gsMultiBasis<T> mb(mp);
     gsInfo<<"The basis has size "<<mb.size()<<" and degree "<<mb.degree()<<"\n";
     for (size_t b=0; b!=mb.nBases(); b++)
         gsInfo<<"Basis "<<b<<":\n"<<mb.basis(b)<<"\n";
 
     // Boundary conditions
-    gsFunctionExpr<> displ(bcFunction,2);
+    gsFunctionExpr<T> displ(bcFunction,dim);
     displ.set_u(ucurr);
     bc_u.addCondition(fixedSideId,condition_type::dirichlet,&displ,fixedSideDir);
     bc_u.setGeoMap(mp);
@@ -178,37 +224,39 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////////////////////////////////////////
 
     // Initialize the solution (deformed geometry)
-    gsMultiPatch<> mp_def = mp;
-    gsMultiPatch<> displacement = mp;
-    gsMultiPatch<> ddisplacement;
+    gsMultiPatch<T> mp_def = mp;
+    gsMultiPatch<T> displacement = mp;
+    gsMultiPatch<T> ddisplacement;
     for (index_t p=0; p<mp.nPatches(); ++p)
         displacement.patch(p).coefs().setZero();
 
     // Initialize the material
-    gsLinearDegradedMaterial<real_t> material(E,nu,damage,2);
+    gsLinearDegradedMaterial<T> material(E,nu,damage,dim);
     // Initialize the elasticity assembler
-    gsConstantFunction<> bodyForce(0.,0.,2);
-    gsElasticityAssembler<real_t> elAssembler(mp,mb,bc_u,bodyForce,&material);
-    std::vector<gsMatrix<> > fixedDofs = elAssembler.allFixedDofs();
+    gsVector<T> bodyForceVec(dim);
+    bodyForceVec.setZero();
+    gsConstantFunction<T> bodyForce(bodyForceVec,dim);
+    gsElasticityAssembler<T> elAssembler(mp,mb,bc_u,bodyForce,&material);
+    std::vector<gsMatrix<T> > fixedDofs = elAssembler.allFixedDofs();
     // elAssembler.assemble();
-    gsBoundaryConditions<> bc_u_dummy;
+    gsBoundaryConditions<T> bc_u_dummy;
     bc_u_dummy.setGeoMap(mp);
-    gsElasticityAssembler<real_t> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
-    std::vector<gsMatrix<> > dummyFixedDofs = fullElAssembler.allFixedDofs();
+    gsElasticityAssembler<T> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
+    std::vector<gsMatrix<T> > dummyFixedDofs = fullElAssembler.allFixedDofs();
 
     // Initialize the phase-field assembler
-    gsPhaseFieldAssemblerBase<real_t> * pfAssembler;
+    gsPhaseFieldAssemblerBase<T> * pfAssembler;
     if      (order == 2 && AT == 1)
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
+        pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
     else if (order == 4 && AT == 1)
     {
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
+        pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
         pfAssembler->options().setReal("cw",4.44847);
     }
     else if (order == 2 && AT == 2)
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
+        pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
     else if (order == 4 && AT == 2)
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
+        pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
     else
         GISMO_ERROR("Invalid order and/or AT model");
 
@@ -220,27 +268,26 @@ int main(int argc, char *argv[])
     // SOLVE THE PROBLEM/////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    gsMatrix<> u(elAssembler.numDofs(),1), du;
+    gsMatrix<T> u(elAssembler.numDofs(),1), du;
     u.setZero();
 
-
 #ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLDLT solver;
+    typename gsSparseSolver<T>::PardisoLDLT solver;
 #else
-    gsSparseSolver<>::CGDiagonal solver;
+    typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
-    gsSparseMatrix<> K;
-    gsMatrix<> R;
+    gsSparseMatrix<T> K;
+    gsMatrix<T> R;
 
-    real_t elAssemblyTime = 0.0;
-    real_t elSolverTime = 0.0;
-    real_t pfAssemblyTime = 0.0;
-    real_t pfSolverTime = 0.0;
-    real_t iterationTime  = 0.0;
+    T elAssemblyTime = 0.0;
+    T elSolverTime = 0.0;
+    T pfAssemblyTime = 0.0;
+    T pfSolverTime = 0.0;
+    T iterationTime  = 0.0;
 
-    gsMatrix<> D, deltaD;
-    gsSparseMatrix<> Q, QPhi, QPsi;
-    gsMatrix<> q, qpsi;
+    gsMatrix<T> D, deltaD;
+    gsSparseMatrix<T> Q, QPhi, QPsi;
+    gsMatrix<T> q, qpsi;
     // Phase-field assembly can already be performed since some terms are independent of the solutions
     pfAssembler->assembleMatrix();
     pfAssembler->matrix_into(QPhi);
@@ -249,12 +296,12 @@ int main(int argc, char *argv[])
 
     index_t step = 0;
 
-    gsParaviewCollection damageCollection("damage");
-    gsParaviewCollection psiCollection("Psi");
-    gsParaviewCollection displCollection("displacement");
+    gsParaviewCollection damageCollection(outputdir+"damage");
+    gsParaviewCollection psiCollection(outputdir+"Psi");
+    gsParaviewCollection displCollection(outputdir+"displacement");
     gsStopwatch smallClock, bigClock;
 
-    std::vector<std::vector<real_t>> data;
+    std::vector<std::vector<T>> data;
 
     // pfAssembler->assembleMatrix();
     // pfAssembler->matrix_into(QPhi);
@@ -320,7 +367,7 @@ int main(int argc, char *argv[])
                 mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
 
             // Initialize the function for the elastic energy
-            gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+            gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
 
             // ==================================================================================
 
@@ -341,7 +388,7 @@ int main(int argc, char *argv[])
 
             // Initialize the PSOR solver
             smallClock.restart();
-            gsPSOR<real_t> PSORsolver(Q);
+            gsPSOR<T> PSORsolver(Q);
             PSORsolver.options().setInt("MaxIterations",30000);
             PSORsolver.options().setSwitch("Verbose",false);
             PSORsolver.options().setReal("tolU",1e-4);
@@ -393,21 +440,21 @@ int main(int argc, char *argv[])
 
         // =========================================================================
         // Compute resulting force and energies
-        gsMatrix<> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
+        gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
         fullElAssembler.assemble(ufull,dummyFixedDofs);
-        gsMatrix<> Rfull = fullElAssembler.rhs();
+        gsMatrix<T> Rfull = fullElAssembler.rhs();
         // sum the reaction forces in Y direction
         gsDofMapper mapper(mb,2);
         mapper.finalize();
         gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::north);
-        real_t Fx = 0, Fy = 0;
+        T Fx = 0, Fy = 0;
         for (index_t k=0; k!=boundary.size(); k++)
         {
             Fx += Rfull(mapper.index(boundary(k,0),0,0),0); // DoF index, patch, component
             Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
         }
 
-        std::vector<real_t> stepData(5);
+        std::vector<T> stepData(5);
         stepData[0] = ucurr;
         stepData[1] = Fx;
         stepData[2] = Fy;
@@ -416,27 +463,27 @@ int main(int argc, char *argv[])
         data.push_back(stepData);
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<1e-7<<", ||R|| = "<<R.norm()<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
+        gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<tol<<<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================
         // PLOT
         std::string filename;
         filename = "damage_" + util::to_string(step);
-        gsWriteParaview(mp,damage,outputdir+filename,100000);
-        // gsField<> damage_step(zone,damage,false);
+        if (plot) gsWriteParaview(mp,damage,outputdir+filename,100000);
+        // gsField<T> damage_step(zone,damage,false);
         // gsWriteParaview(damage_step,filename,1000);
         filename += "0";
         damageCollection.addPart(filename,step,"Solution",0);
 
-        gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+        gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
         filename = "Psi_"+util::to_string(step);
-        gsWriteParaview(mp,Psi,outputdir+filename,100000);
+        if (plot) gsWriteParaview(mp,Psi,outputdir+filename,100000);
         filename += "0";
         psiCollection.addPart(filename,step,"Solution",0);
 
         filename = "displacement_"+util::to_string(step);
-        gsWriteParaview(mp,displacement,outputdir+filename,1000);
+        if (plot) gsWriteParaview(mp,displacement,outputdir+filename,1000);
         filename += "0";
         displCollection.addPart(filename,step,"Solution",0);
 
@@ -452,11 +499,14 @@ int main(int argc, char *argv[])
         step++;
     }
 
-    damageCollection.save();
-    psiCollection.save();
-    displCollection.save();
+    if (plot)
+    {
+        damageCollection.save();
+        psiCollection.save();
+        displCollection.save();
+    }
+
 
     delete pfAssembler;
-    return 0;
-} // end main
+}
 
