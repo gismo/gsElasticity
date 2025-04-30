@@ -111,6 +111,28 @@
                 value="1e-9"/>
 </OptionList>
 
+<!-- Meshing parameters -->
+<OptionList id="0" label="meshing">
+        <bool   label="Admissible"
+                desc="Admissible meshing"
+                value="1"/>
+        <int    label="MaxLevel"
+                desc="Maximum level of refinement"
+                value="1"/>
+        <int    label="RefineRule"
+                desc="Refinement rule"
+                value="1"/>
+        <int    label="CoarsenRule"
+                desc="Coarsening rule"
+                value="1"/>
+        <real   label="RefineParam"
+                desc="Refinement parameter"
+                value="0.1"/>
+        <real   label="CoarsenParam"
+                desc="Coarsening parameter"
+                value="0.1"/>
+</OptionList>
+
 <!-- The boundary conditions (multipatch=number of patches)-->
 <boundaryConditions id="2" multipatch="0" label="BCs_u">
 <Function type="FunctionExpr" dim="2" index="0">0</Function>

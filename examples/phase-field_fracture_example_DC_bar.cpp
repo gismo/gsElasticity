@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
     // Step reduction factor [-]
     controlParameters.addReal("ured", "Step reduction factor", 1.0);
     // Maximum number of iterations
-    controlParameters.addInt("maxIt", "Maximum number of iterations", 100);
+    controlParameters.addInt("maxIt", "Maximum number of iterations", 10000);
     // Maximum number of iterations for elasticity problem
     controlParameters.addInt("maxItEl", "Maximum number of iterations for elasticity problem", 100);
     // Maximum number of iterations for phase-field problem
@@ -172,6 +172,8 @@ int main(int argc, char *argv[])
     bc_u.setGeoMap(mp);
 
     gsBoundaryConditions<> bc_d;
+    bc_d.addCondition(boundary::west,condition_type::dirichlet,0,0);
+    bc_d.addCondition(boundary::east,condition_type::dirichlet,0,0);
     bc_d.setGeoMap(mp);
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -275,6 +277,9 @@ void solve(gsOptionList & materialParameters,
     bc_u.addCondition(boundary::west,condition_type::dirichlet,&displ_left ,0);
     bc_u.addCondition(boundary::east,condition_type::dirichlet,&displ_right,0);
     bc_u.addCondition(boundary::south,condition_type::dirichlet,0,1); //vertical constraint
+    if (dim==3)
+        bc_u.addCondition(boundary::back,condition_type::dirichlet,0,2); //vertical constraint
+
     bc_u.setGeoMap(mp);
 
     bc_d.setGeoMap(mp);
@@ -531,22 +536,39 @@ void solve(gsOptionList & materialParameters,
         // PLOT
         if (plot && step%plotmod==0)
         {
+            gsMatrix<> eval_geo, eval_damage, eval_psi, eval_displacement, pts, ab;
+            gsVector<> a, b;
+            ab = mp.patch(0).support();
+            a  = ab.col(0);
+            b  = ab.col(1);
+            // Generate a point grid
+            gsVector<unsigned> np(dim);
+            np[0] = 1000;
+            np.segment(1,dim-1).setConstant(2);
+            pts = gsPointGrid(a,b,np);
+            // Evaluate the geometry
+            eval_geo = mp_def.patch(0).eval(pts);
+
             std::string filename;
             filename = "damage_" + util::to_string(step);
-            if (plot) gsWriteParaview(mp,damage,outputdir+filename,100000);
-            // gsField<T> damage_step(zone,damage,false);
-            // gsWriteParaview(damage_step,filename,1000);
+            eval_damage = damage.patch(0).eval(pts);
+            gsWriteParaviewTPgrid(eval_geo,eval_damage,np.template cast<index_t>(),outputdir+filename);
+            // gsWriteParaview(mp,damage,outputdir+filename,100000);
             filename += "0";
             damageCollection.addPart(filename,step,"Solution",0);
 
             gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
             filename = "Psi_"+util::to_string(step);
-            if (plot) gsWriteParaview(mp,Psi,outputdir+filename,100000);
+            eval_psi = Psi.piece(0).eval(pts);
+            gsWriteParaviewTPgrid(eval_geo,eval_psi,np.template cast<index_t>(),outputdir+filename);
+            // gsWriteParaview(mp,Psi,outputdir+filename,100000);
             filename += "0";
             psiCollection.addPart(filename,step,"Solution",0);
 
             filename = "displacement_"+util::to_string(step);
-            if (plot) gsWriteParaview(mp,displacement,outputdir+filename,1000);
+            eval_displacement = displacement.patch(0).eval(pts);
+            gsWriteParaviewTPgrid(eval_geo,eval_displacement,np.template cast<index_t>(),outputdir+filename);
+            // gsWriteParaview(mp,displacement,outputdir+filename,1000);
             filename += "0";
             displCollection.addPart(filename,step,"Solution",0);
         }
