@@ -231,7 +231,6 @@ void solve(gsOptionList & materialParameters,
     // Initialize the solution (deformed geometry)
     gsMultiPatch<T> mp_def = mp;
     gsMultiPatch<T> displacement = mp;
-    gsMultiPatch<T> ddisplacement;
     for (index_t p=0; p<mp.nPatches(); ++p)
         displacement.patch(p).coefs().setZero();
 

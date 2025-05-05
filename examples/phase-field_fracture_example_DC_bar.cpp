@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numHRef = 0;
+    index_t numHRef = 4;
     index_t numElev = 1;
     index_t order = -1;
     index_t AT = -1;
@@ -291,7 +291,6 @@ void solve(gsOptionList & materialParameters,
     // Initialize the solution (deformed geometry)
     gsMultiPatch<T> mp_def = mp;
     gsMultiPatch<T> displacement = mp;
-    gsMultiPatch<T> ddisplacement;
     for (index_t p=0; p<mp.nPatches(); ++p)
         displacement.patch(p).coefs().setZero();
 
