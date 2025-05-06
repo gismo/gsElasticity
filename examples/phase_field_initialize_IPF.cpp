@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     std::string parInput;
     std::string geoInput;
     std::string inputDir;
-    bool THB = false;
+    bool runPF = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Degree elevation",numElev);
@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("g", "geoInput", "Geometry XML file", geoInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
+    cmd.addSwitch("runPF", "Run phase field model", runPF);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     inputDir = inputDir + gsFileManager::getNativePathSeparator();
@@ -90,6 +91,10 @@ int main(int argc, char *argv[])
     fd_geo.getFirst(mp);
     gsMultiBasis<> mb(mp);
 
+    gsInfo<<"Basis:\n";
+    for (index_t i = 0; i < mb.nBases(); ++i)
+        gsInfo<<i<<": size "<<mb.basis(i).size()<<"\n";
+
     //////////////////////////////////////////////////////////////////////////////////////////////////
     /// Initial basis
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +115,8 @@ int main(int argc, char *argv[])
     //////////////////////////////////////////////////////////////////////////////////////////////////
     /// L2 projection
     gsExprAssembler<> A(1,1);
+    A.options().setReal("quA", 1.0);
+    A.options().setInt ("quB", 0);
     A.setIntegrationElements(mb);
     auto w = A.getSpace(mb);
     auto c = A.getCoeff(fun);
@@ -124,7 +131,7 @@ int main(int argc, char *argv[])
     for (index_t i = 0, j = 0; i < A.rhs().rows(); ++i)
         if (A.rhs()(i,0) > 0)
         {
-            f(j,0) = A.rhs()(i,0);
+            f(j,0) = A.rhs()(i,0)*0.999;
             m(j,0) = mm(i,0);
             ++j;
         }
@@ -143,77 +150,81 @@ int main(int argc, char *argv[])
     //////////////////////////////////////////////////////////////////////////////////////////////////
     /// PF assembler
     //////////////////////////////////////////////////////////////////////////////////////////////////
-    gsBoundaryConditions<> bc_d;
-    bc_d.setGeoMap(mp);
-    gsPhaseFieldAssemblerBase<real_t> * pfAssembler;
-    if      (order == 2 && AT == 1)
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
-    else if (order == 4 && AT == 1)
+
+    if (runPF)
     {
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
-        pfAssembler->options().setReal("cw",4.44847);
-    }
-    else if (order == 2 && AT == 2)
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
-    else if (order == 4 && AT == 2)
-        pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
-    else
-        GISMO_ERROR("Invalid order and/or AT model");
+        gsBoundaryConditions<> bc_d;
+        bc_d.setGeoMap(mp);
+        gsPhaseFieldAssemblerBase<real_t> * pfAssembler;
+        if      (order == 2 && AT == 1)
+            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
+        else if (order == 4 && AT == 1)
+        {
+            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
+            pfAssembler->options().setReal("cw",4.44847);
+        }
+        else if (order == 2 && AT == 2)
+            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
+        else if (order == 4 && AT == 2)
+            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
+        else
+            GISMO_ERROR("Invalid order and/or AT model");
 
-    pfAssembler->options().setReal("l0",l0);
-    pfAssembler->options().setReal("Gc",Gc);
-    pfAssembler->initialize();
+        pfAssembler->options().setReal("l0",l0);
+        pfAssembler->options().setReal("Gc",Gc);
+        pfAssembler->initialize();
 
-    gsInfo<<"Assembling phase-field problem"<<std::flush;
-    gsMatrix<> D, deltaD;
-    pfAssembler->constructSolution(damage,D);
-    gsSparseMatrix<> Q, QPhi;
-    gsMatrix<> q;
-    gsMatrix<> R;
-    pfAssembler->assembleMatrix();
-    pfAssembler->matrix_into(QPhi);
-    Q = QPhi;
-    pfAssembler->assembleVector();
-    pfAssembler->rhs_into(q);
-    gsInfo<<". Done\n";
-
-    R = Q * D + q;
-
-    real_t energy;
-    for (index_t it = 0; it!=10000; it++)
-    {
-        gsInfo<<"Iteration "<<it<<":"<<std::flush;
-        gsPSOR<real_t> PSORsolver(Q);
-        PSORsolver.options().setInt("MaxIterations",3000);
-        PSORsolver.options().setSwitch("Verbose",false);
-        PSORsolver.options().setReal("tolU",1e-4);
-        PSORsolver.options().setReal("tolNeg",1e-6);
-        PSORsolver.options().setReal("tolPos",1e-6);
-        PSORsolver.solve(R,deltaD); // deltaD = Q \ R
-        D += deltaD;
+        gsInfo<<"Assembling phase-field problem"<<std::flush;
+        gsMatrix<> D, deltaD;
+        pfAssembler->constructSolution(damage,D);
+        gsSparseMatrix<> Q, QPhi;
+        gsMatrix<> q;
+        gsMatrix<> R;
+        pfAssembler->assembleMatrix();
+        pfAssembler->matrix_into(QPhi);
+        Q = QPhi;
+        pfAssembler->assembleVector();
+        pfAssembler->rhs_into(q);
+        gsInfo<<". Done\n";
 
         R = Q * D + q;
-        gsInfo<<"||dD|| = "<<deltaD.norm()<<", ||E|| = "<<R.norm()<<"\n";
 
-        if (deltaD.norm()/D.norm() < 1e-10)
+        real_t energy;
+        for (index_t it = 0; it!=10000; it++)
         {
-            gsInfo<<"Converged\n";
-            break;
+            gsInfo<<"Iteration "<<it<<":"<<std::flush;
+            gsPSOR<real_t> PSORsolver(Q);
+            PSORsolver.options().setInt("MaxIterations",3000);
+            PSORsolver.options().setSwitch("Verbose",false);
+            PSORsolver.options().setReal("tolU",1e-4);
+            PSORsolver.options().setReal("tolNeg",1e-6);
+            PSORsolver.options().setReal("tolPos",1e-6);
+            PSORsolver.solve(R,deltaD); // deltaD = Q \ R
+            D += deltaD;
+
+            R = Q * D + q;
+            gsInfo<<"||dD|| = "<<deltaD.norm()<<", ||E|| = "<<R.norm()<<"\n";
+
+            if (deltaD.norm()/D.norm() < 1e-10)
+            {
+                gsInfo<<"Converged\n";
+                break;
+            }
         }
+
+        energy = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
+        gsInfo<<"E_d   = "<<energy<<"\n";
+
+        pfAssembler->constructSolution(D,damage);
+
+        if(plot) gsWriteParaview(mp,damage,outputdir+"L2_after",100000);
+        delete pfAssembler;
     }
-
-    energy = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-    gsInfo<<"E_d   = "<<energy<<"\n";
-
-    pfAssembler->constructSolution(D,damage);
-
-    if(plot) gsWriteParaview(mp,damage,outputdir+"L2_after",100000);
 
     gsFileData<> fd_out;
     fd_out.addWithLabel(damage,outputdir+"initial");
     fd_out.save(outputdir+"initial");
 
-    delete pfAssembler;
     return EXIT_SUCCESS;
 }
 

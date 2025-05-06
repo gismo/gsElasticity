@@ -53,7 +53,7 @@
         value="0.010"/>
 <real   label="beta"
         desc="Crack thickness [mm]"
-        value="0.0025"/> <!-- 0.010/3 for IPF, 0.0025 for H0 -->
+        value="0.003333333333333333"/> <!-- 0.010/3 for IPF, 0.0025 for H0 -->
 <int    label="order"
         desc="Phase-field model order"
         value="2"/>
@@ -66,7 +66,7 @@
 <OptionList id="1" label="control">
 <real   label="umin"
         desc="Initial displacement [mm]"
-        value="0e-4"/>
+        value="6e-3"/>
 <real   label="uend"
         desc="Final displacement [mm]"
         value="12e-3"/>

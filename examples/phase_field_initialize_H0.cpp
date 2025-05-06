@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     std::string parInput;
     std::string geoInput;
     std::string inputDir;
-    bool THB = false;
+    bool runPF = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Degree elevation",numElev);
@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("g", "geoInput", "Geometry XML file", geoInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
+    cmd.addSwitch("runPF", "Run phase field model", runPF);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     inputDir = inputDir + gsFileManager::getNativePathSeparator();
@@ -105,7 +106,6 @@ int main(int argc, char *argv[])
     // Construct H0 function
     real_t c = 0.9999;
     real_t B = c / (1-c);
-    gsDebugVar(B);
 
     gsRBFCurve<real_t,Hat> Psi(crack,beta,beta,B*Gc/(2*l0));
     // H0Function<real_t> Psi(curve,B,Gc,l0,beta);
@@ -153,33 +153,60 @@ int main(int argc, char *argv[])
     pfAssembler->rhs_into(q);
     gsInfo<<". Done\n";
 
-    R = Q * D - qpsi + q;
-
-    real_t energy;
-    for (index_t it = 0; it!=10000; it++)
+    if (runPF)
     {
-        gsInfo<<"Iteration "<<it<<":"<<std::flush;
-        gsPSOR<real_t> PSORsolver(Q);
-        PSORsolver.options().setInt("MaxIterations",3000);
-        PSORsolver.options().setSwitch("Verbose",false);
-        PSORsolver.options().setReal("tolU",1e-4);
-        PSORsolver.options().setReal("tolNeg",1e-6);
-        PSORsolver.options().setReal("tolPos",1e-6);
-        PSORsolver.solve(R,deltaD); // deltaD = Q \ R
-        D += deltaD;
-
         R = Q * D - qpsi + q;
-        gsInfo<<"||dD|| = "<<deltaD.norm()<<", ||E|| = "<<R.norm()<<"\n";
 
-        if (deltaD.norm()/D.norm() < 1e-10)
+        real_t energy;
+        for (index_t it = 0; it!=10000; it++)
         {
-            gsInfo<<"Converged\n";
-            break;
+            gsInfo<<"Iteration "<<it<<":"<<std::flush;
+            gsPSOR<real_t> PSORsolver(Q);
+            PSORsolver.options().setInt("MaxIterations",3000);
+            PSORsolver.options().setSwitch("Verbose",false);
+            PSORsolver.options().setReal("tolU",1e-4);
+            PSORsolver.options().setReal("tolNeg",1e-6);
+            PSORsolver.options().setReal("tolPos",1e-6);
+            PSORsolver.solve(R,deltaD); // deltaD = Q \ R
+            D += deltaD;
+
+            R = Q * D - qpsi + q;
+            gsInfo<<"||dD|| = "<<deltaD.norm()<<", ||E|| = "<<R.norm()<<"\n";
+
+            if (deltaD.norm()/D.norm() < 1e-10)
+            {
+                gsInfo<<"Converged\n";
+                break;
+            }
         }
+
+        energy = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
+        gsInfo<<"E_d   = "<<energy<<"\n";
+    }
+    else
+    {
+        // count nonzeros in qpsi
+        index_t nnz = (qpsi.array() > 0).count();
+        gsMatrix<> f(nnz,1), m(nnz,1);
+        gsMatrix<> rhs = qpsi - q;
+        for (index_t i = 0, j = 0; i < qpsi.rows(); ++i)
+            if (qpsi(i,0) > 0)
+            {
+                // NOTE: IS IT RIGHT TO ONLY TAKE THE DIAGONAL ELEMENTS?
+                f(j,0) = rhs(i,0);
+                m(j,0) = Q(i,i);
+                ++j;
+            }
+
+        gsMatrix<> tmpCoefs = m.cwiseInverse().cwiseProduct(f);
+        D.setZero();
+        for (index_t i = 0, j = 0; i < D.rows(); ++i)
+            if (qpsi(i,0) > 0)
+                D(i,0) = tmpCoefs(j++,0);
+
     }
 
-    energy = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-    gsInfo<<"E_d   = "<<energy<<"\n";
+
 
     gsMultiPatch<> damage;
     pfAssembler->constructSolution(D,damage);

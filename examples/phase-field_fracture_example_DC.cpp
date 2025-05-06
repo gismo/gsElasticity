@@ -241,11 +241,15 @@ void solve(gsOptionList & materialParameters,
     bodyForceVec.setZero();
     gsConstantFunction<T> bodyForce(bodyForceVec,dim);
     gsElasticityAssembler<T> elAssembler(mp,mb,bc_u,bodyForce,&material);
+    elAssembler.options().setReal("quA",1.0);
+    elAssembler.options().setInt ("quB",0);
     std::vector<gsMatrix<T> > fixedDofs = elAssembler.allFixedDofs();
     // elAssembler.assemble();
     gsBoundaryConditions<T> bc_u_dummy;
     bc_u_dummy.setGeoMap(mp);
     gsElasticityAssembler<T> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
+    elAssembler.options().setReal("quA",1.0);
+    elAssembler.options().setInt ("quB",0);
     std::vector<gsMatrix<T> > dummyFixedDofs = fullElAssembler.allFixedDofs();
 
     // Initialize the phase-field assembler
@@ -266,6 +270,8 @@ void solve(gsOptionList & materialParameters,
 
     pfAssembler->options().setReal("l0",l0);
     pfAssembler->options().setReal("Gc",Gc);
+    pfAssembler->options().setReal("ExprAssembler.quA",1.0);
+    pfAssembler->options().setInt ("ExprAssembler.quB",0);
     pfAssembler->initialize();
 
     //////////////////////////////////////////////////////////////////////////
