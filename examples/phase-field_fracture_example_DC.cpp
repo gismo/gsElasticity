@@ -400,8 +400,8 @@ void solve(gsOptionList & materialParameters,
             PSORsolver.options().setInt("MaxIterations",30000);
             PSORsolver.options().setSwitch("Verbose",false);
             PSORsolver.options().setReal("tolU",1e-4);
-            PSORsolver.options().setReal("tolNeg",1e-6);
-            PSORsolver.options().setReal("tolPos",1e-6);
+            PSORsolver.options().setReal("tolNeg",1e-9);
+            PSORsolver.options().setReal("tolPos",1e-9);
             pfSolverTime = smallClock.stop();
             for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
             {
