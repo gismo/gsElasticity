@@ -100,21 +100,14 @@ public:
             gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
 
             E_vol = Emat.trace(); //volumetric strain (scalar)
-            // E_dev = Emat - 1./dim * E_vol * I; // deviatoric strain
             E_dev = Emat - 1./3 * E_vol * I; // deviatoric strain
-
-            // E_vol_pos = (E_vol >= 0) ? E_vol : 0.; // positive Heaviside function
-            // E_vol_neg = (E_vol < 0) ? E_vol : 0.; // negative Heaviside function
-            // E_dev = Emat - 1./dim * E_vol * I; // deviatoric strain
-
-            // S = math::pow((1. - damage),2) * (bulk*E_vol_pos*I + 2.*G*E_dev) + bulk*E_vol_neg*I;
 
             ///// IMPROVE THIS
             T tol = 1e-9;
             T omega = math::pow((1. - damage),2);
             if      (E_vol>tol)
                 S = omega*(2.*G*E_dev +  bulk*E_vol*I);
-            else if (E_vol<tol)
+            else if (E_vol<-tol)
                 S = omega*(2.*G*E_dev) + bulk*E_vol*I;
             else
                 S = omega*(2.*G*E_dev);
@@ -160,7 +153,6 @@ public:
         // Damage parameter
         T damage;
 
-        bool H_pos, H_neg;
         T E_vol;
 
         for (index_t i=0; i!=N; i++)
@@ -177,7 +169,6 @@ public:
             gsAsMatrix<T, Dynamic, Dynamic> C = Cresult.reshapeCol(i,sz,sz);
 
             E_vol = Emat.trace(); //volumetric strain (scalar)
-
             // T tol = math::limits::epsilon();
             // H_pos = (E_vol >= -math::limits::epsilon()) ? 1 : 0; // positive Heaviside function
             // H_neg = (E_vol <  -math::limits::epsilon()) ? 1 : 0; // negative Heaviside function
@@ -189,7 +180,7 @@ public:
             T omega = math::pow((1. - damage),2);
             if      (E_vol>tol)
                 C = omega*(G*C_dev +  bulk*C_vol);
-            else if (E_vol<tol)
+            else if (E_vol<-tol)
                 C = omega*(G*C_dev) + bulk*C_vol;
             else
                 C = omega*(G*C_dev);
@@ -233,9 +224,13 @@ public:
             G      = E / ( 2. * ( 1. + nu ) );
             bulk   = lambda + (2./3.)*G;
 
-            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
-            tmpE = Emat;
-            calculate_voigt_strain(tmpE,dim,E_vec); //E_vect in voigt
+            // gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
+
+            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.col(i);
+            // tmpE = Emat;
+            // gsDebugVar(tmpE);
+            calculate_voigt_strain(data.m_E.col(i),dim,E_vec); //E_vect in voigt
+            // gsDebugVar(E_vec);
             // E_pos = math::max(0.0,Emat.trace()); //volumetric strain (scalar)
             // // H_pos = math::max(0.0,E_pos); // positive Heaviside function
             // // C_pos = bulk*H_pos*C_vol + G*C_dev;

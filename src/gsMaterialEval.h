@@ -297,7 +297,7 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::F && _voigt   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
-        m_material->eval_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,result);
+        m_material->eval_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp);
         result.resize(m_dim*(m_dim+1)/2,u.cols());
         calculate_voigt_strain(tmp, m_dim, result);
     }
@@ -314,7 +314,7 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::E && _voigt   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
-        m_material->eval_strain_into(*m_undeformed,*m_deformed,m_pIndex,u,result);
+        m_material->eval_strain_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp);
         result.resize(m_dim*(m_dim+1)/2,u.cols());
         calculate_voigt_strain(tmp, m_dim, result);
     }
@@ -332,7 +332,7 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::S && _voigt, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
-        m_material->eval_stress_into(*m_undeformed,*m_deformed,m_pIndex,u,result);
+        m_material->eval_stress_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp);
         result.resize(m_dim*(m_dim+1)/2,u.cols());
         calculate_voigt_stress(tmp, m_dim, result);
     }

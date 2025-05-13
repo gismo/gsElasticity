@@ -25,6 +25,7 @@
 // Element visitors
 #include <gsElasticity/gsVisitorLinearElasticity.h>
 #include <gsElasticity/gsVisitorLinearElasticityMM.h>
+#include <gsElasticity/gsVisitorLinearSmallStrainElasticityMM.h>
 #include <gsElasticity/gsVisitorMixedLinearElasticity.h>
 #include <gsElasticity/gsVisitorMixedNonLinearElasticity.h>
 #include <gsElasticity/gsVisitorNonLinearElasticity.h>
@@ -112,6 +113,7 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
     opt.addInt("MaterialLaw","Material law: 0 for St. Venant-Kirchhof, 1 for Neo-Hooke",material_law::hooke);
     opt.addReal("LocalStiff","Stiffening degree for the Jacobian-based local stiffening",0.);
     opt.addSwitch("Check","Check bijectivity of the displacement field before matrix assebmly",false);
+    opt.addSwitch("SmallStrains","Use a small strain assumption when assembling with the deformation as an argument",false);
     return opt;
 }
 
@@ -254,10 +256,16 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
     // Compute volumetric integrals and write to the global linear system
     if (m_materials.size()!=0)
     {
-        // gsVisitorNonLinearElasticity<T> visitor(*m_pde_ptr,displacement);
-        // Base::template push<gsVisitorNonLinearElasticity<T> >(visitor);
-        gsVisitorNonLinearElasticityMM<T> visitor(*m_pde_ptr,m_materials,displacement);
-        Base::template push<gsVisitorNonLinearElasticityMM<T> >(visitor);
+        if (m_options.getSwitch("SmallStrains"))
+        {
+            gsVisitorLinearSmallStrainElasticityMM<T> visitor(*m_pde_ptr,m_materials,displacement);
+            Base::template push<gsVisitorLinearSmallStrainElasticityMM<T> >(visitor);
+        }
+        else
+        {
+            gsVisitorNonLinearElasticityMM<T> visitor(*m_pde_ptr,m_materials,displacement);
+            Base::template push<gsVisitorNonLinearElasticityMM<T> >(visitor);
+        }
     }
     else
     {

@@ -42,32 +42,28 @@ public:
     {}
 
     void initialize(const gsBasisRefs<T> & basisRefs,
-                    const index_t patchIndex,
-                    const gsOptionList & options,
-                    gsQuadRule<T> & rule)
+        const index_t patchIndex,
+        const gsOptionList & options,
+        gsQuadRule<T> & rule)
     {
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
+        patch = patchIndex;
         rule = gsQuadrature::get(basisRefs.front(), options);
         forceScaling    = options.getReal("ForceScaling");
         localStiffening = options.getReal("LocalStiff");
-        // saving necessary info
-        //---------------------------------------
-        // T E = options.getReal("YoungsModulus");
-        // T pr = options.getReal("PoissonsRatio");
-        // m_materialMat = new gsElasticityMaterial(E,pr,dim);
-        //---------------------------------------
         I = gsMatrix<T>::Identity(dim,dim);
         // resize containers for global indices
         globalIndices.resize(dim);
         blockNumbers.resize(dim);
     }
 
-    inline void evaluate(const gsBasisRefs<T> & basisRefs,
+    virtual inline void evaluate(const gsBasisRefs<T> & basisRefs,
                          const gsGeometry<T> & geo,
                          const gsMatrix<T> & quNodes)
     {
+        GISMO_ASSERT((index_t)geo.id()==patch,"Geometry id ("<<geo.id()<<") does not match with the considered patch index ("<<patch<<")");
         // store quadrature points of the element for geometry evaluation
         md.points = quNodes;
         // NEED_VALUE to get points in the physical domain for evaluation of the RHS
@@ -171,9 +167,10 @@ public:
 protected:
     // problem info
     short_t dim;
+    index_t patch; // current patch
     const gsBasePde<T> * pde_ptr;
     // Lame coefficients and force scaling factor
-    T lambda, mu, forceScaling, localStiffening;
+    T forceScaling, localStiffening;
     // geometry mapping
     gsMapData<T> md;
     // local components of the global linear system
@@ -193,7 +190,7 @@ protected:
     // elimination matrix to efficiently change Dirichlet degrees of freedom
     gsSparseMatrix<T> * elimMat;
     // all temporary matrices defined here for efficiency
-    gsMatrix<T> C, Ctemp,physGrad, B_i, tempK, B_j, K, I;
+    gsMatrix<T> C, physGrad, B_i, tempK, B_j, K, I;
     // containers for global indices
     std::vector< gsMatrix<index_t> > globalIndices;
     gsVector<index_t> blockNumbers;

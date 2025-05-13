@@ -41,12 +41,15 @@ enum class gsMaterialOutput : short_t
     Psi_pos = 41,
 };
 
+// Converts stresses into Voigt notation
+// The stresses are assumed to be stored in a matrix of size d*d x n,
+// where d is the dimension and n is the number evaluations.
 template <class T>
 void calculate_voigt_stress(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& result)
 {
-    GISMO_ASSERT(tmp.cols() % d == 0, "Invalid size of stress matrix");
-    result.resize(d*(d+1)/2, tmp.cols()/d);
-    for (index_t k = 0; k < tmp.cols()/d; k++)
+    GISMO_ASSERT(tmp.rows() == d*d, "Invalid size of stress matrix");
+    result.resize(d*(d+1)/2, tmp.cols());
+    for (index_t k = 0; k < tmp.cols(); k++)
     {
         gsMatrix<T> S = tmp.reshapeCol(k, d, d); // in tensor notation
         gsVector<T> S_voigt;
@@ -58,9 +61,9 @@ void calculate_voigt_stress(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& resu
 template <class T>
 void calculate_voigt_strain(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& result)
 {
-    GISMO_ASSERT(tmp.cols() % d == 0, "Invalid size of strain matrix");
-    result.resize(d*(d+1)/2, tmp.cols()/d);
-    for (index_t k = 0; k < tmp.cols()/d; k++)
+    GISMO_ASSERT(tmp.rows() == d*d, "Invalid size of stress matrix");
+    result.resize(d*(d+1)/2, tmp.cols());
+    for (index_t k = 0; k < tmp.cols(); k++)
     {
         gsMatrix<T> E = tmp.reshapeCol(k, d, d); // in tensor notation
         gsVector<T> E_voigt;

@@ -243,13 +243,15 @@ void solve(gsOptionList & materialParameters,
     gsElasticityAssembler<T> elAssembler(mp,mb,bc_u,bodyForce,&material);
     elAssembler.options().setReal("quA",1.0);
     elAssembler.options().setInt ("quB",0);
+    elAssembler.options().setSwitch ("SmallStrains",true);
     std::vector<gsMatrix<T> > fixedDofs = elAssembler.allFixedDofs();
     // elAssembler.assemble();
     gsBoundaryConditions<T> bc_u_dummy;
     bc_u_dummy.setGeoMap(mp);
     gsElasticityAssembler<T> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
-    elAssembler.options().setReal("quA",1.0);
-    elAssembler.options().setInt ("quB",0);
+    fullElAssembler.options().setReal("quA",1.0);
+    fullElAssembler.options().setInt ("quB",0);
+    fullElAssembler.options().setSwitch ("SmallStrains",true);
     std::vector<gsMatrix<T> > dummyFixedDofs = fullElAssembler.allFixedDofs();
 
     // Initialize the phase-field assembler
@@ -287,7 +289,7 @@ void solve(gsOptionList & materialParameters,
     typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
     gsSparseMatrix<T> K;
-    gsMatrix<T> R;
+    gsMatrix<T> R, F;
 
     T elAssemblyTime = 0.0;
     T elSolverTime = 0.0;
@@ -321,6 +323,7 @@ void solve(gsOptionList & materialParameters,
     file<<"u,Fx,Fy,E_u,E_d\n";
     file.close();
 
+    real_t Rnorm;
     while (ucurr<=uend)
     {
         // Update the boundary conditions
@@ -341,33 +344,37 @@ void solve(gsOptionList & materialParameters,
             iterationTime  = 0.0;
             bigClock.restart();
             gsInfo<<" - Staggered iteration "<<it<<":\n";
+            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
             material.setParameter(2,damage);
-            elAssembler.homogenizeFixedDofs(-1);
-            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            // Pre-assemble the elasticity problem
+            smallClock.restart();
+            elAssembler.assemble(u,fixedDofs);
+            K = elAssembler.matrix();
+            F = elAssembler.rhs();
+            elAssemblyTime += smallClock.stop();
+
             for (index_t elIt=0; elIt!=maxItEl; ++elIt)
             {
-                // Assemble
-                smallClock.restart();
-                elAssembler.assemble(u,fixedDofs);
-                elAssemblyTime += smallClock.stop();
-                K = elAssembler.matrix();
-                R = elAssembler.rhs();
-
                 // Solve
                 smallClock.restart();
                 solver.compute(K);
-                du = solver.solve(R);
+                u = solver.solve(F);
                 elSolverTime += smallClock.stop();
-                u += du;
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<R.norm()<<PRINT(14)<<du.norm()/u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
-                // if (R.norm() < tolEl || u.norm() < 1e-12)
-                if (du.norm()/u.norm() < tolEl || u.norm() < 1e-12)
+
+                smallClock.restart();
+                elAssembler.assemble(u,fixedDofs);
+                K = elAssembler.matrix();
+                F = elAssembler.rhs();
+                elAssemblyTime += smallClock.stop();
+                Rnorm = (K*u - F).norm();
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/F.norm()<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+
+                if (Rnorm/* /F.norm() */ < tolEl || u.norm() < 1e-12)
                     break;
                 else if (elIt == maxItEl-1 && maxItEl != 1)
                     GISMO_ERROR("Elasticity problem did not converge.");
             }
-
 
             elAssembler.setFixedDofs(fixedDofs);
             elAssembler.constructSolution(u,fixedDofs,displacement);
@@ -431,16 +438,16 @@ void solve(gsOptionList & materialParameters,
 
             smallClock.restart();
             material.setParameter(2,damage);
-            elAssembler.homogenizeFixedDofs(-1);
             elAssembler.assemble(u,fixedDofs);
-            R = elAssembler.rhs();
+            K = elAssembler.matrix();
+            F = elAssembler.rhs();
             elAssemblyTime += smallClock.stop();
-            // if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 ))//&& deltaD.norm()/D.norm() < tol)
+            Rnorm = (K*u - F).norm();
 
             iterationTime = bigClock.stop();
-            gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||" <<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
-            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<R.norm()<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
-            if (R.norm() < tol)
+            gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
+            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<Rnorm<<PRINT(14)<<Rnorm/F.norm()<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
+            if (Rnorm/F.norm() < tol)
                 break;
             else if (it == maxIt-1)
                 GISMO_ERROR("Staggered iterations problem did not converge.");
@@ -470,7 +477,7 @@ void solve(gsOptionList & materialParameters,
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
+        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/F.norm()<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================

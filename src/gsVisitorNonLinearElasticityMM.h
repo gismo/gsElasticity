@@ -26,65 +26,6 @@
 namespace gismo
 {
 
-// template <class T>
-// class gsAsDeformed : public gsFunction<T>
-// {
-// public:
-//     gsAsDeformed(const gsFunction<T> & undeformed_,
-//                  const gsFunction<T> & deformed_)
-//     :
-//     undeformed(undeformed_),
-//     deformed(deformed_)
-//     {
-//     }
-
-//     short_t targetDim() const override { return undeformed.targetDim(); }
-//     short_t domainDim() const override { return undeformed.domainDim(); }
-
-//     void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-//     {
-//         undeformed.eval_into(u,result);
-//         result += deformed.eval(u);
-//     }
-
-//     void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-//     {
-//         undeformed.deriv_into(u,result);
-//         result += deformed.deriv(u);
-//     }
-
-//     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-//     {
-//         undeformed.deriv2_into(u,result);
-//         result += deformed.deriv2(u);
-//     }
-
-//     void evalAllDers_into(const gsMatrix<T> & u, const int n, std::vector<gsMatrix<T> > & result, bool sameElement) const
-//     {
-//         std::vector<gsMatrix<T>> defResult;
-//         undeformed.evalAllDers_into(u,n,result,sameElement);
-//         deformed.evalAllDers_into(u,n,defResult,sameElement);
-//         for (index_t i = 0; i <= n; ++i)
-//             result[i] += defResult[i];
-//     }
-
-//     std::ostream &print(std::ostream &os) const
-//     {
-//         gsInfo<<"As deformed function\n";
-//         undeformed.print(os);
-//         deformed.print(os);
-//         return os;
-//     }
-
-//     GISMO_CLONE_FUNCTION(gsAsDeformed)
-
-// protected:
-//     const gsFunction<T> & undeformed;
-//     const gsFunction<T> & deformed;
-// };
-
-
-
 template <class T>
 class gsVisitorNonLinearElasticityMM
 {
@@ -182,6 +123,7 @@ public:
             transformGradients(md,q,basisValuesDisp[1],physGrad);
             // deformation gradient
             F = defGradValues.reshapeCol(q,dim,dim);
+            F.setIdentity();
             const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
             // Elasticity tensor
             C = matValues.reshapeCol(q,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
