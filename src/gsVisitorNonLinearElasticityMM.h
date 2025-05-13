@@ -123,7 +123,6 @@ public:
             transformGradients(md,q,basisValuesDisp[1],physGrad);
             // deformation gradient
             F = defGradValues.reshapeCol(q,dim,dim);
-            F.setIdentity();
             const T weightBody = quWeights[q] * pow(md.measure(q),-1.*localStiffening) * md.measure(q);
             // Elasticity tensor
             C = matValues.reshapeCol(q,math::sqrt(matValues.rows()),math::sqrt(matValues.rows()));
