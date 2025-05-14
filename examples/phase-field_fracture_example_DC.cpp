@@ -323,7 +323,8 @@ void solve(gsOptionList & materialParameters,
     file<<"u,Fx,Fy,E_u,E_d\n";
     file.close();
 
-    real_t Rnorm;
+    real_t Rnorm, Fnorm;
+    Rnorm = Fnorm = 1;
     while (ucurr<=uend)
     {
         // Update the boundary conditions
@@ -352,8 +353,8 @@ void solve(gsOptionList & materialParameters,
             elAssembler.assemble(u,fixedDofs);
             K = elAssembler.matrix();
             F = elAssembler.rhs();
+            Fnorm = (F.norm() == 0) ? 1 : F.norm();
             elAssemblyTime += smallClock.stop();
-
             for (index_t elIt=0; elIt!=maxItEl; ++elIt)
             {
                 // Solve
@@ -368,7 +369,7 @@ void solve(gsOptionList & materialParameters,
                 F = elAssembler.rhs();
                 elAssemblyTime += smallClock.stop();
                 Rnorm = (K*u - F).norm();
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/F.norm()<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
 
                 if (Rnorm/* /F.norm() */ < tolEl || u.norm() < 1e-12)
                     break;
@@ -441,13 +442,14 @@ void solve(gsOptionList & materialParameters,
             elAssembler.assemble(u,fixedDofs);
             K = elAssembler.matrix();
             F = elAssembler.rhs();
+            Fnorm = (F.norm() == 0) ? 1 : F.norm();
             elAssemblyTime += smallClock.stop();
             Rnorm = (K*u - F).norm();
 
             iterationTime = bigClock.stop();
             gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
-            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<Rnorm<<PRINT(14)<<Rnorm/F.norm()<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
-            if (Rnorm/F.norm() < tol)
+            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<Rnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
+            if (Rnorm/Fnorm < tol)
                 break;
             else if (it == maxIt-1)
                 GISMO_ERROR("Staggered iterations problem did not converge.");
