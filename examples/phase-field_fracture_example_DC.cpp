@@ -463,7 +463,7 @@ void solve(gsOptionList & materialParameters,
         // sum the reaction forces in Y direction
         gsDofMapper mapper(mb,dim);
         mapper.finalize();
-        gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::north);
+        gsMatrix<index_t> boundary = mb.basis(0).boundary(fixedSideId);
         T Fx = 0, Fy = 0;
         for (index_t k=0; k!=boundary.size(); k++)
         {
@@ -479,7 +479,7 @@ void solve(gsOptionList & materialParameters,
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/F.norm()<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
+        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================
