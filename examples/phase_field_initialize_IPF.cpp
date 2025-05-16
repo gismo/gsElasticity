@@ -107,7 +107,12 @@ int main(int argc, char *argv[])
     real_t length = ev.integral(1.0 * meas(C));
     gsInfo<<"Curve length = "<<length<<"\n";
 
-    gsRBFCurve<real_t,Constant> fun(crack,beta,beta);
+    // gsRBFCurve<real_t,Constant> fun(crack,beta,beta);
+    gsFunctionExpr<> fun("if((x>=0.0) and (x<=0.5) and (y>=0.5-u) and (y<=0.5+u),1,0)", 2);
+    fun.set_u(beta);
+    // <Function type="FunctionExpr" id="1" dim="2" label="initial">
+    // if (( x&gt;=0.0) and (x&lt;=0.5) and (y&gt;=0.5-0.010/2.) and (y&lt;=0.5+0.010/2.),1,0)
+    // </Function>
     if(plot) gsWriteParaview(mp,fun,outputdir+"initial",100000);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,6 +147,9 @@ int main(int argc, char *argv[])
     for (index_t i = 0, j = 0; i < w.mapper().size(); ++i)
         if (A.rhs()(i,0) > 0)
             coefs(i,0) = tmpCoefs(j++,0);
+
+    gsInfo<<"L2 projection done\n";
+    gsInfo<<"||D|| = "<<coefs.norm()<<"\n";
 
     gsMultiPatch<> damage;
     damage.addPatch(mb.basis(0).makeGeometry(give(coefs)));
@@ -222,7 +230,7 @@ int main(int argc, char *argv[])
     }
 
     gsFileData<> fd_out;
-    fd_out.addWithLabel(damage,outputdir+"initial");
+    fd_out.addWithLabel(damage,"initial");
     fd_out.save(outputdir+"initial");
 
     return EXIT_SUCCESS;

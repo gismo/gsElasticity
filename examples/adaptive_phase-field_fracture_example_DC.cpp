@@ -357,7 +357,7 @@ void solve(gsOptionList & materialParameters,
     gsSparseSolver<>::CGDiagonal solver;
 #endif
     gsSparseMatrix<> K;
-    gsMatrix<> R;
+    gsMatrix<> R, F;
 
     T elAssemblyTime = 0.0;
     T elSolverTime = 0.0;
@@ -385,10 +385,10 @@ void solve(gsOptionList & materialParameters,
 
     std::vector<gsMatrix<> > fixedDofs;
     std::vector<gsMatrix<> > dummyFixedDofs;
+    real_t Rnorm, Fnorm;
+    Rnorm = Fnorm = 1;
     while (ucurr<=uend)
     {
-        writeSingleCompMesh(mb.basis(0),mp.patch(0),outputdir+"mesh",1);
-
         // PROJECT SOLUTIONS
         gsMatrix<> projCoefs;
         gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
@@ -406,11 +406,16 @@ void solve(gsOptionList & materialParameters,
 
         // CONSTRUCT ASSEMBLERS (since refreshing is not possible)
         gsElasticityAssembler<real_t> elAssembler(mp,mb,bc_u,bodyForce,&material);
+        elAssembler.options().setReal("quA",1.0);
+        elAssembler.options().setInt ("quB",0);
+        elAssembler.options().setSwitch ("SmallStrains",true);
         fixedDofs = elAssembler.allFixedDofs();
-        // Construct the elasticity solution vector from the projected solution
         elAssembler.constructSolution(displacement,u);
 
         gsElasticityAssembler<real_t> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
+        fullElAssembler.options().setReal("quA",1.0);
+        fullElAssembler.options().setInt ("quB",0);
+        fullElAssembler.options().setSwitch ("SmallStrains",true);
         dummyFixedDofs = fullElAssembler.allFixedDofs();
 
         if      (order == 2 && AT == 1)
@@ -430,6 +435,8 @@ void solve(gsOptionList & materialParameters,
         // Pre-assemble the phase-field operators that do not depend on the solution
         pfAssembler->options().setReal("l0",l0);
         pfAssembler->options().setReal("Gc",Gc);
+        pfAssembler->options().setReal("ExprAssembler.quA",1.0);
+        pfAssembler->options().setInt ("ExprAssembler.quB",0);
         pfAssembler->options().setInt("ExprAssembler.DirichletValues",dirichlet::l2Projection);
         pfAssembler->setSpaceBasis(mb);
         pfAssembler->initialize();
@@ -452,8 +459,7 @@ void solve(gsOptionList & materialParameters,
         gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n\n";
 
-        du.setZero();
-        deltaD.setZero();
+        deltaD.setZero(D.rows(),1);
 
         for (index_t it=0; it!=maxIt; ++it)
         {
@@ -462,33 +468,37 @@ void solve(gsOptionList & materialParameters,
             iterationTime  = 0.0;
             bigClock.restart();
             gsInfo<<" - Staggered iteration "<<it<<":\n";
+            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
             material.setParameter(2,damage);
-            elAssembler.homogenizeFixedDofs(-1);
-            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            // Pre-assemble the elasticity problem
+            smallClock.restart();
+            elAssembler.assemble(u,fixedDofs);
+            K = elAssembler.matrix();
+            F = elAssembler.rhs();
+            Fnorm = (F.norm() == 0) ? 1 : F.norm();
+            elAssemblyTime += smallClock.stop();
             for (index_t elIt=0; elIt!=maxItEl; ++elIt)
             {
-                // Assemble
-                smallClock.restart();
-                elAssembler.assemble(u,fixedDofs);
-                elAssemblyTime += smallClock.stop();
-                K = elAssembler.matrix();
-                R = elAssembler.rhs();
-
                 // Solve
                 smallClock.restart();
                 solver.compute(K);
-                du = solver.solve(R);
+                u = solver.solve(F);
                 elSolverTime += smallClock.stop();
-                u += du;
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<R.norm()<<PRINT(14)<<du.norm()/u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
-                // if (R.norm() < tolEl || u.norm() < 1e-12)
-                if (du.norm()/u.norm() < tolEl || u.norm() < 1e-12)
+
+                smallClock.restart();
+                elAssembler.assemble(u,fixedDofs);
+                K = elAssembler.matrix();
+                F = elAssembler.rhs();
+                elAssemblyTime += smallClock.stop();
+                Rnorm = (K*u - F).norm();
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+
+                if (Rnorm/* /F.norm() */ < tolEl || u.norm() < 1e-12)
                     break;
                 else if (elIt == maxItEl-1 && maxItEl != 1)
                     GISMO_ERROR("Elasticity problem did not converge.");
             }
-
 
             elAssembler.setFixedDofs(fixedDofs);
             elAssembler.constructSolution(u,fixedDofs,displacement);
@@ -552,16 +562,17 @@ void solve(gsOptionList & materialParameters,
 
             smallClock.restart();
             material.setParameter(2,damage);
-            elAssembler.homogenizeFixedDofs(-1);
             elAssembler.assemble(u,fixedDofs);
-            R = elAssembler.rhs();
+            K = elAssembler.matrix();
+            F = elAssembler.rhs();
+            Fnorm = (F.norm() == 0) ? 1 : F.norm();
             elAssemblyTime += smallClock.stop();
-            // if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 ))//&& deltaD.norm()/D.norm() < tol)
+            Rnorm = (K*u - F).norm();
 
             iterationTime = bigClock.stop();
-            gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||" <<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
-            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<R.norm()<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
-            if (R.norm() < tol)
+            gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
+            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<Rnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
+            if (Rnorm/Fnorm < tol)
                 break;
             else if (it == maxIt-1)
                 GISMO_ERROR("Staggered iterations problem did not converge.");
@@ -571,11 +582,11 @@ void solve(gsOptionList & materialParameters,
         // Compute resulting force and energies
         gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
         fullElAssembler.assemble(ufull,dummyFixedDofs);
-        gsMatrix<T> Rfull = fullElAssembler.rhs();
+        gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
         // sum the reaction forces in Y direction
         gsDofMapper mapper(mb,dim);
         mapper.finalize();
-        gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::north);
+        gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::east);
         T Fx = 0, Fy = 0;
         for (index_t k=0; k!=boundary.size(); k++)
         {
@@ -593,7 +604,7 @@ void solve(gsOptionList & materialParameters,
         stepData[6] = mb.totalElements();
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R|| = "<<R.norm()<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
+        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<u.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================

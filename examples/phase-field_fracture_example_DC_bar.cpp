@@ -340,7 +340,7 @@ void solve(gsOptionList & materialParameters,
     // SOLVE THE PROBLEM/////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    gsMatrix<T> u(elAssembler.numDofs(),1), du;
+    gsMatrix<T> u(elAssembler.numDofs(),1);
     u.setZero();
 
 #ifdef GISMO_WITH_PARDISO
@@ -397,7 +397,6 @@ void solve(gsOptionList & materialParameters,
         gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n\n";
 
-        du.setZero();
         deltaD.setZero();
         for (index_t it=0; it!=maxIt; ++it)
         {
@@ -520,7 +519,7 @@ void solve(gsOptionList & materialParameters,
         // Compute resulting force and energies
         gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
         fullElAssembler.assemble(ufull,dummyFixedDofs);
-        gsMatrix<T> Rfull = fullElAssembler.rhs();
+        gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
         // sum the reaction forces in Y direction
         gsDofMapper mapper(mb,dim);
         mapper.finalize();
@@ -540,7 +539,7 @@ void solve(gsOptionList & materialParameters,
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||dD|| = "<<deltaD.norm()<<" ||dU|| = "<<du.norm()<<"\n";
+        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<u.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================

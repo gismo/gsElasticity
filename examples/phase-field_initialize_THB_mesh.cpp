@@ -151,6 +151,9 @@ int main(int argc, char *argv[])
     if (mp.geoDim() == 3)
         mp.uniformRefine(numElZ,1,2);
 
+    gsMultiBasis<> mb(mp);
+    short_t degree = mb.maxCwiseDegree();
+
     gsMultiPatch<> crack;
     fd_pars.getLabel("crack", crack);
 
@@ -165,7 +168,8 @@ int main(int argc, char *argv[])
     fd_pars.getLabel("meshing", mesherOptions);
 
     // gsRBFCurve<real_t, Hat> RBFCurve(crack, beta, beta);
-    gsRBFCurve<real_t, Constant> RBFCurve(crack, beta, beta);
+    // Take a range of 2*beta for the mesh!
+    gsRBFCurve<real_t, Constant> RBFCurve(crack, (degree)*beta, (degree)*beta);
 
     gsWriteParaview(mp,RBFCurve,outputdir+"initial",10000);
     gsWriteParaview(mp,outputdir+"mp",10);
