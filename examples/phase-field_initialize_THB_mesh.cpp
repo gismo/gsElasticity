@@ -167,23 +167,41 @@ int main(int argc, char *argv[])
     gsOptionList mesherOptions;
     fd_pars.getLabel("meshing", mesherOptions);
 
-    // gsRBFCurve<real_t, Hat> RBFCurve(crack, beta, beta);
-    // Take a range of 2*beta for the mesh!
-    gsRBFCurve<real_t, Constant> RBFCurve(crack, (degree)*beta, (degree)*beta);
-
-    gsWriteParaview(mp,RBFCurve,outputdir+"initial",10000);
-    gsWriteParaview(mp,outputdir+"mp",10);
-    gsWriteParaview(crack,outputdir+"crack",10);
-
     gsMultiPatch<> mp_THB;
     switch (mp.domainDim())
     {
         case 2:
             mp_THB = createGeometry<2,real_t>(mp);
-            refineGeometry<2,real_t>(mp_THB, RBFCurve, mesherOptions);
             break;
         case 3:
             mp_THB = createGeometry<3,real_t>(mp);
+            break;
+        default:
+            GISMO_ERROR("Invalid geometry dimension.");
+    }
+
+    real_t hmin = (static_cast<gsTHBSplineBasis<2,real_t>&>(mp_THB.basis(0)).tensorLevel(mesherOptions.getInt("MaxLevel")).getMinCellLength());
+    gsInfo<<"Beta = "<<beta<<", hmin = "<<hmin<<", (p+1)*hmin = "<<(degree+1)*hmin<<"\n";
+    beta = math::max(beta,hmin);
+    beta*= degree+1;
+    gsInfo<<"Final beta = "<<beta<<"\n";
+
+
+
+    // gsRBFCurve<real_t, Hat> RBFCurve(crack, beta, beta);
+    // Take a range of 2*beta for the mesh!
+    gsRBFCurve<real_t, Constant> RBFCurve(crack, beta, beta);
+
+    gsWriteParaview(mp,RBFCurve,outputdir+"initial",100000);
+    gsWriteParaview(mp,outputdir+"mp",10);
+    gsWriteParaview(crack,outputdir+"crack",10);
+
+    switch (mp.domainDim())
+    {
+        case 2:
+            refineGeometry<2,real_t>(mp_THB, RBFCurve, mesherOptions);
+            break;
+        case 3:
             refineGeometry<3,real_t>(mp_THB, RBFCurve, mesherOptions);
             break;
         default:

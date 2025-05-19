@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> damage;
     damage.addPatch(mb.basis(0).makeGeometry(give(coefs)));
-    if(plot) gsWriteParaview(mp,damage,outputdir+"L2",10000);
+    if(plot) gsWriteParaview(mp,damage,outputdir+"L2",100000);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     /// PF assembler
@@ -230,8 +230,8 @@ int main(int argc, char *argv[])
     }
 
     gsFileData<> fd_out;
-    fd_out.addWithLabel(damage,"initial");
-    fd_out.save(outputdir+"initial");
+    fd_out.addWithLabel(damage,"damage");
+    fd_out.save(outputdir+"damage");
 
     return EXIT_SUCCESS;
 }

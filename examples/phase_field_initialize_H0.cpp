@@ -214,8 +214,8 @@ int main(int argc, char *argv[])
     if(plot) gsWriteParaview(mp,damage,outputdir+"H0_after",100000);
 
     gsFileData<> fd_out;
-    fd_out.addWithLabel(damage,outputdir+"initial");
-    fd_out.save(outputdir+"initial");
+    fd_out.addWithLabel(damage,outputdir+"damage");
+    fd_out.save(outputdir+"damage");
 
     delete pfAssembler;
     return EXIT_SUCCESS;
