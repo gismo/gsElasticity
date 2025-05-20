@@ -387,23 +387,26 @@ void solve(gsOptionList & materialParameters,
     std::vector<gsMatrix<> > dummyFixedDofs;
     real_t Rnorm, Fnorm;
     Rnorm = Fnorm = 1;
+    bool refined = true;
     while (ucurr<=uend)
     {
-        // PROJECT SOLUTIONS
-        gsMatrix<> projCoefs;
-        gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
-        mp.clear();
-        mp.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-        mp_def = mp;
+        if (refined)
+        {
+            // PROJECT SOLUTIONS
+            gsMatrix<> projCoefs;
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
+            mp.clear();
+            mp.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            mp_def = mp;
 
-        gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement.patch(0),projCoefs);
-        displacement.clear();
-        displacement.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement.patch(0),projCoefs);
+            displacement.clear();
+            displacement.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
 
-        gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
-        damage.clear();
-        damage.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
+            damage.clear();
+            damage.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+        }
         // CONSTRUCT ASSEMBLERS (since refreshing is not possible)
         gsElasticityAssembler<real_t> elAssembler(mp,mb,bc_u,bodyForce,&material);
         elAssembler.options().setReal("quA",1.0);
@@ -572,7 +575,7 @@ void solve(gsOptionList & materialParameters,
             iterationTime = bigClock.stop();
             gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
             gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<Rnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
-            if (Rnorm/Fnorm < tol)
+            if (Rnorm/* /Fnorm */ < tol)
                 break;
             else if (it == maxIt-1)
                 GISMO_ERROR("Staggered iterations problem did not converge.");
@@ -648,7 +651,8 @@ void solve(gsOptionList & materialParameters,
         // =========================================================================
         // REFINE MESH
         elVals = labelElements(mp, damage, mb,0.1,1.0);
-        if (gsAsVector<real_t>(elVals).sum())
+        refined = gsAsVector<real_t>(elVals).sum() > 0;
+        if (refined)
             refineMesh(mb,elVals,mesherOptions);
 
             // =========================================================================
