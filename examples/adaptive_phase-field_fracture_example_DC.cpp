@@ -506,7 +506,7 @@ void solve(gsOptionList & materialParameters,
                 mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
 
             // Initialize the function for the elastic energy
-            gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+            gsMaterialEval<T,gsMaterialOutput::Psi,true,true> Psi(&material,mp,mp_def);
 
             // ==================================================================================
 
@@ -642,7 +642,7 @@ void solve(gsOptionList & materialParameters,
         std::ofstream file(outputdir+"results.txt",std::ios::app);
         // for (size_t i = 0; i != data.size(); ++i)
         //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
-        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<"\n";
+        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<"\n";
         file.close();
 
         // =========================================================================

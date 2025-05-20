@@ -215,7 +215,7 @@ public:
         T E_pos;
 
         gsMatrix<T> E_vec, tmpE;
-        // calculate_voigt_strain(data.m_E,dim,E_vec); //E_vect in voigt
+        calculate_voigt_strain(data.m_E,dim,E_vec); //E_vect in voigt
         for (index_t i=0; i!=N; i++)
         {
             E = data.m_parmat(0,i);
@@ -227,10 +227,11 @@ public:
 
             gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
 
+
             // gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.col(i);
-            tmpE = Emat;
+            // tmpE = Emat;
             // gsDebugVar(tmpE);
-            calculate_voigt_strain(tmpE,dim,E_vec); //E_vect in voigt
+            // calculate_voigt_strain(tmpE,dim,E_vec); //E_vect in voigt
             // gsDebugVar(E_vec);
             // E_pos = math::max(0.0,Emat.trace()); //volumetric strain (scalar)
             // // H_pos = math::max(0.0,E_pos); // positive Heaviside function
@@ -238,13 +239,13 @@ public:
             // C_pos = bulk*E_pos*C_vol + G*C_dev;
 
             ///// IMPROVE THIS
-            T tol = 1e-9;
+            T tol = 1e-10;
             if (Emat.trace() > tol)
                 C_pos = G*C_dev + bulk*C_vol;
             else
                 C_pos = G*C_dev;
 
-            Presult(0,i) = 0.5 * (E_vec.transpose() * C_pos * E_vec).value();
+            Presult(0,i) = 0.5 * (E_vec.col(i).transpose() * C_pos * E_vec.col(i)).value();
         }
     }
 };

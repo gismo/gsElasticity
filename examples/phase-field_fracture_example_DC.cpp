@@ -382,11 +382,11 @@ void solve(gsOptionList & materialParameters,
                 mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
 
             // Initialize the function for the elastic energy
-            gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+            gsMaterialEval<T,gsMaterialOutput::Psi,true,true> Psi(&material,mp,mp_def);
 
             // ==================================================================================
 
-            gsInfo<<"\t"<<PRINT(20)<<"* Phase-field:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            gsInfo<<"\t"<<PRINT(20)<<"* Phase-field:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||D||"<<PRINT(14)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
             // Phase-field problem
             smallClock.restart();
@@ -396,6 +396,7 @@ void solve(gsOptionList & materialParameters,
             pfAssembler->assemblePsiVector(Psi);
             pfAssembler->rhs_into(qpsi);
             Q = QPhi + QPsi;
+
             // Reconstruct the solution from the damage field
             pfAssembler->constructSolution(damage,D);
             pfAssemblyTime = smallClock.stop();
@@ -426,7 +427,7 @@ void solve(gsOptionList & materialParameters,
                 pfSolverTime += smallClock.stop();
                 D += deltaD;
 
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<D.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
                 if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
                     break;
                 else if (pfIt == maxItPf-1 && maxItPf != 1)
@@ -477,7 +478,7 @@ void solve(gsOptionList & materialParameters,
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<U.norm()<<"\n";
+        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<u.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================

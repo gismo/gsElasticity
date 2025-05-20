@@ -103,7 +103,7 @@ public:
         // Since we re-use the geometric data and compute the parameter data only once
         gsMaterialData<T> data;
         gsMaterialBase<T> * material = m_materials.piece(geo.id());
-        material->precompute(md,mdDeformed,data);
+        material->precompute(md,mdDeformed,data,false);
         material->eval_deformation_gradient_into(data,defGradValues); // re-use the pre-computed ones
         material->eval_stress_into(data,vecValues);
         material->eval_matrix_into(data,matValues);

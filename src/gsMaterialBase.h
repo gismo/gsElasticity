@@ -186,10 +186,7 @@ public:
     {
         gsMapData<T> map_ori, map_def;
         this->_computeGeometricData(undeformed,deformed,patch,u,map_ori,map_def);
-        if (smallStrains)
-            this->_computeStrains<true>(map_ori,map_def,data);
-        else
-            this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
     }
 
     /**
@@ -204,10 +201,7 @@ public:
                             gsMaterialData<T> & data,
                             bool smallStrains = false) const
     {
-        if (smallStrains)
-            this->_computeStrains<true>(map_ori,map_def,data);
-        else
-            this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
     }
 
     /**
@@ -223,13 +217,14 @@ public:
                                                 const gsFunctionSet<T> & deformed,
                                                 const index_t patch,
                                                 const gsMatrix<T>& u,
-                                                gsMatrix<T> & Fresult) const
+                                                gsMatrix<T> & Fresult,
+                                                bool smallStrains = false) const
     {
         // Compute map and parameters
         gsMaterialData<T> data;
         gsMapData<T> map_ori, map_def;
         this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
         this->eval_deformation_gradient_into(data,Fresult);
     }
 
@@ -252,13 +247,14 @@ public:
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
-                                    gsMatrix<T> & Eresult) const
+                                    gsMatrix<T> & Eresult,
+                                    bool smallStrains = false) const
     {
         // Compute map and parameters
         gsMaterialData<T> data;
         gsMapData<T> map_ori, map_def;
         this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
         this->eval_strain_into(data,Eresult);
     }
 
@@ -281,13 +277,14 @@ public:
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
-                                    gsMatrix<T> & Sresult) const
+                                    gsMatrix<T> & Sresult,
+                                    bool smallStrains = false) const
     {
         // Compute map and parameters
         gsMaterialData<T> data;
         gsMapData<T> map_ori, map_def;
         this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
         this->eval_stress_into(data,Sresult);
     }
 
@@ -307,13 +304,14 @@ public:
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
-                                    gsMatrix<T> & Cresult) const
+                                    gsMatrix<T> & Cresult,
+                                    bool smallStrains = false) const
     {
         // Compute map and parameters
         gsMaterialData<T> data;
         gsMapData<T> map_ori, map_def;
         this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
         this->eval_matrix_into(data,Cresult);
     }
 
@@ -333,13 +331,14 @@ public:
                                         const gsFunctionSet<T> & deformed,
                                         const index_t patch,
                                         const gsMatrix<T>& u,
-                                        gsMatrix<T> & Cresult) const
+                                        gsMatrix<T> & Cresult,
+                                        bool smallStrains = false) const
     {
         // Compute map and parameters
         gsMaterialData<T> data;
         gsMapData<T> map_ori, map_def;
         this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
         this->eval_matrix_pos_into(data,Cresult);
     }
 
@@ -359,13 +358,14 @@ public:
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
-                                    gsMatrix<T> & Presult) const
+                                    gsMatrix<T> & Presult,
+                                    bool smallStrains = false) const
     {
         // Compute map and parameters
         gsMaterialData<T> data;
         gsMapData<T> map_ori, map_def;
         this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains<false>(map_ori,map_def,data);
+        this->_computeStrains(map_ori,map_def,data,smallStrains);
         this->eval_energy_into(data,Presult);
     }
 
@@ -562,6 +562,25 @@ protected:
     {
         return 0.5 * (F.transpose() * F - I);
 
+    }
+
+        /**
+     * @brief      Computes the strains
+     *
+     * @param[in]  map_ori  The undeformed map data
+     * @param[in]  map_def  The deformed map data
+     * @param[out] data     The material data
+     * @param[in]  smallStrains  If true, small strains are assumed
+     */
+    void _computeStrains(const gsMapData<T> & map_ori,
+                         const gsMapData<T> & map_def,
+                               gsMaterialData<T> & data,
+                               bool smallStrains) const
+    {
+        if (smallStrains)
+            this->_computeStrains<true>(map_ori,map_def,data);
+        else
+            this->_computeStrains<false>(map_ori,map_def,data);
     }
 
     /**

@@ -85,7 +85,7 @@ public:
 
         gsMaterialData<T> data;
         gsMaterialBase<T> * material = m_materials.piece(geo.id());
-        material->precompute(md,mdDeformed,data);
+        material->precompute(md,mdDeformed,data,true);
         material->eval_matrix_into(data,matValues);
 
     }

@@ -443,7 +443,7 @@ void solve(gsOptionList & materialParameters,
                 mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
 
             // Initialize the function for the elastic energy
-            gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+            gsMaterialEval<T,gsMaterialOutput::Psi,true,true> Psi(&material,mp,mp_def);
 
             // ==================================================================================
 
