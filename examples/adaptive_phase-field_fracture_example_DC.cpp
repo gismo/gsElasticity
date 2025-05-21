@@ -586,10 +586,9 @@ void solve(gsOptionList & materialParameters,
         gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
         fullElAssembler.assemble(ufull,dummyFixedDofs);
         gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
-        // sum the reaction forces in Y direction
         gsDofMapper mapper(mb,dim);
         mapper.finalize();
-        gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::east);
+        gsMatrix<index_t> boundary = mb.basis(0).boundary(fixedSideId);
         T Fx = 0, Fy = 0;
         for (index_t k=0; k!=boundary.size(); k++)
         {
