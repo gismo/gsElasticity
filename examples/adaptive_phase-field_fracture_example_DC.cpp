@@ -649,12 +649,19 @@ void solve(gsOptionList & materialParameters,
 
         // =========================================================================
         // REFINE MESH
-        elVals = labelElements(mp, damage, mb,0.1,1.0);
-        refined = gsAsVector<real_t>(elVals).sum() > 0;
-        if (refined)
-            refineMesh(mb,elVals,mesherOptions);
+        // All labelled elements are refined to the maximum level, step-by-step
+        refined = false;
+        for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
+        {
+            elVals = labelElements(mp, damage, mb,0.1,1.0);
+            refined |= gsAsVector<real_t>(elVals).sum() > 0;
+            if (gsAsVector<real_t>(elVals).sum())
+                refineMesh(mb,elVals,mesherOptions);
+            else
+                break;
+        }
 
-            // =========================================================================
+        // =========================================================================
         // INCREMENT STEP
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
