@@ -333,17 +333,17 @@ void solve(gsOptionList & materialParameters,
     //////////////////////////////////////////////////////////////////////////
 
     std::vector<real_t> elVals;
-    // REFINE MESH
-    for (index_t k=0; k!=mesherOptions.askInt("MaxLevel",1); ++k)
-    {
-        elVals = labelElements(mp, damage, mb,0.1,1.0);
-        gsInfo<<"Refine: "<<gsAsVector<real_t>(elVals).sum()<<"\n";
-        if (gsAsVector<real_t>(elVals).sum())
-            refineMesh(mb,elVals,mesherOptions);
-        else
-            break;
-    }
-    writeSingleCompMesh(mb.basis(0),mp.patch(0),outputdir+"mesh",1);
+    // // REFINE MESH
+    // for (index_t k=0; k!=mesherOptions.askInt("MaxLevel",1); ++k)
+    // {
+    //     elVals = labelElements(mp, damage, mb,0.1,1.0);
+    //     gsInfo<<"Refine: "<<gsAsVector<real_t>(elVals).sum()<<"\n";
+    //     if (gsAsVector<real_t>(elVals).sum())
+    //         refineMesh(mb,elVals,mesherOptions);
+    //     else
+    //         break;
+    // }
+    // writeSingleCompMesh(mb.basis(0),mp.patch(0),outputdir+"mesh",1);
 
     //////////////////////////////////////////////////////////////////////////
     // SOLVE THE PROBLEM/////////////////////////////////////////////////////
@@ -387,227 +387,238 @@ void solve(gsOptionList & materialParameters,
     std::vector<gsMatrix<> > dummyFixedDofs;
     real_t Rnorm, Fnorm;
     Rnorm = Fnorm = 1;
-    bool refined = true;
+    gsMultiPatch<> displacement_old, damage_old;
+    displacement_old = displacement;
+    damage_old = damage;
     while (ucurr<=uend)
     {
-        if (refined)
+        bool refined = true;
+        index_t basis_size_old, basis_size;
+        T basis_size_ratio;
+        gsInfo<<"===========================================================================================================================\n";
+        gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
+        // Refinement iterations
+        for (index_t refIt = 0; refIt!=3 && refined; refIt++)
         {
-            // PROJECT SOLUTIONS
-            gsMatrix<> projCoefs;
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
-            mp.clear();
-            mp.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            mp_def = mp;
+            basis_size = basis_size_old = mb.basis(0).size();
+            gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
+            gsInfo<<"Refinement iteration "<<refIt<<" (basis size: "<<basis_size<<"):\n";
+            // CONSTRUCT ASSEMBLERS (since refreshing is not possible)
+            gsElasticityAssembler<real_t> elAssembler(mp,mb,bc_u,bodyForce,&material);
+            elAssembler.options().setReal("quA",1.0);
+            elAssembler.options().setInt ("quB",0);
+            elAssembler.options().setSwitch ("SmallStrains",true);
+            fixedDofs = elAssembler.allFixedDofs();
+            // Initialize u
+            elAssembler.constructSolution(displacement,u);
 
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement.patch(0),projCoefs);
-            displacement.clear();
-            displacement.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
-            damage.clear();
-            damage.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-        }
-        // CONSTRUCT ASSEMBLERS (since refreshing is not possible)
-        gsElasticityAssembler<real_t> elAssembler(mp,mb,bc_u,bodyForce,&material);
-        elAssembler.options().setReal("quA",1.0);
-        elAssembler.options().setInt ("quB",0);
-        elAssembler.options().setSwitch ("SmallStrains",true);
-        fixedDofs = elAssembler.allFixedDofs();
-        elAssembler.constructSolution(displacement,u);
-
-        gsElasticityAssembler<real_t> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
-        fullElAssembler.options().setReal("quA",1.0);
-        fullElAssembler.options().setInt ("quB",0);
-        fullElAssembler.options().setSwitch ("SmallStrains",true);
-        dummyFixedDofs = fullElAssembler.allFixedDofs();
-
-        if      (order == 2 && AT == 1)
-            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
-        else if (order == 4 && AT == 1)
-        {
-            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
-            pfAssembler->options().setReal("cw",4.44847);
-        }
-        else if (order == 2 && AT == 2)
-            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
-        else if (order == 4 && AT == 2)
-            pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
-        else
-            GISMO_ERROR("Invalid order and/or AT model");
-
-        // Pre-assemble the phase-field operators that do not depend on the solution
-        pfAssembler->options().setReal("l0",l0);
-        pfAssembler->options().setReal("Gc",Gc);
-        pfAssembler->options().setReal("ExprAssembler.quA",1.0);
-        pfAssembler->options().setInt ("ExprAssembler.quB",0);
-        pfAssembler->options().setInt("ExprAssembler.DirichletValues",dirichlet::l2Projection);
-        pfAssembler->setSpaceBasis(mb);
-        pfAssembler->initialize();
-
-        // Construct Phase-Field solution vector from projected solution
-        pfAssembler->constructSolution(damage,D);
-
-        // Pre-assemble the phase-field operators that do not depend on the solution
-        pfAssembler->assembleMatrix();
-        pfAssembler->matrix_into(QPhi);
-        pfAssembler->assembleVector();
-        pfAssembler->rhs_into(q);
-
-        // Update the boundary conditions
-        displ.set_u(ucurr);
-        elAssembler.computeDirichletDofs(fixedSideDir); // NOTE: This computes the DDofs for **unknown** 1, which should be component 1. This is a bug in the gsElasticity assembler
-        fixedDofs = elAssembler.allFixedDofs();
-        elAssembler.setFixedDofs(fixedDofs);
-
-        gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
-        gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n\n";
-
-        deltaD.setZero(D.rows(),1);
-
-        for (index_t it=0; it!=maxIt; ++it)
-        {
-            elAssemblyTime = elSolverTime = 0.0;
-            pfAssemblyTime = pfSolverTime = 0.0;
-            iterationTime  = 0.0;
-            bigClock.restart();
-            gsInfo<<" - Staggered iteration "<<it<<":\n";
-            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
-
-            material.setParameter(2,damage);
-            // Pre-assemble the elasticity problem
-            smallClock.restart();
-            elAssembler.assemble(u,fixedDofs);
-            K = elAssembler.matrix();
-            F = elAssembler.rhs();
-            Fnorm = (F.norm() == 0) ? 1 : F.norm();
-            elAssemblyTime += smallClock.stop();
-            for (index_t elIt=0; elIt!=maxItEl; ++elIt)
+            if      (order == 2 && AT == 1)
+                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
+            else if (order == 4 && AT == 1)
             {
-                // Solve
-                smallClock.restart();
-                solver.compute(K);
-                u = solver.solve(F);
-                elSolverTime += smallClock.stop();
+                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
+                pfAssembler->options().setReal("cw",4.44847);
+            }
+            else if (order == 2 && AT == 2)
+                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
+            else if (order == 4 && AT == 2)
+                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
+            else
+                GISMO_ERROR("Invalid order and/or AT model");
 
+            // Pre-assemble the phase-field operators that do not depend on the solution
+            pfAssembler->options().setReal("l0",l0);
+            pfAssembler->options().setReal("Gc",Gc);
+            pfAssembler->options().setReal("ExprAssembler.quA",1.0);
+            pfAssembler->options().setInt ("ExprAssembler.quB",0);
+            pfAssembler->options().setInt("ExprAssembler.DirichletValues",dirichlet::l2Projection);
+            pfAssembler->setSpaceBasis(mb);
+            pfAssembler->initialize();
+
+            // Construct Phase-Field solution vector from projected solution
+            pfAssembler->constructSolution(damage,D);
+
+            // Pre-assemble the phase-field operators that do not depend on the solution
+            pfAssembler->assembleMatrix();
+            pfAssembler->matrix_into(QPhi);
+            pfAssembler->assembleVector();
+            pfAssembler->rhs_into(q);
+
+            // Update the boundary conditions
+            displ.set_u(ucurr);
+            elAssembler.computeDirichletDofs(fixedSideDir); // NOTE: This computes the DDofs for **unknown** 1, which should be component 1. This is a bug in the gsElasticity assembler
+            fixedDofs = elAssembler.allFixedDofs();
+            elAssembler.setFixedDofs(fixedDofs);
+
+            deltaD.setZero(D.rows(),1);
+
+            for (index_t it=0; it!=maxIt; ++it)
+            {
+                elAssemblyTime = elSolverTime = 0.0;
+                pfAssemblyTime = pfSolverTime = 0.0;
+                iterationTime  = 0.0;
+                bigClock.restart();
+                gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<it<<"--------------------------\n";
+                gsInfo<<"    ---------------------------------ELASTICITY----------------------------------\n";
+                gsInfo<<"    | "<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"|\n";
+
+                material.setParameter(2,damage);
+                // Pre-assemble the elasticity problem
                 smallClock.restart();
                 elAssembler.assemble(u,fixedDofs);
                 K = elAssembler.matrix();
                 F = elAssembler.rhs();
+                Fnorm = (F.norm() == 0) ? 1 : F.norm();
+                elAssemblyTime += smallClock.stop();
+                for (index_t elIt=0; elIt!=maxItEl; ++elIt)
+                {
+                    // Solve
+                    smallClock.restart();
+                    solver.compute(K);
+                    u = solver.solve(F);
+                    elSolverTime += smallClock.stop();
+
+                    smallClock.restart();
+                    elAssembler.assemble(u,fixedDofs);
+                    K = elAssembler.matrix();
+                    F = elAssembler.rhs();
+                    elAssemblyTime += smallClock.stop();
+                    Rnorm = (K*u - F).norm();
+                    gsInfo<<"    | "<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"|\n";
+
+                    if (Rnorm/* /F.norm() */ < tolEl || u.norm() < 1e-12)
+                        break;
+                    else if (elIt == maxItEl-1 && maxItEl != 1)
+                        GISMO_ERROR("Elasticity problem did not converge.");
+                }
+
+                elAssembler.setFixedDofs(fixedDofs);
+                elAssembler.constructSolution(u,fixedDofs,displacement);
+                for (size_t p=0; p!=mp.nPatches(); ++p)
+                    mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
+
+                // Initialize the function for the elastic energy
+                gsMaterialEval<T,gsMaterialOutput::Psi,true,true> Psi(&material,mp,mp_def);
+
+                // ==================================================================================
+
+                gsInfo<<"    ---------------------------------PHASE-FIELD---------------------------------\n";
+                gsInfo<<"    | "<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"|\n";
+
+                // Phase-field problem
+                smallClock.restart();
+                // gsInfo<<"Assembling phase-field problem"<<"\n";
+                pfAssembler->assemblePsiMatrix(Psi);
+                pfAssembler->matrix_into(QPsi);
+                pfAssembler->assemblePsiVector(Psi);
+                pfAssembler->rhs_into(qpsi);
+                Q = QPhi + QPsi;
+                // Reconstruct the solution from the damage field
+                pfAssembler->constructSolution(damage,D);
+                pfAssemblyTime = smallClock.stop();
+                // gsInfo<<". Done\n";
+
+                // Initialize the PSOR solver
+                smallClock.restart();
+                gsPSOR<T> PSORsolver(Q);
+                PSORsolver.options().setInt("MaxIterations",30000);
+                PSORsolver.options().setSwitch("Verbose",false);
+                PSORsolver.options().setReal("tolU",1e-4);
+                PSORsolver.options().setReal("tolNeg",1e-6);
+                PSORsolver.options().setReal("tolPos",1e-6);
+                pfSolverTime = smallClock.stop();
+                for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
+                {
+                    // Assemble
+                    smallClock.restart();
+                    R = Q * D - qpsi + q;
+                    pfAssemblyTime += smallClock.stop();
+
+                    // Solve
+                    smallClock.restart();
+                    // solver.compute(Q);
+                    // deltaD = solver.solve(-R);
+                    // gsDebugVar(deltaD.norm());
+                    PSORsolver.solve(R,deltaD); // deltaD = Q \ R
+                    pfSolverTime += smallClock.stop();
+                    D += deltaD;
+
+                    gsInfo<<"    | "<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"|\n";
+                    if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
+                        break;
+                    else if (pfIt == maxItPf-1 && maxItPf != 1)
+                        GISMO_ERROR("Phase-field problem did not converge.");
+                }
+
+                // Update damage spline
+                pfAssembler->constructSolution(D,damage);
+
+                smallClock.restart();
+                material.setParameter(2,damage);
+                elAssembler.assemble(u,fixedDofs);
+                K = elAssembler.matrix();
+                F = elAssembler.rhs();
+                Fnorm = (F.norm() == 0) ? 1 : F.norm();
                 elAssemblyTime += smallClock.stop();
                 Rnorm = (K*u - F).norm();
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
 
-                if (Rnorm/* /F.norm() */ < tolEl || u.norm() < 1e-12)
+                iterationTime = bigClock.stop();
+                gsInfo<<"    ----------------------------------FINISHED-----------------------------------\n";
+                gsInfo<<"    | "<<PRINT(6)<<"||R|| = "<<PRINT(14)<<Rnorm<<PRINT(20)<<"total time [s] = "<<PRINT(20)<<iterationTime<<"\n";
+                gsInfo<<"    | "<<PRINT(6)<<"||F|| = "<<PRINT(14)<<Fnorm<<PRINT(20)<<"elasticity time [s] = "<<PRINT(20)<<elAssemblyTime+elSolverTime<<"\n";
+                gsInfo<<"    | "<<PRINT(6)<<"||D|| = "<<PRINT(14)<<D.norm()<<PRINT(20)<<"phase-field time [s] = "<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
+                gsInfo<<"    -----------------------------------------------------------------------------\n";
+                if (Rnorm/* /Fnorm */ < tol)
                     break;
-                else if (elIt == maxItEl-1 && maxItEl != 1)
-                    GISMO_ERROR("Elasticity problem did not converge.");
+                else if (it == maxIt-1)
+                    GISMO_ERROR("Staggered iterations problem did not converge.");
             }
 
-            elAssembler.setFixedDofs(fixedDofs);
-            elAssembler.constructSolution(u,fixedDofs,displacement);
-            for (size_t p=0; p!=mp.nPatches(); ++p)
-                mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
+            gsInfo<<"\n";
+            gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<u.norm()<<"\n";
+            // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
-            // Initialize the function for the elastic energy
-            gsMaterialEval<T,gsMaterialOutput::Psi,true,true> Psi(&material,mp,mp_def);
-
-            // ==================================================================================
-
-            gsInfo<<"\t"<<PRINT(20)<<"* Phase-field:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
-
-            // Phase-field problem
-            smallClock.restart();
-            // gsInfo<<"Assembling phase-field problem"<<"\n";
-            pfAssembler->assemblePsiMatrix(Psi);
-            pfAssembler->matrix_into(QPsi);
-            pfAssembler->assemblePsiVector(Psi);
-            pfAssembler->rhs_into(qpsi);
-            Q = QPhi + QPsi;
-            // Reconstruct the solution from the damage field
-            pfAssembler->constructSolution(damage,D);
-            pfAssemblyTime = smallClock.stop();
-            // gsInfo<<". Done\n";
-
-            // Initialize the PSOR solver
-            smallClock.restart();
-            gsPSOR<T> PSORsolver(Q);
-            PSORsolver.options().setInt("MaxIterations",30000);
-            PSORsolver.options().setSwitch("Verbose",false);
-            PSORsolver.options().setReal("tolU",1e-4);
-            PSORsolver.options().setReal("tolNeg",1e-6);
-            PSORsolver.options().setReal("tolPos",1e-6);
-            pfSolverTime = smallClock.stop();
-            for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
+            // =========================================================================
+            // REFINE MESH
+            // All labelled elements are refined to the maximum level, step-by-step
+            for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
             {
-                // Assemble
-                smallClock.restart();
-                R = Q * D - qpsi + q;
-                pfAssemblyTime += smallClock.stop();
+                elVals = labelElements(mp, damage, mb,0.1,1.0);
+                if (gsAsVector<real_t>(elVals).sum() > 0)
+                    refineMesh(mb,elVals,mesherOptions);
 
-                // Solve
-                smallClock.restart();
-                // solver.compute(Q);
-                // deltaD = solver.solve(-R);
-                // gsDebugVar(deltaD.norm());
-                PSORsolver.solve(R,deltaD); // deltaD = Q \ R
-                pfSolverTime += smallClock.stop();
-                D += deltaD;
-
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
-                if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
+                basis_size = mb.basis(0).size();
+                refined = basis_size > basis_size_old;
+                if (!refined)
                     break;
-                else if (pfIt == maxItPf-1 && maxItPf != 1)
-                    GISMO_ERROR("Phase-field problem did not converge.");
             }
+            basis_size_ratio = basis_size/basis_size_old;
+            gsInfo<<"Old mesh size: "<<basis_size_old<<", new mesh size: "<<basis_size<<", ratio = "<<basis_size_ratio<<"\n";
+            refined &= basis_size_ratio > 1.05;
 
-            // Update damage spline
-            pfAssembler->constructSolution(D,damage);
-
-            smallClock.restart();
-            material.setParameter(2,damage);
-            elAssembler.assemble(u,fixedDofs);
-            K = elAssembler.matrix();
-            F = elAssembler.rhs();
-            Fnorm = (F.norm() == 0) ? 1 : F.norm();
-            elAssemblyTime += smallClock.stop();
-            Rnorm = (K*u - F).norm();
-
-            iterationTime = bigClock.stop();
-            gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
-            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<Rnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
-            if (Rnorm/* /Fnorm */ < tol)
-                break;
-            else if (it == maxIt-1)
-                GISMO_ERROR("Staggered iterations problem did not converge.");
+            // =========================================================================
+            // PROJECT SOLUTIONS
+            gsMatrix<> projCoefs;
+            // Geometry
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
+            mp.clear();
+            mp.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            mp_def = mp;
+            // Displacement
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement.patch(0),projCoefs);
+            displacement.clear();
+            displacement.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement_old.patch(0),projCoefs);
+            displacement_old.clear();
+            displacement_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            // Damage
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
+            damage.clear();
+            damage.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
+            damage_old.clear();
+            damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
         }
-
-        // =========================================================================
-        // Compute resulting force and energies
-        gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
-        fullElAssembler.assemble(ufull,dummyFixedDofs);
-        gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
-        gsDofMapper mapper(mb,dim);
-        mapper.finalize();
-        gsMatrix<index_t> boundary = mb.basis(0).boundary(fixedSideId);
-        T Fx = 0, Fy = 0;
-        for (index_t k=0; k!=boundary.size(); k++)
-        {
-            Fx += Rfull(mapper.index(boundary(k,0),0,0),0); // DoF index, patch, component
-            Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
-        }
-
-        std::vector<real_t> stepData(7);
-        stepData[0] = ucurr;
-        stepData[1] = Fx;
-        stepData[2] = Fy;
-        stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
-        stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-        stepData[5] = mb.totalSize();
-        stepData[6] = mb.totalElements();
-
-        gsInfo<<"\n";
-        gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<u.norm()<<"\n";
-        // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================
         // PLOT
@@ -640,6 +651,38 @@ void solve(gsOptionList & materialParameters,
         }
 
         // =========================================================================
+
+        // =========================================================================
+        gsElasticityAssembler<real_t> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
+        fullElAssembler.options().setReal("quA",1.0);
+        fullElAssembler.options().setInt ("quB",0);
+        fullElAssembler.options().setSwitch ("SmallStrains",true);
+        dummyFixedDofs = fullElAssembler.allFixedDofs();
+
+        // Compute resulting force and energies
+        gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
+        fullElAssembler.assemble(ufull,dummyFixedDofs);
+        gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
+        gsDofMapper mapper(mb,dim);
+        mapper.finalize();
+        gsMatrix<index_t> boundary = mb.basis(0).boundary(fixedSideId);
+        T Fx = 0, Fy = 0;
+        for (index_t k=0; k!=boundary.size(); k++)
+        {
+            Fx += Rfull(mapper.index(boundary(k,0),0,0),0); // DoF index, patch, component
+            Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
+        }
+
+        std::vector<real_t> stepData(7);
+        stepData[0] = ucurr;
+        stepData[1] = Fx;
+        stepData[2] = Fy;
+        stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
+        stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
+        stepData[5] = mb.totalSize();
+        stepData[6] = mb.totalElements();
+
+
         // Write data
         std::ofstream file(outputdir+"results.txt",std::ios::app);
         // for (size_t i = 0; i != data.size(); ++i)
@@ -648,21 +691,10 @@ void solve(gsOptionList & materialParameters,
         file.close();
 
         // =========================================================================
-        // REFINE MESH
-        // All labelled elements are refined to the maximum level, step-by-step
-        refined = false;
-        for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
-        {
-            elVals = labelElements(mp, damage, mb,0.1,1.0);
-            refined |= gsAsVector<real_t>(elVals).sum() > 0;
-            if (gsAsVector<real_t>(elVals).sum())
-                refineMesh(mb,elVals,mesherOptions);
-            else
-                break;
-        }
-
-        // =========================================================================
         // INCREMENT STEP
+
+        displacement_old = displacement;
+        damage_old = damage;
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         step++;
@@ -670,6 +702,7 @@ void solve(gsOptionList & materialParameters,
 
     if (plot)
     {
+        meshCollection.save();
         damageCollection.save();
         psiCollection.save();
         displCollection.save();
