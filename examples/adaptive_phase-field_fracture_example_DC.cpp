@@ -380,7 +380,7 @@ void solve(gsOptionList & materialParameters,
     std::vector<std::vector<T>> data;
 
     std::ofstream file(outputdir+"results.txt");
-    file<<"u,Fx,Fy,E_u,E_d,basis_size,num_elements\n";
+    file<<"u,Fx,Fy,E_u,E_d,basis_size,num_elements,refIt\n";
     file.close();
 
     std::vector<gsMatrix<> > fixedDofs;
@@ -394,11 +394,12 @@ void solve(gsOptionList & materialParameters,
     {
         bool refined = true;
         index_t basis_size_old, basis_size;
+        index_t refIt = 0;
         T basis_size_ratio;
         gsInfo<<"===========================================================================================================================\n";
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
         // Refinement iterations
-        for (index_t refIt = 0; refIt!=3 && refined; refIt++)
+        for (refIt = 0; refIt!=3 && refined; refIt++)
         {
             basis_size = basis_size_old = mb.basis(0).size();
             gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
@@ -592,7 +593,7 @@ void solve(gsOptionList & materialParameters,
                 if (!refined)
                     break;
             }
-            basis_size_ratio = basis_size/basis_size_old;
+            basis_size_ratio = (T)basis_size/basis_size_old;
             gsInfo<<"Old mesh size: "<<basis_size_old<<", new mesh size: "<<basis_size<<", ratio = "<<basis_size_ratio<<"\n";
             refined &= basis_size_ratio > 1.05;
 
@@ -673,7 +674,7 @@ void solve(gsOptionList & materialParameters,
             Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
         }
 
-        std::vector<real_t> stepData(7);
+        std::vector<real_t> stepData(8);
         stepData[0] = ucurr;
         stepData[1] = Fx;
         stepData[2] = Fy;
@@ -681,13 +682,14 @@ void solve(gsOptionList & materialParameters,
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
         stepData[5] = mb.totalSize();
         stepData[6] = mb.totalElements();
+        stepData[7] = refIt;;
 
 
         // Write data
         std::ofstream file(outputdir+"results.txt",std::ios::app);
         // for (size_t i = 0; i != data.size(); ++i)
         //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
-        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<"\n";
+        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<","<<stepData[7]<<"\n";
         file.close();
 
         // =========================================================================
