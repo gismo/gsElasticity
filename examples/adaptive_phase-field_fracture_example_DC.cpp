@@ -387,9 +387,9 @@ void solve(gsOptionList & materialParameters,
     std::vector<gsMatrix<> > dummyFixedDofs;
     real_t Rnorm, Fnorm;
     Rnorm = Fnorm = 1;
-    gsMultiPatch<> displacement_old, damage_old;
-    displacement_old = displacement;
-    damage_old = damage;
+    // gsMultiPatch<> displacement_old, damage_old;
+    // displacement_old = displacement;
+    // damage_old = damage;
     while (ucurr<=uend)
     {
         bool refined = true;
@@ -399,7 +399,7 @@ void solve(gsOptionList & materialParameters,
         gsInfo<<"===========================================================================================================================\n";
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
         // Refinement iterations
-        for (refIt = 0; refIt!=3 && refined; refIt++)
+        for (refIt = 0; refIt!=mesherOptions.askInt("MaxRefIterations",5) && refined; refIt++)
         {
             basis_size = basis_size_old = mb.basis(0).size();
             gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
@@ -595,7 +595,7 @@ void solve(gsOptionList & materialParameters,
             }
             basis_size_ratio = (T)basis_size/basis_size_old;
             gsInfo<<"Old mesh size: "<<basis_size_old<<", new mesh size: "<<basis_size<<", ratio = "<<basis_size_ratio<<"\n";
-            refined &= basis_size_ratio > 1.05;
+            refined &= basis_size_ratio > mesherOptions.askReal("SizeRatio",1.05);
 
             // =========================================================================
             // PROJECT SOLUTIONS
@@ -609,16 +609,16 @@ void solve(gsOptionList & materialParameters,
             gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement.patch(0),projCoefs);
             displacement.clear();
             displacement.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement_old.patch(0),projCoefs);
-            displacement_old.clear();
-            displacement_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            // gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement_old.patch(0),projCoefs);
+            // displacement_old.clear();
+            // displacement_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
             // Damage
             gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
             damage.clear();
             damage.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
-            damage_old.clear();
-            damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            // gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
+            // damage_old.clear();
+            // damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
         }
 
         // =========================================================================
@@ -695,8 +695,8 @@ void solve(gsOptionList & materialParameters,
         // =========================================================================
         // INCREMENT STEP
 
-        displacement_old = displacement;
-        damage_old = damage;
+        // displacement_old = displacement;
+        // damage_old = damage;
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         step++;
