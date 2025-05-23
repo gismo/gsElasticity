@@ -1,0 +1,4625 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 25.1.0-->
+<xml>
+ <Geometry type="THBSpline2" id="0">
+  <Basis type="THBSplineBasis2" manualLevels="false">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 0.05555555555555555 0.1111111111111111 0.1666666666666667 0.2222222222222222 0.2777777777777778 0.3333333333333333 0.3888888888888888 0.4444444444444444 0.5 0.5555555555555556 0.611111111111111 0.6666666666666666 0.7222222222222222 0.7777777777777777 0.8333333333333333 0.8888888888888888 0.9444444444444444 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 0.05555555555555555 0.1111111111111111 0.1666666666666667 0.2222222222222222 0.2777777777777778 0.3333333333333333 0.3888888888888888 0.4444444444444444 0.5 0.5555555555555556 0.611111111111111 0.6666666666666666 0.7222222222222222 0.7777777777777777 0.8333333333333333 0.8888888888888888 0.9444444444444444 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <box level="1">
+    22 22 24 24 
+   </box>
+   <box level="1">
+    22 20 24 22 
+   </box>
+   <box level="1">
+    22 18 24 20 
+   </box>
+   <box level="1">
+    22 16 24 18 
+   </box>
+   <box level="1">
+    22 14 24 16 
+   </box>
+   <box level="1">
+    22 12 24 14 
+   </box>
+   <box level="1">
+    20 22 22 24 
+   </box>
+   <box level="1">
+    21 20 22 22 
+   </box>
+   <box level="1">
+    20 21 21 22 
+   </box>
+   <box level="2">
+    40 40 42 42 
+   </box>
+   <box level="1">
+    21 18 22 20 
+   </box>
+   <box level="2">
+    40 36 42 40 
+   </box>
+   <box level="1">
+    21 16 22 18 
+   </box>
+   <box level="2">
+    40 32 42 36 
+   </box>
+   <box level="1">
+    21 14 22 16 
+   </box>
+   <box level="2">
+    40 30 42 32 
+   </box>
+   <box level="1">
+    20 14 21 15 
+   </box>
+   <box level="1">
+    20 12 22 14 
+   </box>
+   <box level="1">
+    18 22 20 24 
+   </box>
+   <box level="1">
+    19 21 20 22 
+   </box>
+   <box level="2">
+    38 40 40 42 
+   </box>
+   <box level="1">
+    18 21 19 22 
+   </box>
+   <box level="2">
+    36 40 38 42 
+   </box>
+   <box level="2">
+    39 36 40 40 
+   </box>
+   <box level="2">
+    38 39 39 40 
+   </box>
+   <box level="3">
+    76 76 78 78 
+   </box>
+   <box level="3">
+    76 72 78 76 
+   </box>
+   <box level="2">
+    37 39 38 40 
+   </box>
+   <box level="3">
+    74 76 76 78 
+   </box>
+   <box level="2">
+    36 39 37 40 
+   </box>
+   <box level="3">
+    72 76 74 78 
+   </box>
+   <box level="3">
+    75 72 76 76 
+   </box>
+   <box level="3">
+    74 75 75 76 
+   </box>
+   <box level="4">
+    148 148 150 150 
+   </box>
+   <box level="4">
+    148 144 150 148 
+   </box>
+   <box level="3">
+    73 75 74 76 
+   </box>
+   <box level="4">
+    146 148 148 150 
+   </box>
+   <box level="3">
+    72 75 73 76 
+   </box>
+   <box level="4">
+    144 148 146 150 
+   </box>
+   <box level="4">
+    144 144 148 148 
+   </box>
+   <box level="2">
+    39 32 40 36 
+   </box>
+   <box level="3">
+    76 66 78 72 
+   </box>
+   <box level="2">
+    38 32 39 33 
+   </box>
+   <box level="3">
+    75 68 76 72 
+   </box>
+   <box level="4">
+    148 138 150 144 
+   </box>
+   <box level="3">
+    74 68 75 69 
+   </box>
+   <box level="4">
+    146 138 148 144 
+   </box>
+   <box level="3">
+    73 68 74 69 
+   </box>
+   <box level="4">
+    144 138 146 144 
+   </box>
+   <box level="3">
+    72 68 73 69 
+   </box>
+   <box level="3">
+    74 66 76 68 
+   </box>
+   <box level="2">
+    37 32 38 33 
+   </box>
+   <box level="3">
+    72 66 74 68 
+   </box>
+   <box level="2">
+    36 32 37 33 
+   </box>
+   <box level="2">
+    38 30 40 32 
+   </box>
+   <box level="1">
+    19 14 20 15 
+   </box>
+   <box level="2">
+    36 30 38 32 
+   </box>
+   <box level="1">
+    18 14 19 15 
+   </box>
+   <box level="1">
+    18 12 20 14 
+   </box>
+   <box level="1">
+    16 22 18 24 
+   </box>
+   <box level="1">
+    17 21 18 22 
+   </box>
+   <box level="2">
+    34 40 36 42 
+   </box>
+   <box level="1">
+    16 21 17 22 
+   </box>
+   <box level="2">
+    32 40 34 42 
+   </box>
+   <box level="2">
+    35 39 36 40 
+   </box>
+   <box level="3">
+    70 76 72 78 
+   </box>
+   <box level="2">
+    34 39 35 40 
+   </box>
+   <box level="3">
+    68 76 70 78 
+   </box>
+   <box level="3">
+    71 75 72 76 
+   </box>
+   <box level="4">
+    142 148 144 150 
+   </box>
+   <box level="3">
+    70 75 71 76 
+   </box>
+   <box level="4">
+    140 148 142 150 
+   </box>
+   <box level="4">
+    140 144 144 148 
+   </box>
+   <box level="3">
+    69 75 70 76 
+   </box>
+   <box level="4">
+    138 148 140 150 
+   </box>
+   <box level="3">
+    68 75 69 76 
+   </box>
+   <box level="4">
+    136 148 138 150 
+   </box>
+   <box level="4">
+    136 144 140 148 
+   </box>
+   <box level="2">
+    33 39 34 40 
+   </box>
+   <box level="3">
+    66 76 68 78 
+   </box>
+   <box level="2">
+    32 39 33 40 
+   </box>
+   <box level="3">
+    64 76 66 78 
+   </box>
+   <box level="3">
+    67 75 68 76 
+   </box>
+   <box level="4">
+    134 148 136 150 
+   </box>
+   <box level="3">
+    66 75 67 76 
+   </box>
+   <box level="4">
+    132 148 134 150 
+   </box>
+   <box level="4">
+    132 144 136 148 
+   </box>
+   <box level="3">
+    65 75 66 76 
+   </box>
+   <box level="4">
+    130 148 132 150 
+   </box>
+   <box level="3">
+    64 75 65 76 
+   </box>
+   <box level="4">
+    128 148 130 150 
+   </box>
+   <box level="4">
+    128 144 132 148 
+   </box>
+   <box level="4">
+    142 138 144 144 
+   </box>
+   <box level="3">
+    71 68 72 69 
+   </box>
+   <box level="4">
+    140 138 142 144 
+   </box>
+   <box level="3">
+    70 68 71 69 
+   </box>
+   <box level="4">
+    138 138 140 144 
+   </box>
+   <box level="3">
+    69 68 70 69 
+   </box>
+   <box level="4">
+    136 138 138 144 
+   </box>
+   <box level="3">
+    68 68 69 69 
+   </box>
+   <box level="3">
+    70 66 72 68 
+   </box>
+   <box level="2">
+    35 32 36 33 
+   </box>
+   <box level="3">
+    68 66 70 68 
+   </box>
+   <box level="2">
+    34 32 35 33 
+   </box>
+   <box level="4">
+    134 138 136 144 
+   </box>
+   <box level="3">
+    67 68 68 69 
+   </box>
+   <box level="4">
+    132 138 134 144 
+   </box>
+   <box level="3">
+    66 68 67 69 
+   </box>
+   <box level="4">
+    130 138 132 144 
+   </box>
+   <box level="3">
+    65 68 66 69 
+   </box>
+   <box level="4">
+    128 138 130 144 
+   </box>
+   <box level="3">
+    64 68 65 69 
+   </box>
+   <box level="3">
+    66 66 68 68 
+   </box>
+   <box level="2">
+    33 32 34 33 
+   </box>
+   <box level="3">
+    64 66 66 68 
+   </box>
+   <box level="2">
+    32 32 33 33 
+   </box>
+   <box level="2">
+    34 30 36 32 
+   </box>
+   <box level="1">
+    17 14 18 15 
+   </box>
+   <box level="2">
+    32 30 34 32 
+   </box>
+   <box level="1">
+    16 14 17 15 
+   </box>
+   <box level="1">
+    16 12 18 14 
+   </box>
+   <box level="1">
+    14 22 16 24 
+   </box>
+   <box level="1">
+    15 21 16 22 
+   </box>
+   <box level="2">
+    30 40 32 42 
+   </box>
+   <box level="1">
+    14 21 15 22 
+   </box>
+   <box level="2">
+    28 40 30 42 
+   </box>
+   <box level="2">
+    31 39 32 40 
+   </box>
+   <box level="3">
+    62 76 64 78 
+   </box>
+   <box level="2">
+    30 39 31 40 
+   </box>
+   <box level="3">
+    60 76 62 78 
+   </box>
+   <box level="3">
+    63 75 64 76 
+   </box>
+   <box level="4">
+    126 148 128 150 
+   </box>
+   <box level="3">
+    62 75 63 76 
+   </box>
+   <box level="4">
+    124 148 126 150 
+   </box>
+   <box level="4">
+    124 144 128 148 
+   </box>
+   <box level="3">
+    61 75 62 76 
+   </box>
+   <box level="4">
+    122 148 124 150 
+   </box>
+   <box level="3">
+    60 75 61 76 
+   </box>
+   <box level="4">
+    120 148 122 150 
+   </box>
+   <box level="4">
+    120 144 124 148 
+   </box>
+   <box level="2">
+    29 39 30 40 
+   </box>
+   <box level="3">
+    58 76 60 78 
+   </box>
+   <box level="2">
+    28 39 29 40 
+   </box>
+   <box level="3">
+    56 76 58 78 
+   </box>
+   <box level="3">
+    59 75 60 76 
+   </box>
+   <box level="4">
+    118 148 120 150 
+   </box>
+   <box level="3">
+    58 75 59 76 
+   </box>
+   <box level="4">
+    116 148 118 150 
+   </box>
+   <box level="4">
+    116 144 120 148 
+   </box>
+   <box level="3">
+    57 75 58 76 
+   </box>
+   <box level="4">
+    114 148 116 150 
+   </box>
+   <box level="3">
+    56 75 57 76 
+   </box>
+   <box level="4">
+    112 148 114 150 
+   </box>
+   <box level="4">
+    112 144 116 148 
+   </box>
+   <box level="4">
+    126 138 128 144 
+   </box>
+   <box level="3">
+    63 68 64 69 
+   </box>
+   <box level="4">
+    124 138 126 144 
+   </box>
+   <box level="3">
+    62 68 63 69 
+   </box>
+   <box level="4">
+    122 138 124 144 
+   </box>
+   <box level="3">
+    61 68 62 69 
+   </box>
+   <box level="4">
+    120 138 122 144 
+   </box>
+   <box level="3">
+    60 68 61 69 
+   </box>
+   <box level="3">
+    62 66 64 68 
+   </box>
+   <box level="2">
+    31 32 32 33 
+   </box>
+   <box level="3">
+    60 66 62 68 
+   </box>
+   <box level="2">
+    30 32 31 33 
+   </box>
+   <box level="4">
+    118 138 120 144 
+   </box>
+   <box level="3">
+    59 68 60 69 
+   </box>
+   <box level="4">
+    116 138 118 144 
+   </box>
+   <box level="3">
+    58 68 59 69 
+   </box>
+   <box level="4">
+    114 138 116 144 
+   </box>
+   <box level="3">
+    57 68 58 69 
+   </box>
+   <box level="4">
+    112 138 114 144 
+   </box>
+   <box level="3">
+    56 68 57 69 
+   </box>
+   <box level="3">
+    58 66 60 68 
+   </box>
+   <box level="2">
+    29 32 30 33 
+   </box>
+   <box level="3">
+    56 66 58 68 
+   </box>
+   <box level="2">
+    28 32 29 33 
+   </box>
+   <box level="2">
+    30 30 32 32 
+   </box>
+   <box level="1">
+    15 14 16 15 
+   </box>
+   <box level="2">
+    28 30 30 32 
+   </box>
+   <box level="1">
+    14 14 15 15 
+   </box>
+   <box level="1">
+    14 12 16 14 
+   </box>
+   <box level="1">
+    12 22 14 24 
+   </box>
+   <box level="1">
+    13 21 14 22 
+   </box>
+   <box level="2">
+    26 40 28 42 
+   </box>
+   <box level="1">
+    12 21 13 22 
+   </box>
+   <box level="2">
+    24 40 26 42 
+   </box>
+   <box level="2">
+    27 39 28 40 
+   </box>
+   <box level="3">
+    54 76 56 78 
+   </box>
+   <box level="2">
+    26 39 27 40 
+   </box>
+   <box level="3">
+    52 76 54 78 
+   </box>
+   <box level="3">
+    55 75 56 76 
+   </box>
+   <box level="4">
+    110 148 112 150 
+   </box>
+   <box level="3">
+    54 75 55 76 
+   </box>
+   <box level="4">
+    108 148 110 150 
+   </box>
+   <box level="4">
+    108 144 112 148 
+   </box>
+   <box level="3">
+    53 75 54 76 
+   </box>
+   <box level="4">
+    106 148 108 150 
+   </box>
+   <box level="3">
+    52 75 53 76 
+   </box>
+   <box level="4">
+    104 148 106 150 
+   </box>
+   <box level="4">
+    104 144 108 148 
+   </box>
+   <box level="2">
+    25 39 26 40 
+   </box>
+   <box level="3">
+    50 76 52 78 
+   </box>
+   <box level="2">
+    24 39 25 40 
+   </box>
+   <box level="3">
+    48 76 50 78 
+   </box>
+   <box level="3">
+    51 75 52 76 
+   </box>
+   <box level="4">
+    102 148 104 150 
+   </box>
+   <box level="3">
+    50 75 51 76 
+   </box>
+   <box level="4">
+    100 148 102 150 
+   </box>
+   <box level="4">
+    100 144 104 148 
+   </box>
+   <box level="3">
+    49 75 50 76 
+   </box>
+   <box level="4">
+    98 148 100 150 
+   </box>
+   <box level="3">
+    48 75 49 76 
+   </box>
+   <box level="4">
+    96 148 98 150 
+   </box>
+   <box level="4">
+    96 144 100 148 
+   </box>
+   <box level="4">
+    110 138 112 144 
+   </box>
+   <box level="3">
+    55 68 56 69 
+   </box>
+   <box level="4">
+    108 138 110 144 
+   </box>
+   <box level="3">
+    54 68 55 69 
+   </box>
+   <box level="4">
+    106 138 108 144 
+   </box>
+   <box level="3">
+    53 68 54 69 
+   </box>
+   <box level="4">
+    104 138 106 144 
+   </box>
+   <box level="3">
+    52 68 53 69 
+   </box>
+   <box level="3">
+    54 66 56 68 
+   </box>
+   <box level="2">
+    27 32 28 33 
+   </box>
+   <box level="3">
+    52 66 54 68 
+   </box>
+   <box level="2">
+    26 32 27 33 
+   </box>
+   <box level="4">
+    102 138 104 144 
+   </box>
+   <box level="3">
+    51 68 52 69 
+   </box>
+   <box level="4">
+    100 138 102 144 
+   </box>
+   <box level="3">
+    50 68 51 69 
+   </box>
+   <box level="4">
+    98 138 100 144 
+   </box>
+   <box level="3">
+    49 68 50 69 
+   </box>
+   <box level="4">
+    96 138 98 144 
+   </box>
+   <box level="3">
+    48 68 49 69 
+   </box>
+   <box level="3">
+    50 66 52 68 
+   </box>
+   <box level="2">
+    25 32 26 33 
+   </box>
+   <box level="3">
+    48 66 50 68 
+   </box>
+   <box level="2">
+    24 32 25 33 
+   </box>
+   <box level="2">
+    26 30 28 32 
+   </box>
+   <box level="1">
+    13 14 14 15 
+   </box>
+   <box level="2">
+    24 30 26 32 
+   </box>
+   <box level="1">
+    12 14 13 15 
+   </box>
+   <box level="1">
+    12 12 14 14 
+   </box>
+   <box level="1">
+    10 22 12 24 
+   </box>
+   <box level="1">
+    11 21 12 22 
+   </box>
+   <box level="2">
+    22 40 24 42 
+   </box>
+   <box level="1">
+    10 21 11 22 
+   </box>
+   <box level="2">
+    20 40 22 42 
+   </box>
+   <box level="2">
+    23 39 24 40 
+   </box>
+   <box level="3">
+    46 76 48 78 
+   </box>
+   <box level="2">
+    22 39 23 40 
+   </box>
+   <box level="3">
+    44 76 46 78 
+   </box>
+   <box level="3">
+    47 75 48 76 
+   </box>
+   <box level="4">
+    94 148 96 150 
+   </box>
+   <box level="3">
+    46 75 47 76 
+   </box>
+   <box level="4">
+    92 148 94 150 
+   </box>
+   <box level="4">
+    92 144 96 148 
+   </box>
+   <box level="3">
+    45 75 46 76 
+   </box>
+   <box level="4">
+    90 148 92 150 
+   </box>
+   <box level="3">
+    44 75 45 76 
+   </box>
+   <box level="4">
+    88 148 90 150 
+   </box>
+   <box level="4">
+    88 144 92 148 
+   </box>
+   <box level="2">
+    21 39 22 40 
+   </box>
+   <box level="3">
+    42 76 44 78 
+   </box>
+   <box level="2">
+    20 39 21 40 
+   </box>
+   <box level="3">
+    40 76 42 78 
+   </box>
+   <box level="3">
+    43 75 44 76 
+   </box>
+   <box level="4">
+    86 148 88 150 
+   </box>
+   <box level="3">
+    42 75 43 76 
+   </box>
+   <box level="4">
+    84 148 86 150 
+   </box>
+   <box level="4">
+    84 144 88 148 
+   </box>
+   <box level="3">
+    41 75 42 76 
+   </box>
+   <box level="4">
+    82 148 84 150 
+   </box>
+   <box level="3">
+    40 75 41 76 
+   </box>
+   <box level="4">
+    80 148 82 150 
+   </box>
+   <box level="4">
+    80 144 84 148 
+   </box>
+   <box level="4">
+    94 138 96 144 
+   </box>
+   <box level="3">
+    47 68 48 69 
+   </box>
+   <box level="4">
+    92 138 94 144 
+   </box>
+   <box level="3">
+    46 68 47 69 
+   </box>
+   <box level="4">
+    90 138 92 144 
+   </box>
+   <box level="3">
+    45 68 46 69 
+   </box>
+   <box level="4">
+    88 138 90 144 
+   </box>
+   <box level="3">
+    44 68 45 69 
+   </box>
+   <box level="3">
+    46 66 48 68 
+   </box>
+   <box level="2">
+    23 32 24 33 
+   </box>
+   <box level="3">
+    44 66 46 68 
+   </box>
+   <box level="2">
+    22 32 23 33 
+   </box>
+   <box level="4">
+    86 138 88 144 
+   </box>
+   <box level="3">
+    43 68 44 69 
+   </box>
+   <box level="4">
+    84 138 86 144 
+   </box>
+   <box level="3">
+    42 68 43 69 
+   </box>
+   <box level="4">
+    82 138 84 144 
+   </box>
+   <box level="3">
+    41 68 42 69 
+   </box>
+   <box level="4">
+    80 138 82 144 
+   </box>
+   <box level="3">
+    40 68 41 69 
+   </box>
+   <box level="3">
+    42 66 44 68 
+   </box>
+   <box level="2">
+    21 32 22 33 
+   </box>
+   <box level="3">
+    40 66 42 68 
+   </box>
+   <box level="2">
+    20 32 21 33 
+   </box>
+   <box level="2">
+    22 30 24 32 
+   </box>
+   <box level="1">
+    11 14 12 15 
+   </box>
+   <box level="2">
+    20 30 22 32 
+   </box>
+   <box level="1">
+    10 14 11 15 
+   </box>
+   <box level="1">
+    10 12 12 14 
+   </box>
+   <box level="1">
+    8 22 10 24 
+   </box>
+   <box level="1">
+    9 21 10 22 
+   </box>
+   <box level="2">
+    18 40 20 42 
+   </box>
+   <box level="1">
+    8 21 9 22 
+   </box>
+   <box level="2">
+    16 40 18 42 
+   </box>
+   <box level="2">
+    19 39 20 40 
+   </box>
+   <box level="3">
+    38 76 40 78 
+   </box>
+   <box level="2">
+    18 39 19 40 
+   </box>
+   <box level="3">
+    36 76 38 78 
+   </box>
+   <box level="3">
+    39 75 40 76 
+   </box>
+   <box level="4">
+    78 148 80 150 
+   </box>
+   <box level="3">
+    38 75 39 76 
+   </box>
+   <box level="4">
+    76 148 78 150 
+   </box>
+   <box level="4">
+    76 144 80 148 
+   </box>
+   <box level="3">
+    37 75 38 76 
+   </box>
+   <box level="4">
+    74 148 76 150 
+   </box>
+   <box level="3">
+    36 75 37 76 
+   </box>
+   <box level="4">
+    72 148 74 150 
+   </box>
+   <box level="4">
+    72 144 76 148 
+   </box>
+   <box level="2">
+    17 39 18 40 
+   </box>
+   <box level="3">
+    34 76 36 78 
+   </box>
+   <box level="2">
+    16 39 17 40 
+   </box>
+   <box level="3">
+    32 76 34 78 
+   </box>
+   <box level="3">
+    35 75 36 76 
+   </box>
+   <box level="4">
+    70 148 72 150 
+   </box>
+   <box level="3">
+    34 75 35 76 
+   </box>
+   <box level="4">
+    68 148 70 150 
+   </box>
+   <box level="4">
+    68 144 72 148 
+   </box>
+   <box level="3">
+    33 75 34 76 
+   </box>
+   <box level="4">
+    66 148 68 150 
+   </box>
+   <box level="3">
+    32 75 33 76 
+   </box>
+   <box level="4">
+    64 148 66 150 
+   </box>
+   <box level="4">
+    64 144 68 148 
+   </box>
+   <box level="4">
+    78 138 80 144 
+   </box>
+   <box level="3">
+    39 68 40 69 
+   </box>
+   <box level="4">
+    76 138 78 144 
+   </box>
+   <box level="3">
+    38 68 39 69 
+   </box>
+   <box level="4">
+    74 138 76 144 
+   </box>
+   <box level="3">
+    37 68 38 69 
+   </box>
+   <box level="4">
+    72 138 74 144 
+   </box>
+   <box level="3">
+    36 68 37 69 
+   </box>
+   <box level="3">
+    38 66 40 68 
+   </box>
+   <box level="2">
+    19 32 20 33 
+   </box>
+   <box level="3">
+    36 66 38 68 
+   </box>
+   <box level="2">
+    18 32 19 33 
+   </box>
+   <box level="4">
+    70 138 72 144 
+   </box>
+   <box level="3">
+    35 68 36 69 
+   </box>
+   <box level="4">
+    68 138 70 144 
+   </box>
+   <box level="3">
+    34 68 35 69 
+   </box>
+   <box level="4">
+    66 138 68 144 
+   </box>
+   <box level="3">
+    33 68 34 69 
+   </box>
+   <box level="4">
+    64 138 66 144 
+   </box>
+   <box level="3">
+    32 68 33 69 
+   </box>
+   <box level="3">
+    34 66 36 68 
+   </box>
+   <box level="2">
+    17 32 18 33 
+   </box>
+   <box level="3">
+    32 66 34 68 
+   </box>
+   <box level="2">
+    16 32 17 33 
+   </box>
+   <box level="2">
+    18 30 20 32 
+   </box>
+   <box level="1">
+    9 14 10 15 
+   </box>
+   <box level="2">
+    16 30 18 32 
+   </box>
+   <box level="1">
+    8 14 9 15 
+   </box>
+   <box level="1">
+    8 12 10 14 
+   </box>
+   <box level="1">
+    6 22 8 24 
+   </box>
+   <box level="1">
+    7 21 8 22 
+   </box>
+   <box level="2">
+    14 40 16 42 
+   </box>
+   <box level="1">
+    6 21 7 22 
+   </box>
+   <box level="2">
+    12 40 14 42 
+   </box>
+   <box level="2">
+    15 39 16 40 
+   </box>
+   <box level="3">
+    30 76 32 78 
+   </box>
+   <box level="2">
+    14 39 15 40 
+   </box>
+   <box level="3">
+    28 76 30 78 
+   </box>
+   <box level="3">
+    31 75 32 76 
+   </box>
+   <box level="4">
+    62 148 64 150 
+   </box>
+   <box level="3">
+    30 75 31 76 
+   </box>
+   <box level="4">
+    60 148 62 150 
+   </box>
+   <box level="4">
+    60 144 64 148 
+   </box>
+   <box level="3">
+    29 75 30 76 
+   </box>
+   <box level="4">
+    58 148 60 150 
+   </box>
+   <box level="3">
+    28 75 29 76 
+   </box>
+   <box level="4">
+    56 148 58 150 
+   </box>
+   <box level="4">
+    56 144 60 148 
+   </box>
+   <box level="2">
+    13 39 14 40 
+   </box>
+   <box level="3">
+    26 76 28 78 
+   </box>
+   <box level="2">
+    12 39 13 40 
+   </box>
+   <box level="3">
+    24 76 26 78 
+   </box>
+   <box level="3">
+    27 75 28 76 
+   </box>
+   <box level="4">
+    54 148 56 150 
+   </box>
+   <box level="3">
+    26 75 27 76 
+   </box>
+   <box level="4">
+    52 148 54 150 
+   </box>
+   <box level="4">
+    52 144 56 148 
+   </box>
+   <box level="3">
+    25 75 26 76 
+   </box>
+   <box level="4">
+    50 148 52 150 
+   </box>
+   <box level="3">
+    24 75 25 76 
+   </box>
+   <box level="4">
+    48 148 50 150 
+   </box>
+   <box level="4">
+    48 144 52 148 
+   </box>
+   <box level="4">
+    62 138 64 144 
+   </box>
+   <box level="3">
+    31 68 32 69 
+   </box>
+   <box level="4">
+    60 138 62 144 
+   </box>
+   <box level="3">
+    30 68 31 69 
+   </box>
+   <box level="4">
+    58 138 60 144 
+   </box>
+   <box level="3">
+    29 68 30 69 
+   </box>
+   <box level="4">
+    56 138 58 144 
+   </box>
+   <box level="3">
+    28 68 29 69 
+   </box>
+   <box level="3">
+    30 66 32 68 
+   </box>
+   <box level="2">
+    15 32 16 33 
+   </box>
+   <box level="3">
+    28 66 30 68 
+   </box>
+   <box level="2">
+    14 32 15 33 
+   </box>
+   <box level="4">
+    54 138 56 144 
+   </box>
+   <box level="3">
+    27 68 28 69 
+   </box>
+   <box level="4">
+    52 138 54 144 
+   </box>
+   <box level="3">
+    26 68 27 69 
+   </box>
+   <box level="4">
+    50 138 52 144 
+   </box>
+   <box level="3">
+    25 68 26 69 
+   </box>
+   <box level="4">
+    48 138 50 144 
+   </box>
+   <box level="3">
+    24 68 25 69 
+   </box>
+   <box level="3">
+    26 66 28 68 
+   </box>
+   <box level="2">
+    13 32 14 33 
+   </box>
+   <box level="3">
+    24 66 26 68 
+   </box>
+   <box level="2">
+    12 32 13 33 
+   </box>
+   <box level="2">
+    14 30 16 32 
+   </box>
+   <box level="1">
+    7 14 8 15 
+   </box>
+   <box level="2">
+    12 30 14 32 
+   </box>
+   <box level="1">
+    6 14 7 15 
+   </box>
+   <box level="1">
+    6 12 8 14 
+   </box>
+   <box level="1">
+    4 22 6 24 
+   </box>
+   <box level="1">
+    5 21 6 22 
+   </box>
+   <box level="2">
+    10 40 12 42 
+   </box>
+   <box level="1">
+    4 21 5 22 
+   </box>
+   <box level="2">
+    8 40 10 42 
+   </box>
+   <box level="2">
+    11 39 12 40 
+   </box>
+   <box level="3">
+    22 76 24 78 
+   </box>
+   <box level="2">
+    10 39 11 40 
+   </box>
+   <box level="3">
+    20 76 22 78 
+   </box>
+   <box level="3">
+    23 75 24 76 
+   </box>
+   <box level="4">
+    46 148 48 150 
+   </box>
+   <box level="3">
+    22 75 23 76 
+   </box>
+   <box level="4">
+    44 148 46 150 
+   </box>
+   <box level="4">
+    44 144 48 148 
+   </box>
+   <box level="3">
+    21 75 22 76 
+   </box>
+   <box level="4">
+    42 148 44 150 
+   </box>
+   <box level="3">
+    20 75 21 76 
+   </box>
+   <box level="4">
+    40 148 42 150 
+   </box>
+   <box level="4">
+    40 144 44 148 
+   </box>
+   <box level="2">
+    9 39 10 40 
+   </box>
+   <box level="3">
+    18 76 20 78 
+   </box>
+   <box level="2">
+    8 39 9 40 
+   </box>
+   <box level="3">
+    16 76 18 78 
+   </box>
+   <box level="3">
+    19 75 20 76 
+   </box>
+   <box level="4">
+    38 148 40 150 
+   </box>
+   <box level="3">
+    18 75 19 76 
+   </box>
+   <box level="4">
+    36 148 38 150 
+   </box>
+   <box level="4">
+    36 144 40 148 
+   </box>
+   <box level="3">
+    17 75 18 76 
+   </box>
+   <box level="4">
+    34 148 36 150 
+   </box>
+   <box level="3">
+    16 75 17 76 
+   </box>
+   <box level="4">
+    32 148 34 150 
+   </box>
+   <box level="4">
+    32 144 36 148 
+   </box>
+   <box level="4">
+    46 138 48 144 
+   </box>
+   <box level="3">
+    23 68 24 69 
+   </box>
+   <box level="4">
+    44 138 46 144 
+   </box>
+   <box level="3">
+    22 68 23 69 
+   </box>
+   <box level="4">
+    42 138 44 144 
+   </box>
+   <box level="3">
+    21 68 22 69 
+   </box>
+   <box level="4">
+    40 138 42 144 
+   </box>
+   <box level="3">
+    20 68 21 69 
+   </box>
+   <box level="3">
+    22 66 24 68 
+   </box>
+   <box level="2">
+    11 32 12 33 
+   </box>
+   <box level="3">
+    20 66 22 68 
+   </box>
+   <box level="2">
+    10 32 11 33 
+   </box>
+   <box level="4">
+    38 138 40 144 
+   </box>
+   <box level="3">
+    19 68 20 69 
+   </box>
+   <box level="4">
+    36 138 38 144 
+   </box>
+   <box level="3">
+    18 68 19 69 
+   </box>
+   <box level="4">
+    34 138 36 144 
+   </box>
+   <box level="3">
+    17 68 18 69 
+   </box>
+   <box level="4">
+    32 138 34 144 
+   </box>
+   <box level="3">
+    16 68 17 69 
+   </box>
+   <box level="3">
+    18 66 20 68 
+   </box>
+   <box level="2">
+    9 32 10 33 
+   </box>
+   <box level="3">
+    16 66 18 68 
+   </box>
+   <box level="2">
+    8 32 9 33 
+   </box>
+   <box level="2">
+    10 30 12 32 
+   </box>
+   <box level="1">
+    5 14 6 15 
+   </box>
+   <box level="2">
+    8 30 10 32 
+   </box>
+   <box level="1">
+    4 14 5 15 
+   </box>
+   <box level="1">
+    4 12 6 14 
+   </box>
+   <box level="1">
+    2 22 4 24 
+   </box>
+   <box level="1">
+    3 21 4 22 
+   </box>
+   <box level="2">
+    6 40 8 42 
+   </box>
+   <box level="1">
+    2 21 3 22 
+   </box>
+   <box level="2">
+    4 40 6 42 
+   </box>
+   <box level="2">
+    7 39 8 40 
+   </box>
+   <box level="3">
+    14 76 16 78 
+   </box>
+   <box level="2">
+    6 39 7 40 
+   </box>
+   <box level="3">
+    12 76 14 78 
+   </box>
+   <box level="3">
+    15 75 16 76 
+   </box>
+   <box level="4">
+    30 148 32 150 
+   </box>
+   <box level="3">
+    14 75 15 76 
+   </box>
+   <box level="4">
+    28 148 30 150 
+   </box>
+   <box level="4">
+    28 144 32 148 
+   </box>
+   <box level="3">
+    13 75 14 76 
+   </box>
+   <box level="4">
+    26 148 28 150 
+   </box>
+   <box level="3">
+    12 75 13 76 
+   </box>
+   <box level="4">
+    24 148 26 150 
+   </box>
+   <box level="4">
+    24 144 28 148 
+   </box>
+   <box level="2">
+    5 39 6 40 
+   </box>
+   <box level="3">
+    10 76 12 78 
+   </box>
+   <box level="2">
+    4 39 5 40 
+   </box>
+   <box level="3">
+    8 76 10 78 
+   </box>
+   <box level="3">
+    11 75 12 76 
+   </box>
+   <box level="4">
+    22 148 24 150 
+   </box>
+   <box level="3">
+    10 75 11 76 
+   </box>
+   <box level="4">
+    20 148 22 150 
+   </box>
+   <box level="4">
+    20 144 24 148 
+   </box>
+   <box level="3">
+    9 75 10 76 
+   </box>
+   <box level="4">
+    18 148 20 150 
+   </box>
+   <box level="3">
+    8 75 9 76 
+   </box>
+   <box level="4">
+    16 148 18 150 
+   </box>
+   <box level="4">
+    16 144 20 148 
+   </box>
+   <box level="4">
+    30 138 32 144 
+   </box>
+   <box level="3">
+    15 68 16 69 
+   </box>
+   <box level="4">
+    28 138 30 144 
+   </box>
+   <box level="3">
+    14 68 15 69 
+   </box>
+   <box level="4">
+    26 138 28 144 
+   </box>
+   <box level="3">
+    13 68 14 69 
+   </box>
+   <box level="4">
+    24 138 26 144 
+   </box>
+   <box level="3">
+    12 68 13 69 
+   </box>
+   <box level="3">
+    14 66 16 68 
+   </box>
+   <box level="2">
+    7 32 8 33 
+   </box>
+   <box level="3">
+    12 66 14 68 
+   </box>
+   <box level="2">
+    6 32 7 33 
+   </box>
+   <box level="4">
+    22 138 24 144 
+   </box>
+   <box level="3">
+    11 68 12 69 
+   </box>
+   <box level="4">
+    20 138 22 144 
+   </box>
+   <box level="3">
+    10 68 11 69 
+   </box>
+   <box level="4">
+    18 138 20 144 
+   </box>
+   <box level="3">
+    9 68 10 69 
+   </box>
+   <box level="4">
+    16 138 18 144 
+   </box>
+   <box level="3">
+    8 68 9 69 
+   </box>
+   <box level="3">
+    10 66 12 68 
+   </box>
+   <box level="2">
+    5 32 6 33 
+   </box>
+   <box level="3">
+    8 66 10 68 
+   </box>
+   <box level="2">
+    4 32 5 33 
+   </box>
+   <box level="2">
+    6 30 8 32 
+   </box>
+   <box level="1">
+    3 14 4 15 
+   </box>
+   <box level="2">
+    4 30 6 32 
+   </box>
+   <box level="1">
+    2 14 3 15 
+   </box>
+   <box level="1">
+    2 12 4 14 
+   </box>
+   <box level="1">
+    0 22 2 24 
+   </box>
+   <box level="1">
+    1 21 2 22 
+   </box>
+   <box level="2">
+    2 40 4 42 
+   </box>
+   <box level="1">
+    0 21 1 22 
+   </box>
+   <box level="2">
+    0 40 2 42 
+   </box>
+   <box level="2">
+    3 39 4 40 
+   </box>
+   <box level="3">
+    6 76 8 78 
+   </box>
+   <box level="2">
+    2 39 3 40 
+   </box>
+   <box level="3">
+    4 76 6 78 
+   </box>
+   <box level="3">
+    7 75 8 76 
+   </box>
+   <box level="4">
+    14 148 16 150 
+   </box>
+   <box level="3">
+    6 75 7 76 
+   </box>
+   <box level="4">
+    12 148 14 150 
+   </box>
+   <box level="4">
+    12 144 16 148 
+   </box>
+   <box level="3">
+    5 75 6 76 
+   </box>
+   <box level="4">
+    10 148 12 150 
+   </box>
+   <box level="3">
+    4 75 5 76 
+   </box>
+   <box level="4">
+    8 148 10 150 
+   </box>
+   <box level="4">
+    8 144 12 148 
+   </box>
+   <box level="2">
+    1 39 2 40 
+   </box>
+   <box level="3">
+    2 76 4 78 
+   </box>
+   <box level="2">
+    0 39 1 40 
+   </box>
+   <box level="3">
+    0 76 2 78 
+   </box>
+   <box level="3">
+    3 75 4 76 
+   </box>
+   <box level="4">
+    6 148 8 150 
+   </box>
+   <box level="3">
+    2 75 3 76 
+   </box>
+   <box level="4">
+    4 148 6 150 
+   </box>
+   <box level="4">
+    4 144 8 148 
+   </box>
+   <box level="3">
+    1 75 2 76 
+   </box>
+   <box level="4">
+    2 148 4 150 
+   </box>
+   <box level="3">
+    0 75 1 76 
+   </box>
+   <box level="4">
+    0 148 2 150 
+   </box>
+   <box level="4">
+    0 144 4 148 
+   </box>
+   <box level="4">
+    14 138 16 144 
+   </box>
+   <box level="3">
+    7 68 8 69 
+   </box>
+   <box level="4">
+    12 138 14 144 
+   </box>
+   <box level="3">
+    6 68 7 69 
+   </box>
+   <box level="4">
+    10 138 12 144 
+   </box>
+   <box level="3">
+    5 68 6 69 
+   </box>
+   <box level="4">
+    8 138 10 144 
+   </box>
+   <box level="3">
+    4 68 5 69 
+   </box>
+   <box level="3">
+    6 66 8 68 
+   </box>
+   <box level="2">
+    3 32 4 33 
+   </box>
+   <box level="3">
+    4 66 6 68 
+   </box>
+   <box level="2">
+    2 32 3 33 
+   </box>
+   <box level="4">
+    6 138 8 144 
+   </box>
+   <box level="3">
+    3 68 4 69 
+   </box>
+   <box level="4">
+    4 138 6 144 
+   </box>
+   <box level="3">
+    2 68 3 69 
+   </box>
+   <box level="4">
+    2 138 4 144 
+   </box>
+   <box level="3">
+    1 68 2 69 
+   </box>
+   <box level="4">
+    0 138 2 144 
+   </box>
+   <box level="3">
+    0 68 1 69 
+   </box>
+   <box level="3">
+    2 66 4 68 
+   </box>
+   <box level="2">
+    1 32 2 33 
+   </box>
+   <box level="3">
+    0 66 2 68 
+   </box>
+   <box level="2">
+    0 32 1 33 
+   </box>
+   <box level="2">
+    2 30 4 32 
+   </box>
+   <box level="1">
+    1 14 2 15 
+   </box>
+   <box level="2">
+    0 30 2 32 
+   </box>
+   <box level="1">
+    0 14 1 15 
+   </box>
+   <box level="1">
+    0 12 2 14 
+   </box>
+  </Basis>
+  <coefs geoDim="1">
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0.01115338513494643 
+   0.01115338513494638 
+   0.01115338513494626 
+   0.01115338513494633 
+   0.01115338513494604 
+   0.0111533851349458 
+   0.01115338513494577 
+   0.01115338513494604 
+   0.01115338513494613 
+   0.01115338513494594 
+   0.01115338513494597 
+   0.01115338513494621 
+   0.01115338513494602 
+   0.01115338513494587 
+   0.01115338513494609 
+   0.01115338513494598 
+   0.01115338513494599 
+   0.01115338513494603 
+   0.0111533851349461 
+   0.01115338513494623 
+   0.01115338513494633 
+   0.01115338513494639 
+   0.01115338513494642 
+   0.01115338513494642 
+   0.01115338513494631 
+   0.01115338513494604 
+   0.01115338513494584 
+   0.01115338513494585 
+   0.01115338513494604 
+   0.01115338513494624 
+   0.01115338513494622 
+   0.01115338513494633 
+   0.01115338513494613 
+   0.01115338513494625 
+   0.0111533851349461 
+   0.01115338513494615 
+   0.01115338513494614 
+   0.01115338513494619 
+   0.01115338513494611 
+   0.0111533851349461 
+   0.01115338513494613 
+   0.01115338513494593 
+   0.01115338513494597 
+   0.01115338513494618 
+   0.01115338513494636 
+   0.01115338513494622 
+   0.01115338513494621 
+   0.01115338513494629 
+   0.01115338513494636 
+   0.01115338513494643 
+   0.01115338513494634 
+   0.01115338513494612 
+   0.01115338513494622 
+   0.01115338513494622 
+   0.01115338513494619 
+   0.01115338513494627 
+   0.01115338513494617 
+   0.01115338513494613 
+   0.01115338513494637 
+   0.01115338513494604 
+   0.01115338513494595 
+   0.01115338513494597 
+   0.01115338513494626 
+   0.01115338513494616 
+   0.01115338513494603 
+   0.01115338513494594 
+   0.01115338513494595 
+   0.01115338513494617 
+   0.01115338513494621 
+   0.01115338513494596 
+   0.01115338513494611 
+   0.01115338513494622 
+   0.01115338513494644 
+   0.0111533851349465 
+   0.01115338513494637 
+   0.01115338513494624 
+   0.01115338513494604 
+   0.01115338513494622 
+   0.01115338513494629 
+   0.01115338513494607 
+   0.01115338513494611 
+   0.01115338513494625 
+   0.01115338513494616 
+   0.01115338513494625 
+   0.01115338513494608 
+   0.01115338513494617 
+   0.01115338513494626 
+   0.01115338513494613 
+   0.01115338513494607 
+   0.01115338513494614 
+   0.01115338513494646 
+   0.01115338513494644 
+   0.01115338513494642 
+   0.01115338513494647 
+   0.01115338513494641 
+   0.01115338513494649 
+   0.01115338513494627 
+   0.01115338513494615 
+   0.01115338513494632 
+   0.01115338513494619 
+   0.01115338513494583 
+   0.01115338513494626 
+   0.01115338513494627 
+   0.01115338513494602 
+   0.01115338513494597 
+   0.01115338513494595 
+   0.0111533851349462 
+   0.01115338513494624 
+   0.01115338513494617 
+   0.01115338513494644 
+   0.01115338513494647 
+   0.01115338513494618 
+   0.01115338513494596 
+   0.01115338513494617 
+   0.01115338513494621 
+   0.01115338513494623 
+   0.01115338513494605 
+   0.01115338513494602 
+   0.01115338513494632 
+   0.01115338513494647 
+   0.01115338513494624 
+   0.01115338513494629 
+   0.01115338513494615 
+   0.01115338513494616 
+   0.01115338513494602 
+   0.01115338513494622 
+   0.01115338513494646 
+   0.01115338513494643 
+   0.01115338513494615 
+   0.01115338513494626 
+   0.01115338513494622 
+   0.01115338513494623 
+   0.01115338513494606 
+   0.0111533851349461 
+   0.01115338513494632 
+   0.01115338513494653 
+   0.01115338513494636 
+   0.01115338513494637 
+   0.01115338513494609 
+   0.01115338513494611 
+   0.01115338513494613 
+   0.01115338513494632 
+   0.01115338513494638 
+   0.01115338513494642 
+   0.009294487612455183 
+   0.001858897522490994 
+   0 
+   0 
+   0 
+   0 
+   0.4995000000000047 
+   0.4995000000000038 
+   0.4995000000000006 
+   0.4995000000000026 
+   0.4995000000000013 
+   0.4994999999999987 
+   0.4994999999999944 
+   0.4994999999999975 
+   0.4994999999999977 
+   0.4994999999999946 
+   0.4994999999999981 
+   0.4995000000000045 
+   0.499500000000002 
+   0.4994999999999983 
+   0.4995000000000008 
+   0.4994999999999979 
+   0.4994999999999971 
+   0.4994999999999977 
+   0.499500000000001 
+   0.4995000000000078 
+   0.4995000000000095 
+   0.4995000000000065 
+   0.4995000000000061 
+   0.4995000000000075 
+   0.4995000000000068 
+   0.4995000000000019 
+   0.4994999999999971 
+   0.4994999999999961 
+   0.4994999999999986 
+   0.4995000000000016 
+   0.4995000000000015 
+   0.4995000000000058 
+   0.4995000000000046 
+   0.4995000000000058 
+   0.4995000000000045 
+   0.4995000000000048 
+   0.4995000000000008 
+   0.4994999999999999 
+   0.4994999999999956 
+   0.4994999999999958 
+   0.4994999999999988 
+   0.4994999999999973 
+   0.499499999999999 
+   0.4994999999999991 
+   0.4995000000000023 
+   0.4995000000000034 
+   0.4995000000000064 
+   0.499500000000008 
+   0.4995000000000069 
+   0.4995000000000089 
+   0.499500000000007 
+   0.4995000000000023 
+   0.499500000000004 
+   0.4995000000000042 
+   0.4995000000000013 
+   0.4995000000000041 
+   0.4995000000000061 
+   0.4995000000000048 
+   0.4995000000000049 
+   0.4994999999999964 
+   0.4994999999999975 
+   0.499499999999999 
+   0.4995000000000022 
+   0.499499999999999 
+   0.4994999999999977 
+   0.4994999999999973 
+   0.4994999999999986 
+   0.4994999999999985 
+   0.4994999999999997 
+   0.4994999999999969 
+   0.4995000000000007 
+   0.4995000000000007 
+   0.4995000000000031 
+   0.4995000000000058 
+   0.4995000000000058 
+   0.4995000000000074 
+   0.4995000000000059 
+   0.4995000000000101 
+   0.4995000000000098 
+   0.4995000000000037 
+   0.4995000000000038 
+   0.4995000000000056 
+   0.4995000000000052 
+   0.4995000000000082 
+   0.4995000000000078 
+   0.4995000000000085 
+   0.4995000000000083 
+   0.4995000000000022 
+   0.4995000000000013 
+   0.4995000000000041 
+   0.4995000000000119 
+   0.4995000000000139 
+   0.4995000000000122 
+   0.4995000000000089 
+   0.499500000000009 
+   0.4995000000000125 
+   0.4995000000000075 
+   0.4995000000000038 
+   0.4995000000000067 
+   0.4995000000000046 
+   0.4994999999999971 
+   0.4995000000000026 
+   0.4995000000000025 
+   0.4994999999999993 
+   0.4994999999999994 
+   0.4994999999999984 
+   0.4995000000000041 
+   0.4995000000000087 
+   0.499500000000008 
+   0.4995000000000125 
+   0.4995000000000133 
+   0.4995000000000071 
+   0.4995000000000034 
+   0.4995000000000033 
+   0.4995000000000026 
+   0.499500000000007 
+   0.4995000000000084 
+   0.4995000000000098 
+   0.4995000000000073 
+   0.4995000000000088 
+   0.499500000000009 
+   0.4995000000000064 
+   0.4995000000000024 
+   0.4995000000000081 
+   0.4995000000000082 
+   0.4995000000000096 
+   0.4995000000000117 
+   0.4995000000000102 
+   0.4995000000000074 
+   0.499500000000007 
+   0.4995000000000045 
+   0.4995000000000067 
+   0.4995000000000049 
+   0.4995000000000079 
+   0.4995000000000117 
+   0.4995000000000127 
+   0.4995000000000103 
+   0.4995000000000077 
+   0.4995000000000013 
+   0.4995000000000062 
+   0.499500000000009 
+   0.4995000000000114 
+   0.4995000000000113 
+   0.4995000000000062 
+   0.416250000000002 
+   0.08324999999999828 
+   0 
+   0 
+   0 
+   0 
+   0.9878466148650543 
+   0.9878466148650543 
+   0.9878466148650538 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650534 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650543 
+   0.9878466148650541 
+   0.9878466148650541 
+   0.987846614865054 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650539 
+   0.987846614865054 
+   0.9878466148650535 
+   0.9878466148650534 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650537 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650531 
+   0.9878466148650537 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650535 
+   0.9878466148650542 
+   0.987846614865054 
+   0.9878466148650541 
+   0.9878466148650542 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650541 
+   0.9878466148650541 
+   0.9878466148650534 
+   0.9878466148650537 
+   0.9878466148650544 
+   0.987846614865054 
+   0.987846614865054 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650539 
+   0.9878466148650533 
+   0.9878466148650537 
+   0.9878466148650534 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650542 
+   0.987846614865054 
+   0.9878466148650542 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.987846614865054 
+   0.9878466148650542 
+   0.9878466148650543 
+   0.9878466148650542 
+   0.9878466148650542 
+   0.9878466148650535 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.987846614865054 
+   0.9878466148650542 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.987846614865054 
+   0.9878466148650542 
+   0.9878466148650543 
+   0.9878466148650541 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650534 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650538 
+   0.9878466148650542 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650539 
+   0.9878466148650542 
+   0.9878466148650542 
+   0.9878466148650542 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650541 
+   0.9878466148650542 
+   0.9878466148650541 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650543 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650539 
+   0.9878466148650542 
+   0.9878466148650541 
+   0.9878466148650542 
+   0.987846614865054 
+   0.9878466148650537 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650543 
+   0.9878466148650541 
+   0.9878466148650543 
+   0.9878466148650538 
+   0.9878466148650534 
+   0.9878466148650541 
+   0.9878466148650545 
+   0.9878466148650539 
+   0.9878466148650541 
+   0.9878466148650537 
+   0.8232055123875467 
+   0.1646411024775055 
+   0 
+   0 
+   0 
+   0 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650535 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650534 
+   0.9878466148650534 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650538 
+   0.9878466148650542 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650535 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650542 
+   0.987846614865054 
+   0.9878466148650534 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650532 
+   0.9878466148650535 
+   0.9878466148650533 
+   0.9878466148650533 
+   0.9878466148650535 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650532 
+   0.9878466148650532 
+   0.9878466148650541 
+   0.9878466148650541 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650534 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650534 
+   0.9878466148650539 
+   0.987846614865054 
+   0.9878466148650541 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650535 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.987846614865054 
+   0.9878466148650535 
+   0.9878466148650534 
+   0.9878466148650535 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650533 
+   0.9878466148650539 
+   0.9878466148650532 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650533 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650541 
+   0.9878466148650543 
+   0.9878466148650539 
+   0.9878466148650535 
+   0.9878466148650541 
+   0.987846614865054 
+   0.9878466148650539 
+   0.9878466148650541 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650541 
+   0.9878466148650541 
+   0.987846614865054 
+   0.9878466148650539 
+   0.9878466148650541 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650541 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650538 
+   0.9878466148650533 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650541 
+   0.9878466148650541 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.987846614865054 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650534 
+   0.9878466148650533 
+   0.9878466148650535 
+   0.9878466148650534 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.8232055123875467 
+   0.1646411024775045 
+   0 
+   0 
+   0 
+   0 
+   0.4994999999999976 
+   0.4994999999999961 
+   0.4994999999999961 
+   0.4995000000000006 
+   0.4994999999999971 
+   0.4994999999999952 
+   0.4994999999999943 
+   0.499499999999991 
+   0.4994999999999912 
+   0.4994999999999978 
+   0.4994999999999964 
+   0.4994999999999975 
+   0.499500000000001 
+   0.4995000000000021 
+   0.4994999999999959 
+   0.4994999999999915 
+   0.4994999999999925 
+   0.499499999999998 
+   0.4995000000000028 
+   0.4995000000000023 
+   0.4995000000000002 
+   0.4995000000000035 
+   0.4995000000000009 
+   0.4995000000000003 
+   0.4994999999999994 
+   0.4994999999999992 
+   0.4994999999999999 
+   0.499499999999999 
+   0.4994999999999942 
+   0.4994999999999945 
+   0.4994999999999936 
+   0.4994999999999952 
+   0.4994999999999938 
+   0.4994999999999937 
+   0.4994999999999901 
+   0.4994999999999948 
+   0.4995000000000027 
+   0.4995000000000051 
+   0.4994999999999976 
+   0.4994999999999971 
+   0.4995000000000017 
+   0.4995000000000034 
+   0.4994999999999971 
+   0.4994999999999976 
+   0.4995000000000022 
+   0.4995000000000067 
+   0.4995000000000033 
+   0.4994999999999984 
+   0.4994999999999966 
+   0.4994999999999996 
+   0.4994999999999999 
+   0.4995000000000005 
+   0.4994999999999977 
+   0.4994999999999997 
+   0.4994999999999976 
+   0.499499999999994 
+   0.4994999999999908 
+   0.4994999999999911 
+   0.4994999999999937 
+   0.4994999999999969 
+   0.4994999999999941 
+   0.4994999999999934 
+   0.4994999999999947 
+   0.4994999999999964 
+   0.4994999999999996 
+   0.4995000000000025 
+   0.4994999999999972 
+   0.4994999999999966 
+   0.4995000000000037 
+   0.4995000000000051 
+   0.4994999999999972 
+   0.4994999999999975 
+   0.4995000000000009 
+   0.4995000000000027 
+   0.4995000000000006 
+   0.4994999999999993 
+   0.4995000000000001 
+   0.4994999999999991 
+   0.4994999999999991 
+   0.4995000000000021 
+   0.4995000000000038 
+   0.4995000000000058 
+   0.4995000000000033 
+   0.4995000000000003 
+   0.4994999999999978 
+   0.4994999999999963 
+   0.4995000000000011 
+   0.4995000000000064 
+   0.4995000000000041 
+   0.4995000000000042 
+   0.4995000000000032 
+   0.4995000000000062 
+   0.499500000000004 
+   0.4995000000000022 
+   0.4995000000000034 
+   0.4995000000000039 
+   0.4995000000000029 
+   0.4995000000000005 
+   0.4994999999999983 
+   0.4994999999999948 
+   0.4994999999999953 
+   0.4995000000000009 
+   0.4995000000000003 
+   0.4995000000000004 
+   0.4994999999999989 
+   0.4995000000000004 
+   0.4994999999999992 
+   0.4994999999999996 
+   0.4995000000000031 
+   0.4995000000000026 
+   0.4995000000000019 
+   0.4994999999999991 
+   0.4994999999999957 
+   0.4994999999999952 
+   0.4994999999999974 
+   0.4995000000000024 
+   0.4995000000000014 
+   0.4995000000000004 
+   0.4995000000000002 
+   0.4995 
+   0.4994999999999975 
+   0.4994999999999984 
+   0.4995000000000007 
+   0.4995000000000012 
+   0.4995000000000002 
+   0.4994999999999993 
+   0.499500000000001 
+   0.4995000000000002 
+   0.4994999999999966 
+   0.4994999999999999 
+   0.4994999999999983 
+   0.4994999999999999 
+   0.4994999999999993 
+   0.4995000000000015 
+   0.4995000000000016 
+   0.4994999999999988 
+   0.4994999999999954 
+   0.4994999999999977 
+   0.4995000000000001 
+   0.499500000000002 
+   0.4995000000000013 
+   0.4994999999999994 
+   0.4995000000000011 
+   0.4995000000000014 
+   0.4162499999999992 
+   0.08324999999999737 
+   0 
+   0 
+   0 
+   0 
+   0.01115338513494608 
+   0.01115338513494594 
+   0.01115338513494592 
+   0.011153385134946 
+   0.01115338513494594 
+   0.01115338513494595 
+   0.01115338513494591 
+   0.01115338513494569 
+   0.01115338513494578 
+   0.01115338513494605 
+   0.01115338513494621 
+   0.01115338513494623 
+   0.01115338513494619 
+   0.01115338513494617 
+   0.01115338513494605 
+   0.01115338513494595 
+   0.01115338513494601 
+   0.01115338513494613 
+   0.01115338513494621 
+   0.01115338513494627 
+   0.01115338513494624 
+   0.01115338513494625 
+   0.01115338513494621 
+   0.01115338513494611 
+   0.01115338513494598 
+   0.01115338513494598 
+   0.01115338513494604 
+   0.011153385134946 
+   0.01115338513494593 
+   0.01115338513494598 
+   0.011153385134946 
+   0.01115338513494609 
+   0.01115338513494604 
+   0.01115338513494601 
+   0.01115338513494583 
+   0.01115338513494595 
+   0.01115338513494612 
+   0.01115338513494621 
+   0.01115338513494604 
+   0.01115338513494608 
+   0.01115338513494619 
+   0.01115338513494608 
+   0.01115338513494594 
+   0.0111533851349461 
+   0.0111533851349463 
+   0.01115338513494632 
+   0.01115338513494612 
+   0.01115338513494598 
+   0.01115338513494602 
+   0.01115338513494615 
+   0.01115338513494612 
+   0.01115338513494616 
+   0.01115338513494599 
+   0.01115338513494599 
+   0.01115338513494602 
+   0.01115338513494601 
+   0.0111533851349459 
+   0.01115338513494568 
+   0.0111533851349458 
+   0.011153385134946 
+   0.01115338513494598 
+   0.01115338513494591 
+   0.011153385134946 
+   0.01115338513494596 
+   0.01115338513494602 
+   0.01115338513494606 
+   0.01115338513494593 
+   0.01115338513494605 
+   0.01115338513494644 
+   0.01115338513494623 
+   0.01115338513494595 
+   0.01115338513494608 
+   0.01115338513494628 
+   0.01115338513494639 
+   0.01115338513494624 
+   0.01115338513494604 
+   0.0111533851349461 
+   0.01115338513494611 
+   0.0111533851349461 
+   0.01115338513494628 
+   0.01115338513494627 
+   0.01115338513494634 
+   0.01115338513494633 
+   0.01115338513494617 
+   0.01115338513494619 
+   0.01115338513494612 
+   0.01115338513494628 
+   0.01115338513494648 
+   0.01115338513494642 
+   0.01115338513494631 
+   0.01115338513494629 
+   0.01115338513494643 
+   0.01115338513494639 
+   0.01115338513494633 
+   0.01115338513494627 
+   0.01115338513494631 
+   0.01115338513494632 
+   0.01115338513494611 
+   0.01115338513494612 
+   0.01115338513494606 
+   0.01115338513494608 
+   0.01115338513494625 
+   0.01115338513494615 
+   0.01115338513494615 
+   0.01115338513494608 
+   0.01115338513494608 
+   0.0111533851349461 
+   0.01115338513494609 
+   0.01115338513494615 
+   0.01115338513494613 
+   0.01115338513494611 
+   0.01115338513494603 
+   0.01115338513494598 
+   0.01115338513494593 
+   0.01115338513494603 
+   0.01115338513494623 
+   0.01115338513494603 
+   0.01115338513494596 
+   0.01115338513494614 
+   0.01115338513494618 
+   0.01115338513494604 
+   0.01115338513494615 
+   0.01115338513494622 
+   0.01115338513494613 
+   0.01115338513494604 
+   0.01115338513494605 
+   0.01115338513494612 
+   0.01115338513494613 
+   0.01115338513494599 
+   0.01115338513494622 
+   0.01115338513494626 
+   0.01115338513494611 
+   0.01115338513494599 
+   0.01115338513494607 
+   0.01115338513494614 
+   0.01115338513494617 
+   0.01115338513494599 
+   0.01115338513494611 
+   0.01115338513494623 
+   0.01115338513494619 
+   0.01115338513494617 
+   0.01115338513494607 
+   0.01115338513494607 
+   0.01115338513494621 
+   0.009294487612455112 
+   0.001858897522490977 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+  </coefs>
+ </Geometry>
+ <MultiPatch parDim="2" id="1" label="damage">
+  <patches type="id_range">0 0</patches>
+ </MultiPatch>
+</xml>
+

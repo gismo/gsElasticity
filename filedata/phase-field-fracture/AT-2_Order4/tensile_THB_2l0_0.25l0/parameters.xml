@@ -50,13 +50,13 @@
         value="2.7e-3"/>
 <real   label="l0"
         desc="Internal crack length [mm]"
-        value="0.010"/>
+        value="0.015"/>
 <real   label="beta"
         desc="Crack thickness [mm]"
-        value="0.003333333333333333333333333"/> <!-- 0.010/3 for IPF, 0.0025 for H0 -->
+        value="0.005"/> <!-- 0.005 for IPF, 0.00375 for H0 -->
 <int    label="order"
         desc="Phase-field model order"
-        value="2"/>
+        value="4"/>
 <int    label="AT"
         desc="Phase-field model AT-Number"
         value="2"/>
@@ -64,52 +64,53 @@
 
 <!-- Control parameters -->
 <OptionList id="1" label="control">
-<real   label="umin"
-        desc="Initial displacement [mm]"
-        value="6e-3"/>
-<real   label="uend"
-        desc="Final displacement [mm]"
-        value="12e-3"/>
-<real   label="ustep"
-        desc="Displacement step [mm]"
-        value="3e-4"/>
-<real   label="utrans"
-        desc="Displacement for transition [mm]"
-        value="12e-3"/>
-<real   label="ured"
-        desc="Displacement reduction factor [-]"
-        value="1."/>
-<int    label="patchId"
-        desc="Patch ID for the controlled boundary"
-        value="0"/>
-<int    label="side"
-        desc="Side ID for the controlled boundary"
-        value="4"/>
-<int    label="direction"
-        desc="Direction of the controlled boundary"
-        value="0"/>
-<string label="function"
-        desc="Function on the controlled boundary"
-        value="u"/>
-<int    label="maxIt"
-        desc="Maximum number of iterations"
-        value="10000"/>
-<int    label="maxItEl"
-        desc="Maximum number of iterations for the elasticity problem"
-        value="50"/>
-<int    label="maxItPf"
-        desc="Maximum number of iterations for the phase-field problem"
-        value="1"/>
-<real   label="tol"
-        desc="Tolerance for the Newton method"
-        value="1e-7"/>
-<real   label="tolEl"
-        desc="Tolerance for the elasticity problem"
-        value="1e-9"/>
-<real   label="tolPf"
-        desc="Tolerance for the phase-field problem"
-        value="1e-9"/>
+        <real   label="umin"
+                desc="Initial displacement [mm]"
+                value="0e-4"/>
+        <real   label="uend"
+                desc="Final displacement [mm]"
+                value="6e-3"/>
+        <real   label="ustep"
+                desc="Displacement step [mm]"
+                value="5e-4"/>
+        <real   label="utrans"
+                desc="Displacement for transition [mm]"
+                value="4e-3"/>
+        <real   label="ured"
+                desc="Displacement reduction factor [-]"
+                value="5."/>
+        <int    label="patchId"
+                desc="Patch ID for the controlled boundary"
+                value="0"/>
+        <int    label="side"
+                desc="Side ID for the controlled boundary"
+                value="4"/>
+        <string label="function"
+                desc="Function on the controlled boundary"
+                value="u"/>
+        <int    label="direction"
+                desc="Direction of the controlled boundary"
+                value="1"/>
+        <int    label="maxIt"
+                desc="Maximum number of iterations"
+                value="10000"/>
+        <int    label="maxItEl"
+                desc="Maximum number of iterations for the elasticity problem"
+                value="50"/>
+        <int    label="maxItPf"
+                desc="Maximum number of iterations for the phase-field problem"
+                value="1"/>
+        <real   label="tol"
+                desc="Tolerance for the Newton method"
+                value="1e-7"/>
+        <real   label="tolEl"
+                desc="Tolerance for the elasticity problem"
+                value="1e-9"/>
+        <real   label="tolPf"
+                desc="Tolerance for the phase-field problem"
+                value="1e-9"/>
 </OptionList>
+
 
 <!-- Meshing parameters -->
 <OptionList id="0" label="meshing">
@@ -118,7 +119,7 @@
         value="1"/>
 <int    label="MaxLevel"
         desc="Maximum level of refinement"
-        value="2"/>
+        value="3"/>
 <int    label="RefineRule"
         desc="Refinement rule"
         value="1"/>
@@ -146,11 +147,11 @@
 <!-- Dirichlet conditions (patch,side) -->
 <bc type="Dirichlet" function="0" unknown="0">
 0 3
+0 4
 </bc>
 
 <bc type="Dirichlet" function="0" unknown="1">
 0 3
-0 4
 </bc>
 </boundaryConditions>
 

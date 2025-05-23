@@ -131,6 +131,12 @@
 <real   label="CoarsenParam"
         desc="Coarsening parameter"
         value="0.1"/>
+<real   label="SizeRatio"
+        desc="Mesh size ratio threshold to activate refinement iterations"
+        value="1.05"/>
+<int   label="MaxRefIterations"
+        desc="Maximum number of refinement iterations"
+        value="10"/>
 </OptionList>
 
 <!-- The boundary conditions (multipatch=number of patches)-->
