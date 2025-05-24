@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
     index_t AT = -1;
     index_t plotmod = 1;
     index_t dimension = 2;
+    index_t depth = 5;
     std::string output;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
@@ -71,6 +72,7 @@ int main(int argc, char *argv[])
     cmd.addInt("A", "AT","AT-1 or AT-2 model", AT);
     cmd.addInt("p", "plotmod","Modulo for plotting", plotmod);
     cmd.addInt("d", "dimension","Dimension of the problem", dimension);
+    cmd.addInt("D", "Finest level", depth);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
     cmd.addString("o", "output", "Output directory", output);
 
@@ -103,6 +105,7 @@ int main(int argc, char *argv[])
         gsTensorBSplineBasis<2,real_t> tbasis(kv_x, kv_y);
         gsTensorBSpline<2,real_t> tb(tbasis,tbasis.anchors().transpose());
         tb.coefs().col(0) *= L;
+        tb.coefs().col(0).array() -= L/2.;
         tb.coefs().col(1) *= H;
         mp_ini.addPatch(tb);
     }
@@ -114,6 +117,7 @@ int main(int argc, char *argv[])
         gsTensorBSplineBasis<3,real_t> tbasis(kv_x, kv_y, kv_z);
         gsTensorBSpline<3,real_t> tb(tbasis,tbasis.anchors().transpose());
         tb.coefs().col(0) *= L;
+        tb.coefs().col(0).array() -= L/2.;
         tb.coefs().col(1) *= H;
         tb.coefs().col(2) *= H;
         mp_ini.addPatch(tb);
@@ -154,11 +158,11 @@ int main(int argc, char *argv[])
     // Step transition [mm]
     controlParameters.addReal("utrans", "Step transition", 20e-2);
     // Step reduction factor [-]
-    controlParameters.addReal("ured", "Step reduction factor", 1.0);
+    controlParameters.addReal("ured", "Step reduction factor", 200.0);
     // Maximum number of iterations
     controlParameters.addInt("maxIt", "Maximum number of iterations", 10000);
     // Maximum number of iterations for elasticity problem
-    controlParameters.addInt("maxItEl", "Maximum number of iterations for elasticity problem", 100);
+    controlParameters.addInt("maxItEl", "Maximum number of iterations for elasticity problem", 10);
     // Maximum number of iterations for phase-field problem
     controlParameters.addInt("maxItPf", "Maximum number of iterations for phase-field problem", 1);
     // Tolerance for the elasticity problem
@@ -173,7 +177,7 @@ int main(int argc, char *argv[])
     // Admissible meshing
     mesherOptions.addSwitch("Admissible", "Admissible meshing",true);
     // Maximum level
-    mesherOptions.addInt("MaxLevel", "Maximum level of refinement", 5);
+    mesherOptions.addInt("MaxLevel", "Maximum level of refinement", depth);
     // Refinement rule
     mesherOptions.addInt("RefineRule", "Refinement rule", 1);
     // Coarsening rule
@@ -408,11 +412,16 @@ void solve(gsOptionList & materialParameters,
         // Loop over the elements
         auto domIt = mb.basis(0).domain()->beginAll();
         auto domEnd = mb.basis(0).domain()->endAll();
+        gsMatrix<> pbox(dim,2), box(dim,2);
         for (; domIt<domEnd; ++domIt)
         {
-            if ((domIt.lowerCorner()(0,0) >= 0.5-1e-6 && domIt.lowerCorner()(0,0) <= 0.5+1e-6)
+            pbox.col(0) = domIt.lowerCorner();
+            pbox.col(1) = domIt.upperCorner();
+            box = mp.patch(0).eval(pbox);
+            // Check if the physical element is inside withing l0 distance from the middle
+            if ((box(0,0) >= -l0 && box(0,0) <= l0)
                 ||
-                (domIt.upperCorner()(0,0) >= 0.5-1e-6 && domIt.upperCorner()(0,0) <= 0.5+1e-6)
+                (box(0,1) >= -l0 && box(0,1) <= l0)
                 )
                 elVals[domIt.id()] = 1;
             else
@@ -429,26 +438,16 @@ void solve(gsOptionList & materialParameters,
     // PERTURB THE DAMAGE/////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    gsMatrix<> anchors = mb.basis(0).anchors();
+    gsMatrix<> panchors = mb.basis(0).anchors();
+    gsMatrix<> anchors = mp.patch(0).eval(panchors);
     gsMatrix<> coefs(mb.basis(0).size(),1);
     coefs.setZero();
-    // Find the anchors closest to the middle of the domain
+    // Find the anchors with a distance within l0 from the middle of the domain
     // and set the damage to 1e-4
-    gsMatrix<> tmp = anchors;
-    gsVector<> mid(dim);
-    gsMatrix<> norms;
-    mid.setConstant(0.5);
-    tmp.colwise() -= mid;
-    norms = tmp.colwise().norm();
-    real_t min = norms.minCoeff();
-    gsDebugVar(norms);
-    gsDebugVar(min);
-    for (index_t k=0; k<coefs.rows(); ++k)
-        if (gsClose(norms(0,k),min,1e-10))
-        {
-            coefs(k,0) = 1e-4;
-            gsInfo<<"Damage initialized at "<<anchors(0,k)<<" "<<anchors(0,k)<<"\n";
-        }
+
+    // for (index_t i=0; i<anchors.cols(); ++i)
+    //     if (anchors(0,i) >= -l0 && anchors(0,i) <= l0)
+    //         coefs(i,0) = 1e-4;
 
     damage.clear();
     damage.addPatch(mb.basis(0).makeGeometry(give(coefs)));
@@ -496,8 +495,16 @@ void solve(gsOptionList & materialParameters,
     real_t Rnorm, Fnorm;
     Rnorm = Fnorm = 1;
     bool refined = true;
-    while (ucurr<=uend)
+    T ustep_tmp = ustep;
+    bool converged = false;
+    gsMultiPatch<> mp_def_old, damage_old;
+    T Dnorm = D.norm();
+    T Dnorm_old = Dnorm;
+    while (!gsClose(ucurr,uend,1e-7))
     {
+        converged = false;
+        mp_def_old = mp_def;
+        damage_old = damage;
         if (refined)
         {
             // PROJECT SOLUTIONS
@@ -574,14 +581,14 @@ void solve(gsOptionList & materialParameters,
 
         deltaD.setZero(D.rows(),1);
 
-        for (index_t it=0; it!=maxIt; ++it)
+        for (index_t it=0; it!=maxIt && !converged; ++it)
         {
             elAssemblyTime = elSolverTime = 0.0;
             pfAssemblyTime = pfSolverTime = 0.0;
             iterationTime  = 0.0;
             bigClock.restart();
             gsInfo<<" - Staggered iteration "<<it<<":\n";
-            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
             material.setParameter(2,damage);
             // Pre-assemble the elasticity problem
@@ -591,7 +598,9 @@ void solve(gsOptionList & materialParameters,
             F = elAssembler.rhs();
             Fnorm = (F.norm() == 0) ? 1 : F.norm();
             elAssemblyTime += smallClock.stop();
-            for (index_t elIt=0; elIt!=maxItEl; ++elIt)
+
+            converged = false;
+            for (index_t elIt=0; elIt!=maxItEl && !converged; ++elIt)
             {
                 // Solve
                 smallClock.restart();
@@ -604,13 +613,19 @@ void solve(gsOptionList & materialParameters,
                 K = elAssembler.matrix();
                 F = elAssembler.rhs();
                 elAssemblyTime += smallClock.stop();
+                Fnorm = (F.norm() == 0) ? 1 : F.norm();
                 Rnorm = (K*u - F).norm();
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
 
-                if (Rnorm/* /F.norm() */ < tolEl || u.norm() < 1e-12)
-                    break;
-                else if (elIt == maxItEl-1 && maxItEl != 1)
-                    GISMO_ERROR("Elasticity problem did not converge.");
+                if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12 || maxItEl == 1)
+                    converged = true;
+
+            }
+
+            if (!converged)
+            {
+                gsWarn<<"Elasticity problem did not converge.\n";
+                break;
             }
 
             elAssembler.setFixedDofs(fixedDofs);
@@ -647,7 +662,8 @@ void solve(gsOptionList & materialParameters,
             PSORsolver.options().setReal("tolNeg",1e-6);
             PSORsolver.options().setReal("tolPos",1e-6);
             pfSolverTime = smallClock.stop();
-            for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
+            converged = false;
+            for (index_t pfIt=0; pfIt!=maxItPf && !converged; ++pfIt)
             {
                 // Assemble
                 smallClock.restart();
@@ -664,10 +680,14 @@ void solve(gsOptionList & materialParameters,
                 D += deltaD;
 
                 gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
-                if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
-                    break;
-                else if (pfIt == maxItPf-1 && maxItPf != 1)
-                    GISMO_ERROR("Phase-field problem did not converge.");
+                if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12 || maxItPf == 1)
+                    converged = true;
+            }
+
+            if (!converged)
+            {
+                gsWarn<<"Phase-field problem did not converge.\n";
+                break;
             }
 
             // Update damage spline
@@ -678,17 +698,26 @@ void solve(gsOptionList & materialParameters,
             elAssembler.assemble(u,fixedDofs);
             K = elAssembler.matrix();
             F = elAssembler.rhs();
-            Fnorm = (F.norm() == 0) ? 1 : F.norm();
             elAssemblyTime += smallClock.stop();
+            Fnorm = (F.norm() == 0) ? 1 : F.norm();
             Rnorm = (K*u - F).norm();
 
             iterationTime = bigClock.stop();
             gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
             gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(14)<<Rnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
-            if (Rnorm/* /Fnorm */ < tol)
-                break;
-            else if (it == maxIt-1)
-                GISMO_ERROR("Staggered iterations problem did not converge.");
+            converged = false;
+            if (Rnorm/Fnorm < tol || maxIt == 1)
+                converged = true;
+        }
+
+        if (!converged)
+        {
+            mp_def = mp_def_old;
+            damage = damage_old;
+            ucurr -= ustep_tmp;
+            ustep_tmp /= 2;
+            ucurr += ustep_tmp;
+            continue;
         }
 
         // =========================================================================
@@ -773,15 +802,31 @@ void solve(gsOptionList & materialParameters,
 
         // =========================================================================
         // REFINE MESH
-        elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
-        refined = gsAsVector<real_t>(elVals).sum() > 0;
-        if (refined)
-            refineMesh<dim,T>(mb,elVals,mesherOptions);
+        refined = false;
+        // elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
+        // gsDebugVar(gsAsVector<T>(elVals).transpose());
+        // refined = gsAsVector<real_t>(elVals).sum() > 0;
+        // if (refined)
+        // {
+        //     size_t numElOld = mb.basis(0).numElements();
+        //     refineMesh<dim,T>(mb,elVals,mesherOptions);
+        //     size_t numElNew = mb.basis(0).numElements();
+        //     if (numElNew > numElOld)
+        //     {
+        //         mp_def = mp_def_old;
+        //         damage = damage_old;
+        //         refined = true;
+        //         continue;
+        //     }
+        //     else
+        //         refined = false;
+        // }
 
-            // =========================================================================
+        // =========================================================================
         // INCREMENT STEP
 
-        ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
+        ucurr +=    (ucurr+ustep_tmp > uend) ? uend-ucurr :
+                    (ucurr+ustep_tmp > utrans) ? math::min(ustep_tmp,ustep/ured) : ustep_tmp;
         step++;
     }
 

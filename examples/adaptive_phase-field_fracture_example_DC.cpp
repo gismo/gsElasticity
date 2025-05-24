@@ -461,7 +461,7 @@ void solve(gsOptionList & materialParameters,
                 bigClock.restart();
                 gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<it<<"--------------------------\n";
                 gsInfo<<"    ---------------------------------ELASTICITY----------------------------------\n";
-                gsInfo<<"    | "<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||dU||/||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"|\n";
+                gsInfo<<"    | "<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||F||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"|\n";
 
                 material.setParameter(2,damage);
                 // Pre-assemble the elasticity problem
@@ -485,9 +485,9 @@ void solve(gsOptionList & materialParameters,
                     F = elAssembler.rhs();
                     elAssemblyTime += smallClock.stop();
                     Rnorm = (K*u - F).norm();
-                    gsInfo<<"    | "<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"|\n";
+                    gsInfo<<"    | "<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"|\n";
 
-                    if (Rnorm/* /F.norm() */ < tolEl || u.norm() < 1e-12)
+                    if (Rnorm/F.norm() < tolEl || u.norm() < 1e-12)
                         break;
                     else if (elIt == maxItEl-1 && maxItEl != 1)
                         GISMO_ERROR("Elasticity problem did not converge.");
@@ -559,8 +559,8 @@ void solve(gsOptionList & materialParameters,
                 elAssembler.assemble(u,fixedDofs);
                 K = elAssembler.matrix();
                 F = elAssembler.rhs();
-                Fnorm = (F.norm() == 0) ? 1 : F.norm();
                 elAssemblyTime += smallClock.stop();
+                Fnorm = (F.norm() == 0) ? 1 : F.norm();
                 Rnorm = (K*u - F).norm();
 
                 iterationTime = bigClock.stop();
@@ -569,7 +569,7 @@ void solve(gsOptionList & materialParameters,
                 gsInfo<<"    | "<<PRINT(6)<<"||F|| = "<<PRINT(14)<<Fnorm<<PRINT(20)<<"elasticity time [s] = "<<PRINT(20)<<elAssemblyTime+elSolverTime<<"\n";
                 gsInfo<<"    | "<<PRINT(6)<<"||D|| = "<<PRINT(14)<<D.norm()<<PRINT(20)<<"phase-field time [s] = "<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
                 gsInfo<<"    -----------------------------------------------------------------------------\n";
-                if (Rnorm/* /Fnorm */ < tol)
+                if (Rnorm/Fnorm < tol)
                     break;
                 else if (it == maxIt-1)
                     GISMO_ERROR("Staggered iterations problem did not converge.");
