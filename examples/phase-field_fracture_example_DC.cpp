@@ -288,15 +288,13 @@ void solve(gsOptionList & materialParameters,
 #else
     typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
-    gsSparseMatrix<T> K;
-    gsMatrix<T> R, F;
-
     T elAssemblyTime = 0.0;
     T elSolverTime = 0.0;
     T pfAssemblyTime = 0.0;
     T pfSolverTime = 0.0;
     T iterationTime  = 0.0;
 
+    gsMatrix<T> R;
     gsMatrix<T> D, deltaD;
     gsSparseMatrix<T> Q, QPhi, QPsi;
     gsMatrix<T> q, qpsi;
@@ -323,7 +321,7 @@ void solve(gsOptionList & materialParameters,
     file<<"u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime\n";
     file.close();
 
-    real_t Rnorm, Fnorm;
+    T Rnorm, Fnorm;
     Rnorm = Fnorm = 1;
     while (ucurr<=uend)
     {
@@ -352,23 +350,23 @@ void solve(gsOptionList & materialParameters,
             elAssembler.assemble(u,fixedDofs);
             K = elAssembler.matrix();
             F = elAssembler.rhs();
-            Fnorm = (F.norm() == 0) ? 1 : F.norm();
+            Fnorm = elAssembler.rhs().norm();
+            Fnorm = (Fnorm == 0) ? 1 : Fnorm;
             elAssemblyTime += smallClock.stop();
             for (index_t elIt=0; elIt!=maxItEl; ++elIt)
             {
                 // Solve
                 smallClock.restart();
-                solver.compute(K);
-                u = solver.solve(F);
+                solver.compute(elAssembler.matrix());
+                u = solver.solve(elAssembler.rhs());
                 elSolverTime += smallClock.stop();
 
                 smallClock.restart();
                 elAssembler.assemble(u,fixedDofs);
-                K = elAssembler.matrix();
-                F = elAssembler.rhs();
-                Fnorm = (F.norm() == 0) ? 1 : F.norm();
+                Fnorm = elAssembler.rhs().norm();
+                Fnorm = (Fnorm == 0) ? 1 : Fnorm;
+                Rnorm = (elAssembler.matrix()*u - elAssembler.rhs()).norm();
                 elAssemblyTime += smallClock.stop();
-                Rnorm = (K*u - F).norm();
                 gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
 
                 // Evaluate the geometry in the support
@@ -451,11 +449,10 @@ void solve(gsOptionList & materialParameters,
             smallClock.restart();
             material.setParameter(2,damage);
             elAssembler.assemble(u,fixedDofs);
-            K = elAssembler.matrix();
-            F = elAssembler.rhs();
+            Fnorm = elAssembler.rhs().norm();
+            Fnorm = (Fnorm == 0) ? 1 : Fnorm;
+            Rnorm = (elAssembler.matrix()*u - elAssembler.rhs()).norm();
             elAssemblyTime += smallClock.stop();
-            Fnorm = (F.norm() == 0) ? 1 : F.norm();
-            Rnorm = (K*u - F).norm();
 
             iterationTime = bigClock.stop();
             gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(14)<<"||R||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";

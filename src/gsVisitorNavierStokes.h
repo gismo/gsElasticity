@@ -76,7 +76,7 @@ public:
         basisRefs.back().active_into(quNodes.col(0), localIndicesPres);
         N_P = localIndicesPres.rows();
         // Evaluate velocity basis functions and their derivatives on the element (and hessians, if SUPG is used)
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesVel);
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesVel,true);
         // Evaluate pressure basis functions on the element
         basisRefs.back().eval_into(quNodes,basisValuesPres);
         // Evaluate gradients of pressure basis functions if SUPG is used

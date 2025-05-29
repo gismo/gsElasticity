@@ -355,9 +355,6 @@ void solve(gsOptionList & materialParameters,
 #else
     gsSparseSolver<>::CGDiagonal solver;
 #endif
-    gsSparseMatrix<> K;
-    gsMatrix<> R, F;
-
     T elAssemblyTime = 0.0;
     T elSolverTime = 0.0;
     T pfAssemblyTime = 0.0;
@@ -365,6 +362,7 @@ void solve(gsOptionList & materialParameters,
     T iterationTime  = 0.0;
     T projectionTime = 0.0;
 
+    gsMatrix<T> R;
     gsMatrix<T> D, deltaD;
     gsSparseMatrix<T> Q, QPhi, QPsi;
     gsMatrix<T> q, qpsi;
@@ -464,27 +462,26 @@ void solve(gsOptionList & materialParameters,
                 // Pre-assemble the elasticity problem
                 smallClock.restart();
                 elAssembler.assemble(u,fixedDofs);
-                K = elAssembler.matrix();
-                F = elAssembler.rhs();
-                Fnorm = (F.norm() == 0) ? 1 : F.norm();
+                Fnorm = elAssembler.rhs().norm();
+                Fnorm = (Fnorm == 0) ? 1 : Fnorm;
                 elAssemblyTime += smallClock.stop();
                 for (index_t elIt=0; elIt!=maxItEl; ++elIt)
                 {
                     // Solve
                     smallClock.restart();
-                    solver.compute(K);
-                    u = solver.solve(F);
+                    solver.compute(elAssembler.matrix());
+                    u = solver.solve(elAssembler.rhs());
                     elSolverTime += smallClock.stop();
 
                     smallClock.restart();
                     elAssembler.assemble(u,fixedDofs);
-                    K = elAssembler.matrix();
-                    F = elAssembler.rhs();
+                    Fnorm = elAssembler.rhs().norm();
+                    Fnorm = (Fnorm == 0) ? 1 : Fnorm;
+                    Rnorm = (elAssembler.matrix()*u - elAssembler.rhs()).norm();
                     elAssemblyTime += smallClock.stop();
-                    Rnorm = (K*u - F).norm();
                     gsInfo<<"    | "<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"|\n";
 
-                    if (Rnorm/F.norm() < tolEl || u.norm() < 1e-12)
+                    if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12)
                         break;
                     else if (elIt == maxItEl-1 && maxItEl != 1)
                         GISMO_ERROR("Elasticity problem did not converge.");
@@ -554,11 +551,10 @@ void solve(gsOptionList & materialParameters,
                 smallClock.restart();
                 material.setParameter(2,damage);
                 elAssembler.assemble(u,fixedDofs);
-                K = elAssembler.matrix();
-                F = elAssembler.rhs();
+                Fnorm = elAssembler.rhs().norm();
+                Fnorm = (Fnorm == 0) ? 1 : Fnorm;
+                Rnorm = (elAssembler.matrix()*u - elAssembler.rhs()).norm();
                 elAssemblyTime += smallClock.stop();
-                Fnorm = (F.norm() == 0) ? 1 : F.norm();
-                Rnorm = (K*u - F).norm();
 
                 iterationTime = bigClock.stop();
                 gsInfo<<"    ----------------------------------FINISHED-----------------------------------\n";

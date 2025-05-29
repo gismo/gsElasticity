@@ -76,7 +76,7 @@ public:
         basisRefs.back().active_into(quNodes.col(0), localIndicesPres);
         N_P = localIndicesPres.rows();
         // Evaluate displacement basis functions and their derivatives on the element
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp,true);
         // Evaluate pressure basis functions on the element
         basisRefs.back().eval_into(quNodes,basisValuesPres);
         // Evaluate right-hand side at the image of the quadrature points

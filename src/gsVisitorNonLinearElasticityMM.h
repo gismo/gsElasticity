@@ -69,20 +69,20 @@ public:
         // NEED_VALUE to get points in the physical domain for evaluation of the RHS
         // NEED_MEASURE to get the Jacobian determinant values for integration
         // NEED_GRAD_TRANSFORM to get the Jacobian matrix to transform gradient from the parametric to physical domain
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | SAME_ELEMENT;
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
         // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();
         // Evaluate displacement basis functions and their derivatives on the element
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp);
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesDisp,true);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
         // store quadrature points of the element for displacement evaluation
         mdDisplacement.points = quNodes;
         // NEED_DERIV to compute deformation gradient
-        mdDisplacement.flags = NEED_DERIV;
+        mdDisplacement.flags = NEED_DERIV | SAME_ELEMENT;
         // evaluate displacement gradient
         displacement.patch(patch).computeMap(mdDisplacement);
 
@@ -132,6 +132,7 @@ public:
             {
                 // Material tangent K_tg_mat = B_i^T * C * B_j;
                 setB<T>(B_i,F,physGrad.col(i));
+                // gsDebugVar(B_i);
                 materialTangentTemp = B_i.transpose() * C;
                 // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
                 geometricTangentTemp = S * physGrad.col(i);
@@ -139,7 +140,7 @@ public:
                 for (index_t j = 0; j < N_D; j++)
                 {
                     setB<T>(B_j,F,physGrad.col(j));
-
+                    // gsDebugVar(B_j);
                     materialTangent = materialTangentTemp * B_j;
                     T geometricTangent =  geometricTangentTemp.transpose() * physGrad.col(j);
                     // K_tg = K_tg_mat + I*K_tg_geo;

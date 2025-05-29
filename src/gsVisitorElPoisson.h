@@ -56,7 +56,7 @@ public:
         // Compute the geometry mapping at the quadrature points
         geo.computeMap(md);
         // Evaluate displacement basis functions on the element
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValues);
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValues,true);
         // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndices);
         N = localIndices.rows();

@@ -65,8 +65,8 @@ public:
         basisRefs.back().active_into(quNodes.col(0), localIndicesAux);
         N_A = localIndicesAux.rows();
         // Evaluate basis functions and their derivatives on the element
-        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesMain);
-        basisRefs.back().evalAllDers_into(quNodes,1,basisValuesAux);
+        basisRefs.front().evalAllDers_into(quNodes,1,basisValuesMain,true);
+        basisRefs.back().evalAllDers_into(quNodes,1,basisValuesAux,true);
         // Evaluate right-hand side at the image of the quadrature points
         pde_ptr->rhs()->eval_into(md.values[0],forceValues);
     }
