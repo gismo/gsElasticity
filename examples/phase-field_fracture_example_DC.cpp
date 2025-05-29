@@ -348,8 +348,6 @@ void solve(gsOptionList & materialParameters,
             // Pre-assemble the elasticity problem
             smallClock.restart();
             elAssembler.assemble(u,fixedDofs);
-            K = elAssembler.matrix();
-            F = elAssembler.rhs();
             Fnorm = elAssembler.rhs().norm();
             Fnorm = (Fnorm == 0) ? 1 : Fnorm;
             elAssemblyTime += smallClock.stop();
