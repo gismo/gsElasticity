@@ -359,28 +359,20 @@ void solve(gsOptionList & materialParameters,
                 u = solver.solve(elAssembler.rhs());
                 elSolverTime += smallClock.stop();
 
+                // Check convergence with the old matrix and rhs (saves one assembly)
+                Rnorm = (elAssembler.matrix()*u - elAssembler.rhs()).norm();
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+
+                if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12)
+                    break;
+
                 smallClock.restart();
                 elAssembler.assemble(u,fixedDofs);
                 Fnorm = elAssembler.rhs().norm();
                 Fnorm = (Fnorm == 0) ? 1 : Fnorm;
-                Rnorm = (elAssembler.matrix()*u - elAssembler.rhs()).norm();
                 elAssemblyTime += smallClock.stop();
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
 
-                // Evaluate the geometry in the support
-                gsMatrix<> supp(2,2);
-                supp.col(0)<<0.0,0.48;
-                supp.col(1)<<0.6,0.52;
-                gsVector<unsigned> npts = uniformSampleCount<real_t>(supp.col(0), supp.col(1), 100000);
-                gsMatrix<> points = gsPointGrid<real_t>(supp.col(0),supp.col(1),npts);
-                gsMatrix<> eval_geo, eval_damage;
-                mp.piece(0).eval_into(points, eval_geo);
-                damage.piece(0).eval_into(points, eval_damage);
-                gsWriteParaviewTPgrid(eval_geo,eval_damage,npts.template cast<index_t>(),outputdir+"damage_tmp");
-
-                if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12)
-                    break;
-                else if (elIt == maxItEl-1 && maxItEl != 1)
+                if (elIt == maxItEl-1 && maxItEl != 1)
                     GISMO_ERROR("Elasticity problem did not converge.");
             }
 
