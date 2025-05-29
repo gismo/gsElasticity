@@ -69,7 +69,7 @@
                 value="0e-4"/>
         <real   label="uend"
                 desc="Final displacement [mm]"
-                value="6e-3"/>
+                value="3e-4"/>
         <real   label="ustep"
                 desc="Displacement step [mm]"
                 value="3e-4"/>
