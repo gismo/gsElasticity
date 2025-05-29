@@ -53,20 +53,20 @@
         value="0.010"/>
 <real   label="beta"
         desc="Crack thickness [mm]"
-        value="0.010/3"/> <!-- 0.010/3 for IPF, 0.0025 for H0 -->
+        value="0.003333333333333333333333333"/> <!-- 0.010/3 for IPF, 0.0025 for H0 -->
 <int    label="order"
         desc="Phase-field model order"
         value="2"/>
 <int    label="AT"
         desc="Phase-field model AT-Number"
-        value="2"/>
+        value="1"/>
 </OptionList>
 
 <!-- Control parameters -->
 <OptionList id="1" label="control">
 <real   label="umin"
         desc="Initial displacement [mm]"
-        value="0e-4"/>
+        value="6e-4"/>
 <real   label="uend"
         desc="Final displacement [mm]"
         value="12e-3"/>
@@ -75,10 +75,10 @@
         value="3e-4"/>
 <real   label="utrans"
         desc="Displacement for transition [mm]"
-        value="10e-3"/>
+        value="12e-3"/>
 <real   label="ured"
         desc="Displacement reduction factor [-]"
-        value="5."/>
+        value="1."/>
 <int    label="patchId"
         desc="Patch ID for the controlled boundary"
         value="0"/>

@@ -156,37 +156,36 @@ int main(int argc, char *argv[])
     return 0;
 } // end main
 
-std::vector<real_t> labelElements(  const gsMultiPatch<> & geometry,
+template<short_t dim, class T>
+std::vector<T> labelElements(  const gsMultiPatch<> & geometry,
                                     const gsFunctionSet<>& damage,
                                     const gsMultiBasis<> & basis,
-                                    const real_t         & lowerBound,
-                                    const real_t         & upperBound)
+                                    const T         & lowerBound,
+                                    const T         & upperBound)
 {
     GISMO_ASSERT(basis.nBases() == 1, "Labeling is only implemented for single basis meshes");
-    gsBasis<real_t>::domainIter domIt  = basis.basis(0).domain()->beginAll();
-    gsBasis<real_t>::domainIter domEnd = basis.basis(0).domain()->endAll();
-    gsMatrix<real_t,2,2> corners;
-    gsMatrix<real_t> points(2,5);
-    gsMatrix<real_t> vals;
-    std::vector<real_t> labels(basis.basis(0).numElements());
+    typename gsBasis<T>::domainIter domIt  = basis.basis(0).domain()->beginAll();
+    typename gsBasis<T>::domainIter domEnd = basis.basis(0).domain()->endAll();
+    gsMatrix<T> points;
+    gsMatrix<T> vals;
+    std::vector<T> labels(basis.basis(0).numElements());
+    gsVector<unsigned,dim> np;
+    np.setConstant(2);
     for (; domIt<domEnd; ++domIt)
     {
-        corners.col(0) = domIt.lowerCorner();
-        corners.col(1) = domIt.upperCorner();
-        gsGridIterator<real_t,CUBE,2> grid(corners,2);
-        points.col(0) = domIt.centerPoint();
-        points.block(0,1,2,4) = grid.toMatrix();
+        points = gsPointGrid(domIt.lowerCorner(),domIt.upperCorner(),np);
         damage.piece(0).eval_into(points,vals);
         labels[domIt.id()] = (vals.array() >= lowerBound && vals.array() <= upperBound).any();
     }
     return labels;
 }
 
-void refineMesh    (      gsMultiBasis<>      & basis,
-                    const std::vector<real_t> & vals,
+template <short_t dim, class T>
+void refineMesh    (      gsMultiBasis<T>      & basis,
+                    const std::vector<T> & vals,
                     const gsOptionList        & options)
     {
-    gsAdaptiveMeshing<2,real_t> mesher(basis);
+    gsAdaptiveMeshing<dim,T> mesher(basis);
     mesher.options().setSwitch("Admissible",true);
     mesher.options().setInt("MaxLevel",1);
     mesher.options().setInt("RefineRule",1);
@@ -196,7 +195,7 @@ void refineMesh    (      gsMultiBasis<>      & basis,
     mesher.options().update(options,gsOptionList::ignoreIfUnknown);
     mesher.getOptions();
 
-    gsHBoxContainer<2,real_t> refine, coarsen;
+    gsHBoxContainer<dim,T> refine, coarsen;
     // Mark the elements for refinement
     mesher.markRef_into(vals,refine);
     // Mesh adaptivity
@@ -364,6 +363,7 @@ void solve(gsOptionList & materialParameters,
     T pfAssemblyTime = 0.0;
     T pfSolverTime = 0.0;
     T iterationTime  = 0.0;
+    T projectionTime = 0.0;
 
     gsMatrix<T> D, deltaD;
     gsSparseMatrix<T> Q, QPhi, QPsi;
@@ -380,7 +380,7 @@ void solve(gsOptionList & materialParameters,
     std::vector<std::vector<T>> data;
 
     std::ofstream file(outputdir+"results.txt");
-    file<<"u,Fx,Fy,E_u,E_d,basis_size,num_elements,refIt\n";
+    file<<"u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,basis_size,refIt\n";
     file.close();
 
     std::vector<gsMatrix<> > fixedDofs;
@@ -455,9 +455,6 @@ void solve(gsOptionList & materialParameters,
 
             for (index_t it=0; it!=maxIt; ++it)
             {
-                elAssemblyTime = elSolverTime = 0.0;
-                pfAssemblyTime = pfSolverTime = 0.0;
-                iterationTime  = 0.0;
                 bigClock.restart();
                 gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<it<<"--------------------------\n";
                 gsInfo<<"    ---------------------------------ELASTICITY----------------------------------\n";
@@ -584,9 +581,9 @@ void solve(gsOptionList & materialParameters,
             // All labelled elements are refined to the maximum level, step-by-step
             for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
             {
-                elVals = labelElements(mp, damage, mb,0.1,1.0);
-                if (gsAsVector<real_t>(elVals).sum() > 0)
-                    refineMesh(mb,elVals,mesherOptions);
+                elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
+                if (gsAsVector<T>(elVals).sum() > 0)
+                    refineMesh<dim,T>(mb,elVals,mesherOptions);
 
                 basis_size = mb.basis(0).size();
                 refined = basis_size > basis_size_old;
@@ -599,26 +596,28 @@ void solve(gsOptionList & materialParameters,
 
             // =========================================================================
             // PROJECT SOLUTIONS
-            gsMatrix<> projCoefs;
+            smallClock.restart();
+            gsMatrix<T> projCoefs;
             // Geometry
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
+            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
             mp.clear();
             mp.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
             mp_def = mp;
             // Displacement
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement.patch(0),projCoefs);
+            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),displacement.patch(0),projCoefs);
             displacement.clear();
             displacement.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            // gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),displacement_old.patch(0),projCoefs);
+            // gsQuasiInterpolate<T>::localIntpl(mb.basis(0),displacement_old.patch(0),projCoefs);
             // displacement_old.clear();
             // displacement_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
             // Damage
-            gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
+            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
             damage.clear();
             damage.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            // gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
+            // gsQuasiInterpolate<T>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
             // damage_old.clear();
             // damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
+            projectionTime += smallClock.stop();
         }
 
         // =========================================================================
@@ -674,22 +673,23 @@ void solve(gsOptionList & materialParameters,
             Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
         }
 
-        std::vector<real_t> stepData(8);
+        std::vector<real_t> stepData(12);
         stepData[0] = ucurr;
         stepData[1] = Fx;
         stepData[2] = Fy;
         stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-        stepData[5] = mb.totalSize();
-        stepData[6] = mb.totalElements();
-        stepData[7] = refIt;;
-
+        stepData[5] = elAssemblyTime;
+        stepData[6] = elSolverTime;
+        stepData[7] = pfAssemblyTime;
+        stepData[8] = pfSolverTime;
+        stepData[9] = projectionTime;
+        stepData[10] = basis_size_old;
+        stepData[11] = refIt;
 
         // Write data
         std::ofstream file(outputdir+"results.txt",std::ios::app);
-        // for (size_t i = 0; i != data.size(); ++i)
-        //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
-        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<","<<stepData[7]<<"\n";
+        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<","<<stepData[7]<<","<<stepData[8]<<","<<stepData[9]<<","<<stepData[10]<<","<<stepData[11]<<"\n";
         file.close();
 
         // =========================================================================
@@ -697,6 +697,11 @@ void solve(gsOptionList & materialParameters,
 
         // displacement_old = displacement;
         // damage_old = damage;
+
+        elAssemblyTime = elSolverTime = 0.0;
+        pfAssemblyTime = pfSolverTime = 0.0;
+        iterationTime  = 0.0;
+        projectionTime = 0.0;
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         step++;

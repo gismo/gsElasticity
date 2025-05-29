@@ -75,10 +75,10 @@
         value="3e-4"/>
 <real   label="utrans"
         desc="Displacement for transition [mm]"
-        value="10e-3"/>
+        value="12e-3"/>
 <real   label="ured"
         desc="Displacement reduction factor [-]"
-        value="5."/>
+        value="1."/>
 <int    label="patchId"
         desc="Patch ID for the controlled boundary"
         value="0"/>

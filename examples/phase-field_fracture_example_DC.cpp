@@ -320,7 +320,7 @@ void solve(gsOptionList & materialParameters,
     //     gsWriteParaview(mp,damage,"damage_ini",100000);
 
     std::ofstream file(outputdir+"results.txt");
-    file<<"u,Fx,Fy,E_u,E_d\n";
+    file<<"u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime\n";
     file.close();
 
     real_t Rnorm, Fnorm;
@@ -344,7 +344,7 @@ void solve(gsOptionList & materialParameters,
             iterationTime  = 0.0;
             bigClock.restart();
             gsInfo<<" - Staggered iteration "<<it<<":\n";
-            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||F||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
             material.setParameter(2,damage);
             // Pre-assemble the elasticity problem
@@ -369,7 +369,18 @@ void solve(gsOptionList & materialParameters,
                 Fnorm = (F.norm() == 0) ? 1 : F.norm();
                 elAssemblyTime += smallClock.stop();
                 Rnorm = (K*u - F).norm();
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+
+                // Evaluate the geometry in the support
+                gsMatrix<> supp(2,2);
+                supp.col(0)<<0.0,0.48;
+                supp.col(1)<<0.6,0.52;
+                gsVector<unsigned> npts = uniformSampleCount<real_t>(supp.col(0), supp.col(1), 100000);
+                gsMatrix<> points = gsPointGrid<real_t>(supp.col(0),supp.col(1),npts);
+                gsMatrix<> eval_geo, eval_damage;
+                mp.piece(0).eval_into(points, eval_geo);
+                damage.piece(0).eval_into(points, eval_damage);
+                gsWriteParaviewTPgrid(eval_geo,eval_damage,npts.template cast<index_t>(),outputdir+"damage_tmp");
 
                 if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12)
                     break;
@@ -427,7 +438,6 @@ void solve(gsOptionList & materialParameters,
                 PSORsolver.solve(R,deltaD); // deltaD = Q \ R
                 pfSolverTime += smallClock.stop();
                 D += deltaD;
-
                 gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<D.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
                 if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
                     break;
@@ -471,13 +481,16 @@ void solve(gsOptionList & materialParameters,
             Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
         }
 
-        std::vector<T> stepData(5);
+        std::vector<T> stepData(9);
         stepData[0] = ucurr;
         stepData[1] = Fx;
         stepData[2] = Fy;
         stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
         stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-
+        stepData[5] = elAssemblyTime;
+        stepData[6] = elSolverTime;
+        stepData[7] = pfAssemblyTime;
+        stepData[8] = pfSolverTime;
         gsInfo<<"\n";
         gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<u.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
@@ -511,7 +524,7 @@ void solve(gsOptionList & materialParameters,
         std::ofstream file(outputdir+"results.txt",std::ios::app);
         // for (size_t i = 0; i != data.size(); ++i)
         //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
-        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<"\n";
+        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<","<<stepData[7]<<","<<stepData[8]<<"\n";
         file.close();
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;

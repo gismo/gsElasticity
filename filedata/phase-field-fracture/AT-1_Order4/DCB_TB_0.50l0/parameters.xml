@@ -59,7 +59,7 @@
         value="4"/>
 <int    label="AT"
         desc="Phase-field model AT-Number"
-        value="2"/>
+        value="1"/>
 </OptionList>
 
 <!-- Control parameters -->

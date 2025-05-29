@@ -73997,7 +73997,7 @@
    1 1 
   </coefs>
  </Geometry>
- <MultiPatch parDim="2" id="1" label=".//geometry">
+ <MultiPatch parDim="2" id="1" label="tensile_TB_0.25l0//geometry">
   <patches type="id_range">0 0</patches>
  </MultiPatch>
 </xml>
