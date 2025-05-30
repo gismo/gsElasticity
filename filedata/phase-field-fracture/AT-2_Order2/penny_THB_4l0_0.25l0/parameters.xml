@@ -255,16 +255,16 @@
                 value="0e-4"/>
         <real   label="uend"
                 desc="Final displacement [mm]"
-                value="6e-3"/>
+                value="2e-3"/>
         <real   label="ustep"
                 desc="Displacement step [mm]"
-                value="3e-4"/>
+                value="2e-4"/>
         <real   label="utrans"
                 desc="Displacement for transition [mm]"
-                value="6e-3"/>
+                value="1.3e-3"/>
         <real   label="ured"
                 desc="Displacement reduction factor [-]"
-                value="1."/>
+                value="5."/>
         <int    label="patchId"
                 desc="Patch ID for the controlled boundary"
                 value="0"/>
@@ -328,7 +328,7 @@
 
 <!-- The boundary conditions (multipatch=number of patches)-->
 <boundaryConditions id="2" multipatch="0" label="BCs_u">
-<Function type="FunctionExpr" dim="2" index="0">0</Function>
+<Function type="FunctionExpr" dim="3" index="0">0</Function>
 
 <!-- Dirichlet conditions (patch,side) -->
 <bc type="Dirichlet" function="0" unknown="0">
@@ -342,7 +342,7 @@
 </boundaryConditions>
 
 <boundaryConditions id="2" multipatch="0" label="BCs_d">
-<Function type="FunctionExpr" dim="2" index="0">0</Function>
+<Function type="FunctionExpr" dim="3" index="0">0</Function>
 
 <!-- Dirichlet conditions (patch,side) -->
 <bc type="Dirichlet" function="0" unknown="0">

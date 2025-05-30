@@ -272,20 +272,20 @@ void solve(gsOptionList & materialParameters,
     ///////////////////////////////////////////////////////////////////////////////////////
 
     // Convert to THB
-    gsMultiPatch<> mp;
+    gsMultiPatch<T> mp;
     for (index_t i = 0; i < mp_ini.nPatches(); ++i)
     {
         // Check if tensor basis
-        if      ((dynamic_cast<const gsTensorBSpline<2,real_t> *>(&mp_ini.patch(i))))
+        if      ((dynamic_cast<const gsTensorBSpline<dim,T> *>(&mp_ini.patch(i))))
         {
             // Create a THB spline basis
-            const gsTensorBSpline<2,real_t> & tb = static_cast<const gsTensorBSpline<2,real_t> &>(mp_ini.patch(i));
-            gsTHBSpline<2,real_t> thb(tb);
+            const gsTensorBSpline<dim,T> & tb = static_cast<const gsTensorBSpline<dim,T> &>(mp_ini.patch(i));
+            gsTHBSpline<dim,T> thb(tb);
             mp.addPatch(memory::make_unique(thb.clone().release()));
         }
-        else if ((dynamic_cast<const gsTHBSpline<2,real_t> *>(&mp_ini.patch(i))))
+        else if ((dynamic_cast<const gsTHBSpline<dim,T> *>(&mp_ini.patch(i))))
         {
-            const gsTHBSpline<2,real_t> & thb = static_cast<const gsTHBSpline<2,real_t> &>(mp_ini.patch(i));
+            const gsTHBSpline<dim,T> & thb = static_cast<const gsTHBSpline<dim,T> &>(mp_ini.patch(i));
             mp.addPatch(memory::make_unique(thb.clone().release()));
         }
         else
@@ -310,34 +310,36 @@ void solve(gsOptionList & materialParameters,
     ///////////////////////////////////////////////////////////////////////////////////////
 
     // Initialize the solution (deformed geometry)
-    gsMultiPatch<> mp_def = mp;
-    gsMultiPatch<> displacement = mp;
-    gsMultiPatch<> ddisplacement;
+    gsMultiPatch<T> mp_def = mp;
+    gsMultiPatch<T> displacement = mp;
+    gsMultiPatch<T> ddisplacement;
     for (index_t p=0; p<mp.nPatches(); ++p)
         displacement.patch(p).coefs().setZero();
 
     // Initialize the material
-    gsLinearDegradedMaterial<real_t> material(E,nu,damage,2);
+    gsLinearDegradedMaterial<T> material(E,nu,damage,dim);
     // Initialize the elasticity assembler
-    gsConstantFunction<> bodyForce(0.,0.,2);
+    gsVector<T> bodyForceVec(dim);
+    bodyForceVec.setZero();
+    gsConstantFunction<T> bodyForce(bodyForceVec,dim);
 
-    gsBoundaryConditions<> bc_u_dummy;
+    gsBoundaryConditions<T> bc_u_dummy;
     bc_u_dummy.setGeoMap(mp);
 
     // Initialize the phase-field assembler
-    gsPhaseFieldAssemblerBase<real_t> * pfAssembler;
+    gsPhaseFieldAssemblerBase<T> * pfAssembler;
 
     //////////////////////////////////////////////////////////////////////////
     // INITIALIZE THE MESH ///////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    std::vector<real_t> elVals;
+    std::vector<T> elVals;
     // // REFINE MESH
     // for (index_t k=0; k!=mesherOptions.askInt("MaxLevel",1); ++k)
     // {
     //     elVals = labelElements(mp, damage, mb,0.1,1.0);
-    //     gsInfo<<"Refine: "<<gsAsVector<real_t>(elVals).sum()<<"\n";
-    //     if (gsAsVector<real_t>(elVals).sum())
+    //     gsInfo<<"Refine: "<<gsAsVector<T>(elVals).sum()<<"\n";
+    //     if (gsAsVector<T>(elVals).sum())
     //         refineMesh(mb,elVals,mesherOptions);
     //     else
     //         break;
@@ -348,12 +350,12 @@ void solve(gsOptionList & materialParameters,
     // SOLVE THE PROBLEM/////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    gsMatrix<> u, du;
+    gsMatrix<T> u, du;
 
 #ifdef GISMO_WITH_PARDISO
-    gsSparseSolver<>::PardisoLDLT solver;
+    typename gsSparseSolver<T>::PardisoLDLT solver;
 #else
-    gsSparseSolver<>::CGDiagonal solver;
+    typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
     T elAssemblyTime = 0.0;
     T elSolverTime = 0.0;
@@ -381,11 +383,11 @@ void solve(gsOptionList & materialParameters,
     file<<"u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,basis_size,refIt\n";
     file.close();
 
-    std::vector<gsMatrix<> > fixedDofs;
-    std::vector<gsMatrix<> > dummyFixedDofs;
-    real_t Rnorm, Fnorm;
+    std::vector<gsMatrix<T> > fixedDofs;
+    std::vector<gsMatrix<T> > dummyFixedDofs;
+    T Rnorm, Fnorm;
     Rnorm = Fnorm = 1;
-    // gsMultiPatch<> displacement_old, damage_old;
+    // gsMultiPatch<T> displacement_old, damage_old;
     // displacement_old = displacement;
     // damage_old = damage;
     while (ucurr<=uend)
@@ -403,7 +405,7 @@ void solve(gsOptionList & materialParameters,
             gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
             gsInfo<<"Refinement iteration "<<refIt<<" (basis size: "<<basis_size<<"):\n";
             // CONSTRUCT ASSEMBLERS (since refreshing is not possible)
-            gsElasticityAssembler<real_t> elAssembler(mp,mb,bc_u,bodyForce,&material);
+            gsElasticityAssembler<T> elAssembler(mp,mb,bc_u,bodyForce,&material);
             elAssembler.options().setReal("quA",1.0);
             elAssembler.options().setInt ("quB",0);
             elAssembler.options().setSwitch ("SmallStrains",true);
@@ -412,16 +414,16 @@ void solve(gsOptionList & materialParameters,
             elAssembler.constructSolution(displacement,u);
 
             if      (order == 2 && AT == 1)
-                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
             else if (order == 4 && AT == 1)
             {
-                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
                 pfAssembler->options().setReal("cw",4.44847);
             }
             else if (order == 2 && AT == 2)
-                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
             else if (order == 4 && AT == 2)
-                pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
             else
                 GISMO_ERROR("Invalid order and/or AT model");
 
@@ -627,18 +629,18 @@ void solve(gsOptionList & materialParameters,
             std::string filename;
 
             filename = "mesh_" + util::to_string(step);
-            gsMesh<> mesh(mb.basis(0));
+            gsMesh<T> mesh(mb.basis(0));
             writeSingleCompMesh(mb.basis(0),mp.patch(0),outputdir+filename,1);
             meshCollection.addPart(filename,step,"Mesh",0);
 
             filename = "damage_" + util::to_string(step);
             gsWriteParaview(mp,damage,outputdir+filename,100000);
-            // gsField<> damage_step(zone,damage,false);
+            // gsField<T> damage_step(zone,damage,false);
             // gsWriteParaview(damage_step,filename,1000);
             filename += "0";
             damageCollection.addPart(filename,step,"Solution",0);
 
-            gsMaterialEval<real_t,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+            gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
             filename = "Psi_"+util::to_string(step);
             gsWriteParaview(mp,Psi,outputdir+filename,100000);
             filename += "0";
@@ -653,7 +655,7 @@ void solve(gsOptionList & materialParameters,
         // =========================================================================
 
         // =========================================================================
-        gsElasticityAssembler<real_t> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
+        gsElasticityAssembler<T> fullElAssembler(mp,mb,bc_u_dummy,bodyForce,&material);
         fullElAssembler.options().setReal("quA",1.0);
         fullElAssembler.options().setInt ("quB",0);
         fullElAssembler.options().setSwitch ("SmallStrains",true);
@@ -673,7 +675,7 @@ void solve(gsOptionList & materialParameters,
             Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
         }
 
-        std::vector<real_t> stepData(12);
+        std::vector<T> stepData(12);
         stepData[0] = ucurr;
         stepData[1] = Fx;
         stepData[2] = Fy;
