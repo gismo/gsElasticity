@@ -20,6 +20,7 @@
 #include <gsIO/gsOptionList.h>
 #include <gsUtils/gsThreaded.h>
 #include <gsCore/gsFuncData.h>
+#include <gsElasticity/gsMaterialUtils.h>
 
 namespace gismo
 {
@@ -43,6 +44,9 @@ template <class T>
 class gsMaterialBase
 {
 public:
+
+    /// Type of the scalar
+    typedef T Scalar;
 
     typedef typename gsFunctionSet<T>::Ptr function_ptr;
 
@@ -130,6 +134,109 @@ public:
         return *this;
     }
 
+// Static members
+public:
+
+    /**
+     * @brief      Evaluates the deformation gradient at a set of given points
+     *             (assumes geometric non-linearity)
+     *
+     * @param[in]  data    The material data
+     * @param[out] Fresult The deformation gradient result
+     */
+    static void eval_deformation_gradient_into(const gsMaterialData<T> & data, gsMatrix<T> & Fresult)
+    {
+        Fresult = data.deformationGradient;
+    }
+
+    /**
+     * @brief      Evaluates the strain tensor at a set of given points
+     *             (assumes geometric non-linearity)
+     *
+     * @param[in]  data    The material data
+     * @param[out] Eresult The strain tensor result
+     */
+    static void eval_strain_into(const gsMaterialData<T> & data, gsMatrix<T> & Eresult)
+    {
+        Eresult = data.strain;
+    }
+
+    /**
+     * @brief      Evaluates the stress tensor at a set of given points
+     *             (assumes geometric non-linearity)
+     *
+     * @param[in]  data    The material data
+     * @param[out] Sresult The stress tensor result
+     */
+    static void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult)
+    {
+        GISMO_ERROR("The static function eval_stress_into is not implemented.\n                                                  \
+                     Probably you try to access it via `compute_stress_into`.\n                                                         \
+                     Make sure to implement and override the non-static function `compute_stress_into` in your derived class:\n  \
+                     void compute_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override              \
+                     { this->eval_stress_into(data, Sresult);}\n");
+    }
+
+    /**
+     * @brief      Evaluates the material matrix at a set of given points
+     *             (assumes geometric non-linearity)
+     *
+     * @param[in]  data    The material data
+     * @param[out] Cresult The material matrix result
+     */
+    static void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult)
+    {
+        GISMO_ERROR("The static function eval_matrix_into is not implemented.\n                                                  \
+                     Probably you try to access it via `compute_matrix_into`.\n                                                         \
+                     Make sure to implement and override the non-static function `compute_matrix_into` in your derived class:\n  \
+                     void compute_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override              \
+                     { this->eval_matrix_into(data, Sresult);}\n");
+    }
+
+    /**
+     * @brief      Evaluates the energy at a set of given points
+     *             (assumes geometric non-linearity)
+     *
+     * @param[in]  data    The material data
+     * @param[out] Presult The energy result
+     */
+    static void eval_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Presult)
+    {
+        GISMO_ERROR("The static function eval_energy_into is not implemented.\n                                                  \
+                     Probably you try to access it via `compute_energy_into`.\n                                                         \
+                     Make sure to implement and override the non-static function `compute_energy_into` in your derived class:\n  \
+                     void compute_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override              \
+                     { this->eval_energy_into(data, Sresult);}\n");
+    }
+    /**
+     *
+     */
+    template<bool small = false>
+    static void compute_strainData(const gsMatrix<T> & jac_ori,
+                                   const gsMatrix<T> & jac_def,
+                                   const gsMatrix<T> & I, // Identity matrix given for efficiency
+                                         gsAsMatrix<T,Dynamic,Dynamic> & deformationGradient,
+                                         gsAsMatrix<T,Dynamic,Dynamic> & strain)
+    {
+        _computeStrain<small>(jac_ori, jac_def, I, deformationGradient, strain);
+    }
+
+    /**
+     *
+     */
+    template<bool small = false>
+    static void compute_strainDataFromDisplacements(const gsMatrix<T> & jac_ori,
+                                                    const gsMatrix<T> & jac_u,
+                                                    const gsMatrix<T> & I, // Identity matrix given for efficiency
+                                                          gsAsMatrix<T,Dynamic,Dynamic> & deformationGradient,
+                                                          gsAsMatrix<T,Dynamic,Dynamic> & strain)
+    {
+        _computeStrainFromDisplacement<small>(jac_ori, jac_u, I, deformationGradient, strain);
+    }
+
+// Non-static members
+public:
+
     /**
      * @brief      Sets the default options
      */
@@ -164,8 +271,9 @@ public:
                             gsMaterialData<T> & data) const
     {
         gsMapData<T> map_ori;
-        this->_computeGeometricData(undeformed,patch,u,map_ori);
-        this->_computeStrains_impl(map_ori,data);
+        this->_computeMaps(undeformed,patch,u,map_ori);
+        this->_computeStrainData_impl(map_ori,data);
+        this->_computeParameterData(map_ori,data);
     }
 
     /**
@@ -185,8 +293,8 @@ public:
                             bool smallStrains = false) const
     {
         gsMapData<T> map_ori, map_def;
-        this->_computeGeometricData(undeformed,deformed,patch,u,map_ori,map_def);
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
+        this->_computeMaps(undeformed,deformed,patch,u,map_ori,map_def);
+        this->precompute(map_ori,map_def,data,smallStrains);
     }
 
     /**
@@ -201,7 +309,8 @@ public:
                             gsMaterialData<T> & data,
                             bool smallStrains = false) const
     {
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
+        this->_computeStrainData(map_ori,map_def,data,smallStrains);
+        this->_computeParameterData(map_ori,data);
     }
 
     /**
@@ -213,7 +322,7 @@ public:
      *
      * @return
      */
-    virtual void eval_deformation_gradient_into(const gsFunctionSet<T> & undeformed,
+    virtual void compute_deformation_gradient_into(const gsFunctionSet<T> & undeformed,
                                                 const gsFunctionSet<T> & deformed,
                                                 const index_t patch,
                                                 const gsMatrix<T>& u,
@@ -222,17 +331,15 @@ public:
     {
         // Compute map and parameters
         gsMaterialData<T> data;
-        gsMapData<T> map_ori, map_def;
-        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
+        this->precompute(&undeformed,&deformed,patch,u,data,smallStrains);
+        this->compute_deformation_gradient_into(data,Fresult);
+    }
+
+    virtual void compute_deformation_gradient_into(const gsMaterialData<T> & data,
+                                                         gsMatrix<T> & Fresult) const
+    {
         this->eval_deformation_gradient_into(data,Fresult);
     }
-
-    virtual void eval_deformation_gradient_into(const gsMaterialData<T> & data, gsMatrix<T> & Fresult) const
-    {
-        Fresult = data.m_F;
-    }
-
 
     /**
      * @brief      Evaluates the strain tensor at a set of given points
@@ -243,7 +350,7 @@ public:
      *
      * @return
      */
-    virtual void eval_strain_into(  const gsFunctionSet<T> & undeformed,
+    virtual void compute_strain_into(  const gsFunctionSet<T> & undeformed,
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
@@ -252,17 +359,15 @@ public:
     {
         // Compute map and parameters
         gsMaterialData<T> data;
-        gsMapData<T> map_ori, map_def;
-        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
+        this->precompute(&undeformed,&deformed,patch,u,data,smallStrains);
+        this->compute_strain_into(data,Eresult);
+    }
+
+    virtual void compute_strain_into(const gsMaterialData<T> & data,
+                                           gsMatrix<T> & Eresult) const
+    {
         this->eval_strain_into(data,Eresult);
     }
-
-    virtual void eval_strain_into(const gsMaterialData<T> & data, gsMatrix<T> & Eresult) const
-    {
-        Eresult = data.m_E;
-    }
-
 
     /**
      * @brief      Evaluates the stress tensor at a set of given points
@@ -273,7 +378,7 @@ public:
      *
      * @return
      */
-    virtual void eval_stress_into(  const gsFunctionSet<T> & undeformed,
+    virtual void compute_stress_into(  const gsFunctionSet<T> & undeformed,
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
@@ -282,14 +387,15 @@ public:
     {
         // Compute map and parameters
         gsMaterialData<T> data;
-        gsMapData<T> map_ori, map_def;
-        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
-        this->eval_stress_into(data,Sresult);
+        this->precompute(&undeformed,&deformed,patch,u,data,smallStrains);
+        this->compute_stress_into(data,Sresult);
     }
 
-    virtual void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
-    { GISMO_NO_IMPLEMENTATION; }
+    virtual void compute_stress_into(const gsMaterialData<T> & data,
+                                           gsMatrix<T> & Sresult) const
+    {
+        this->eval_stress_into(data,Sresult);
+    }
 
     /**
      * @brief      Evaluates the material tensor at a set of given points
@@ -300,7 +406,7 @@ public:
      *
      * @return
      */
-    virtual void eval_matrix_into(  const gsFunctionSet<T> & undeformed,
+    virtual void compute_matrix_into(  const gsFunctionSet<T> & undeformed,
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
@@ -309,41 +415,15 @@ public:
     {
         // Compute map and parameters
         gsMaterialData<T> data;
-        gsMapData<T> map_ori, map_def;
-        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
+        this->precompute(&undeformed,&deformed,patch,u,data,smallStrains);
+        this->compute_matrix_into(data,Cresult);
+    }
+
+    virtual void compute_matrix_into(const gsMaterialData<T> & data,
+                                           gsMatrix<T> & Cresult) const
+    {
         this->eval_matrix_into(data,Cresult);
     }
-
-    virtual void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
-    { GISMO_NO_IMPLEMENTATION; }
-
-    /**
-     * @brief      Evaluates the undamaged positive material tensor at a set of given points
-     *             (assumes geometric non-linearity)
-     *
-     * @param[in]  patch  The patch
-     * @param[in]  u      The in-plane shell coordinates to be eveluated on
-     *
-     * @return
-     */
-    virtual void eval_matrix_pos_into(  const gsFunctionSet<T> & undeformed,
-                                        const gsFunctionSet<T> & deformed,
-                                        const index_t patch,
-                                        const gsMatrix<T>& u,
-                                        gsMatrix<T> & Cresult,
-                                        bool smallStrains = false) const
-    {
-        // Compute map and parameters
-        gsMaterialData<T> data;
-        gsMapData<T> map_ori, map_def;
-        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
-        this->eval_matrix_pos_into(data,Cresult);
-    }
-
-    virtual void eval_matrix_pos_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
-    { GISMO_NO_IMPLEMENTATION; }
 
     /**
      * @brief      Evaluates the energy at a set of given points
@@ -354,7 +434,7 @@ public:
      *
      * @return
      */
-    virtual void eval_energy_into(  const gsFunctionSet<T> & undeformed,
+    virtual void compute_energy_into(  const gsFunctionSet<T> & undeformed,
                                     const gsFunctionSet<T> & deformed,
                                     const index_t patch,
                                     const gsMatrix<T>& u,
@@ -363,14 +443,15 @@ public:
     {
         // Compute map and parameters
         gsMaterialData<T> data;
-        gsMapData<T> map_ori, map_def;
-        this->_computeGeometricData(&undeformed,&deformed,patch,u,map_ori,map_def);
-        this->_computeStrains(map_ori,map_def,data,smallStrains);
-        this->eval_energy_into(data,Presult);
+        this->precompute(&undeformed,&deformed,patch,u,data,smallStrains);
+        this->compute_energy_into(data,Presult);
     }
 
-    virtual void eval_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Presult) const
-    { GISMO_NO_IMPLEMENTATION; }
+    virtual void compute_energy_into(const gsMaterialData<T> & data,
+                                           gsMatrix<T> & Presult) const
+    {
+        this->eval_energy_into(data,Presult);
+    }
 
     /// Sets the density
     virtual inline void setDensity(function_ptr Density) { m_density = Density; }
@@ -494,77 +575,94 @@ protected:
      * @param[in]  map_ori  The undeformed map data
      * @param[out] data     The material data
      */
-    void _computeParameters(const gsMapData<T> & map_ori,
+    void _computeParameterData(const gsMapData<T> & map_ori,
                                   gsMaterialData<T> & data) const
     {
         GISMO_ASSERT(map_ori.flags & NEED_VALUE,"The undeformed map data should contain the point values");
         GISMO_ASSERT(data.size == map_ori.points.cols(),"The number of points in the undeformed map data should be the same as in the material data");
         GISMO_ASSERT(data.dim == map_ori.points.rows(),"The number of points in the undeformed map data should be the same as in the material data");
 
-        data.m_parmat.resize(m_pars.size(),data.size);
-        data.m_parmat.setZero();
-        gsMatrix<T> pars;
+        data.parameters.resize(m_pars.size());
         for (size_t v=0; v!=m_pars.size(); v++)
         {
             m_pars[v].first->piece(data.patch).eval_into((m_pars[v].second) ?
                                                             map_ori.points :
                                                             map_ori.values[0],
-                                                            pars);
-            data.m_parmat.row(v) = pars;
+                                                            data.parameters[v]);
         }
     }
 
     template<bool small>
-    gsMatrix<T> _deformationGradient(const gsMatrix<T> & jac_ori,
-                                     const gsMatrix<T> & jac_def,
-                                     const gsMatrix<T> & I) const
+    static inline void _computeStrainFromDisplacement(const gsMatrix<T> jac_ori,
+                                                      const gsMatrix<T> jac_u,
+                                                      const gsMatrix<T> I,
+                                                            gsAsMatrix<T,Dynamic,Dynamic> & F,
+                                                            gsAsMatrix<T,Dynamic,Dynamic> & E)
     {
-        return this->_deformationGradient_impl<small>(jac_ori,jac_def,I);
+        _computeStrainFromDisplacement_impl<small>(jac_ori,jac_u,I,F,E);
     }
 
     template<bool small>
-    typename util::enable_if<  small, gsMatrix<T> >::type
-    _deformationGradient_impl(const gsMatrix<T> & jac_ori,
-                              const gsMatrix<T> & jac_def,
-                              const gsMatrix<T> & I) const
+    static inline typename util::enable_if<  small, void >::type
+    _computeStrainFromDisplacement_impl(const gsMatrix<T> & jac_ori,
+                                        const gsMatrix<T> & jac_u,
+                                        const gsMatrix<T> & I,
+                                              gsAsMatrix<T,Dynamic,Dynamic> & F,
+                                              gsAsMatrix<T,Dynamic,Dynamic> & E)
     {
-        return (jac_def - jac_ori) * jac_ori.cramerInverse() + I;
+        F = jac_u * jac_ori.cramerInverse() + I;
+        E = 0.5 * (F.transpose() + F ) - I;
     }
 
     template<bool small>
-    typename util::enable_if< !small, gsMatrix<T> >::type
-    _deformationGradient_impl(const gsMatrix<T> & jac_ori,
-                              const gsMatrix<T> & jac_def,
-                              const gsMatrix<T> & /* I */) const
+    static inline typename util::enable_if< !small, void >::type
+    _computeStrainFromDisplacement_impl(const gsMatrix<T> & jac_ori,
+                                        const gsMatrix<T> & jac_u,
+                                        const gsMatrix<T> & I,
+                                              gsAsMatrix<T,Dynamic,Dynamic> & F,
+                                              gsAsMatrix<T,Dynamic,Dynamic> & E)
     {
-        return jac_def * jac_ori.cramerInverse();
+        F = (jac_ori + jac_u) * jac_ori.cramerInverse();
+        E = 0.5 * (F.transpose() * F - I);
     }
 
     template<bool small>
-    gsMatrix<T> _strain(const gsMatrix<T> & F,
-                        const gsMatrix<T> & I) const
+    static inline void _computeStrain(const gsMatrix<T> jac_ori,
+                                      const gsMatrix<T> jac_def,
+                                      const gsMatrix<T> I,
+                                            gsAsMatrix<T,Dynamic,Dynamic> & F,
+                                            gsAsMatrix<T,Dynamic,Dynamic> & E)
     {
-        return this->_strains_impl<small>(F,I);
+        // gsMatrix<T> jac_u = jac_def - jac_ori; // displacement gradient
+        // _computeStrainFromDisplacement_impl<small>(jac_ori,jac_u,I,F,E);
+        _computeStrain_impl<small>(jac_ori,jac_def,I,F,E);
     }
 
     template<bool small>
-    typename util::enable_if<  small, gsMatrix<T> >::type
-    _strains_impl(const gsMatrix<T> & F,
-                  const gsMatrix<T> & I) const
+    static inline typename util::enable_if<  small, void >::type
+    _computeStrain_impl(const gsMatrix<T> & jac_ori,
+                       const gsMatrix<T> & jac_def,
+                       const gsMatrix<T> & I,
+                             gsAsMatrix<T,Dynamic,Dynamic> & F,
+                             gsAsMatrix<T,Dynamic,Dynamic> & E)
     {
-        return 0.5 * (F.transpose() + F ) - I;
+        F = (jac_def - jac_ori) * jac_ori.cramerInverse() + I;
+        E = 0.5 * (F.transpose() + F ) - I;
     }
 
     template<bool small>
-    typename util::enable_if< !small, gsMatrix<T> >::type
-    _strains_impl(const gsMatrix<T> & F,
-                  const gsMatrix<T> & I) const
+    static inline typename util::enable_if< !small, void >::type
+    _computeStrain_impl(const gsMatrix<T> & jac_ori,
+                       const gsMatrix<T> & jac_def,
+                       const gsMatrix<T> & I,
+                             gsAsMatrix<T,Dynamic,Dynamic> & F,
+                             gsAsMatrix<T,Dynamic,Dynamic> & E)
     {
-        return 0.5 * (F.transpose() * F - I);
-
+        F = jac_def * jac_ori.cramerInverse();
+        E = 0.5 * (F.transpose() * F - I);
     }
 
-        /**
+    /**
      * @brief      Computes the strains
      *
      * @param[in]  map_ori  The undeformed map data
@@ -572,15 +670,15 @@ protected:
      * @param[out] data     The material data
      * @param[in]  smallStrains  If true, small strains are assumed
      */
-    void _computeStrains(const gsMapData<T> & map_ori,
-                         const gsMapData<T> & map_def,
-                               gsMaterialData<T> & data,
-                               bool smallStrains) const
+    void _computeStrainData(const gsMapData<T> & map_ori,
+                            const gsMapData<T> & map_def,
+                                  gsMaterialData<T> & data,
+                             bool smallStrains) const
     {
         if (smallStrains)
-            this->_computeStrains<true>(map_ori,map_def,data);
+            this->_computeStrainData<true>(map_ori,map_def,data);
         else
-            this->_computeStrains<false>(map_ori,map_def,data);
+            this->_computeStrainData<false>(map_ori,map_def,data);
     }
 
     /**
@@ -591,14 +689,14 @@ protected:
      * @param[out] data     The material data
      */
     template<bool small>
-    void _computeStrains(const gsMapData<T> & map_ori,
-                         const gsMapData<T> & map_def,
-                               gsMaterialData<T> & data) const
+    void _computeStrainData(const gsMapData<T> & map_ori,
+                            const gsMapData<T> & map_def,
+                                  gsMaterialData<T> & data) const
     {
         if (map_def.flags==0)
-            _computeStrains_impl(map_ori,data);
+            _computeStrainData_impl(map_ori,data);
         else
-            _computeStrains_impl<small>(map_ori,map_def,data);
+            _computeStrainData_impl<small>(map_ori,map_def,data);
     }
 
     /**
@@ -607,7 +705,7 @@ protected:
      * @param[in]  map_ori  The undeformed map data
      * @param[out] data     The material data
      */
-    void _computeStrains_impl(const gsMapData<T> & map_ori,
+    void _computeStrainData_impl(const gsMapData<T> & map_ori,
                                     gsMaterialData<T> & data) const
     {
         GISMO_ASSERT(map_ori.flags & NEED_VALUE,"The undeformed map data should contain the point values");
@@ -615,10 +713,8 @@ protected:
         data.dim = map_ori.points.rows();
         data.size = map_ori.points.cols();
         data.patch = (map_ori.patchId==-1) ? 0 : map_ori.patchId;
-        data.m_F.resize(0,data.size);
-        data.m_E.resize(0,data.size);
-
-        this->_computeParameters(map_ori,data);
+        data.deformationGradient.resize(0,data.size);
+        data.strain.resize(0,data.size);
     }
 
     /**
@@ -629,9 +725,9 @@ protected:
      * @param[out] data     The material data
      */
     template<bool small>
-    void _computeStrains_impl(const gsMapData<T> & map_ori,
-                              const gsMapData<T> & map_def,
-                                    gsMaterialData<T> & data) const
+    void _computeStrainData_impl(const gsMapData<T> & map_ori,
+                                 const gsMapData<T> & map_def,
+                                       gsMaterialData<T> & data) const
     {
         GISMO_ASSERT(map_ori.flags & NEED_VALUE,"The undeformed map data should contain the point values");
         GISMO_ASSERT(map_ori.flags & NEED_JACOBIAN,"The undeformed map data should contain the Jacobian matrix");
@@ -641,23 +737,18 @@ protected:
         data.dim = map_ori.points.rows();
         data.size = map_ori.points.cols();
         data.patch = (map_ori.patchId==-1) ? 0 : map_ori.patchId;
-        data.m_F.resize(data.dim*data.dim,data.size);
-        data.m_E.resize(data.dim*data.dim,data.size);
+        data.deformationGradient.resize(data.dim*data.dim,data.size);
+        data.strain.resize(data.dim*data.dim,data.size);
 
-        gsMatrix<T> jac_ori, jac_def;
         gsMatrix<T> I = gsMatrix<T>::Identity(data.dim,data.dim);
         for (index_t k=0; k!= data.size; k++)
         {
-            jac_ori = map_ori.jacobian(k);
-            jac_def = map_def.jacobian(k);
-            // deformation gradient F = dx/dxi*(dxi/dX)
-            gsAsMatrix<T, Dynamic,Dynamic> F = data.m_F.reshapeCol(k,data.dim,data.dim);
-            F = _deformationGradient<small>(jac_ori,jac_def,I);
-            gsAsMatrix<T, Dynamic,Dynamic> Emat = data.m_E.reshapeCol(k,data.dim,data.dim);
-            Emat = _strain<small>(F,I);
+            const gsMatrix<T> & jac_ori = map_ori.jacobian(k);
+            const gsMatrix<T> & jac_def = map_def.jacobian(k);
+            gsAsMatrix<T,Dynamic,Dynamic> deformationGradient = data.deformationGradient.reshapeCol(k, data.dim, data.dim);
+            gsAsMatrix<T,Dynamic,Dynamic> strain = data.strain.reshapeCol(k, data.dim, data.dim);
+            this->_computeStrain<small>(jac_ori,jac_def,I,deformationGradient,strain);
         }
-
-        this->_computeParameters(map_ori,data);
     }
 
     // /**
@@ -670,7 +761,7 @@ protected:
     //  * @param[out] map_ori     The undeformed map data
     //  * @param[out] map_def     The deformed map data
     //  */
-    // void _computeGeometricData(const gsFunctionSet<T> * undeformed,
+    // void _computeMaps(const gsFunctionSet<T> * undeformed,
     //                            const gsFunctionSet<T> * deformed,
     //                            const index_t patch,
     //                            const gsMatrix<T>& u,
@@ -678,9 +769,9 @@ protected:
     //                                  gsMapData<T> & map_def) const
     // {
     //     if (deformed==nullptr || deformed->nPieces()==0)
-    //         _computeGeometricData_impl(undeformed,patch,u,map_ori);
+    //         _computeMaps_impl(undeformed,patch,u,map_ori);
     //     else
-    //         _computeGeometricData_impl(undeformed,deformed,patch,u,map_ori,map_def);
+    //         _computeMaps_impl(undeformed,deformed,patch,u,map_ori,map_def);
     // }
 
     /**
@@ -692,7 +783,7 @@ protected:
      * @param[out] map_ori     The undeformed map data
      * @param[out] map_def     The deformed map data
      */
-    void _computeGeometricData(const gsFunctionSet<T> * undeformed,
+    void _computeMaps(const gsFunctionSet<T> * undeformed,
                                const index_t patch,
                                const gsMatrix<T>& u,
                                      gsMapData<T> & map_ori) const
@@ -715,7 +806,7 @@ protected:
      * @param[out] map_ori     The undeformed map data
      * @param[out] map_def     The deformed map data
      */
-    void _computeGeometricData(const gsFunctionSet<T> * undeformed,
+    void _computeMaps(const gsFunctionSet<T> * undeformed,
                                const gsFunctionSet<T> * deformed,
                                const index_t patch,
                                const gsMatrix<T>& u,
@@ -752,38 +843,6 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW //must be present whenever the class contains fixed size matrices
 #   undef Eigen
 
-};
-
-/**
- * @brief      Material data container
- *             This class contains deformation gradients and strains
- * @tparam     T     Real type
- * @ingroup    Elasticity
- */
-template<class T>
-class gsMaterialData
-{
-
-public:
-
-    void membersSetZero()
-    {
-        m_F.setZero();
-        m_E.setZero();
-        m_rhoMat.setZero();
-    }
-
-    // typename gsMaterialBase<T>::function_ptr m_undeformed;
-    // typename gsMaterialBase<T>::function_ptr m_deformed;
-
-    mutable gsMatrix<T> m_parmat;
-    mutable gsMatrix<T> m_rhoMat;
-    // mutable gsMatrix<T> m_jac_ori, m_jac_def;
-    mutable gsMatrix<T> m_F, m_E;
-
-    mutable short_t dim;
-    mutable index_t size;
-    mutable index_t patch;
 };
 
 }

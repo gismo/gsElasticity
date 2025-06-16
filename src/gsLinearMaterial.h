@@ -39,6 +39,8 @@ class gsLinearMaterial : public gsMaterialBase<T>
 public:
     using Base = gsMaterialBase<T>;
 
+    GISMO_CLONE_FUNCTION(gsLinearMaterial);
+
     /**
      * @brief Constructor with constant parameters
      * @param E Young's modulus
@@ -68,7 +70,13 @@ public:
     }
 
     /// See \ref gsMaterialBase.h for more details
-    void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
+    void compute_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override
+    {
+        this->eval_stress_into(data, Sresult);
+    }
+
+    /// See \ref gsMaterialBase.h for more details
+    static void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult)
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
@@ -83,19 +91,25 @@ public:
 
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
+            E = data.parameters[0](0,i);
+            nu= data.parameters[1](0,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
 
-            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.strain.reshapeCol(i,dim,dim);
             gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
             S = lambda*Emat.trace()*I + 2*mu*Emat;
         }
     }
 
     /// See \ref gsMaterialBase.h for more details
-    void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
+    void compute_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const override
+    {
+        this->eval_matrix_into(data, Cresult);
+    }
+
+    /// See \ref gsMaterialBase.h for more details
+    static void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult)
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
@@ -119,8 +133,8 @@ public:
         T lambda, mu;
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
+            E = data.parameters[0](0,i);
+            nu= data.parameters[1](0,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
             // Compute C

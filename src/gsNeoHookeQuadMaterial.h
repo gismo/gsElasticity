@@ -63,7 +63,13 @@ public:
     }
 
     /// See \ref gsMaterialBase.h for more details
-    void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
+    void compute_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override
+    {
+        this->eval_stress_into(data, Sresult);
+    }
+
+    /// See \ref gsMaterialBase.h for more details
+    static void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult)
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
@@ -79,12 +85,12 @@ public:
         T J;
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
+            E = data.parameters[0](0,i);
+            nu= data.parameters[1](0,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
 
-            gsAsMatrix<T, Dynamic, Dynamic> F = data.m_F.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> F = data.deformationGradient.reshapeCol(i,dim,dim);
             gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
             J = F.determinant();
             RCG = F.transpose() * F;
@@ -94,7 +100,13 @@ public:
     }
 
     /// See \ref gsMaterialBase.h for more details
-    void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
+    void compute_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override
+    {
+        this->eval_matrix_into(data, Sresult);
+    }
+
+    /// See \ref gsMaterialBase.h for more details
+    static void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult)
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
@@ -121,12 +133,12 @@ public:
         T lambda, mu;
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
+            E = data.parameters[0](0,i);
+            nu= data.parameters[1](0,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             mu     = E / ( 2. * ( 1. + nu ) );
 
-            gsAsMatrix<T, Dynamic, Dynamic> F = data.m_F.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> F = data.deformationGradient.reshapeCol(i,dim,dim);
 
             J = F.determinant();
             RCG = F.transpose() * F;

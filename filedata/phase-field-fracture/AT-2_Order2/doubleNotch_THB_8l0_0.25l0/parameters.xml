@@ -159,12 +159,12 @@
 <Function type="FunctionExpr" dim="2" index="0">0</Function>
 
 <!-- Dirichlet conditions (patch,side) -->
-<bc type="Dirichlet" function="0" unknown="0">
+<bc type="Dirichlet" function="0" unknown="0" component="0">
 0 3
 0 4
 </bc>
 
-<bc type="Dirichlet" function="0" unknown="1">
+<bc type="Dirichlet" function="0" unknown="0" component="1">
 0 3
 </bc>
 </boundaryConditions>
@@ -173,7 +173,7 @@
 <Function type="FunctionExpr" dim="2" index="0">0</Function>
 
 <!-- Dirichlet conditions (patch,side) -->
-<bc type="Dirichlet" function="0" unknown="0">
+<bc type="Dirichlet" function="0" unknown="0" component="0">
 0 3
 0 4
 </bc>

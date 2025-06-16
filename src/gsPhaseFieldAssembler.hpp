@@ -10,7 +10,7 @@
 
     Author(s):
         H.M. Verhelst   (2019-..., TU Delft)
-        m_assembler. Mantzaflaris (2019-..., Inria)
+        A. Mantzaflaris (2019-..., Inria)
 */
 
 #pragma once
@@ -124,6 +124,14 @@ void gsPhaseFieldAssembler<T,order,mode>::setOptions(gsOptionList & options)
 template <class T, enum PForder order, enum PFmode mode>
 void gsPhaseFieldAssembler<T,order,mode>::initialize()
 {
+    this->_initialize_impl<order>();
+}
+
+template <class T, enum PForder order, enum PFmode mode>
+template <enum PForder _order>
+typename std::enable_if<(_order==PForder::Second), void>::type
+gsPhaseFieldAssembler<T,order,mode>::_initialize_impl()
+{
     this->_getOptions();
 
     // Elements used for numerical integration
@@ -142,120 +150,43 @@ void gsPhaseFieldAssembler<T,order,mode>::initialize()
 
     // Compute sparsity patter: this is done automatically - but
     // is needed if assemble(.) is called twice
-    m_assembler.computePattern( igrad(u) * igrad(u).tr() );
-
+    m_assembler.computePattern( u*u.tr() + igrad(u) * igrad(u).tr());
     m_initialized = true;
 }
 
 template <class T, enum PForder order, enum PFmode mode>
-void gsPhaseFieldAssembler<T,order,mode>::assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
+template <enum PForder _order>
+typename std::enable_if<(_order==PForder::Fourth), void>::type
+gsPhaseFieldAssembler<T,order,mode>::_initialize_impl()
 {
-    assembleResidual_impl<order,mode>(C,DC);
-}
+    this->_getOptions();
 
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
-gsPhaseFieldAssembler<T,order,mode>::assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
-{
-    GISMO_NO_IMPLEMENTATION;
-}
+    // Elements used for numerical integration
+    m_assembler.setIntegrationElements(m_basis);
+    m_assembler.setOptions(m_options.getGroup("ExprAssembler"));
 
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT1), void>::type
-gsPhaseFieldAssembler<T,order,mode>::assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
-{
-    GISMO_NO_IMPLEMENTATION;
-}
+    GISMO_ASSERT(m_bcs.hasGeoMap(),"No geometry map was assigned to the boundary conditions. Use bc.setGeoMap to assign one!");
 
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT2), void>::type
-gsPhaseFieldAssembler<T,order,mode>::assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
-{
-    GISMO_UNUSED(DC);
+    typename gsExprAssembler<T>::space u = m_assembler.getSpace(*m_spaceBasis, 1, 0); // last argument is the space ID
 
-    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
-    // Set the geometry map
-    geometryMap G = m_assembler.getMap(m_patches);
-
-    // Get the solution and its derivative
-    auto c  = m_assembler.getCoeff(C);
-    // auto dc = m_assembler.getCoeff(DC);
-
-    // Set the discretization space
-    auto w = m_assembler.trialSpace(0);
-
-    m_assembler.assemble(
-                m_Gc / m_l0 *
-                (
-                w*c.tr() +
-                math::pow(m_l0,2)*igrad(w,G) * igrad(c,G).tr()
-                ) * meas(G)
-                );
-}
-
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
-gsPhaseFieldAssembler<T,order,mode>::assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
-{
-    GISMO_UNUSED(DC);
-
-    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
+    // Setup the system
+    u.setup(m_bcs,
+            m_assembler.options().askInt("DirichletValues",dirichlet::l2Projection),
+            m_options.askInt("Continuity",-1));
     m_assembler.initSystem();
 
-    // Set the geometry map
-    geometryMap G = m_assembler.getMap(m_patches);
-
-    // Get the solution and its derivative
-    auto c  = m_assembler.getCoeff(C);
-    // auto dc = m_assembler.getCoeff(DC);
-
-    // Set the discretization space
-    auto w = m_assembler.trialSpace(0);
-
-    m_assembler.assemble(
-                m_Gc / m_l0 *
-                (
-                w*w.tr() +
-                1./2. * math::pow(m_l0,2) *igrad(w,G) * igrad(c,G).tr() +
-                1./16.* math::pow(m_l0,4) * ilapl(w,G) * ilapl(c,G).tr()
-                ) * meas(G)
-                );
+    // Compute sparsity patter: this is done automatically - but
+    // is needed if assemble(.) is called twice
+    m_assembler.computePattern( u*u.tr() + igrad(u) * igrad(u).tr() + ilapl(u) * ilapl(u).tr());
+    m_initialized = true;
 }
 
 template <class T, enum PForder order, enum PFmode mode>
-void gsPhaseFieldAssembler<T,order,mode>::assemblePsiVector(const gsFunctionSet<T> & PSI)
+void gsPhaseFieldAssembler<T,order,mode>::assemblePsi(const gsFunctionSet<T> & PSI)
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
-
-    // Set the geometry map
-    geometryMap G = m_assembler.getMap(m_patches);
-
-    auto psi= m_assembler.getCoeff(PSI);
-
-    // Set the discretization space
-    auto w = m_assembler.trialSpace(0);
-
-    m_assembler.assemble(
-                2.0 * psi.val() * w * meas(G)
-                );
-}
-
-
-template <class T, enum PForder order, enum PFmode mode>
-void gsPhaseFieldAssembler<T,order,mode>::assemblePsiMatrix(const gsFunctionSet<T> & PSI)
-{
-    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
+    m_assembler.clearMatrix(); // Resets the matrix already allocated to the matrix to zero
+    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to the vector (RHS)
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
 
@@ -266,7 +197,11 @@ void gsPhaseFieldAssembler<T,order,mode>::assemblePsiMatrix(const gsFunctionSet<
     auto w = m_assembler.trialSpace(0);
 
     m_assembler.assemble(
-                2.0 * psi.val() * w * w.tr() * meas(G)
+                            // LHS
+                            2.0 * psi.val() * w * w.tr() * meas(G)
+                            ,
+                            // RHS
+                            2.0 * psi.val() * w * meas(G)
                 );
 }
 
@@ -274,7 +209,7 @@ void gsPhaseFieldAssembler<T,order,mode>::assemblePsiMatrix(const gsFunctionSet<
 // void gsPhaseFieldAssembler<T,order,mode>::assembleMassMatrix()
 // {
 //     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-//     m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
+//     m_assembler.clearMatrix(); Resets the matrix already allocated to the matrix to zero
 
 //     // Set the geometry map
 //     geometryMap G = m_assembler.getMap(m_patches);
@@ -283,24 +218,24 @@ void gsPhaseFieldAssembler<T,order,mode>::assemblePsiMatrix(const gsFunctionSet<
 //     auto w = m_assembler.trialSpace(0);
 
 //     // Initialize the system
-//     m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
+//     m_assembler.clearMatrix(); Resets the matrix already allocated to the matrix to zero
 //     m_assembler.assemble(w*w.tr()*meas(G));// K_m
 // }
 
 template <class T, enum PForder order, enum PFmode mode>
-void gsPhaseFieldAssembler<T,order,mode>::assembleMatrix()
+void gsPhaseFieldAssembler<T,order,mode>::assemblePhi()
 {
-    _assembleMatrix_impl<order,mode>();
+    _assemblePhi_impl<order,mode>();
 }
 
 template <class T, enum PForder order, enum PFmode mode>
 template <enum PForder _order, enum PFmode _mode>
 typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
+gsPhaseFieldAssembler<T,order,mode>::_assemblePhi_impl()
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
+    m_assembler.clearMatrix(); // Resets the matrix already allocated to the matrix to zero
+    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to the vector (RHS)
 
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
@@ -308,17 +243,23 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
     // Set the discretization space
     auto w = m_assembler.trialSpace(0);
 
-    m_assembler.assemble( 3./4. * m_Gc * ( igrad(w,G) * igrad(w,G).tr() * m_l0 ) * meas(G) );
+    m_assembler.assemble(
+                            // LHS
+                            3./4. * m_Gc * ( igrad(w,G) * igrad(w,G).tr() * m_l0 ) * meas(G)
+                            ,
+                            // RHS
+                            3./8. * m_Gc  * w / m_l0  * meas(G)
+                        );
 }
 
 template <class T, enum PForder order, enum PFmode mode>
 template <enum PForder _order, enum PFmode _mode>
 typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT1), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
+gsPhaseFieldAssembler<T,order,mode>::_assemblePhi_impl()
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
+    m_assembler.clearMatrix(); // Resets the matrix already allocated to the matrix to zero
+    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to the vector (RHS)
 
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
@@ -327,21 +268,26 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
     auto w = m_assembler.trialSpace(0);
 
     m_assembler.assemble(
-                (m_Gc / m_cw) *
-                (
-                2. *igrad(w,G) * igrad(w,G).tr() * m_l0 +
-                2. * ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
-                ) * meas(G));
+                            // LHS
+                            (m_Gc / m_cw) *
+                            (
+                            2. *igrad(w,G) * igrad(w,G).tr() * m_l0 +
+                            2. * ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
+                            ) * meas(G)
+                            ,
+                            // RHS
+                            m_Gc / m_cw  * w / m_l0  * meas(G)
+                        );
 }
 
 template <class T, enum PForder order, enum PFmode mode>
 template <enum PForder _order, enum PFmode _mode>
 typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT2), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
+gsPhaseFieldAssembler<T,order,mode>::_assemblePhi_impl()
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
+    m_assembler.clearMatrix(); // Resets the matrix already allocated to the matrix to zero
+    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to the vector (RHS)
 
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
@@ -350,102 +296,46 @@ gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
     auto w = m_assembler.trialSpace(0);
 
     m_assembler.assemble(
-                m_Gc *
-                (
-                w*w.tr() / m_l0 +
-                igrad(w,G) * igrad(w,G).tr() * m_l0
-                ) * meas(G)
-                );
+                            // LHS
+                            m_Gc *
+                            (
+                            w*w.tr() / m_l0 +
+                            igrad(w,G) * igrad(w,G).tr() * m_l0
+                            ) * meas(G)
+                            // ,
+                            // RHS
+                            // Empty vector for AT-2 model
+                        );
 }
 
 template <class T, enum PForder order, enum PFmode mode>
 template <enum PForder _order, enum PFmode _mode>
 typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleMatrix_impl()
+gsPhaseFieldAssembler<T,order,mode>::_assemblePhi_impl()
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
+    m_assembler.clearMatrix(); // Resets the matrix already allocated to the matrix to zero
+    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
 
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
 
     // Set the discretization space
     auto w = m_assembler.trialSpace(0);
-
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
 
     m_assembler.assemble(
-                m_Gc *
-                (
-                w*w.tr() / m_l0 +
-                1./2. *igrad(w,G) * igrad(w,G).tr() * m_l0 +
-                1./16.* ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
-                ) * meas(G));
+                            // LHS
+                            m_Gc *
+                            (
+                            w*w.tr() / m_l0 +
+                            1./2. *igrad(w,G) * igrad(w,G).tr() * m_l0 +
+                            1./16.* ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
+                            ) * meas(G)
+                            // ,
+                            // RHS
+                            // Empty vector for AT-2 model
+                        );
 }
-
-template <class T, enum PForder order, enum PFmode mode>
-void gsPhaseFieldAssembler<T,order,mode>::assembleVector()
-{
-    _assembleVector_impl<order,mode>();
-}
-
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleVector_impl()
-{
-    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
-
-    // Set the geometry map
-    geometryMap G = m_assembler.getMap(m_patches);
-
-    // Set the discretization space
-    auto w = m_assembler.trialSpace(0);
-
-    m_assembler.assemble( 3./8. * m_Gc  * w / m_l0  * meas(G) );
-}
-
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT1), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleVector_impl()
-{
-    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initSystem();
-
-    // Set the geometry map
-    geometryMap G = m_assembler.getMap(m_patches);
-
-    // Set the discretization space
-    auto w = m_assembler.trialSpace(0);
-
-    m_assembler.assemble( m_Gc / m_cw  * w / m_l0  * meas(G) );
-}
-
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT2), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleVector_impl()
-{
-    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initVector();
-}
-
-template <class T, enum PForder order, enum PFmode mode>
-template <enum PForder _order, enum PFmode _mode>
-typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
-gsPhaseFieldAssembler<T,order,mode>::_assembleVector_impl()
-{
-    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
-    m_assembler.clearRhs(); // Resets to zero the values of the already allocated to matrix (LHS)
-    m_assembler.initVector();
-}
-
 
 template <class T, enum PForder order, enum PFmode mode>
 void gsPhaseFieldAssembler<T,order,mode>::constructSolution(gsMatrix<T>     & Cvec,

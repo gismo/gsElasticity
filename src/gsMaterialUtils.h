@@ -17,6 +17,12 @@
 namespace gismo
 {
 
+enum gsNeedMaterial
+{
+    NEED_MATERIAL_F        = 1U << 0, ///< Value of the object
+    NEED_MATERIAL_E        = 1U << 1, ///< Gradient of the object
+};
+
 enum class gsMaterialOutput : short_t
 {
     /// @brief Deformation gradient
@@ -71,5 +77,51 @@ void calculate_voigt_strain(const gsMatrix<T>& tmp, short_t d, gsMatrix<T>& resu
         result.col(k) = E_voigt;
     }
 }
+
+/**
+ * @brief      Material data container
+ *             This class contains deformation gradients and strains
+ * @tparam     T     Real type
+ * @ingroup    Elasticity
+ */
+template<class T>
+class gsMaterialData
+{
+
+public:
+
+    void reset()
+    {
+        deformationGradient.resize(0,0);
+        strain.resize(0,0);
+        parameters.clear();
+        density.resize(0,0);
+        dim = 0;
+        size = 0;
+        patch = 0;
+        flags = 0;
+    }
+
+    void resizeParameters(index_t n)
+    {
+        parameters.resize(n);
+    }
+
+    // typename gsMaterialBase<T>::function_ptr m_undeformed;
+    // typename gsMaterialBase<T>::function_ptr m_deformed;
+
+    mutable std::vector<gsMatrix<T>> parameters; ///< Material parameters for each patch
+    mutable             gsMatrix<T>  density; ///< Density for each patch
+
+    // mutable gsMatrix<T> parameters;
+    // mutable gsMatrix<T> m_rhoMat;
+    // mutable gsMatrix<T> m_jac_ori, m_jac_def;
+    mutable gsMatrix<T> deformationGradient, strain;
+
+    mutable short_t dim;
+    mutable index_t size;
+    mutable index_t patch;
+    mutable unsigned flags;
+};
 
 } // namespace

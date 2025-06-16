@@ -322,7 +322,7 @@ protected:
         const short_t dim = u.rows();
         GISMO_ASSERT(m_undeformed.mine()!=nullptr,"Undeformed function is not set");
         GISMO_ASSERT(m_undeformed.mine()->domainDim()==dim,"Geometric dimension and the point dimension are not the same!");
-        m_data.mine().m_parmat.resize(m_pars.size(),u.cols());
+        m_data.mine().parameters.resize(m_pars.size(),u.cols());
 
         gsMatrix<T> tmp;
 
@@ -331,13 +331,13 @@ protected:
         map.points = u;
         static_cast<const gsFunction<T>&>(m_undeformed.mine()->piece(patch)   ).computeMap(map);
 
-        m_data.mine().m_parmat.resize(m_pars.size(),map.values[0].cols());
-        m_data.mine().m_parmat.setZero();
+        m_data.mine().parameters.resize(m_pars.size(),map.values[0].cols());
+        m_data.mine().parameters.setZero();
 
         for (size_t v=0; v!=m_pars.size(); v++)
         {
             m_pars[v]->piece(patch).eval_into(map.values[0], tmp);
-            m_data.mine().m_parmat.row(v) = tmp;
+            m_data.mine().parameters.row(v) = tmp;
         }
     }
 
@@ -383,7 +383,7 @@ public:
         m_rhoMat.setZero();
     }
 
-    mutable gsMatrix<T> m_parmat;
+    mutable gsMatrix<T> parameters;
     mutable gsMatrix<T> m_rhoMat;
     mutable gsMatrix<T> m_jac_ori, m_jac_def;
 };

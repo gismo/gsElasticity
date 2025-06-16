@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <gsElasticity/gsVisitorElUtils.h>
+#include <gsElasticity/gsVisitorLinearElasticityMM.h>
 #include <gsElasticity/gsBasePde.h>
 
 #include <gsAssembler/gsQuadrature.h>
@@ -74,7 +74,7 @@ public:
         // NEED_VALUE to get points in the physical domain for evaluation of the RHS
         // NEED_MEASURE to get the Jacobian determinant values for integration
         // NEED_GRAD_TRANSFORM to get the Jacobian matrix to transform gradient from the parametric to physical domain
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | SAME_ELEMENT;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
         // find local indices of the displacement basis functions active on the element

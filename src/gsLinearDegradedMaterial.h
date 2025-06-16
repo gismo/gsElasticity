@@ -31,6 +31,8 @@ class gsLinearDegradedMaterial : public gsMaterialBase<T>
 public:
     using Base = gsMaterialBase<T>;
 
+    GISMO_CLONE_FUNCTION(gsLinearDegradedMaterial);
+
     gsLinearDegradedMaterial(   const T E,
                                 const T nu,
                                 const gsFunctionSet<T> & damage,
@@ -69,7 +71,59 @@ public:
     this->setParameter(2,damage,d_param);
     }
 
-    void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const
+    gsLinearDegradedMaterial(   const T E,
+                                const T nu,
+                                const T rho,
+                                const gsFunctionSet<T> & damage,
+                                short_t d)
+    :
+    gsLinearDegradedMaterial(gsConstantFunction<T>(E,d),true,
+                             gsConstantFunction<T>(nu,d),true,
+                             gsConstantFunction<T>(rho,d),true,damage,true)
+    {
+    }
+
+    gsLinearDegradedMaterial(   const gsFunctionSet<T> & E,
+                                const gsFunctionSet<T> & nu,
+                                const gsFunctionSet<T> & rho,
+                                const gsFunctionSet<T> & damage)
+    :
+    gsLinearDegradedMaterial(E,true,nu,true,rho,true,damage,true)
+    {
+    }
+
+    /**
+     * @brief Constructor
+     * @param E Young's modulus field
+     * @param E_param true if E is defined in the parametric domain
+     * @param nu Poisson's ratio field
+     * @param nu_param true if nu is defined in the parametric domain
+     * @param rho Density field
+     * @param rho_param true if rho is defined in the parametric domain
+     * @param damage Damage field
+     * @param d_param true if damage is defined in the parametric domain
+     */
+    gsLinearDegradedMaterial(   const gsFunctionSet<T> & E,     bool E_param,
+                                const gsFunctionSet<T> & nu,    bool nu_param,
+                                const gsFunctionSet<T> & rho,   bool rho_param,
+                                const gsFunctionSet<T> & damage,bool d_param)
+    :
+    Base()
+    {
+        GISMO_UNUSED(rho_param);
+        this->setParameter(0,E,E_param);
+        this->setParameter(1,nu,nu_param);
+        this->setParameter(2,damage,d_param);
+        this->setDensity(rho);
+    }
+
+    /// See \ref gsMaterialBase.h for more details
+    void compute_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override
+    {
+        this->eval_stress_into(data, Sresult);
+    }
+
+    static void eval_stress_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult)
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
@@ -89,21 +143,21 @@ public:
         // Loop over points
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
-            damage = data.m_parmat(2,i);
+            E = data.parameters[0](0,i);
+            nu= data.parameters[1](0,i);
+            damage = data.parameters[2](0,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             G      = E / ( 2. * ( 1. + nu ) );
             bulk   = lambda + (2./3.)*G;
 
-            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.strain.reshapeCol(i,dim,dim);
             gsAsMatrix<T, Dynamic, Dynamic> S = Sresult.reshapeCol(i,dim,dim);
 
             E_vol = Emat.trace(); //volumetric strain (scalar)
             E_dev = Emat - 1./3 * E_vol * I; // deviatoric strain
 
             ///// IMPROVE THIS
-            T tol = 1e-9;
+            T tol = 1e-10;
             T omega = math::pow((1. - damage),2);
             if      (E_vol>tol)
                 S = omega*(2.*G*E_dev +  bulk*E_vol*I);
@@ -117,7 +171,7 @@ public:
         // gsMatrix<T> cmat;
         // eval_matrix_into(data,cmat);
         // gsMatrix<T> Evec;
-        // gsMatrix<T> EE= data.m_E.reshapeCol(0,dim,dim);
+        // gsMatrix<T> EE= data.strain.reshapeCol(0,dim,dim);
         // gsMatrix<T> C = cmat.reshapeCol(0,sz,sz);
         // gsMatrix<T> S = Sresult.reshapeCol(0,dim,dim);
         // calculate_voigt_strain(EE,dim,Evec);
@@ -128,7 +182,13 @@ public:
         // gsDebugVar(EE);
     }
 
-    void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult) const
+    /// See \ref gsMaterialBase.h for more details
+    void compute_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Sresult) const override
+    {
+        this->eval_matrix_into(data, Sresult);
+    }
+
+    static void eval_matrix_into(const gsMaterialData<T> & data, gsMatrix<T> & Cresult)
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
@@ -157,15 +217,15 @@ public:
 
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
-            damage = data.m_parmat(2,i);
+            E = data.parameters[0](0,i);
+            nu= data.parameters[1](0,i);
+            damage = data.parameters[2](0,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             G      = E / ( 2. * ( 1. + nu ) );
             bulk   = lambda + (2./3.)*G;
 
             // Compute strain Heaviside function
-            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.strain.reshapeCol(i,dim,dim);
             gsAsMatrix<T, Dynamic, Dynamic> C = Cresult.reshapeCol(i,sz,sz);
 
             E_vol = Emat.trace(); //volumetric strain (scalar)
@@ -176,7 +236,7 @@ public:
             // C = math::pow((1. - damage),2) * (bulk*H_pos*C_vol + 2.*G*C_dev) + bulk*H_neg*C_vol;
 
             ///// IMPROVE THIS
-            T tol = 1e-9;
+            T tol = 1e-10;
             T omega = math::pow((1. - damage),2);
             if      (E_vol>tol)
                 C = omega*(G*C_dev +  bulk*C_vol);
@@ -184,10 +244,22 @@ public:
                 C = omega*(G*C_dev) + bulk*C_vol;
             else
                 C = omega*(G*C_dev);
+
+            // if (gsClose(E_vol,0.0,tol)) gsDebugVar(gsClose(E_vol,0.0,tol));
+            // if      (E_vol>tol)
+            //     C = omega*(G*C_dev +  bulk*C_vol);
+            // else
+            //     C = omega*(G*C_dev) + bulk*C_vol;
         }
     }
 
-    void eval_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Presult) const
+    /// See \ref gsMaterialBase.h for more details
+    void compute_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Presult) const override
+    {
+        this->eval_energy_into(data, Presult);
+    }
+
+    static void eval_energy_into(const gsMaterialData<T> & data, gsMatrix<T> & Presult)
     {
         const short_t dim = data.dim;
         const index_t N = data.size;
@@ -214,21 +286,21 @@ public:
 
         T E_pos;
 
+
         gsMatrix<T> E_vec, tmpE;
-        calculate_voigt_strain(data.m_E,dim,E_vec); //E_vect in voigt
+        calculate_voigt_strain(data.strain,dim,E_vec); //E_vect in voigt
         for (index_t i=0; i!=N; i++)
         {
-            E = data.m_parmat(0,i);
-            nu= data.m_parmat(1,i);
-            // damage = data.m_parmat(2,i);
+            E = data.parameters[0](0,i);
+            nu= data.parameters[1](0,i);
+            // damage = data.parameters[2](0,i);
             lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
             G      = E / ( 2. * ( 1. + nu ) );
             bulk   = lambda + (2./3.)*G;
 
-            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.reshapeCol(i,dim,dim);
+            gsAsMatrix<T, Dynamic, Dynamic> Emat = data.strain.reshapeCol(i,dim,dim);
 
-
-            // gsAsMatrix<T, Dynamic, Dynamic> Emat = data.m_E.col(i);
+            // gsAsMatrix<T, Dynamic, Dynamic> Emat = data.strain.col(i);
             // tmpE = Emat;
             // gsDebugVar(tmpE);
             // calculate_voigt_strain(tmpE,dim,E_vec); //E_vect in voigt

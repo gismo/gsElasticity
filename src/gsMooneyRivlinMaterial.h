@@ -68,8 +68,8 @@ public:
         // T J;
         // for (index_t i=0; i!=u.cols(); i++)
         // {
-        //     E = m_data.mine().m_parmat(0,i);
-        //     nu= m_data.mine().m_parmat(1,i);
+        //     E = m_data.mine().parameters(0,i);
+        //     nu= m_data.mine().parameters(1,i);
         //     lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
         //     mu     = E / ( 2. * ( 1. + nu ) );
 
@@ -114,8 +114,8 @@ public:
         // T lambda, mu;
         // for (index_t i=0; i!=u.cols(); i++)
         // {
-        //     E = m_data.mine().m_parmat(0,i);
-        //     nu= m_data.mine().m_parmat(1,i);
+        //     E = m_data.mine().parameters(0,i);
+        //     nu= m_data.mine().parameters(1,i);
         //     lambda = E * nu / ( ( 1. + nu ) * ( 1. - 2. * nu ) );
         //     mu     = E / ( 2. * ( 1. + nu ) );
 

@@ -69,7 +69,7 @@ public:
         // NEED_VALUE to get points in the physical domain for evaluation of the RHS
         // NEED_MEASURE to get the Jacobian determinant values for integration
         // NEED_GRAD_TRANSFORM to get the Jacobian matrix to transform gradient from the parametric to physical domain
-        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | SAME_ELEMENT;
+        md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
         // find local indices of the displacement basis functions active on the element
@@ -84,9 +84,9 @@ public:
         gsMapData<T> mdDeformed = md;
 
         gsMaterialData<T> data;
-        gsMaterialBase<T> * material = m_materials.piece(geo.id());
-        material->precompute(md,mdDeformed,data,true);
-        material->eval_matrix_into(data,matValues);
+        // gsMaterialBase<T> * material = m_materials.piece(geo.id());
+        m_materials.piece(geo.id())->precompute(md,mdDeformed,data,true);
+        m_materials.piece(geo.id())->compute_matrix_into(data,matValues);
 
     }
 

@@ -282,14 +282,14 @@ private:
     template<enum gsMaterialOutput _out, bool>
     typename std::enable_if<_out==gsMaterialOutput::Psi, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_material->eval_energy_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
+        m_material->compute_energy_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
     }
 
     /// Specialisation of \ref eval_into for the deformation gradient
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::F  && !_voigt, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_material->eval_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
+        m_material->compute_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
     }
 
     /// Specialisation of \ref eval_into for the deformation gradient
@@ -297,7 +297,7 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::F && _voigt   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
-        m_material->eval_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp,smallStrains);
+        m_material->compute_deformation_gradient_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp,smallStrains);
         result.resize(m_dim*(m_dim+1)/2,u.cols());
         calculate_voigt_strain(tmp, m_dim, result);
     }
@@ -306,7 +306,7 @@ private:
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::E  && !_voigt, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_material->eval_strain_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
+        m_material->compute_strain_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
     }
 
     /// Specialisation of \ref eval_into for the strain tensor
@@ -314,7 +314,7 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::E && _voigt   , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
-        m_material->eval_strain_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp,smallStrains);
+        m_material->compute_strain_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp,smallStrains);
         result.resize(m_dim*(m_dim+1)/2,u.cols());
         calculate_voigt_strain(tmp, m_dim, result);
     }
@@ -323,7 +323,7 @@ private:
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::S && !_voigt, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_material->eval_stress_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
+        m_material->compute_stress_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
     }
 
 
@@ -332,7 +332,7 @@ private:
     typename std::enable_if<_out==gsMaterialOutput::S && _voigt, void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> tmp;
-        m_material->eval_stress_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp,smallStrains);
+        m_material->compute_stress_into(*m_undeformed,*m_deformed,m_pIndex,u,tmp,smallStrains);
         result.resize(m_dim*(m_dim+1)/2,u.cols());
         calculate_voigt_stress(tmp, m_dim, result);
     }
@@ -341,7 +341,7 @@ private:
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::C && _voigt , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_material->eval_matrix_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
+        m_material->compute_matrix_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
     }
 
     template<enum gsMaterialOutput _out, bool _voigt>
@@ -354,7 +354,7 @@ private:
     template<enum gsMaterialOutput _out, bool _voigt>
     typename std::enable_if<_out==gsMaterialOutput::C_pos && _voigt , void>::type eval_into_impl(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_material->eval_matrix_pos_into(*m_undeformed,*m_deformed,m_pIndex,u,result,smallStrains);
+        GISMO_NO_IMPLEMENTATION;
     }
 
     template<enum gsMaterialOutput _out, bool _voigt>

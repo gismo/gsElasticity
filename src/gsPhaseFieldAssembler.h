@@ -48,31 +48,9 @@ public:
 
     virtual void setSpaceBasis(const gsFunctionSet<T> & spaceBasis) = 0;
 
-    /**
-     * @brief Assembles the matrix \Phi (see Greco et al 2024)
-     */
-    virtual void assembleMatrix() = 0;
+    virtual void assemblePhi() = 0;
 
-    /**
-     * @brief Assembles the vector (zero for AT-2 model)
-     */
-    virtual void assembleVector() = 0;
-
-    /**
-     * @brief Assembles the residual vector
-     */
-    virtual void assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC) = 0;
-
-
-    /**
-     * @brief Assembles int_\Omega \Psi()*w*w.tr()*meas(G)
-     */
-    virtual void assemblePsiMatrix(const gsFunctionSet<T> & PSI) = 0;
-
-    /**
-     * @brief Assembles int_\Omega \Psi()*w*meas(G)
-     */
-    virtual void assemblePsiVector(const gsFunctionSet<T> & PSI) = 0;
+    virtual void assemblePsi(const gsFunctionSet<T> & PSI) = 0;
 
     virtual const gsSparseMatrix<T> & matrix() const = 0;
 
@@ -160,29 +138,14 @@ public:
     /**
      * @brief Assembles the matrix \Phi (see Greco et al 2024)
      */
-    void assembleMatrix() override;
+    void assemblePhi() override;
 
     /**
-     * @brief Assembles the vector (zero for AT-2 model)
+     * @brief Assembles
+     *        - LHS: int_\Omega \Psi()*w*w.tr()*meas(G)
+     *        - RHS: int_\Omega \Psi()*w*meas(G)
      */
-    void assembleVector() override;
-
-    /**
-     * @brief Assembles the residual
-     * @param C The solution
-     * @param DC The time-derivative of the solution
-     */
-    void assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC) override;
-
-    /**
-     * @brief Assembles int_\Omega \Psi()*w*w.tr()*meas(G)
-     */
-    void assemblePsiMatrix(const gsFunctionSet<T> & PSI) override;
-
-    /**
-     * @brief Assembles int_\Omega \Psi()*w*meas(G)
-     */
-    void assemblePsiVector(const gsFunctionSet<T> & PSI) override;
+    void assemblePsi(const gsFunctionSet<T> & PSI) override;
 
     // /**
     //  * @brief Assembles the Nitsche vector for boundary conditions separately
@@ -264,53 +227,29 @@ public:
 
 private:
 
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
-    _assembleMatrix_impl();
+    template <enum PForder _order>
+    typename std::enable_if<(_order==PForder::Second), void>::type
+    _initialize_impl();
 
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT1), void>::type
-    _assembleMatrix_impl();
-
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT2), void>::type
-    _assembleMatrix_impl();
-
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
-    _assembleMatrix_impl();
+    template <enum PForder _order>
+    typename std::enable_if<(_order==PForder::Fourth), void>::type
+    _initialize_impl();
 
     template <enum PForder _order, enum PFmode _mode>
     typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
-    _assembleVector_impl();
+    _assemblePhi_impl();
 
     template <enum PForder _order, enum PFmode _mode>
     typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT1), void>::type
-    _assembleVector_impl();
+    _assemblePhi_impl();
 
     template <enum PForder _order, enum PFmode _mode>
     typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT2), void>::type
-    _assembleVector_impl();
+    _assemblePhi_impl();
 
     template <enum PForder _order, enum PFmode _mode>
     typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
-    _assembleVector_impl();
-
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT1), void>::type
-    assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
-
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT1), void>::type
-    assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
-
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Second && _mode==PFmode::AT2), void>::type
-    assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
-
-    template <enum PForder _order, enum PFmode _mode>
-    typename std::enable_if<(_order==PForder::Fourth && _mode==PFmode::AT2), void>::type
-    assembleResidual_impl(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
+    _assemblePhi_impl();
 
 protected:
 
