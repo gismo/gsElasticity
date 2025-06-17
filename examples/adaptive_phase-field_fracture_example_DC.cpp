@@ -413,7 +413,7 @@ void solve(gsOptionList & materialParameters,
             gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> elAssembler(mp,mb,bc_u,&material);
             elAssembler.options().setReal("ExprAssembler.quA",1.0);
             elAssembler.options().setInt ("ExprAssembler.quB",0);
-            elAssembler.options().setInt("ExprAssembler.DirichletValues",dirichlet::interpolation);
+            elAssembler.options().setInt("ExprAssembler.DirichletValues",dirichlet::l2Projection);
             elAssembler.initialize();
             // Initialize u
             elAssembler.constructSolution(displacement,u);
