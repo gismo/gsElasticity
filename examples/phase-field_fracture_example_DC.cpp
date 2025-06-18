@@ -506,7 +506,6 @@ void solve(gsOptionList & materialParameters,
         elAssemblyTime = elSolverTime = 0.0;
         pfAssemblyTime = pfSolverTime = 0.0;
         iterationTime  = 0.0;
-        projectionTime = 0.0;
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         step++;
