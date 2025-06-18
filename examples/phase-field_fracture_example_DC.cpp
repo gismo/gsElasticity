@@ -325,9 +325,6 @@ void solve(gsOptionList & materialParameters,
         deltaD.setZero();
         for (index_t it=0; it!=maxIt; ++it)
         {
-            elAssemblyTime = elSolverTime = 0.0;
-            pfAssemblyTime = pfSolverTime = 0.0;
-            iterationTime  = 0.0;
             bigClock.restart();
             gsInfo<<" - Staggered iteration "<<it<<":\n";
             gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||F||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
@@ -505,6 +502,11 @@ void solve(gsOptionList & materialParameters,
         //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
         file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<","<<stepData[7]<<","<<stepData[8]<<"\n";
         file.close();
+
+        elAssemblyTime = elSolverTime = 0.0;
+        pfAssemblyTime = pfSolverTime = 0.0;
+        iterationTime  = 0.0;
+        projectionTime = 0.0;
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         step++;

@@ -516,7 +516,7 @@ void solve(gsOptionList & materialParameters,
                 // gsInfo<<"Assembling phase-field problem"<<"\n";
                 smallClock.restart();
                 pfAssembler->assemblePsi(Psi);
-                pfAssemblyTime = smallClock.stop();
+                pfAssemblyTime += smallClock.stop();
                 pfAssembler->matrix_into(QPsi);
                 pfAssembler->rhs_into(qpsi);
                 if (qpsi.rows()==0) // qpsi is empty for AT2 models
