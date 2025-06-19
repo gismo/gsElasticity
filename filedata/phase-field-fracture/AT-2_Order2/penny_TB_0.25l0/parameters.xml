@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 25.1.0-->
+<xml>
+
+ <MultiPatch parDim="3" id="1" label="geometry">
+  <patches type="id_range">10 10</patches>
+ </MultiPatch>
+
+ <Geometry type="TensorBSpline3" id="10">
+   <Basis type="TensorBSplineBasis3">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="3">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+  <coefs geoDim="3">
+    -10 -10 -10
+     10 -10 -10
+    -10  10 -10
+     10  10 -10
+    -10 -10  10
+     10 -10  10
+    -10  10  10
+     10  10  10
+  </coefs>
+ </Geometry>
+
+ <MultiPatch parDim="2" id="2" label="crack">
+  <patches type="id_range">20 20</patches>
+ </MultiPatch>
+
+ <Geometry type="TensorNurbs2" id="20">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>
+    1
+    0.707106781186548
+    1
+    0.707106781186548
+    0.5
+    0.707106781186548
+    1
+    0.707106781186548
+    1
+   </weights>
+  </Basis>
+  <coefs geoDim="3">
+   0 -3.535533909105697 -3.535533902759779
+   5 -3.535533909105697 -3.535533902759779
+   5 0 0
+   -5 -3.535533909105697 -3.535533902759779
+   0 0 0
+   5 3.535533909105697 3.535533902759779
+   -5 0 0
+   -5 3.535533909105697 3.535533902759779
+   0 3.535533909105697 3.535533902759779
+  </coefs>
+ </Geometry>
+
+<!-- Material parameters -->
+<OptionList id="0" label="material">
+<real   label="E"
+        desc="Young's Modulus [kN/mm^2]"
+        value="377e3"/>
+<real   label="nu"
+        desc="Poisson Ratio [-]"
+        value="0.3"/>
+<real   label="Gc"
+        desc="Toughness [kN/mm]"
+        value="1e-2"/>
+<real   label="l0"
+        desc="Internal crack length [mm]"
+        value="1.25"/>
+<real   label="beta"
+        desc="Crack thickness [mm]"
+        value="0.416666667"/> <!-- 1/3*l0 -->
+<int    label="order"
+        desc="Phase-field model order"
+        value="2"/>
+<int    label="AT"
+        desc="Phase-field model AT-Number"
+        value="2"/>
+</OptionList>
+
+<!-- Control parameters -->
+<OptionList id="1" label="control">
+        <real   label="umin"
+                desc="Initial displacement [mm]"
+                value="0e-4"/>
+        <real   label="uend"
+                desc="Final displacement [mm]"
+                value="6e-3"/>
+        <real   label="ustep"
+                desc="Displacement step [mm]"
+                value="3e-4"/>
+        <real   label="utrans"
+                desc="Displacement for transition [mm]"
+                value="6e-3"/>
+        <real   label="ured"
+                desc="Displacement reduction factor [-]"
+                value="1."/>
+        <int    label="patchId"
+                desc="Patch ID for the controlled boundary"
+                value="0"/>
+        <int    label="side"
+                desc="Side ID for the controlled boundary"
+                value="4"/>
+        <string label="function"
+                desc="Function on the controlled boundary"
+                value="u"/>
+        <int    label="direction"
+                desc="Direction of the controlled boundary"
+                value="1"/>
+        <int    label="maxIt"
+                desc="Maximum number of iterations"
+                value="10000"/>
+        <int    label="maxItEl"
+                desc="Maximum number of iterations for the elasticity problem"
+                value="50"/>
+        <int    label="maxItPf"
+                desc="Maximum number of iterations for the phase-field problem"
+                value="1"/>
+        <real   label="tol"
+                desc="Tolerance for the Newton method"
+                value="1e-7"/>
+        <real   label="tolEl"
+                desc="Tolerance for the elasticity problem"
+                value="1e-9"/>
+        <real   label="tolPf"
+                desc="Tolerance for the phase-field problem"
+                value="1e-9"/>
+</OptionList>
+
+
+<!-- Meshing parameters -->
+<OptionList id="0" label="meshing">
+<bool   label="Admissible"
+        desc="Admissible meshing"
+        value="1"/>
+<int    label="MaxLevel"
+        desc="Maximum level of refinement"
+        value="4"/>
+<int    label="RefineRule"
+        desc="Refinement rule"
+        value="1"/>
+<int    label="CoarsenRule"
+        desc="Coarsening rule"
+        value="1"/>
+<real   label="RefineParam"
+        desc="Refinement parameter"
+        value="0.1"/>
+<real   label="CoarsenParam"
+        desc="Coarsening parameter"
+        value="0.1"/>
+<real   label="SizeRatio"
+        desc="Mesh size ratio threshold to activate refinement iterations"
+        value="1.05"/>
+<int   label="MaxRefIterations"
+        desc="Maximum number of refinement iterations"
+        value="10"/>
+</OptionList>
+
+<!-- The boundary conditions (multipatch=number of patches)-->
+<boundaryConditions id="2" multipatch="0" label="BCs_u">
+<Function type="FunctionExpr" dim="2" index="0">0</Function>
+
+<!-- Dirichlet conditions (patch,side) -->
+<bc type="Dirichlet" function="0" unknown="0" component="0">
+0 3
+0 4
+</bc>
+
+<bc type="Dirichlet" function="0" unknown="0" component="1">
+0 3
+</bc>
+</boundaryConditions>
+
+<boundaryConditions id="2" multipatch="0" label="BCs_d">
+<Function type="FunctionExpr" dim="2" index="0">0</Function>
+
+<!-- Dirichlet conditions (patch,side) -->
+<bc type="Dirichlet" function="0" unknown="0" component="0">
+0 3
+0 4
+</bc>
+</boundaryConditions>
+
+</xml>
+

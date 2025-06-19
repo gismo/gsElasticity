@@ -16,10 +16,10 @@
     </Basis>
    </Basis>
   <coefs geoDim="2">
-    0 0
-    1 0
-    0 1
-    1 1
+    0. 0.
+    40 0.
+    0. 40
+    40 40
   </coefs>
  </Geometry>
 
@@ -32,8 +32,8 @@
      <KnotVector degree="1">0 0 1 1</KnotVector>
     </Basis>
   <coefs geoDim="2">
-  	0   0.53
-  	0.2 0.53
+  	0.0 21.
+  	8.0 21.
   </coefs>
  </Geometry>
 
@@ -42,8 +42,8 @@
      <KnotVector degree="1">0 0 1 1</KnotVector>
     </Basis>
   <coefs geoDim="2">
-  	0.8 0.47
-  	1.0 0.47
+  	32. 19.
+  	40. 19.
   </coefs>
  </Geometry>
 
@@ -60,10 +60,10 @@
         value="2.7e-3"/>
 <real   label="l0"
         desc="Internal crack length [mm]"
-        value="0.0075"/>
+        value="0.2"/>
 <real   label="beta"
         desc="Crack thickness [mm]"
-        value="0.0025"/> <!-- 0.005 for IPF, 0.00375 for H0 -->
+        value="0.066666667"/>
 <int    label="order"
         desc="Phase-field model order"
         value="2"/>
@@ -79,13 +79,13 @@
                 value="0e-4"/>
         <real   label="uend"
                 desc="Final displacement [mm]"
-                value="6e-3"/>
+                value="5e-2"/>
         <real   label="ustep"
                 desc="Displacement step [mm]"
                 value="1e-4"/>
         <real   label="utrans"
                 desc="Displacement for transition [mm]"
-                value="4e-3"/>
+                value="4e-2"/>
         <real   label="ured"
                 desc="Displacement reduction factor [-]"
                 value="10."/>
