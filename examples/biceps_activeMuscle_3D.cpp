@@ -133,6 +133,7 @@ int main(int argc, char* argv[]){
     // setting Newton's method
     gsIterative<real_t> solver(assembler);
     solver.options().setInt("Verbosity",solver_verbosity::all);
+    solver.options().setReal("RelTol",1e-4); // Should be 1e-9
     solver.options().setInt("Solver",linear_solver::LDLT);
 
     gsInfo << "Solving...\n";

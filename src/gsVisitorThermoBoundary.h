@@ -69,10 +69,7 @@ public:
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
         // Evaluate temperature
-        if (paramTemp) // evaluate temperature in the parametric domain
-            temperatureField.piece(patch).eval_into(quNodes,tempValues);
-        else           // evaluate temperature in the physical domain
-            temperatureField.eval_into(md.values[0],tempValues);
+        temperatureField.piece(patch).eval_into(quNodes,tempValues);
         // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();

@@ -36,7 +36,7 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        GISMO_UNUSED(patchIndex);
+        currentPatch = patchIndex;
         // parametric dimension of the first displacement component
         dim = basisRefs.front().dim();
         // a quadrature rule is defined by the basis for the first displacement component.
@@ -59,8 +59,8 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE;
         // Compute image of the quadrature points plus gradient, jacobian and other necessary data
         geo.computeMap(md);
-        // Evaluate the Neumann functon on the images of the quadrature points
-        neumannFunction_ptr->eval_into(md.values[0], neumannValues);
+
+        neumannFunction_ptr->piece(currentPatch).eval_into(md.values[0], neumannValues);
         // find local indices of the displacement basis functions active on the element
         basisRefs.front().active_into(quNodes.col(0),localIndicesDisp);
         N_D = localIndicesDisp.rows();
@@ -107,6 +107,7 @@ protected:
     // problem info
     short_t dim;
     const gsFunctionSet<T> * neumannFunction_ptr;
+    index_t currentPatch; //gsLOOKUPFUNCTION
     T forceScaling;
     boxSide patchSide;
     // geometry mapping
