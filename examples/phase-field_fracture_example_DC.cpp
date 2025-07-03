@@ -346,13 +346,6 @@ void solve(gsOptionList & materialParameters,
                 u = solver.solve(elRhs);
                 elSolverTime += smallClock.stop();
 
-                // Check convergence with the old matrix and rhs (saves one assembly)
-                Rnorm = (elMatrix*u - elRhs).norm();
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
-
-                if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12)
-                    break;
-
                 smallClock.restart();
                 elAssembler.assemble(u);
                 elAssemblyTime += smallClock.stop();
@@ -360,6 +353,13 @@ void solve(gsOptionList & materialParameters,
                 elAssembler.rhs_into(elRhs);
                 Fnorm = elRhs.norm();
                 Fnorm = (Fnorm == 0) ? 1 : Fnorm;
+
+                // Check convergence with the old matrix and rhs (saves one assembly)
+                Rnorm = (elMatrix*u - elRhs).norm();
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+
+                if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12)
+                    break;
 
                 if (elIt == maxItEl-1 && maxItEl != 1)
                     GISMO_ERROR("Elasticity problem did not converge.");
