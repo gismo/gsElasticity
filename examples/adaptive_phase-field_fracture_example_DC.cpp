@@ -621,7 +621,7 @@ void solve(gsOptionList & materialParameters,
 
                 file.open(outputdir+"iteration_results.txt",std::ios::app);
                 file<<step<<","<<refIt<<","<<stagIt<<","<<ucurr<<","
-                    <<u.norm()<<","<<D.norm()<<","<<Rnorm<<","<<Fnorm<<","<<","<<Rnorm/Fnorm<<","
+                    <<u.norm()<<","<<D.norm()<<","<<Rnorm<<","<<Fnorm<<","<<Rnorm/Fnorm<<","
                     <<stagTimes.elAssemblyTime<<","<<stagTimes.elSolverTime<<","
                     <<stagTimes.pfAssemblyTime<<","<<stagTimes.pfSolverTime<<","
                     <<basis_size<<","
