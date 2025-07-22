@@ -139,7 +139,7 @@ public:
 
         gsMatrix<T> I = gsMatrix<T>::Identity(dim,dim);
         gsMatrix<T> E_dev;
-        T E_vol, E_vol_pos, E_vol_neg;
+        T E_vol;
         // Loop over points
         for (index_t i=0; i!=N; i++)
         {
@@ -264,9 +264,6 @@ public:
         const short_t dim = data.dim;
         const index_t N = data.size;
 
-        // Voigt-size of the tensor
-        const index_t sz = (dim+1)*dim/2;
-
         // Resize the result
         Presult.resize(1,N);
 
@@ -283,9 +280,6 @@ public:
         T lambda, G, bulk;
         // Damage parameter
         // T damage;
-
-        T E_pos;
-
 
         gsMatrix<T> E_vec, tmpE;
         calculate_voigt_strain(data.strain,dim,E_vec); //E_vect in voigt

@@ -144,7 +144,6 @@ void gsSolidAssembler<DIM,T,Material>::assemble()
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
     space       u = m_assembler.trialSpace(0);
-    auto        f = m_assembler.getCoeff(*m_forcing);
 
     // Unpack the material parameters
     index_t numParams = m_material->numParameters();
@@ -232,7 +231,7 @@ void gsSolidAssembler<DIM,T,Material>::assembleMass()
 
     // Define expressions
     auto rho = m_assembler.getCoeff(*m_material->getDensity());
-    m_assembler.assemble(u*u.tr()*meas(G));
+    m_assembler.assemble(rho.val()*u*u.tr()*meas(G));
 }
 
 template <short_t DIM, class T, class Material>

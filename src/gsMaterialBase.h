@@ -558,7 +558,7 @@ public:
      * @brief      Gets the number of parameters
      *
      */
-    virtual inline index_t numParameters() const { return m_pars.size(); }
+    virtual inline size_t numParameters() const { return m_pars.size(); }
 
     /// See \ref gsMaterialMatrixBase for details
     virtual inline void resetParameters()

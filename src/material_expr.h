@@ -16,7 +16,7 @@
 
 #include <gsElasticity/gsMaterialBase.h>
 #include <gsElasticity/gsMaterialUtils.h>
-#include <gsAssembler/gsExpressions.h>
+#include <gsExpressions/gsExpressions.h>
 
 namespace gismo
 {
@@ -82,7 +82,7 @@ namespace gismo
                 // grad_expr<E>(_u).parse(evList);
                 parse_impl<E>(_u,evList); // Parse _u depending on its type
 
-                for (index_t p=0; p!=_parameters.size(); ++p)
+                for (size_t p=0; p!=_parameters.size(); ++p)
                 {
                     evList.add(_parameters[p]);
                     _parameters[p].data().flags |= NEED_VALUE;
@@ -103,7 +103,7 @@ namespace gismo
                 gsAsMatrix<T,Dynamic,Dynamic> deformationGradient = _Mdata.deformationGradient.reshapeCol(0, _d, _d);
                 gsAsMatrix<T,Dynamic,Dynamic> strain = _Mdata.strain.reshapeCol(0, _d, _d);
                 Material::template compute_strainDataFromDisplacements<smallStrains>(jac_ori, jac_u, _I, deformationGradient, strain); // compute deformation gradient and strain tensor
-                for (index_t p=0; p!=_parameters.size(); ++p)
+                for (size_t p=0; p!=_parameters.size(); ++p)
                     data.parameters[p] = _parameters[p].data().values[0].col(k); // assign parameter value to the material data
             }
 
