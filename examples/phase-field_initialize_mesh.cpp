@@ -37,9 +37,10 @@ int main(int argc, char *argv[])
     index_t numElY = 0;
     index_t numElZ = 0;
     index_t numElev = 0;
-    std::string output;
+    std::string outputDir;
     std::string parInput;
     std::string inputDir;
+    bool into = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Degree elevation",numElev);
@@ -47,11 +48,13 @@ int main(int argc, char *argv[])
     cmd.addInt("y", "numElY","Number of elements in the y direction", numElY);
     cmd.addInt("z", "numElZ","Number of elements in the z direction", numElZ);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
-    cmd.addString("o", "output", "Output directory", output);
+    cmd.addString("o", "outputDir", "Output directory", outputDir);
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
+    cmd.addSwitch("into", "Write the result into the input directory", into);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
+    char sep = gsFileManager::getNativePathSeparator();
     inputDir = inputDir + gsFileManager::getNativePathSeparator();
     std::string parInputPath = (parInput.empty() ? inputDir + "parameters.xml" : parInput);
     GISMO_ASSERT(gsFileManager::fileExists(parInputPath), "Input parameter file "<<parInputPath<<" not found.");
@@ -61,11 +64,17 @@ int main(int argc, char *argv[])
     //DEFINE PROBLEM PARAMETERS////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////
 
-    if (output.empty())
-        output = "./output/";
-
-    std::string outputdir = output + gsFileManager::getNativePathSeparator();
-    gsFileManager::mkdir(output);
+    if (into)
+        outputDir = inputDir;
+    else
+    {
+        if (outputDir.empty())
+            outputDir = std::string(".") + sep + "output" + sep;
+        else
+            outputDir += sep;
+        gsFileManager::mkdir(outputDir);
+    }
+    gsInfo<< "Output directory: "<<outputDir<<"\n";
 
 
     gsFileData<> fd_pars(parInput.empty() ? inputDir + "parameters.xml" : parInput);
@@ -87,13 +96,13 @@ int main(int argc, char *argv[])
         gsInfo<<"Patch "<<p<<": "<<mp.basis(p)<<"\n";
 
     gsFileData<> fd_out;
-    fd_out.addWithLabel(mp,outputdir+"geometry");
-    fd_out.save(outputdir+"geometry");
+    fd_out.addWithLabel(mp,"geometry");
+    fd_out.save(outputDir+"geometry");
 
     if (plot)
     {
         gsMesh<> mesh(mp.basis(0));
-        gsWriteParaview(mesh,outputdir+"THB_mesh",false);
+        gsWriteParaview(mesh,outputDir+"THB_mesh",false);
     }
 
 

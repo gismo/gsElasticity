@@ -30,25 +30,28 @@ int main(int argc, char *argv[])
     index_t numHRef = 0;
     index_t numUHRef = 0;
     index_t numElev = 0;
-    std::string output;
+    std::string outputDir;
     std::string parInput;
     std::string geoInput;
     std::string inputDir;
     bool runPF = false;
+    bool into = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Degree elevation",numElev);
     cmd.addInt("r", "numHRef","Number of elements in the crack size", numHRef);
     cmd.addInt("R", "numUHRef","Number of pre-refinements", numUHRef);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
-    cmd.addString("o", "output", "Output directory", output);
+    cmd.addString("o", "outputDir", "Output directory", outputDir);
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("g", "geoInput", "Geometry XML file", geoInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
     cmd.addSwitch("runPF", "Run phase field model", runPF);
+    cmd.addSwitch("into", "Write the result into the input directory", into);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    inputDir = inputDir + gsFileManager::getNativePathSeparator();
+    char sep = gsFileManager::getNativePathSeparator();
+    inputDir = inputDir + sep;
     std::string parInputPath = (parInput.empty() ? inputDir + "parameters.xml" : parInput);
     std::string geoInputPath = (geoInput.empty() ? inputDir + "geometry.xml" : geoInput);
     GISMO_ASSERT(gsFileManager::fileExists(parInputPath), "Input parameter file "<<parInputPath<<" not found.");
@@ -56,11 +59,17 @@ int main(int argc, char *argv[])
     gsInfo << "Input parameter file "<< parInputPath <<"\n";
     gsInfo << "Input geometry file "<< geoInputPath <<"\n";
 
-    if (output.empty())
-        output = "./output/";
-
-    std::string outputdir = output + gsFileManager::getNativePathSeparator();
-    gsFileManager::mkdir(output);
+    if (into)
+        outputDir = inputDir;
+    else
+    {
+        if (outputDir.empty())
+            outputDir = std::string(".") + sep + "output" + sep;
+        else
+            outputDir += sep;
+        gsFileManager::mkdir(outputDir);
+    }
+    gsInfo<< "Output directory: "<<outputDir<<"\n";
 
     //! [Parse command line]
 
@@ -91,6 +100,16 @@ int main(int argc, char *argv[])
     fd_geo.getFirst(mp);
     gsMultiBasis<> mb(mp);
 
+    gsMatrix<> supp;
+    if (fd_pars.hasLabel("support"))
+    {
+        fd_pars.getLabel("support", supp);
+        GISMO_ASSERT(supp.cols() == 2 && supp.rows() == mp.geoDim(),
+                        "Support must be a matrix of size "<<mp.geoDim()<<"x2.");
+    }
+    else
+        supp = mp.patch(0).support();
+
     gsInfo<<"Basis:\n";
     for (index_t i = 0; i < mb.nBases(); ++i)
         gsInfo<<i<<": size "<<mb.basis(i).size()<<"\n";
@@ -107,14 +126,20 @@ int main(int argc, char *argv[])
     real_t length = ev.integral(1.0 * meas(C));
     gsInfo<<"Curve length = "<<length<<"\n";
 
-    // gsRBFCurve<real_t,Constant> fun(crack,beta,beta);
-    gsFunctionExpr<> fun("if((x>=0.0) and (x<=0.5) and (y>=0.5-u) and (y<=0.5+u),1,0)", 2);
-    fun.set_u(beta);
-    // <Function type="FunctionExpr" id="1" dim="2" label="initial">
-    // if (( x&gt;=0.0) and (x&lt;=0.5) and (y&gt;=0.5-0.010/2.) and (y&lt;=0.5+0.010/2.),1,0)
-    // </Function>
-    if(plot) gsWriteParaview(mp,fun,outputdir+"initial",100000);
-
+    // This function will be computed in the PHYSICAL domain, since beta is a physical parameter
+    gsRBFCurve<real_t,Constant> fun(crack,beta,beta);
+    // gsFunctionExpr<> fun("if((x>=0.0) and (x<=0.5) and (y>=0.5-u) and (y<=0.5+u),1,0)", 2);
+    // fun.set_u(beta);
+    if(plot)
+    {
+        // Evaluate the geometry in the support
+        gsVector<unsigned> npts = uniformSampleCount<real_t>(supp.col(0), supp.col(1), 100000);
+        gsMatrix<> points = gsPointGrid<real_t>(supp.col(0),supp.col(1),npts);
+        gsMatrix<> eval_geo, eval_damage;
+        mp.piece(0).eval_into(points, eval_geo);
+        fun.piece(0).eval_into(eval_geo, eval_damage);
+        gsWriteParaviewTPgrid(eval_geo,eval_damage,npts.template cast<index_t>(),outputDir+"initial");
+    }
     //////////////////////////////////////////////////////////////////////////////////////////////////
     /// Local projection
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,8 +149,8 @@ int main(int argc, char *argv[])
     A.options().setInt ("quB", 0);
     A.setIntegrationElements(mb);
     auto w = A.getSpace(mb);
-    auto c = A.getCoeff(fun);
     auto G = A.getMap(mp);
+    auto c = A.getCoeff(fun,G);
     w.setup();
     A.initSystem();
     A.assemble( w * w.tr() * meas(G), w * c * meas(G) );
@@ -153,7 +178,17 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> damage;
     damage.addPatch(mb.basis(0).makeGeometry(give(coefs)));
-    if(plot) gsWriteParaview(mp,damage,outputdir+"L2",100000);
+    if(plot)
+    {
+        // Evaluate the geometry in the support
+        gsMatrix<> supp_geo = mp.patch(0).eval(supp);
+        gsVector<unsigned> npts = uniformSampleCount<real_t>(supp_geo.col(0), supp_geo.col(1), 1000000);
+        gsMatrix<> points = gsPointGrid<real_t>(supp.col(0),supp.col(1),npts);
+        gsMatrix<> eval_geo, eval_damage;
+        mp.piece(0).eval_into(points, eval_geo);
+        damage.piece(0).eval_into(points, eval_damage);
+        gsWriteParaviewTPgrid(eval_geo,eval_damage,npts.template cast<index_t>(),outputDir+"L2");
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     /// PF assembler
@@ -188,11 +223,10 @@ int main(int argc, char *argv[])
         gsSparseMatrix<> Q, QPhi;
         gsMatrix<> q;
         gsMatrix<> R;
-        pfAssembler->assembleMatrix();
+        pfAssembler->assemblePhi();
         pfAssembler->matrix_into(QPhi);
-        Q = QPhi;
-        pfAssembler->assembleVector();
         pfAssembler->rhs_into(q);
+        Q = QPhi;
         gsInfo<<". Done\n";
 
         R = Q * D + q;
@@ -225,13 +259,13 @@ int main(int argc, char *argv[])
 
         pfAssembler->constructSolution(D,damage);
 
-        if(plot) gsWriteParaview(mp,damage,outputdir+"L2_after",100000);
+        if(plot) gsWriteParaview(mp,damage,outputDir+"L2_after",100000);
         delete pfAssembler;
     }
 
     gsFileData<> fd_out;
     fd_out.addWithLabel(damage,"damage");
-    fd_out.save(outputdir+"damage");
+    fd_out.save(outputDir+"damage");
 
     return EXIT_SUCCESS;
 }

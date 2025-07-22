@@ -24,6 +24,7 @@
 #include <gsElasticity/gsPhaseFieldAssembler.h>
 #include <gsElasticity/gsPSOR.h>
 #include <gsUtils/gsStopwatch.h>
+#include <gsHSplines/gsHElementMarker.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -39,6 +40,25 @@ std::vector<real_t> labelElements(  const gsMultiPatch<> & geometry,
 void refineMesh    (      gsMultiBasis<>      & basis,
                     const std::vector<real_t> & vals,
                     const gsOptionList        & options = gsOptionList());
+
+template <class T>
+struct times
+{
+    T elAssemblyTime;
+    T elSolverTime;
+    T pfAssemblyTime;
+    T pfSolverTime;
+    T projectionTime;
+
+    void reset()
+    {
+        elAssemblyTime = 0;
+        elSolverTime = 0;
+        pfAssemblyTime = 0;
+        pfSolverTime = 0;
+        projectionTime = 0;
+    }
+};
 
 template <short_t dim, class T>
 void solve(gsOptionList & materialParameters,
@@ -188,22 +208,22 @@ template <short_t dim, class T>
 void refineMesh    (      gsMultiBasis<T>      & basis,
                     const std::vector<T> & vals,
                     const gsOptionList        & options)
-    {
-    gsAdaptiveMeshing<dim,T> mesher(basis);
-    mesher.options().setSwitch("Admissible",true);
-    mesher.options().setInt("MaxLevel",1);
-    mesher.options().setInt("RefineRule",1);
-    mesher.options().setInt("CoarsenRule",1);
-    mesher.options().setReal("RefineParam",0.1);
-    mesher.options().setReal("CoarsenParam",0.1);
-    mesher.options().update(options,gsOptionList::ignoreIfUnknown);
-    mesher.getOptions();
+{
+    typedef typename gsHElementHelper<dim,T>::HElementContainer HElementContainer;
 
-    gsHBoxContainer<dim,T> refine, coarsen;
-    // Mark the elements for refinement
-    mesher.markRef_into(vals,refine);
-    // Mesh adaptivity
-    mesher.refine(refine);
+    gsHElementMarker<dim,T> marker(basis.basis(0));
+    marker.options().setSwitch("Admissible",true);
+    marker.options().setInt("MaxLevel",1);
+    marker.options().setInt("RefineRule",1);
+    marker.options().setInt("CoarsenRule",1);
+    marker.options().setReal("RefineParam",0.1);
+    marker.options().setReal("CoarsenParam",0.1);
+    marker.options().update(options,gsOptionList::ignoreIfUnknown);
+
+    marker.setErrors(vals);
+    HElementContainer markedRef = marker.markRef();
+    std::vector<index_t> refBox = marker.toRefBoxes(markedRef);
+    basis.basis(0).refineElements(refBox);
 }
 
 template <short_t dim, class T>
@@ -361,12 +381,11 @@ void solve(gsOptionList & materialParameters,
 #else
     typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
-    T elAssemblyTime = 0.0;
-    T elSolverTime = 0.0;
-    T pfAssemblyTime = 0.0;
-    T pfSolverTime = 0.0;
-    T iterationTime  = 0.0;
-    T projectionTime = 0.0;
+
+    times<T> stagTimes;
+    times<T> stepTimes;
+    stagTimes.reset();
+    stepTimes.reset();
 
     gsSparseMatrix<T> elMatrix;
     gsMatrix<T> elRhs;
@@ -376,8 +395,6 @@ void solve(gsOptionList & materialParameters,
     gsSparseMatrix<T> Q, QPhi, QPsi;
     gsMatrix<T> q, qpsi;
 
-    index_t step = 0;
-
     gsParaviewCollection damageCollection(outputdir+"damage");
     gsParaviewCollection psiCollection(outputdir+"Psi");
     gsParaviewCollection displCollection(outputdir+"displacement");
@@ -386,8 +403,12 @@ void solve(gsOptionList & materialParameters,
 
     std::vector<std::vector<T>> data;
 
-    std::ofstream file(outputdir+"results.txt");
-    file<<"u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,basis_size,refIt\n";
+    std::ofstream file;
+    file.open(outputdir+"results.txt");
+    file<<"LoadStep,u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,basis_size,totIt_el,totIt_pf,numIt_stag,numIt_ref\n";
+    file.close();
+    file.open(outputdir+"iteration_results.txt");
+    file<<"LoadStep,RefIt,StagIt,u,Unorm,Dnorm,Rnorm,Fnorm,relRnorm,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,basis_size,numIt_el,numIt_pf\n";
     file.close();
 
     T Rnorm, Fnorm;
@@ -395,16 +416,28 @@ void solve(gsOptionList & materialParameters,
     // gsMultiPatch<T> displacement_old, damage_old;
     // displacement_old = displacement;
     // damage_old = damage;
+    index_t numIt_el = 0, totIt_el = 0; //numIt: per staggered iteration, totIt: total number of iterations across all staggered iterations
+    index_t numIt_pf = 0, totIt_pf = 0; //numIt: per staggered iteration, totIt: total number of iterations across all staggered iterations
+    index_t numIt_ref = 0; // number of refinement iterations per load step
+    index_t numIt_stag = 0; // number of staggered iterations per load step
+
+    index_t step = 0;
     while (ucurr<=uend)
     {
+        numIt_ref = numIt_stag = 0;
+        totIt_el = totIt_pf = 0;
+        stepTimes.reset();
+        stagTimes.reset();
+
         bool refined = true;
         index_t basis_size_old, basis_size;
-        index_t refIt = 0;
         T basis_size_ratio;
         gsInfo<<"===========================================================================================================================\n";
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
         // Refinement iterations
-        for (refIt = 0; refIt!=mesherOptions.askInt("MaxRefIterations",5) && refined; refIt++)
+        index_t refIt = 0;
+        while(true)
+        // for (refIt = 0; refIt!=mesherOptions.askInt("MaxRefIterations",5) && refined; refIt++)
         {
             basis_size = basis_size_old = mb.basis(0).size();
             gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
@@ -449,18 +482,21 @@ void solve(gsOptionList & materialParameters,
             pfAssembler->assemblePhi();
             pfAssembler->matrix_into(QPhi);
             pfAssembler->rhs_into(q);
-            pfSolverTime = smallClock.stop();
+            T pfAssemblyTime0 = smallClock.stop();
 
             // Update the boundary conditions
             displ.set_u(ucurr);
             elAssembler.initialize();
 
             deltaD.setZero(D.rows(),1);
-
-            for (index_t it=0; it!=maxIt; ++it)
+            index_t stagIt = 0;
+            while(true)
             {
+                stagTimes.reset();
+                if (stagIt==0) stagTimes.pfAssemblyTime = pfAssemblyTime0; // save the time of the first assembly
+
                 bigClock.restart();
-                gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<it<<"--------------------------\n";
+                gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<stagIt<<"--------------------------\n";
                 gsInfo<<"    ---------------------------------ELASTICITY----------------------------------\n";
                 gsInfo<<"    | "<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||F||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"|\n";
 
@@ -468,22 +504,23 @@ void solve(gsOptionList & materialParameters,
                 // Pre-assemble the elasticity problem
                 smallClock.restart();
                 elAssembler.assemble(u);
-                elAssemblyTime += smallClock.stop();
+                stagTimes.elAssemblyTime += smallClock.stop();
                 elAssembler.matrix_into(elMatrix);
                 elAssembler.rhs_into(elRhs);
                 Fnorm = elRhs.norm();
                 Fnorm = (Fnorm == 0) ? 1 : Fnorm;
-                for (index_t elIt=0; elIt!=maxItEl; ++elIt)
+                index_t elIt = 0;
+                while(true)
                 {
                     // Solve
                     smallClock.restart();
                     solver.compute(elMatrix);
                     u = solver.solve(elRhs);
-                    elSolverTime += smallClock.stop();
+                    stagTimes.elSolverTime += smallClock.stop();
 
                     smallClock.restart();
                     elAssembler.assemble(u);
-                    elAssemblyTime += smallClock.stop();
+                    stagTimes.elAssemblyTime += smallClock.stop();
                     elAssembler.matrix_into(elMatrix);
                     elAssembler.rhs_into(elRhs);
                     Fnorm = elRhs.norm();
@@ -491,14 +528,17 @@ void solve(gsOptionList & materialParameters,
 
                     // Check convergence with the old matrix and rhs (saves one assembly)
                     Rnorm = (elMatrix*u - elRhs).norm();
-                    gsInfo<<"    | "<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"|\n";
+                    gsInfo<<"    | "<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<stagTimes.elAssemblyTime<<PRINT(20)<<stagTimes.elSolverTime<<"|\n";
 
-                    if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12)
+                    if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12 || maxItEl==1)
                         break;
-
-                    if (elIt == maxItEl-1 && maxItEl != 1)
+                    else if (elIt == maxItEl-1)
                         GISMO_ERROR("Elasticity problem did not converge.");
+                    else
+                        elIt++;
                 }
+                numIt_el = elIt+1;
+                totIt_el+= numIt_el;
 
                 elAssembler.constructSolution(u,displacement);
                 for (size_t p=0; p!=mp.nPatches(); ++p)
@@ -516,7 +556,7 @@ void solve(gsOptionList & materialParameters,
                 // gsInfo<<"Assembling phase-field problem"<<"\n";
                 smallClock.restart();
                 pfAssembler->assemblePsi(Psi);
-                pfAssemblyTime += smallClock.stop();
+                stagTimes.pfAssemblyTime += smallClock.stop();
                 pfAssembler->matrix_into(QPsi);
                 pfAssembler->rhs_into(qpsi);
                 if (qpsi.rows()==0) // qpsi is empty for AT2 models
@@ -535,13 +575,14 @@ void solve(gsOptionList & materialParameters,
                 PSORsolver.options().setReal("tolU",1e-4);
                 PSORsolver.options().setReal("tolNeg",1e-9);
                 PSORsolver.options().setReal("tolPos",1e-9);
-                pfSolverTime = smallClock.stop();
-                for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
+                stagTimes.pfSolverTime = smallClock.stop();
+                index_t pfIt = 0;
+                while(true)
                 {
                     // Assemble
                     smallClock.restart();
                     R = Q * D - qpsi + q;
-                    pfAssemblyTime += smallClock.stop();
+                    stagTimes.pfAssemblyTime += smallClock.stop();
 
                     // Solve
                     // solver.compute(Q);
@@ -549,14 +590,17 @@ void solve(gsOptionList & materialParameters,
                     // gsDebugVar(deltaD.norm());
                     smallClock.restart();
                     PSORsolver.solve(R,deltaD); // deltaD = Q \ R
-                    pfSolverTime += smallClock.stop();
+                    stagTimes.pfSolverTime += smallClock.stop();
                     D += deltaD;
-                    gsInfo<<"    | "<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"|\n";
-                    if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12)
+                    gsInfo<<"    | "<<PRINT(6)<<pfIt<<PRINT(14)<<R.norm()<<PRINT(14)<<deltaD.norm()/D.norm()<<PRINT(20)<<stagTimes.pfAssemblyTime<<PRINT(20)<<stagTimes.pfSolverTime<<"|\n";
+                    if (deltaD.norm()/D.norm() < tolPf || D.norm() < 1e-12 || maxItPf==1)
                         break;
                     else if (pfIt == maxItPf-1 && maxItPf != 1)
                         GISMO_ERROR("Phase-field problem did not converge.");
+                    pfIt++;
                 }
+                numIt_pf = pfIt+1;
+                totIt_pf+= numIt_pf;
 
                 // Update damage spline
                 pfAssembler->constructSolution(D,damage);
@@ -564,22 +608,39 @@ void solve(gsOptionList & materialParameters,
                 material.setParameter(2,damage);
                 smallClock.restart();
                 elAssembler.assemble(u);
-                elAssemblyTime += smallClock.stop();
+                stagTimes.elAssemblyTime += smallClock.stop();
                 Fnorm = elAssembler.rhs().norm();
                 Fnorm = (Fnorm == 0) ? 1 : Fnorm;
                 Rnorm = (elAssembler.matrix()*u - elAssembler.rhs()).norm();
 
-                iterationTime = bigClock.stop();
                 gsInfo<<"    ----------------------------------FINISHED-----------------------------------\n";
-                gsInfo<<"    | "<<PRINT(6)<<"||R|| = "<<PRINT(14)<<Rnorm<<PRINT(20)<<"total time [s] = "<<PRINT(20)<<iterationTime<<"\n";
-                gsInfo<<"    | "<<PRINT(6)<<"||F|| = "<<PRINT(14)<<Fnorm<<PRINT(20)<<"elasticity time [s] = "<<PRINT(20)<<elAssemblyTime+elSolverTime<<"\n";
-                gsInfo<<"    | "<<PRINT(6)<<"||D|| = "<<PRINT(14)<<D.norm()<<PRINT(20)<<"phase-field time [s] = "<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
+                gsInfo<<"    | "<<PRINT(6)<<"||R|| = "<<PRINT(14)<<Rnorm<<PRINT(20)<<"total time [s] = "<<PRINT(20)<<bigClock.stop()<<"\n";
+                gsInfo<<"    | "<<PRINT(6)<<"||F|| = "<<PRINT(14)<<Fnorm<<PRINT(20)<<"elasticity time [s] = "<<PRINT(20)<<stagTimes.elAssemblyTime+stagTimes.elSolverTime<<"\n";
+                gsInfo<<"    | "<<PRINT(6)<<"||D|| = "<<PRINT(14)<<D.norm()<<PRINT(20)<<"phase-field time [s] = "<<PRINT(20)<<stagTimes.pfAssemblyTime+stagTimes.pfSolverTime<<"\n";
                 gsInfo<<"    -----------------------------------------------------------------------------\n";
+
+                file.open(outputdir+"iteration_results.txt",std::ios::app);
+                file<<step<<","<<refIt<<","<<stagIt<<","<<ucurr<<","
+                    <<u.norm()<<","<<D.norm()<<","<<Rnorm<<","<<Fnorm<<","<<","<<Rnorm/Fnorm<<","
+                    <<stagTimes.elAssemblyTime<<","<<stagTimes.elSolverTime<<","
+                    <<stagTimes.pfAssemblyTime<<","<<stagTimes.pfSolverTime<<","
+                    <<basis_size<<","
+                    <<numIt_el<<","<<numIt_pf<<"\n";
+                file.close();
+
+                stepTimes.elAssemblyTime += stagTimes.elAssemblyTime;
+                stepTimes.elSolverTime += stagTimes.elSolverTime;
+                stepTimes.pfAssemblyTime += stagTimes.pfAssemblyTime;
+                stepTimes.pfSolverTime += stagTimes.pfSolverTime;
+
                 if (Rnorm/Fnorm < tol)
                     break;
-                else if (it == maxIt-1)
+                else if (stagIt == maxIt-1)
                     GISMO_ERROR("Staggered iterations problem did not converge.");
+                else
+                    stagIt++;
             }
+            numIt_stag += stagIt+1;
 
             gsInfo<<"\n";
             gsInfo<<"Converged with ||R||/||F|| = "<<Rnorm/Fnorm<<" < "<<tol<<" ||D|| = "<<D.norm()<<" ||U|| = "<<u.norm()<<"\n";
@@ -626,8 +687,21 @@ void solve(gsOptionList & materialParameters,
             // gsQuasiInterpolate<T>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
             // damage_old.clear();
             // damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            projectionTime += smallClock.stop();
+            stepTimes.projectionTime += smallClock.stop();
+
+        // for (refIt = 0; refIt!=mesherOptions.askInt("MaxRefIterations",5) && refined; refIt++)
+
+            if (!refined)
+                break;
+            else if (refIt==mesherOptions.askInt("MaxRefIterations",5)-1)
+            {
+                gsWarn<<"Maximum number of refinement itertions reached\n";
+                break;
+            }
+            else
+                refIt++;
         }
+        numIt_ref = refIt+1;
 
         // =========================================================================
         // PLOT
@@ -681,23 +755,16 @@ void solve(gsOptionList & materialParameters,
             Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
         }
 
-        std::vector<T> stepData(12);
-        stepData[0] = ucurr;
-        stepData[1] = Fx;
-        stepData[2] = Fy;
-        stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
-        stepData[4] = (0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value();
-        stepData[5] = elAssemblyTime;
-        stepData[6] = elSolverTime;
-        stepData[7] = pfAssemblyTime;
-        stepData[8] = pfSolverTime;
-        stepData[9] = projectionTime;
-        stepData[10] = basis_size_old;
-        stepData[11] = refIt;
-
-        // Write data
-        std::ofstream file(outputdir+"results.txt",std::ios::app);
-        file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<","<<stepData[5]<<","<<stepData[6]<<","<<stepData[7]<<","<<stepData[8]<<","<<stepData[9]<<","<<stepData[10]<<","<<stepData[11]<<"\n";
+        file.open(outputdir+"results.txt",std::ios::app);
+        file<<step<<","<<ucurr<<","<<-Fx<<","<<-Fy<<","
+            <<(0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value()<<","
+            <<(0.5 * D.transpose() * QPhi * D).value() + (D.transpose() * q).value()<<","
+            <<stepTimes.elAssemblyTime<<","<<stepTimes.elSolverTime<<","
+            <<stepTimes.pfAssemblyTime<<","<<stepTimes.pfSolverTime<<","
+            <<stepTimes.projectionTime<<","
+            <<basis_size<<","
+            <<totIt_el<<","<<totIt_pf<<","
+            <<numIt_stag<<","<<numIt_ref<<"\n";
         file.close();
 
         // =========================================================================
@@ -705,11 +772,6 @@ void solve(gsOptionList & materialParameters,
 
         // displacement_old = displacement;
         // damage_old = damage;
-
-        elAssemblyTime = elSolverTime = 0.0;
-        pfAssemblyTime = pfSolverTime = 0.0;
-        iterationTime  = 0.0;
-        projectionTime = 0.0;
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         step++;

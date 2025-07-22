@@ -23,6 +23,7 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 #include <gsElasticity/gsPhaseFieldAssembler.h>
 #include <gsElasticity/gsPSOR.h>
+#include <gsHSplines/gsHElementMarker.h>
 #include <gsModeling/gsRBFCurve.h>
 #include <gsUtils/gsStopwatch.h>
 
@@ -57,41 +58,67 @@ gsMultiPatch<T> createGeometry(const gsMultiPatch<T> & mp)
 template<short_t dim, class T>
 void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOptionList mesherOptions)
 {
-    gsAdaptiveMeshing<dim,T> mesher(mp_THB);
-    mesher.options().update(mesherOptions,gsOptionList::ignoreIfUnknown);
-    mesher.getOptions();
+    typedef typename gsHElementHelper<dim,T>::HElementContainer HElementContainer;
+
+    gsHElementMarker<dim,T> marker(mp_THB.basis(0));
+    marker.options().update(mesherOptions,gsOptionList::ignoreIfUnknown);
+
+    // gsAdaptiveMeshing<dim,T> mesher(mp_THB);
+    // mesher.options().update(mesherOptions,gsOptionList::ignoreIfUnknown);
+    // mesher.getOptions();
 
     gsMatrix<T,dim,2> corners;
-    gsMatrix<T> points(dim,math::pow(2,dim)+1);
-    points.setZero();
-    gsMatrix<T> vals;
     T lowerBound = 0.1;
     T upperBound = 1.0;
     // for (index_t it=0; it!=10 && hmin>htarget; it++)
     for (index_t it=0; it!=mesherOptions.getInt("MaxLevel"); it++)
     {
         gsInfo<<"Refinement iteration "<<it<<":\n";
-        gsInfo<<"  Number of elements: "<<mp_THB.basis(0).numElements()<<"\n";
-        auto domIt  = mp_THB.basis(0).domain()->beginAll();
-        auto domEnd = mp_THB.basis(0).domain()->endAll();
-        std::vector<T> marked(domEnd-domIt,false);
-        for (; domIt<domEnd; ++domIt)
+        index_t numEl = mp_THB.patch(0).basis().numElements();
+        gsInfo<<"  Number of elements: "<<numEl<<"\n";
+        // auto domIt  = mp_THB.basis(0).domain()->beginAll();
+        // auto domEnd = mp_THB.basis(0).domain()->endAll();
+        std::vector<T> marked(numEl,false);
+        // for (; domIt<domEnd; ++domIt)
+        gsStopwatch timer;
+// #pragma omp parallel for
+        for (auto & domIt : mp_THB.patch(0).basis().domain()->allElements())
         {
+            gsMatrix<T> vals;
+            gsMatrix<T> points(dim,math::pow(2,dim)+1);
+            // gsMatrix<T> points(dim,1);
+            points.setZero();
+
             // Define the points
             corners.col(0) = domIt.lowerCorner();
             corners.col(1) = domIt.upperCorner();
+
             gsVector<index_t,dim> np;
             np.setConstant(2);
             gsGridIterator<T,CUBE,dim> grid(corners,np);
             points.col(0) = domIt.centerPoint();
             points.block(0,1,points.rows(),points.cols()-1) = grid.toMatrix();
+            mp_THB.piece(0).eval_into(points,vals);
+            std::swap(points,vals);
             crack.piece(0).eval_into(points,vals);
             marked[domIt.id()] = (vals.array() >= lowerBound && vals.array() <= upperBound).any();
         }
-        gsHBoxContainer<dim,T> markedRef;
-        mesher.markRef_into(marked,markedRef);
-        mesher.refine(markedRef);
-        mesher.rebuild();
+        gsInfo<<"  Computing values took "<<timer.stop()<<" seconds.\n";
+        // gsHBoxContainer<dim,T> markedRef;
+        // mesher.markRef_into(marked,markedRef);
+        timer.restart();
+        marker.setErrors(marked);
+        timer.stop();
+        gsInfo<<"  Setting errors took "<<timer.stop()<<" seconds.\n";
+        timer.restart();
+        HElementContainer markedRef = marker.markRef();
+        gsInfo<<"  Marking took "<<timer.stop()<<" seconds.\n";
+        timer.restart();
+        std::vector<index_t> refBox = marker.toRefBoxes(markedRef);
+        gsInfo<<"  Conversion to refinement boxes took "<<timer.stop()<<" seconds.\n";
+        timer.restart();
+        mp_THB.patch(0).refineElements(refBox);
+        gsInfo<<"  Refinement took "<<timer.stop()<<" seconds.\n";
         gsInfo<<"  Number of elements after refinement: "<<mp_THB.basis(0).numElements()<<"\n";
     }
 }
@@ -104,9 +131,10 @@ int main(int argc, char *argv[])
     index_t numElY = 0;
     index_t numElZ = 0;
     index_t numElev = 0;
-    std::string output;
+    std::string outputDir;
     std::string parInput;
     std::string inputDir;
+    bool into = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Degree elevation",numElev);
@@ -114,12 +142,14 @@ int main(int argc, char *argv[])
     cmd.addInt("y", "numElY","Number of elements in the y direction", numElY);
     cmd.addInt("z", "numElZ","Number of elements in the z direction", numElZ);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
-    cmd.addString("o", "output", "Output directory", output);
+    cmd.addString("o", "outputDir", "Output directory", outputDir);
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
+    cmd.addSwitch("into", "Write the result into the input directory", into);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    inputDir = inputDir + gsFileManager::getNativePathSeparator();
+    char sep = gsFileManager::getNativePathSeparator();
+    inputDir = inputDir + sep;
     std::string parInputPath = (parInput.empty() ? inputDir + "parameters.xml" : parInput);
     GISMO_ASSERT(gsFileManager::fileExists(parInputPath), "Input parameter file "<<parInputPath<<" not found.");
     gsInfo << "Input parameter file "<< parInputPath <<"\n";
@@ -128,12 +158,17 @@ int main(int argc, char *argv[])
     //DEFINE PROBLEM PARAMETERS////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////
 
-    if (output.empty())
-        output = "./output/";
-
-    std::string outputdir = output + gsFileManager::getNativePathSeparator();
-    gsFileManager::mkdir(output);
-
+    if (into)
+        outputDir = inputDir;
+    else
+    {
+        if (outputDir.empty())
+            outputDir = std::string(".") + sep + "output" + sep;
+        else
+            outputDir += sep;
+        gsFileManager::mkdir(outputDir);
+    }
+    gsInfo<< "Output directory: "<<outputDir<<"\n";
 
     gsFileData<> fd_pars(parInput.empty() ? inputDir + "parameters.xml" : parInput);
     gsInfo << "Input file "<< fd_pars.lastPath() <<"\n";
@@ -150,6 +185,16 @@ int main(int argc, char *argv[])
     mp.uniformRefine(numElY,1,1);
     if (mp.geoDim() == 3)
         mp.uniformRefine(numElZ,1,2);
+
+    gsMatrix<> supp;
+    if (fd_pars.hasLabel("support"))
+    {
+        fd_pars.getLabel("support", supp);
+        GISMO_ASSERT(supp.cols() == 2 && supp.rows() == mp.geoDim(),
+                        "Support must be a matrix of size "<<mp.geoDim()<<"x2.");
+    }
+    else
+        supp = mp.patch(0).support();
 
     gsMultiBasis<> mb(mp);
     short_t degree = mb.maxCwiseDegree();
@@ -192,9 +237,19 @@ int main(int argc, char *argv[])
     // Take a range of 2*beta for the mesh!
     gsRBFCurve<real_t, Constant> RBFCurve(crack, beta, beta);
 
-    gsWriteParaview(mp,RBFCurve,outputdir+"initial",100000);
-    gsWriteParaview(mp,outputdir+"mp",10);
-    gsWriteParaview(crack,outputdir+"crack",10);
+    if(plot)
+    {
+        // Evaluate the geometry in the support
+        gsVector<unsigned> npts = uniformSampleCount<real_t>(supp.col(0), supp.col(1), 1000000);
+        gsMatrix<> points = gsPointGrid<real_t>(supp.col(0),supp.col(1),npts);
+        gsMatrix<> eval_geo, eval_damage;
+        mp.piece(0).eval_into(points, eval_geo);
+        RBFCurve.piece(0).eval_into(eval_geo, eval_damage);
+        gsWriteParaviewTPgrid(eval_geo,eval_damage,npts.template cast<index_t>(),outputDir+"initial");
+    }
+
+    gsWriteParaview(mp,outputDir+"mp",10);
+    gsWriteParaview(crack,outputDir+"crack",10);
 
     switch (mp.domainDim())
     {
@@ -210,12 +265,13 @@ int main(int argc, char *argv[])
 
     gsFileData<> fd_out;
     fd_out.addWithLabel(mp_THB,"geometry");
-    fd_out.save(outputdir+"geometry");
+    fd_out.save(outputDir+"geometry");
 
     if (plot)
     {
         gsMesh<> mesh(mp_THB.basis(0));
-        gsWriteParaview(mesh,outputdir+"THB_mesh",false);
+        mp_THB.patch(0).evaluateMesh(mesh);
+        gsWriteParaview(mesh,outputDir+"THB_mesh",false);
     }
 
 

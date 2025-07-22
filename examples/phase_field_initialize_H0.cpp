@@ -30,24 +30,27 @@ int main(int argc, char *argv[])
     index_t numHRef = 0;
     index_t numUHRef = 0;
     index_t numElev = 0;
-    std::string output;
+    std::string outputDir;
     std::string parInput;
     std::string geoInput;
     std::string inputDir;
     bool runPF = false;
+    bool into = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
     cmd.addInt("e", "numElev","Degree elevation",numElev);
     cmd.addInt("r", "numHRef","Number of elements in the crack size", numHRef);
     cmd.addInt("R", "numUHRef","Number of pre-refinements", numUHRef);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
-    cmd.addString("o", "output", "Output directory", output);
+    cmd.addString("o", "outputDir", "Output directory", outputDir);
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("g", "geoInput", "Geometry XML file", geoInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
     cmd.addSwitch("runPF", "Run phase field model", runPF);
+    cmd.addSwitch("into", "Write the result into the input directory", into);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
+    char sep = gsFileManager::getNativePathSeparator();
     inputDir = inputDir + gsFileManager::getNativePathSeparator();
     std::string parInputPath = (parInput.empty() ? inputDir + "parameters.xml" : parInput);
     std::string geoInputPath = (geoInput.empty() ? inputDir + "geometry.xml" : geoInput);
@@ -56,11 +59,17 @@ int main(int argc, char *argv[])
     gsInfo << "Input parameter file "<< parInputPath <<"\n";
     gsInfo << "Input geometry file "<< geoInputPath <<"\n";
 
-    if (output.empty())
-        output = "./output/";
-
-    std::string outputdir = output + gsFileManager::getNativePathSeparator();
-    gsFileManager::mkdir(output);
+    if (into)
+        outputDir = inputDir;
+    else
+    {
+        if (outputDir.empty())
+            outputDir = std::string(".") + sep + "output" + sep;
+        else
+            outputDir += sep;
+        gsFileManager::mkdir(outputDir);
+    }
+    gsInfo<< "Output directory: "<<outputDir<<"\n";
 
     //! [Parse command line]
 
@@ -109,7 +118,7 @@ int main(int argc, char *argv[])
 
     gsRBFCurve<real_t,Hat> Psi(crack,beta,beta,B*Gc/(2*l0));
     // H0Function<real_t> Psi(curve,B,Gc,l0,beta);
-    if(plot) gsWriteParaview(mp,Psi,outputdir+"H0",100000);
+    if(plot) gsWriteParaview(mp,Psi,outputDirdir+"H0",100000);
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,11 +220,11 @@ int main(int argc, char *argv[])
     gsMultiPatch<> damage;
     pfAssembler->constructSolution(D,damage);
 
-    if(plot) gsWriteParaview(mp,damage,outputdir+"H0_after",100000);
+    if(plot) gsWriteParaview(mp,damage,outputDirdir+"H0_after",100000);
 
     gsFileData<> fd_out;
-    fd_out.addWithLabel(damage,outputdir+"damage");
-    fd_out.save(outputdir+"damage");
+    fd_out.addWithLabel(damage,outputDirdir+"damage");
+    fd_out.save(outputDirdir+"damage");
 
     delete pfAssembler;
     return EXIT_SUCCESS;
