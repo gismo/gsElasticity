@@ -37,9 +37,10 @@ std::vector<real_t> labelElements(  const gsMultiPatch<> & geometry,
                                     const real_t         & lowerBound=0.0,
                                     const real_t         & upperBound=1.0);
 
-void refineMesh    (      gsMultiBasis<>      & basis,
-                    const std::vector<real_t> & vals,
-                    const gsOptionList        & options = gsOptionList());
+template <short_t dim,class T>
+T refineMesh(      gsMultiBasis<T> & basis,
+             const std::vector<T>  & vals,
+             const gsOptionList    & options = gsOptionList());
 
 template <class T>
 struct times
@@ -201,13 +202,14 @@ std::vector<T> labelElements(  const gsMultiPatch<> & geometry,
         labels[domIt.id()] = (vals.array() >= lowerBound && vals.array() <= upperBound).any();
     }
 }
+
     return labels;
 }
 
 template <short_t dim, class T>
-void refineMesh    (      gsMultiBasis<T>      & basis,
-                    const std::vector<T> & vals,
-                    const gsOptionList        & options)
+T refineMesh(         gsMultiBasis<T>& basis,
+                const std::vector<T> & vals,
+                const gsOptionList   & options)
 {
     typedef typename gsHElementHelper<dim,T>::HElementContainer HElementContainer;
 
@@ -222,8 +224,18 @@ void refineMesh    (      gsMultiBasis<T>      & basis,
 
     marker.setErrors(vals);
     HElementContainer markedRef = marker.markRef();
+
+    T area = 0.0;
+    gsMatrix<T> box;
+    for (const auto & elem : markedRef)
+    {
+        box = marker.helper().toBox(elem);
+        area += (box.col(1)-box.col(0)).prod();
+    }
+
     std::vector<index_t> refBox = marker.toRefBoxes(markedRef);
     basis.basis(0).refineElements(refBox);
+    return area;
 }
 
 template <short_t dim, class T>
@@ -405,10 +417,10 @@ void solve(gsOptionList & materialParameters,
 
     std::ofstream file;
     file.open(outputdir+"results.txt");
-    file<<"LoadStep,u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,basis_size,totIt_el,totIt_pf,numIt_stag,numIt_ref\n";
+    file<<"LoadStep,u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,basis_size,ref_area,totIt_el,totIt_pf,numIt_stag,numIt_ref\n";
     file.close();
     file.open(outputdir+"iteration_results.txt");
-    file<<"LoadStep,RefIt,StagIt,u,Unorm,Dnorm,Rnorm,Fnorm,relRnorm,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,basis_size,numIt_el,numIt_pf\n";
+    file<<"LoadStep,RefIt,StagIt,u,Unorm,Dnorm,Rnorm,Fnorm,relRnorm,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,basis_size,ref_area,numIt_el,numIt_pf\n";
     file.close();
 
     T Rnorm, Fnorm;
@@ -432,6 +444,7 @@ void solve(gsOptionList & materialParameters,
         bool refined = true;
         index_t basis_size_old, basis_size;
         T basis_size_ratio;
+        T markedArea = 0., tmpArea = 0.;
         gsInfo<<"===========================================================================================================================\n";
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
         // Refinement iterations
@@ -624,7 +637,7 @@ void solve(gsOptionList & materialParameters,
                     <<u.norm()<<","<<D.norm()<<","<<Rnorm<<","<<Fnorm<<","<<Rnorm/Fnorm<<","
                     <<stagTimes.elAssemblyTime<<","<<stagTimes.elSolverTime<<","
                     <<stagTimes.pfAssemblyTime<<","<<stagTimes.pfSolverTime<<","
-                    <<basis_size<<","
+                    <<basis_size<<","<<markedArea<<","
                     <<numIt_el<<","<<numIt_pf<<"\n";
                 file.close();
 
@@ -653,16 +666,22 @@ void solve(gsOptionList & materialParameters,
             {
                 elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
                 if (gsAsVector<T>(elVals).sum() > 0)
-                    refineMesh<dim,T>(mb,elVals,mesherOptions);
+                    tmpArea = refineMesh<dim,T>(mb,elVals,mesherOptions);
 
+                tmpArea /= (mb.basis(0).support().col(1)-mb.basis(0).support().col(0)).prod();
+                markedArea = math::max(markedArea,tmpArea);
                 basis_size = mb.basis(0).size();
                 refined = basis_size > basis_size_old;
                 if (!refined)
                     break;
             }
-            basis_size_ratio = (T)basis_size/basis_size_old;
-            gsInfo<<"Old mesh size: "<<basis_size_old<<", new mesh size: "<<basis_size<<", ratio = "<<basis_size_ratio<<"\n";
-            refined &= basis_size_ratio > mesherOptions.askReal("SizeRatio",1.05);
+            gsInfo<<"Marked area: "<<markedArea<<"\n";
+            refined &= markedArea > mesherOptions.askReal("SizeRatio",1.01);
+
+
+            // basis_size_ratio = (T)basis_size/basis_size_old;
+            // gsInfo<<"Old mesh size: "<<basis_size_old<<", new mesh size: "<<basis_size<<", ratio = "<<basis_size_ratio<<"\n";
+            // refined &= basis_size_ratio > mesherOptions.askReal("SizeRatio",1.05);
 
             // =========================================================================
             // PROJECT SOLUTIONS
@@ -762,7 +781,7 @@ void solve(gsOptionList & materialParameters,
             <<stepTimes.elAssemblyTime<<","<<stepTimes.elSolverTime<<","
             <<stepTimes.pfAssemblyTime<<","<<stepTimes.pfSolverTime<<","
             <<stepTimes.projectionTime<<","
-            <<basis_size<<","
+            <<basis_size<<","<<markedArea<<","
             <<totIt_el<<","<<totIt_pf<<","
             <<numIt_stag<<","<<numIt_ref<<"\n";
         file.close();

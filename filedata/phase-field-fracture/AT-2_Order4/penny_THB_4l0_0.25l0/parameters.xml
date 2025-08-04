@@ -242,7 +242,7 @@
         value="0.416666667"/> <!-- 1/3*l0 -->
 <int    label="order"
         desc="Phase-field model order"
-        value="2"/>
+        value="4"/>
 <int    label="AT"
         desc="Phase-field model AT-Number"
         value="2"/>

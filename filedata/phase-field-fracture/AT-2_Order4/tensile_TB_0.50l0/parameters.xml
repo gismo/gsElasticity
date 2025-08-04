@@ -63,7 +63,7 @@
         value="0.015"/>
 <real   label="beta"
         desc="Crack thickness [mm]"
-        value="0.0075"/> <!-- 0.01125 for IPF, 0.0075 for H0 -->
+        value="0.01125"/> <!-- 0.01125 for IPF, 0.0075 for H0 -->
 <int    label="order"
         desc="Phase-field model order"
         value="4"/>
