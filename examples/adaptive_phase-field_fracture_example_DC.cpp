@@ -24,6 +24,7 @@
 #include <gsElasticity/gsPhaseFieldAssembler.h>
 #include <gsElasticity/gsPSOR.h>
 #include <gsUtils/gsStopwatch.h>
+#include <gsHSplines/gsHElementHelper.h>
 #include <gsHSplines/gsHElementMarker.h>
 
 using namespace gismo;
@@ -190,9 +191,9 @@ std::vector<T> labelElements(  const gsMultiPatch<> & geometry,
     std::vector<T> labels(basis.basis(0).numElements());
     gsVector<unsigned,dim> np;
     np.setConstant(2);
-#pragma omp parallel
-{
-#pragma omp parallel for
+// #pragma omp parallel
+// {
+// #pragma omp parallel for
     for (typename gsBasis<T>::domainIter domIt  = basis.basis(0).domain()->beginAll(); domIt<domEnd; ++domIt)
     {
         gsMatrix<T> points;
@@ -201,7 +202,7 @@ std::vector<T> labelElements(  const gsMultiPatch<> & geometry,
         damage.piece(0).eval_into(points,vals);
         labels[domIt.id()] = (vals.array() >= lowerBound && vals.array() <= upperBound).any();
     }
-}
+// }
 
     return labels;
 }
@@ -664,9 +665,15 @@ void solve(gsOptionList & materialParameters,
             // All labelled elements are refined to the maximum level, step-by-step
             for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
             {
+                smallClock.restart();
                 elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
+                gsInfo<<"Labelling level "<<i<<" took "<<smallClock.stop()<<" seconds\n";
                 if (gsAsVector<T>(elVals).sum() > 0)
+                {
+                    smallClock.restart();
                     tmpArea = refineMesh<dim,T>(mb,elVals,mesherOptions);
+                    gsInfo<<"Refining mesh took "<<smallClock.stop()<<" seconds\n";
+                }
 
                 tmpArea /= (mb.basis(0).support().col(1)-mb.basis(0).support().col(0)).prod();
                 markedArea = math::max(markedArea,tmpArea);
@@ -677,7 +684,6 @@ void solve(gsOptionList & materialParameters,
             }
             gsInfo<<"Marked area: "<<markedArea<<"\n";
             refined &= markedArea > mesherOptions.askReal("SizeRatio",1.01);
-
 
             // basis_size_ratio = (T)basis_size/basis_size_old;
             // gsInfo<<"Old mesh size: "<<basis_size_old<<", new mesh size: "<<basis_size<<", ratio = "<<basis_size_ratio<<"\n";
@@ -706,7 +712,9 @@ void solve(gsOptionList & materialParameters,
             // gsQuasiInterpolate<T>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
             // damage_old.clear();
             // damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            stepTimes.projectionTime += smallClock.stop();
+            T ptime = smallClock.stop();
+            stepTimes.projectionTime += ptime;
+            gsInfo<<"Projection took "<<ptime<<" seconds\n";
 
         // for (refIt = 0; refIt!=mesherOptions.askInt("MaxRefIterations",5) && refined; refIt++)
 
