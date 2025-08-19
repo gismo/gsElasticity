@@ -296,11 +296,14 @@ void solve(gsOptionList & materialParameters,
     gsMatrix<T> u(elAssembler.numDofs(),1);
     u.setZero();
 
-#ifdef GISMO_WITH_PARDISO
-    typename gsSparseSolver<T>::PardisoLDLT solver;
-#else
+// #ifdef gsMUMPS_ENABLED
+//     // Initialize MUMPS solver
+//     gsEigen::MUMPSLDLT<gsSparseMatrix<T>,gsEigen::Lower> solver;
+// #elif GISMO_WITH_PARDISO
+//     typename gsSparseSolver<T>::PardisoLDLT solver;
+// #else
     typename gsSparseSolver<T>::CGDiagonal solver;
-#endif
+// #endif
 
     times<T> stagTimes;
     times<T> stepTimes;
