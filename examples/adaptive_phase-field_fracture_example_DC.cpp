@@ -189,21 +189,24 @@ std::vector<T> labelElements(  const gsMultiPatch<> & geometry,
     // typename gsBasis<T>::domainIter domIt  = basis.basis(0).domain()->beginAll();
     typename gsBasis<T>::domainIter domEnd = basis.basis(0).domain()->endAll();
     std::vector<T> labels(basis.basis(0).numElements());
-    gsVector<unsigned,dim> np;
+    gsVector<index_t,dim> np;
     np.setConstant(2);
+    gsLobattoRule<T> rule(np); // equivalent to using gsPointGrid with np = 2
 // #pragma omp parallel
-// {
-// #pragma omp parallel for
+//     {
+#pragma omp parallel for
     for (typename gsBasis<T>::domainIter domIt  = basis.basis(0).domain()->beginAll(); domIt<domEnd; ++domIt)
     {
-        gsMatrix<T> points;
+        gsMatrix<T> nodes;
         gsMatrix<T> vals;
-        points = gsPointGrid(domIt.lowerCorner(),domIt.upperCorner(),np);
-        damage.piece(0).eval_into(points,vals);
+        gsVector<T> weights;
+
+        rule.mapTo(domIt.lowerCorner(), domIt.upperCorner(),nodes,weights);
+        damage.piece(0).eval_into(nodes,vals);
         labels[domIt.id()] = (vals.array() >= lowerBound && vals.array() <= upperBound).any();
     }
-// }
 
+    // }
     return labels;
 }
 
