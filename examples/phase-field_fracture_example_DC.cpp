@@ -673,6 +673,9 @@ void solve(gsOptionList & materialParameters,
             <<numIt_stag<<"\n";
         file.close();
 
+        if (ucurr == uend || math::abs(ucurr-uend) < 1e-10)
+            break;
+
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         ucurr = math::min(ucurr,uend);
         step++;

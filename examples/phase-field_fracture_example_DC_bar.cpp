@@ -584,6 +584,9 @@ void solve(gsOptionList & materialParameters,
         file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<"\n";
         file.close();
 
+        if (ucurr == uend || math::abs(ucurr-uend) < 1e-10)
+            break;
+
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         ucurr = math::min(ucurr,uend);
         step++;

@@ -826,6 +826,9 @@ void solve(gsOptionList & materialParameters,
         // =========================================================================
         // INCREMENT STEP
 
+        if (ucurr == uend || math::abs(ucurr-uend) < 1e-10)
+            break;
+
         ucurr +=    (ucurr+ustep_tmp > uend) ? uend-ucurr :
                     (ucurr+ustep_tmp > utrans) ? math::min(ustep_tmp,ustep/ured) : ustep_tmp;
         ucurr  = math::min(ucurr,uend);

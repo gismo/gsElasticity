@@ -923,6 +923,8 @@ void solve(gsOptionList & materialParameters,
 
         // displacement_old = displacement;
         // damage_old = damage;
+        if (ucurr == uend || math::abs(ucurr-uend) < 1e-10)
+            break;
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
         ucurr = math::min(ucurr,uend);
