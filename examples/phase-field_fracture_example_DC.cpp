@@ -49,9 +49,86 @@ struct times
     }
 };
 
+template <class T>
+typename gsMultiGridOp<T>::uPtr setupMultiGrid(const std::vector< gsSparseMatrix<T,RowMajor> > & transferMatrices,
+                                              const gsSparseMatrix<T> & matrix,
+                                              const gsOptionList & options)
+{
+    // Transfer matrices are consumed by the multigrid solver, so we need to make a copy
+    std::vector< gsSparseMatrix<T,RowMajor> > myTransferMatrices = transferMatrices;
+
+    // Setup the multigrid solver
+    typename gsMultiGridOp<T>::uPtr mg = gsMultiGridOp<T>::make( matrix, myTransferMatrices );
+    mg->setOptions( options );
+    // Since we are solving a symmetric positive definite problem,we can use a Cholesky solver
+    mg->setCoarseSolver( makeSparseCholeskySolver( mg->matrix(0) ) );
+
+
+    // Parse smoother sequence and validate length
+    std::vector<std::string> smoothers;
+    std::istringstream ss(options.getString("SmootherSequence"));
+    std::string smoother;
+    while (std::getline(ss, smoother, ';'))
+    {
+        smoothers.push_back(smoother);
+    }
+
+    if (smoothers.size() < mg->numLevels() - 1)
+    {
+        gsWarn<<"WARNING: Number of smoothers ("<<smoothers.size()<<") is less than number of levels-1 ("<<(mg->numLevels()-1)<<"). "
+                <<"Using Jacobi as fallback for the remaining levels."<<std::endl;
+        while (smoothers.size() < mg->numLevels() - 1)
+            smoothers.push_back("Jacobi");
+    }
+
+    // Setup smoothers with profiling info
+    for (index_t i = 1; i < mg->numLevels(); ++i)
+    {
+        gsPreconditionerOp<>::Ptr smootherOp;
+
+        // Get smoother type from sequence (level i-1 since we start from level 1)
+        std::string smootherType = smoothers[i-1];
+
+        if      (smootherType == "j" ||
+                 smootherType == "J" ||
+                 smootherType == "jacobi" ||
+                 smootherType == "Jacobi")
+        {
+            // Jacobi smoother with damping
+            smootherOp = makeJacobiOp(mg->matrix(i), options.askReal("JacobiDamping",0.8));
+            // gsInfo << "Level " << i << ": Jacobi smoother (damping=" << options.askReal("JacobiDamping",0.8) << ")" << std::endl;
+        }
+        else if (smootherType == "gs" ||
+                 smootherType == "G" ||
+                 smootherType == "Gauss-Seidel" ||
+                 smootherType == "gauss-seidel" ||
+                 smootherType == "GaussSeidel" ||
+                 smootherType == "gaussseidel")
+        {
+            // Symmetric Gauss-Seidel smoother
+            smootherOp = makeSymmetricGaussSeidelOp(mg->matrix(i));
+            // gsInfo << "Level " << i << ": Symmetric Gauss-Seidel smoother" << std::endl;
+        }
+        else
+        {
+            gsInfo << "WARNING: Unknown smoother type '" << smootherType << "' at level " << i
+                << ". Using Jacobi as fallback." << std::endl;
+            smootherOp = makeJacobiOp(mg->matrix(i), options.askReal("JacobiDamping",0.8));
+        }
+
+        smootherOp->setOptions(options);
+        mg->setSmoother(i, smootherOp);
+
+        // gsInfo << "Level " << i << ": " << mg->matrix(i).rows() << "x" << mg->matrix(i).cols()
+            // << " matrix (" << mg->matrix(i).nonZeros() << " nnz)" << std::endl;
+    }
+    return mg;
+}
+
 template <short_t dim, class T>
 void solve(gsOptionList & materialParameters,
            gsOptionList & controlParameters,
+           gsOptionList & solverParameters,
            gsMultiPatch<T> & mp,
            gsMultiPatch<T> & damage,
            gsBoundaryConditions<T> & bc_u,
@@ -136,6 +213,11 @@ int main(int argc, char *argv[])
     gsOptionList controlParameters;
     fd_pars.getLabel("control", controlParameters);
 
+    //// Solver parameters
+    gsOptionList solverParameters;
+    if (fd_pars.hasLabel("solver"))
+        fd_pars.getLabel("solver", solverParameters);
+
     //// Boundary conditions
     gsBoundaryConditions<> bc_u;
     fd_pars.getLabel("BCs_u", bc_u);
@@ -150,10 +232,10 @@ int main(int argc, char *argv[])
     switch (mp.domainDim())
     {
         case 2:
-            solve<2>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,plotmod,outputdir);
+            solve<2>(materialParameters,controlParameters,solverParameters,mp,damage,bc_u,bc_d,plot,plotmod,outputdir);
             break;
         case 3:
-            solve<3>(materialParameters,controlParameters,mp,damage,bc_u,bc_d,plot,plotmod,outputdir);
+            solve<3>(materialParameters,controlParameters,solverParameters,mp,damage,bc_u,bc_d,plot,plotmod,outputdir);
             break;
         default:
             GISMO_ERROR("Invalid domain dimension");
@@ -165,6 +247,7 @@ int main(int argc, char *argv[])
 template <short_t dim, class T>
 void solve(gsOptionList & materialParameters,
            gsOptionList & controlParameters,
+           gsOptionList & solverParameters,
            gsMultiPatch<T> & mp,
            gsMultiPatch<T> & damage,
            gsBoundaryConditions<T> & bc_u,
@@ -302,8 +385,19 @@ void solve(gsOptionList & materialParameters,
 // #elif GISMO_WITH_PARDISO
 //     typename gsSparseSolver<T>::PardisoLDLT solver;
 // #else
-    typename gsSparseSolver<T>::CGDiagonal solver;
+    // typename gsSparseSolver<T>::CGDiagonal solver;
 // #endif
+
+    // Setup multigrid hierarchy (only once)
+    std::vector< gsSparseMatrix<T,RowMajor> > transferMatrices;
+    gsInfo<<solverParameters<<"\n";
+    if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
+    {
+        gsGridHierarchy<>::buildByCoarsening(mb,dim,bc_u,solverParameters.getGroup("MG")).moveTransferMatricesTo(transferMatrices);
+        gsInfo<<"Using Multi-Grid solver with hierarchy:\n";
+        for (size_t i = transferMatrices.size(); i!= 0; i--)
+            gsInfo << "Level " << i << ": " << transferMatrices[i-1].rows() << " -> " << transferMatrices[i-1].cols() << "\n";
+    }
 
     times<T> stagTimes;
     times<T> stepTimes;
@@ -367,7 +461,7 @@ void solve(gsOptionList & materialParameters,
 
             bigClock.restart();
             gsInfo<<" - Staggered iteration "<<stagIt<<":\n";
-            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||F||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(14)<<"||R||"<<PRINT(14)<<"||F||"<<PRINT(14)<<"||R||/||F||"<<PRINT(14)<<"||U||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<PRINT(20)<<"it. solver [s]"<<PRINT(20)<<"solver it."<<"\n";
 
             material.setParameter(2,damage);
             // Pre-assemble the elasticity problem
@@ -382,10 +476,26 @@ void solve(gsOptionList & materialParameters,
             while(true)
             {
                 // Solve
+                T itSolverTime = 0;
+                index_t itSolverIterations = 0;
                 smallClock.restart();
-                solver.compute(elMatrix);
-                u = solver.solve(elRhs);
-                stagTimes.elSolverTime += smallClock.stop();
+                if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
+                {
+                    typename gsSparseSolver<T>::CGCustom solver;
+                    solver.preconditioner().set(setupMultiGrid<T>(transferMatrices,elMatrix,solverParameters.getGroup("MG")));
+                    solver.compute(elMatrix);
+                    u = solver.solveWithGuess(elRhs,u);
+                    itSolverIterations = solver.iterations();
+                }
+                else
+                {
+                    typename gsSparseSolver<T>::CGDiagonal solver;
+                    solver.compute(elMatrix);
+                    u = solver.solve(elRhs);
+                    itSolverIterations = solver.iterations();
+                }
+                itSolverTime = smallClock.stop();
+                stagTimes.elSolverTime += itSolverTime;
 
                 smallClock.restart();
                 elAssembler.assemble(u);
@@ -397,7 +507,7 @@ void solve(gsOptionList & materialParameters,
 
                 // Check convergence with the old matrix and rhs (saves one assembly)
                 Rnorm = (elMatrix*u - elRhs).norm();
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<stagTimes.elAssemblyTime<<PRINT(20)<<stagTimes.elSolverTime<<"\n";
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<stagTimes.elAssemblyTime<<PRINT(20)<<stagTimes.elSolverTime<<PRINT(20)<<itSolverTime<<PRINT(20)<<itSolverIterations<<"\n";
 
                 if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12 || maxItEl==1)
                     break;
@@ -564,6 +674,7 @@ void solve(gsOptionList & materialParameters,
         file.close();
 
         ucurr += (ucurr+ustep > utrans) ? ustep/ured : ustep;
+        ucurr = math::min(ucurr,uend);
         step++;
     }
 

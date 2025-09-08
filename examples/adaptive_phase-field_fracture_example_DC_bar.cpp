@@ -599,7 +599,7 @@ void solve(gsOptionList & materialParameters,
                 // Solve
                 smallClock.restart();
                 solver.compute(elMatrix);
-                u = solver.solve(elRhs);
+                u = solver.solveWithGuess(elRhs,u);
                 elSolverTime += smallClock.stop();
 
                 // Check convergence with the old matrix and rhs (saves one assembly)
@@ -828,6 +828,7 @@ void solve(gsOptionList & materialParameters,
 
         ucurr +=    (ucurr+ustep_tmp > uend) ? uend-ucurr :
                     (ucurr+ustep_tmp > utrans) ? math::min(ustep_tmp,ustep/ured) : ustep_tmp;
+        ucurr  = math::min(ucurr,uend);
         step++;
     }
 
