@@ -641,7 +641,11 @@ void solve(gsOptionList & materialParameters,
                     }
                     else
                     {
-                        typename gsSparseSolver<T>::CGDiagonal solver;
+#ifdef GISMO_WITH_PARDISO
+                    typename gsSparseSolver<T>::PardisoLDLT solver;
+#else
+                    typename gsSparseSolver<T>::CGDiagonal solver;
+#endif
                         solver.compute(elMatrix);
                         u = solver.solve(elRhs);
                         itSolverIterations = solver.iterations();
