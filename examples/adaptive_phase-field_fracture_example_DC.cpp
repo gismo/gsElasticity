@@ -476,10 +476,13 @@ void solve(gsOptionList & materialParameters,
 
     gsMatrix<T> u, du;
 
+    if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
+        gsInfo<<"Using multigrid solver\n";
+    else
 #ifdef GISMO_WITH_PARDISO
-    typename gsSparseSolver<T>::PardisoLDLT solver;
+        gsInfo<<"Using Pardiso direct solver\n";
 #else
-    typename gsSparseSolver<T>::CGDiagonal solver;
+        gsInfo<<"Using CG diagonal preconditioned iterative solver\n";
 #endif
 
     times<T> stagTimes;
@@ -642,13 +645,17 @@ void solve(gsOptionList & materialParameters,
                     else
                     {
 #ifdef GISMO_WITH_PARDISO
-                    typename gsSparseSolver<T>::PardisoLDLT solver;
+                        typename gsSparseSolver<T>::PardisoLDLT solver;
 #else
-                    typename gsSparseSolver<T>::CGDiagonal solver;
+                        typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
                         solver.compute(elMatrix);
                         u = solver.solve(elRhs);
+#ifdef GISMO_WITH_PARDISO
+                        itSolverIterations = 1;
+#else
                         itSolverIterations = solver.iterations();
+#endif
                     }
                     itSolverTime = smallClock.stop();
                     stagTimes.elSolverTime += itSolverTime;

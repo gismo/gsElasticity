@@ -490,13 +490,17 @@ void solve(gsOptionList & materialParameters,
                 else
                 {
 #ifdef GISMO_WITH_PARDISO
-                    typename gsSparseSolver<T>::PardisoLDLT solver;
+                        typename gsSparseSolver<T>::PardisoLDLT solver;
 #else
-                    typename gsSparseSolver<T>::CGDiagonal solver;
+                        typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
-                    solver.compute(elMatrix);
-                    u = solver.solve(elRhs);
-                    itSolverIterations = solver.iterations();
+                        solver.compute(elMatrix);
+                        u = solver.solve(elRhs);
+#ifdef GISMO_WITH_PARDISO
+                        itSolverIterations = 1;
+#else
+                        itSolverIterations = solver.iterations();
+#endif
                 }
                 itSolverTime = smallClock.stop();
                 stagTimes.elSolverTime += itSolverTime;
