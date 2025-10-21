@@ -33,20 +33,20 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numElX = 0;
-    index_t numElY = 0;
-    index_t numElZ = 0;
-    index_t numElev = 0;
+    std::vector<index_t> numElX = {0};
+    std::vector<index_t> numElY = {0};
+    std::vector<index_t> numElZ = {0};
+    std::vector<index_t> numElev = {0};
     std::string outputDir;
     std::string parInput;
     std::string inputDir;
     bool into = false;
 
     gsCmdLine cmd("Tutorial on solving a Linear Elasticity problem.");
-    cmd.addInt("e", "numElev","Degree elevation",numElev);
-    cmd.addInt("x", "numElX","Number of elements in the x direction", numElX);
-    cmd.addInt("y", "numElY","Number of elements in the y direction", numElY);
-    cmd.addInt("z", "numElZ","Number of elements in the z direction", numElZ);
+    cmd.addMultiInt("e", "numElev","Degree elevation",numElev);
+    cmd.addMultiInt("x", "numElX","Number of elements in the x direction", numElX);
+    cmd.addMultiInt("y", "numElY","Number of elements in the y direction", numElY);
+    cmd.addMultiInt("z", "numElZ","Number of elements in the z direction", numElZ);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
     cmd.addString("o", "outputDir", "Output directory", outputDir);
     cmd.addString("i", "parInput", "Input XML file", parInput);
@@ -86,11 +86,37 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp;
     fd_pars.getLabel("geometry", mp);
-    mp.degreeIncrease(numElev);
-    mp.uniformRefine(numElX,1,0);
-    mp.uniformRefine(numElY,1,1);
-    if (mp.geoDim() == 3)
-        mp.uniformRefine(numElZ,1,2);
+    if (numElev.size()==1)
+        numElev = std::vector<index_t>(mp.nPatches(), numElev[0]);
+    else
+        GISMO_ASSERT(numElev.size()==mp.nPatches(), "Number of entries for degree elevation must be either 1 or equal to the number of patches ("<<mp.nPatches()<<")");
+    if (numElX.size()==1)
+        numElX  = std::vector<index_t>(mp.nPatches(), numElX[0]);
+    else
+        GISMO_ASSERT(numElX.size()==mp.nPatches(), "Number of entries for number of elements in X direction must be either 1 or equal to the number of patches ("<<mp.nPatches()<<")");
+    if (numElY.size()==1)
+        numElY  = std::vector<index_t>(mp.nPatches(), numElY[0]);
+    else
+        GISMO_ASSERT(numElY.size()==mp.nPatches(), "Number of entries for number of elements in Y direction must be  either 1 or equal to the number of patches ("<<mp.nPatches()<<")");
+    if (mp.dim()==3 && numElZ.size()==1)
+        numElZ  = std::vector<index_t>(mp.nPatches(), numElZ[0]);
+    else if (mp.dim()==3)
+        GISMO_ASSERT(numElZ.size()==mp.nPatches(), "Number of entries for number of elements in Y direction must be  either 1 or equal to the number of patches ("<<mp.nPatches()<<")");
+    else {}
+
+    GISMO_ENSURE(numElev.size()==mp.nPatches() &&
+                 numElX.size()==mp.nPatches() &&
+                 numElY.size()==mp.nPatches() &&
+                 (mp.dim()!=3 || numElZ.size()==mp.nPatches()), "Arguments -x -y -z must have either one or "<<mp.nPatches()<<" entries.");
+
+    for (size_t p=0; p!=mp.nPatches(); ++p)
+    {
+        mp.patch(p).degreeIncrease(numElev[p]);
+        mp.patch(p).uniformRefine(numElX[p],1,0);
+        mp.patch(p).uniformRefine(numElY[p],1,1);
+        if (mp.geoDim() == 3)
+            mp.patch(p).uniformRefine(numElZ[p],1,2);
+    }
 
     for (size_t p=0; p!=mp.nPatches(); ++p)
         gsInfo<<"Patch "<<p<<": "<<mp.basis(p)<<"\n";
