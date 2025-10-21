@@ -71,6 +71,8 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
     T lowerBound = 0.1;
     T upperBound = 1.0;
     // for (index_t it=0; it!=10 && hmin>htarget; it++)
+    gsParaviewCollection refined("markedRef");
+
     for (index_t it=0; it!=mesherOptions.getInt("MaxLevel"); it++)
     {
         gsInfo<<"Refinement iteration "<<it<<":\n";
@@ -81,7 +83,6 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
         std::vector<T> marked(numEl,false);
         // for (; domIt<domEnd; ++domIt)
         gsStopwatch timer;
-// #pragma omp parallel for
         for (auto & domIt : mp_THB.patch(0).basis().domain()->allElements())
         {
             gsMatrix<T> vals;
@@ -120,13 +121,25 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
         mp_THB.patch(0).refineElements(refBox);
         gsInfo<<"  Refinement took "<<timer.stop()<<" seconds.\n";
         gsInfo<<"  Number of elements after refinement: "<<mp_THB.basis(0).numElements()<<"\n";
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // PLOT
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        gsMatrix<T> boxes;
+        gsVector<size_t> levels;
+        std::tie(boxes,levels) = marker.helper().toBoxesAndLevels(markedRef);
+        gsWriteParaview(boxes,"markedRef_"+util::to_string(it),gsVector<real_t>(levels.cast<real_t>()));
+        refined.addPart("markedRef_"+util::to_string(it)+".vtu",it,"Solution");
     }
+    refined.save();
 }
 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    bool plotMesh = false;
     index_t numElX = 0;
     index_t numElY = 0;
     index_t numElZ = 0;
@@ -142,6 +155,7 @@ int main(int argc, char *argv[])
     cmd.addInt("y", "numElY","Number of elements in the y direction", numElY);
     cmd.addInt("z", "numElZ","Number of elements in the z direction", numElZ);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("plotMesh","Create a ParaView visualization file with the mesh", plotMesh);
     cmd.addString("o", "outputDir", "Output directory", outputDir);
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
@@ -213,19 +227,21 @@ int main(int argc, char *argv[])
     fd_pars.getLabel("meshing", mesherOptions);
 
     gsMultiPatch<> mp_THB;
+    real_t hmin;
     switch (mp.domainDim())
     {
         case 2:
             mp_THB = createGeometry<2,real_t>(mp);
+            hmin = (static_cast<gsTHBSplineBasis<2,real_t>&>(mp_THB.basis(0)).tensorLevel(mesherOptions.getInt("MaxLevel")).getMinCellLength());
             break;
         case 3:
             mp_THB = createGeometry<3,real_t>(mp);
+            hmin = (static_cast<gsTHBSplineBasis<2,real_t>&>(mp_THB.basis(0)).tensorLevel(mesherOptions.getInt("MaxLevel")).getMinCellLength());
             break;
         default:
             GISMO_ERROR("Invalid geometry dimension.");
     }
 
-    real_t hmin = (static_cast<gsTHBSplineBasis<2,real_t>&>(mp_THB.basis(0)).tensorLevel(mesherOptions.getInt("MaxLevel")).getMinCellLength());
     gsInfo<<"Beta = "<<beta<<", hmin = "<<hmin<<", (p+1)*hmin = "<<(degree+1)*hmin<<"\n";
     beta = math::max(beta,hmin);
     beta*= degree+1;
@@ -267,7 +283,7 @@ int main(int argc, char *argv[])
     fd_out.addWithLabel(mp_THB,"geometry");
     fd_out.save(outputDir+"geometry");
 
-    if (plot)
+    if (plotMesh)
     {
         gsMesh<> mesh(mp_THB.basis(0));
         mp_THB.patch(0).evaluateMesh(mesh);
