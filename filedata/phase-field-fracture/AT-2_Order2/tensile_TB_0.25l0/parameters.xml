@@ -111,6 +111,38 @@
                 value="1e-9"/>
 </OptionList>
 
+<!-- Solver options -->
+<OptionList id="3" label="solver">
+<bool   label="MultiGrid"
+        desc="Use multigrid solver"
+        value="1"/>
+<int    label="MaxIterations"
+        desc="Maximum number of iterations for the solver"
+        value="1000"/>
+<string label="MG.SmootherSequence"
+        desc="Smoother sequence to use"
+        value="Jacobi;GaussSeidel;GaussSeidel;GaussSeidel"/>
+<real   label="MG.JacobiDamping"
+        desc="Damping parameter for Jacobi smoother"
+        value="0.2"/>
+<int    label="MG.Levels"
+        desc="Number of levels for the MG solver"
+        value="3"/>
+<int    label="MG.NumCycles"
+        desc="Number of cycles for the MG solver"
+        value="1"/>
+<int    label="MG.NumPreSmooth"
+        desc="Number of pre-smoothing steps for the MG solver"
+        value="2"/>
+<int    label="MG.NumPostSmooth"
+        desc="Number of post-smoothing steps for the MG solver"
+        value="2"/>
+<int    label="MG.SymmSmooth"
+        desc="Use symmetric smoothing for the MG solver"
+        value="1"/>
+</OptionList>
+
+
 <!-- The boundary conditions (multipatch=number of patches)-->
 <boundaryConditions id="2" multipatch="0" label="BCs_u">
 <Function type="FunctionExpr" dim="2" index="0">0</Function>

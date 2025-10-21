@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--This file was created by G+Smo 25.1.0-->
+<!--This file was created by G+Smo 25.7.0-->
 <xml>
  <Geometry type="TensorBSpline2" id="0">
   <Basis type="TensorBSplineBasis2">
@@ -161617,7 +161617,7 @@
    1 1 
   </coefs>
  </Geometry>
- <MultiPatch parDim="2" id="1" label="../optional/gsElasticity/filedata/phase-field-fracture/AT-2_Order4/shear_TB_0.25l0//geometry">
+ <MultiPatch parDim="2" id="1" label="geometry">
   <patches type="id_range">0 0</patches>
  </MultiPatch>
 </xml>

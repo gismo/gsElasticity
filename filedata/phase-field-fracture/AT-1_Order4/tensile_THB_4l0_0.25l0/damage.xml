@@ -1,1746 +1,2052 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--This file was created by G+Smo 25.1.0-->
+<!--This file was created by G+Smo 25.7.0-->
 <xml>
  <Geometry type="THBSpline2" id="0">
   <Basis type="THBSplineBasis2" manualLevels="false">
    <Basis type="TensorBSplineBasis2">
     <Basis type="BSplineBasis" index="0">
-     <KnotVector degree="2">0 0 0 0.05882352941176471 0.1176470588235294 0.1764705882352941 0.2352941176470588 0.2941176470588235 0.3529411764705882 0.4117647058823529 0.4705882352941176 0.5294117647058824 0.5882352941176471 0.6470588235294118 0.7058823529411764 0.7647058823529411 0.8235294117647058 0.8823529411764706 0.9411764705882353 1 1 1 </KnotVector>
+     <KnotVector degree="2">0 0 0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6000000000000001 0.65 0.7000000000000001 0.75 0.8 0.8500000000000001 0.9 0.9500000000000001 1 1 1 </KnotVector>
     </Basis>
     <Basis type="BSplineBasis" index="1">
-     <KnotVector degree="2">0 0 0 0.05882352941176471 0.1176470588235294 0.1764705882352941 0.2352941176470588 0.2941176470588235 0.3529411764705882 0.4117647058823529 0.4705882352941176 0.5294117647058824 0.5882352941176471 0.6470588235294118 0.7058823529411764 0.7647058823529411 0.8235294117647058 0.8823529411764706 0.9411764705882353 1 1 1 </KnotVector>
+     <KnotVector degree="2">0 0 0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6000000000000001 0.65 0.7000000000000001 0.75 0.8 0.8500000000000001 0.9 0.9500000000000001 1 1 1 </KnotVector>
     </Basis>
    </Basis>
    <box level="1">
-    20 20 22 22 
+    24 24 26 26 
    </box>
    <box level="1">
-    20 18 22 20 
+    24 22 26 24 
    </box>
    <box level="1">
-    20 16 22 18 
+    24 20 26 22 
+   </box>
+   <box level="1">
+    24 18 26 20 
+   </box>
+   <box level="1">
+    24 16 26 18 
+   </box>
+   <box level="1">
+    24 14 26 16 
+   </box>
+   <box level="1">
+    22 24 24 26 
+   </box>
+   <box level="1">
+    23 22 24 24 
+   </box>
+   <box level="1">
+    22 23 23 24 
+   </box>
+   <box level="2">
+    44 44 46 46 
+   </box>
+   <box level="1">
+    23 20 24 22 
+   </box>
+   <box level="2">
+    44 40 46 44 
+   </box>
+   <box level="1">
+    23 18 24 20 
+   </box>
+   <box level="2">
+    44 36 46 40 
+   </box>
+   <box level="1">
+    23 16 24 18 
+   </box>
+   <box level="2">
+    44 34 46 36 
+   </box>
+   <box level="1">
+    22 16 23 17 
+   </box>
+   <box level="1">
+    22 14 24 16 
+   </box>
+   <box level="1">
+    20 24 22 26 
+   </box>
+   <box level="1">
+    21 23 22 24 
+   </box>
+   <box level="2">
+    42 44 44 46 
+   </box>
+   <box level="1">
+    20 23 21 24 
+   </box>
+   <box level="2">
+    40 44 42 46 
+   </box>
+   <box level="2">
+    43 40 44 44 
+   </box>
+   <box level="2">
+    42 43 43 44 
+   </box>
+   <box level="3">
+    84 84 86 86 
+   </box>
+   <box level="3">
+    84 80 86 84 
+   </box>
+   <box level="2">
+    41 43 42 44 
+   </box>
+   <box level="3">
+    82 84 84 86 
+   </box>
+   <box level="2">
+    40 43 41 44 
+   </box>
+   <box level="3">
+    80 84 82 86 
+   </box>
+   <box level="3">
+    83 80 84 84 
+   </box>
+   <box level="3">
+    82 83 83 84 
+   </box>
+   <box level="4">
+    164 164 166 166 
+   </box>
+   <box level="4">
+    164 160 166 164 
+   </box>
+   <box level="3">
+    81 83 82 84 
+   </box>
+   <box level="4">
+    162 164 164 166 
+   </box>
+   <box level="3">
+    80 83 81 84 
+   </box>
+   <box level="4">
+    160 164 162 166 
+   </box>
+   <box level="4">
+    160 160 164 164 
+   </box>
+   <box level="2">
+    43 36 44 40 
+   </box>
+   <box level="3">
+    84 74 86 80 
+   </box>
+   <box level="2">
+    42 36 43 37 
+   </box>
+   <box level="3">
+    83 76 84 80 
+   </box>
+   <box level="4">
+    164 154 166 160 
+   </box>
+   <box level="3">
+    82 76 83 77 
+   </box>
+   <box level="4">
+    162 154 164 160 
+   </box>
+   <box level="3">
+    81 76 82 77 
+   </box>
+   <box level="4">
+    160 154 162 160 
+   </box>
+   <box level="3">
+    80 76 81 77 
+   </box>
+   <box level="3">
+    82 74 84 76 
+   </box>
+   <box level="2">
+    41 36 42 37 
+   </box>
+   <box level="3">
+    80 74 82 76 
+   </box>
+   <box level="2">
+    40 36 41 37 
+   </box>
+   <box level="2">
+    42 34 44 36 
+   </box>
+   <box level="1">
+    21 16 22 17 
+   </box>
+   <box level="2">
+    40 34 42 36 
+   </box>
+   <box level="1">
+    20 16 21 17 
    </box>
    <box level="1">
     20 14 22 16 
    </box>
    <box level="1">
-    20 12 22 14 
+    18 24 20 26 
    </box>
    <box level="1">
-    18 20 20 22 
+    19 23 20 24 
    </box>
    <box level="2">
-    38 36 40 40 
-   </box>
-   <box level="2">
-    36 38 38 40 
-   </box>
-   <box level="2">
-    37 36 38 38 
-   </box>
-   <box level="2">
-    36 37 37 38 
-   </box>
-   <box level="3">
-    72 72 74 74 
-   </box>
-   <box level="2">
-    38 32 40 36 
-   </box>
-   <box level="2">
-    37 32 38 36 
-   </box>
-   <box level="3">
-    72 64 74 72 
-   </box>
-   <box level="2">
-    38 28 40 32 
-   </box>
-   <box level="2">
-    37 30 38 32 
-   </box>
-   <box level="3">
-    72 62 74 64 
-   </box>
-   <box level="2">
-    36 30 37 31 
-   </box>
-   <box level="2">
-    36 28 38 30 
+    38 44 40 46 
    </box>
    <box level="1">
-    18 12 20 14 
+    18 23 19 24 
+   </box>
+   <box level="2">
+    36 44 38 46 
+   </box>
+   <box level="2">
+    39 43 40 44 
+   </box>
+   <box level="3">
+    78 84 80 86 
+   </box>
+   <box level="2">
+    38 43 39 44 
+   </box>
+   <box level="3">
+    76 84 78 86 
+   </box>
+   <box level="3">
+    79 83 80 84 
+   </box>
+   <box level="4">
+    158 164 160 166 
+   </box>
+   <box level="3">
+    78 83 79 84 
+   </box>
+   <box level="4">
+    156 164 158 166 
+   </box>
+   <box level="4">
+    156 160 160 164 
+   </box>
+   <box level="3">
+    77 83 78 84 
+   </box>
+   <box level="4">
+    154 164 156 166 
+   </box>
+   <box level="3">
+    76 83 77 84 
+   </box>
+   <box level="4">
+    152 164 154 166 
+   </box>
+   <box level="4">
+    152 160 156 164 
+   </box>
+   <box level="2">
+    37 43 38 44 
+   </box>
+   <box level="3">
+    74 84 76 86 
+   </box>
+   <box level="2">
+    36 43 37 44 
+   </box>
+   <box level="3">
+    72 84 74 86 
+   </box>
+   <box level="3">
+    75 83 76 84 
+   </box>
+   <box level="4">
+    150 164 152 166 
+   </box>
+   <box level="3">
+    74 83 75 84 
+   </box>
+   <box level="4">
+    148 164 150 166 
+   </box>
+   <box level="4">
+    148 160 152 164 
+   </box>
+   <box level="3">
+    73 83 74 84 
+   </box>
+   <box level="4">
+    146 164 148 166 
+   </box>
+   <box level="3">
+    72 83 73 84 
+   </box>
+   <box level="4">
+    144 164 146 166 
+   </box>
+   <box level="4">
+    144 160 148 164 
+   </box>
+   <box level="4">
+    158 154 160 160 
+   </box>
+   <box level="3">
+    79 76 80 77 
+   </box>
+   <box level="4">
+    156 154 158 160 
+   </box>
+   <box level="3">
+    78 76 79 77 
+   </box>
+   <box level="4">
+    154 154 156 160 
+   </box>
+   <box level="3">
+    77 76 78 77 
+   </box>
+   <box level="4">
+    152 154 154 160 
+   </box>
+   <box level="3">
+    76 76 77 77 
+   </box>
+   <box level="3">
+    78 74 80 76 
+   </box>
+   <box level="2">
+    39 36 40 37 
+   </box>
+   <box level="3">
+    76 74 78 76 
+   </box>
+   <box level="2">
+    38 36 39 37 
+   </box>
+   <box level="4">
+    150 154 152 160 
+   </box>
+   <box level="3">
+    75 76 76 77 
+   </box>
+   <box level="4">
+    148 154 150 160 
+   </box>
+   <box level="3">
+    74 76 75 77 
+   </box>
+   <box level="4">
+    146 154 148 160 
+   </box>
+   <box level="3">
+    73 76 74 77 
+   </box>
+   <box level="4">
+    144 154 146 160 
+   </box>
+   <box level="3">
+    72 76 73 77 
+   </box>
+   <box level="3">
+    74 74 76 76 
+   </box>
+   <box level="2">
+    37 36 38 37 
+   </box>
+   <box level="3">
+    72 74 74 76 
+   </box>
+   <box level="2">
+    36 36 37 37 
+   </box>
+   <box level="2">
+    38 34 40 36 
    </box>
    <box level="1">
-    16 20 18 22 
+    19 16 20 17 
    </box>
    <box level="2">
-    34 38 36 40 
-   </box>
-   <box level="2">
-    35 37 36 38 
-   </box>
-   <box level="3">
-    70 72 72 74 
-   </box>
-   <box level="2">
-    34 37 35 38 
-   </box>
-   <box level="3">
-    68 72 70 74 
-   </box>
-   <box level="2">
-    32 38 34 40 
-   </box>
-   <box level="2">
-    33 37 34 38 
-   </box>
-   <box level="3">
-    66 72 68 74 
-   </box>
-   <box level="2">
-    32 37 33 38 
-   </box>
-   <box level="3">
-    64 72 66 74 
-   </box>
-   <box level="3">
-    71 64 72 72 
-   </box>
-   <box level="3">
-    70 71 71 72 
-   </box>
-   <box level="4">
-    140 140 142 142 
-   </box>
-   <box level="4">
-    140 138 142 140 
-   </box>
-   <box level="4">
-    140 136 142 138 
-   </box>
-   <box level="4">
-    140 134 142 136 
-   </box>
-   <box level="4">
-    140 132 142 134 
-   </box>
-   <box level="4">
-    140 130 142 132 
-   </box>
-   <box level="3">
-    70 64 71 65 
-   </box>
-   <box level="3">
-    69 71 70 72 
-   </box>
-   <box level="4">
-    138 140 140 142 
-   </box>
-   <box level="3">
-    68 71 69 72 
-   </box>
-   <box level="4">
-    136 140 138 142 
-   </box>
-   <box level="4">
-    136 136 140 140 
-   </box>
-   <box level="4">
-    136 132 140 136 
-   </box>
-   <box level="4">
-    138 130 140 132 
-   </box>
-   <box level="3">
-    69 64 70 65 
-   </box>
-   <box level="4">
-    136 130 138 132 
-   </box>
-   <box level="3">
-    68 64 69 65 
-   </box>
-   <box level="3">
-    67 71 68 72 
-   </box>
-   <box level="4">
-    134 140 136 142 
-   </box>
-   <box level="3">
-    66 71 67 72 
-   </box>
-   <box level="4">
-    132 140 134 142 
-   </box>
-   <box level="4">
-    132 136 136 140 
-   </box>
-   <box level="3">
-    65 71 66 72 
-   </box>
-   <box level="4">
-    130 140 132 142 
-   </box>
-   <box level="3">
-    64 71 65 72 
-   </box>
-   <box level="4">
-    128 140 130 142 
-   </box>
-   <box level="4">
-    128 136 132 140 
-   </box>
-   <box level="4">
-    132 132 136 136 
-   </box>
-   <box level="4">
-    134 130 136 132 
-   </box>
-   <box level="3">
-    67 64 68 65 
-   </box>
-   <box level="4">
-    132 130 134 132 
-   </box>
-   <box level="3">
-    66 64 67 65 
-   </box>
-   <box level="4">
-    128 132 132 136 
-   </box>
-   <box level="4">
-    130 130 132 132 
-   </box>
-   <box level="3">
-    65 64 66 65 
-   </box>
-   <box level="4">
-    128 130 130 132 
-   </box>
-   <box level="3">
-    64 64 65 65 
-   </box>
-   <box level="3">
-    70 62 72 64 
-   </box>
-   <box level="2">
-    35 30 36 31 
-   </box>
-   <box level="3">
-    68 62 70 64 
-   </box>
-   <box level="2">
-    34 30 35 31 
-   </box>
-   <box level="2">
-    34 28 36 30 
-   </box>
-   <box level="3">
-    66 62 68 64 
-   </box>
-   <box level="2">
-    33 30 34 31 
-   </box>
-   <box level="3">
-    64 62 66 64 
-   </box>
-   <box level="2">
-    32 30 33 31 
-   </box>
-   <box level="2">
-    32 28 34 30 
+    36 34 38 36 
    </box>
    <box level="1">
-    16 12 18 14 
+    18 16 19 17 
    </box>
    <box level="1">
-    14 20 16 22 
-   </box>
-   <box level="2">
-    30 38 32 40 
-   </box>
-   <box level="2">
-    31 37 32 38 
-   </box>
-   <box level="3">
-    62 72 64 74 
-   </box>
-   <box level="2">
-    30 37 31 38 
-   </box>
-   <box level="3">
-    60 72 62 74 
-   </box>
-   <box level="2">
-    28 38 30 40 
-   </box>
-   <box level="2">
-    29 37 30 38 
-   </box>
-   <box level="3">
-    58 72 60 74 
-   </box>
-   <box level="2">
-    28 37 29 38 
-   </box>
-   <box level="3">
-    56 72 58 74 
-   </box>
-   <box level="3">
-    63 71 64 72 
-   </box>
-   <box level="4">
-    126 140 128 142 
-   </box>
-   <box level="3">
-    62 71 63 72 
-   </box>
-   <box level="4">
-    124 140 126 142 
-   </box>
-   <box level="4">
-    124 136 128 140 
-   </box>
-   <box level="3">
-    61 71 62 72 
-   </box>
-   <box level="4">
-    122 140 124 142 
-   </box>
-   <box level="3">
-    60 71 61 72 
-   </box>
-   <box level="4">
-    120 140 122 142 
-   </box>
-   <box level="4">
-    120 136 124 140 
-   </box>
-   <box level="4">
-    124 132 128 136 
-   </box>
-   <box level="4">
-    126 130 128 132 
-   </box>
-   <box level="3">
-    63 64 64 65 
-   </box>
-   <box level="4">
-    124 130 126 132 
-   </box>
-   <box level="3">
-    62 64 63 65 
-   </box>
-   <box level="4">
-    120 132 124 136 
-   </box>
-   <box level="4">
-    122 130 124 132 
-   </box>
-   <box level="3">
-    61 64 62 65 
-   </box>
-   <box level="4">
-    120 130 122 132 
-   </box>
-   <box level="3">
-    60 64 61 65 
-   </box>
-   <box level="3">
-    59 71 60 72 
-   </box>
-   <box level="4">
-    118 140 120 142 
-   </box>
-   <box level="3">
-    58 71 59 72 
-   </box>
-   <box level="4">
-    116 140 118 142 
-   </box>
-   <box level="4">
-    116 136 120 140 
-   </box>
-   <box level="3">
-    57 71 58 72 
-   </box>
-   <box level="4">
-    114 140 116 142 
-   </box>
-   <box level="3">
-    56 71 57 72 
-   </box>
-   <box level="4">
-    112 140 114 142 
-   </box>
-   <box level="4">
-    112 136 116 140 
-   </box>
-   <box level="4">
-    116 132 120 136 
-   </box>
-   <box level="4">
-    118 130 120 132 
-   </box>
-   <box level="3">
-    59 64 60 65 
-   </box>
-   <box level="4">
-    116 130 118 132 
-   </box>
-   <box level="3">
-    58 64 59 65 
-   </box>
-   <box level="4">
-    112 132 116 136 
-   </box>
-   <box level="4">
-    114 130 116 132 
-   </box>
-   <box level="3">
-    57 64 58 65 
-   </box>
-   <box level="4">
-    112 130 114 132 
-   </box>
-   <box level="3">
-    56 64 57 65 
-   </box>
-   <box level="3">
-    62 62 64 64 
-   </box>
-   <box level="2">
-    31 30 32 31 
-   </box>
-   <box level="3">
-    60 62 62 64 
-   </box>
-   <box level="2">
-    30 30 31 31 
-   </box>
-   <box level="2">
-    30 28 32 30 
-   </box>
-   <box level="3">
-    58 62 60 64 
-   </box>
-   <box level="2">
-    29 30 30 31 
-   </box>
-   <box level="3">
-    56 62 58 64 
-   </box>
-   <box level="2">
-    28 30 29 31 
-   </box>
-   <box level="2">
-    28 28 30 30 
+    18 14 20 16 
    </box>
    <box level="1">
-    14 12 16 14 
+    16 24 18 26 
    </box>
    <box level="1">
-    12 20 14 22 
+    17 23 18 24 
    </box>
    <box level="2">
-    26 38 28 40 
-   </box>
-   <box level="2">
-    27 37 28 38 
-   </box>
-   <box level="3">
-    54 72 56 74 
-   </box>
-   <box level="2">
-    26 37 27 38 
-   </box>
-   <box level="3">
-    52 72 54 74 
-   </box>
-   <box level="2">
-    24 38 26 40 
-   </box>
-   <box level="2">
-    25 37 26 38 
-   </box>
-   <box level="3">
-    50 72 52 74 
-   </box>
-   <box level="2">
-    24 37 25 38 
-   </box>
-   <box level="3">
-    48 72 50 74 
-   </box>
-   <box level="3">
-    55 71 56 72 
-   </box>
-   <box level="4">
-    110 140 112 142 
-   </box>
-   <box level="3">
-    54 71 55 72 
-   </box>
-   <box level="4">
-    108 140 110 142 
-   </box>
-   <box level="4">
-    108 136 112 140 
-   </box>
-   <box level="3">
-    53 71 54 72 
-   </box>
-   <box level="4">
-    106 140 108 142 
-   </box>
-   <box level="3">
-    52 71 53 72 
-   </box>
-   <box level="4">
-    104 140 106 142 
-   </box>
-   <box level="4">
-    104 136 108 140 
-   </box>
-   <box level="4">
-    108 132 112 136 
-   </box>
-   <box level="4">
-    110 130 112 132 
-   </box>
-   <box level="3">
-    55 64 56 65 
-   </box>
-   <box level="4">
-    108 130 110 132 
-   </box>
-   <box level="3">
-    54 64 55 65 
-   </box>
-   <box level="4">
-    104 132 108 136 
-   </box>
-   <box level="4">
-    106 130 108 132 
-   </box>
-   <box level="3">
-    53 64 54 65 
-   </box>
-   <box level="4">
-    104 130 106 132 
-   </box>
-   <box level="3">
-    52 64 53 65 
-   </box>
-   <box level="3">
-    51 71 52 72 
-   </box>
-   <box level="4">
-    102 140 104 142 
-   </box>
-   <box level="3">
-    50 71 51 72 
-   </box>
-   <box level="4">
-    100 140 102 142 
-   </box>
-   <box level="4">
-    100 136 104 140 
-   </box>
-   <box level="3">
-    49 71 50 72 
-   </box>
-   <box level="4">
-    98 140 100 142 
-   </box>
-   <box level="3">
-    48 71 49 72 
-   </box>
-   <box level="4">
-    96 140 98 142 
-   </box>
-   <box level="4">
-    96 136 100 140 
-   </box>
-   <box level="4">
-    100 132 104 136 
-   </box>
-   <box level="4">
-    102 130 104 132 
-   </box>
-   <box level="3">
-    51 64 52 65 
-   </box>
-   <box level="4">
-    100 130 102 132 
-   </box>
-   <box level="3">
-    50 64 51 65 
-   </box>
-   <box level="4">
-    96 132 100 136 
-   </box>
-   <box level="4">
-    98 130 100 132 
-   </box>
-   <box level="3">
-    49 64 50 65 
-   </box>
-   <box level="4">
-    96 130 98 132 
-   </box>
-   <box level="3">
-    48 64 49 65 
-   </box>
-   <box level="3">
-    54 62 56 64 
-   </box>
-   <box level="2">
-    27 30 28 31 
-   </box>
-   <box level="3">
-    52 62 54 64 
-   </box>
-   <box level="2">
-    26 30 27 31 
-   </box>
-   <box level="2">
-    26 28 28 30 
-   </box>
-   <box level="3">
-    50 62 52 64 
-   </box>
-   <box level="2">
-    25 30 26 31 
-   </box>
-   <box level="3">
-    48 62 50 64 
-   </box>
-   <box level="2">
-    24 30 25 31 
-   </box>
-   <box level="2">
-    24 28 26 30 
+    34 44 36 46 
    </box>
    <box level="1">
-    12 12 14 14 
+    16 23 17 24 
+   </box>
+   <box level="2">
+    32 44 34 46 
+   </box>
+   <box level="2">
+    35 43 36 44 
+   </box>
+   <box level="3">
+    70 84 72 86 
+   </box>
+   <box level="2">
+    34 43 35 44 
+   </box>
+   <box level="3">
+    68 84 70 86 
+   </box>
+   <box level="3">
+    71 83 72 84 
+   </box>
+   <box level="4">
+    142 164 144 166 
+   </box>
+   <box level="3">
+    70 83 71 84 
+   </box>
+   <box level="4">
+    140 164 142 166 
+   </box>
+   <box level="4">
+    140 160 144 164 
+   </box>
+   <box level="3">
+    69 83 70 84 
+   </box>
+   <box level="4">
+    138 164 140 166 
+   </box>
+   <box level="3">
+    68 83 69 84 
+   </box>
+   <box level="4">
+    136 164 138 166 
+   </box>
+   <box level="4">
+    136 160 140 164 
+   </box>
+   <box level="2">
+    33 43 34 44 
+   </box>
+   <box level="3">
+    66 84 68 86 
+   </box>
+   <box level="2">
+    32 43 33 44 
+   </box>
+   <box level="3">
+    64 84 66 86 
+   </box>
+   <box level="3">
+    67 83 68 84 
+   </box>
+   <box level="4">
+    134 164 136 166 
+   </box>
+   <box level="3">
+    66 83 67 84 
+   </box>
+   <box level="4">
+    132 164 134 166 
+   </box>
+   <box level="4">
+    132 160 136 164 
+   </box>
+   <box level="3">
+    65 83 66 84 
+   </box>
+   <box level="4">
+    130 164 132 166 
+   </box>
+   <box level="3">
+    64 83 65 84 
+   </box>
+   <box level="4">
+    128 164 130 166 
+   </box>
+   <box level="4">
+    128 160 132 164 
+   </box>
+   <box level="4">
+    142 154 144 160 
+   </box>
+   <box level="3">
+    71 76 72 77 
+   </box>
+   <box level="4">
+    140 154 142 160 
+   </box>
+   <box level="3">
+    70 76 71 77 
+   </box>
+   <box level="4">
+    138 154 140 160 
+   </box>
+   <box level="3">
+    69 76 70 77 
+   </box>
+   <box level="4">
+    136 154 138 160 
+   </box>
+   <box level="3">
+    68 76 69 77 
+   </box>
+   <box level="3">
+    70 74 72 76 
+   </box>
+   <box level="2">
+    35 36 36 37 
+   </box>
+   <box level="3">
+    68 74 70 76 
+   </box>
+   <box level="2">
+    34 36 35 37 
+   </box>
+   <box level="4">
+    134 154 136 160 
+   </box>
+   <box level="3">
+    67 76 68 77 
+   </box>
+   <box level="4">
+    132 154 134 160 
+   </box>
+   <box level="3">
+    66 76 67 77 
+   </box>
+   <box level="4">
+    130 154 132 160 
+   </box>
+   <box level="3">
+    65 76 66 77 
+   </box>
+   <box level="4">
+    128 154 130 160 
+   </box>
+   <box level="3">
+    64 76 65 77 
+   </box>
+   <box level="3">
+    66 74 68 76 
+   </box>
+   <box level="2">
+    33 36 34 37 
+   </box>
+   <box level="3">
+    64 74 66 76 
+   </box>
+   <box level="2">
+    32 36 33 37 
+   </box>
+   <box level="2">
+    34 34 36 36 
    </box>
    <box level="1">
-    10 20 12 22 
+    17 16 18 17 
    </box>
    <box level="2">
-    22 38 24 40 
-   </box>
-   <box level="2">
-    23 37 24 38 
-   </box>
-   <box level="3">
-    46 72 48 74 
-   </box>
-   <box level="2">
-    22 37 23 38 
-   </box>
-   <box level="3">
-    44 72 46 74 
-   </box>
-   <box level="2">
-    20 38 22 40 
-   </box>
-   <box level="2">
-    21 37 22 38 
-   </box>
-   <box level="3">
-    42 72 44 74 
-   </box>
-   <box level="2">
-    20 37 21 38 
-   </box>
-   <box level="3">
-    40 72 42 74 
-   </box>
-   <box level="3">
-    47 71 48 72 
-   </box>
-   <box level="4">
-    94 140 96 142 
-   </box>
-   <box level="3">
-    46 71 47 72 
-   </box>
-   <box level="4">
-    92 140 94 142 
-   </box>
-   <box level="4">
-    92 136 96 140 
-   </box>
-   <box level="3">
-    45 71 46 72 
-   </box>
-   <box level="4">
-    90 140 92 142 
-   </box>
-   <box level="3">
-    44 71 45 72 
-   </box>
-   <box level="4">
-    88 140 90 142 
-   </box>
-   <box level="4">
-    88 136 92 140 
-   </box>
-   <box level="4">
-    92 132 96 136 
-   </box>
-   <box level="4">
-    94 130 96 132 
-   </box>
-   <box level="3">
-    47 64 48 65 
-   </box>
-   <box level="4">
-    92 130 94 132 
-   </box>
-   <box level="3">
-    46 64 47 65 
-   </box>
-   <box level="4">
-    88 132 92 136 
-   </box>
-   <box level="4">
-    90 130 92 132 
-   </box>
-   <box level="3">
-    45 64 46 65 
-   </box>
-   <box level="4">
-    88 130 90 132 
-   </box>
-   <box level="3">
-    44 64 45 65 
-   </box>
-   <box level="3">
-    43 71 44 72 
-   </box>
-   <box level="4">
-    86 140 88 142 
-   </box>
-   <box level="3">
-    42 71 43 72 
-   </box>
-   <box level="4">
-    84 140 86 142 
-   </box>
-   <box level="4">
-    84 136 88 140 
-   </box>
-   <box level="3">
-    41 71 42 72 
-   </box>
-   <box level="4">
-    82 140 84 142 
-   </box>
-   <box level="3">
-    40 71 41 72 
-   </box>
-   <box level="4">
-    80 140 82 142 
-   </box>
-   <box level="4">
-    80 136 84 140 
-   </box>
-   <box level="4">
-    84 132 88 136 
-   </box>
-   <box level="4">
-    86 130 88 132 
-   </box>
-   <box level="3">
-    43 64 44 65 
-   </box>
-   <box level="4">
-    84 130 86 132 
-   </box>
-   <box level="3">
-    42 64 43 65 
-   </box>
-   <box level="4">
-    80 132 84 136 
-   </box>
-   <box level="4">
-    82 130 84 132 
-   </box>
-   <box level="3">
-    41 64 42 65 
-   </box>
-   <box level="4">
-    80 130 82 132 
-   </box>
-   <box level="3">
-    40 64 41 65 
-   </box>
-   <box level="3">
-    46 62 48 64 
-   </box>
-   <box level="2">
-    23 30 24 31 
-   </box>
-   <box level="3">
-    44 62 46 64 
-   </box>
-   <box level="2">
-    22 30 23 31 
-   </box>
-   <box level="2">
-    22 28 24 30 
-   </box>
-   <box level="3">
-    42 62 44 64 
-   </box>
-   <box level="2">
-    21 30 22 31 
-   </box>
-   <box level="3">
-    40 62 42 64 
-   </box>
-   <box level="2">
-    20 30 21 31 
-   </box>
-   <box level="2">
-    20 28 22 30 
+    32 34 34 36 
    </box>
    <box level="1">
-    10 12 12 14 
+    16 16 17 17 
    </box>
    <box level="1">
-    8 20 10 22 
-   </box>
-   <box level="2">
-    18 38 20 40 
-   </box>
-   <box level="2">
-    19 37 20 38 
-   </box>
-   <box level="3">
-    38 72 40 74 
-   </box>
-   <box level="2">
-    18 37 19 38 
-   </box>
-   <box level="3">
-    36 72 38 74 
-   </box>
-   <box level="2">
-    16 38 18 40 
-   </box>
-   <box level="2">
-    17 37 18 38 
-   </box>
-   <box level="3">
-    34 72 36 74 
-   </box>
-   <box level="2">
-    16 37 17 38 
-   </box>
-   <box level="3">
-    32 72 34 74 
-   </box>
-   <box level="3">
-    39 71 40 72 
-   </box>
-   <box level="4">
-    78 140 80 142 
-   </box>
-   <box level="3">
-    38 71 39 72 
-   </box>
-   <box level="4">
-    76 140 78 142 
-   </box>
-   <box level="4">
-    76 136 80 140 
-   </box>
-   <box level="3">
-    37 71 38 72 
-   </box>
-   <box level="4">
-    74 140 76 142 
-   </box>
-   <box level="3">
-    36 71 37 72 
-   </box>
-   <box level="4">
-    72 140 74 142 
-   </box>
-   <box level="4">
-    72 136 76 140 
-   </box>
-   <box level="4">
-    76 132 80 136 
-   </box>
-   <box level="4">
-    78 130 80 132 
-   </box>
-   <box level="3">
-    39 64 40 65 
-   </box>
-   <box level="4">
-    76 130 78 132 
-   </box>
-   <box level="3">
-    38 64 39 65 
-   </box>
-   <box level="4">
-    72 132 76 136 
-   </box>
-   <box level="4">
-    74 130 76 132 
-   </box>
-   <box level="3">
-    37 64 38 65 
-   </box>
-   <box level="4">
-    72 130 74 132 
-   </box>
-   <box level="3">
-    36 64 37 65 
-   </box>
-   <box level="3">
-    35 71 36 72 
-   </box>
-   <box level="4">
-    70 140 72 142 
-   </box>
-   <box level="3">
-    34 71 35 72 
-   </box>
-   <box level="4">
-    68 140 70 142 
-   </box>
-   <box level="4">
-    68 136 72 140 
-   </box>
-   <box level="3">
-    33 71 34 72 
-   </box>
-   <box level="4">
-    66 140 68 142 
-   </box>
-   <box level="3">
-    32 71 33 72 
-   </box>
-   <box level="4">
-    64 140 66 142 
-   </box>
-   <box level="4">
-    64 136 68 140 
-   </box>
-   <box level="4">
-    68 132 72 136 
-   </box>
-   <box level="4">
-    70 130 72 132 
-   </box>
-   <box level="3">
-    35 64 36 65 
-   </box>
-   <box level="4">
-    68 130 70 132 
-   </box>
-   <box level="3">
-    34 64 35 65 
-   </box>
-   <box level="4">
-    64 132 68 136 
-   </box>
-   <box level="4">
-    66 130 68 132 
-   </box>
-   <box level="3">
-    33 64 34 65 
-   </box>
-   <box level="4">
-    64 130 66 132 
-   </box>
-   <box level="3">
-    32 64 33 65 
-   </box>
-   <box level="3">
-    38 62 40 64 
-   </box>
-   <box level="2">
-    19 30 20 31 
-   </box>
-   <box level="3">
-    36 62 38 64 
-   </box>
-   <box level="2">
-    18 30 19 31 
-   </box>
-   <box level="2">
-    18 28 20 30 
-   </box>
-   <box level="3">
-    34 62 36 64 
-   </box>
-   <box level="2">
-    17 30 18 31 
-   </box>
-   <box level="3">
-    32 62 34 64 
-   </box>
-   <box level="2">
-    16 30 17 31 
-   </box>
-   <box level="2">
-    16 28 18 30 
+    16 14 18 16 
    </box>
    <box level="1">
-    8 12 10 14 
+    14 24 16 26 
    </box>
    <box level="1">
-    6 20 8 22 
+    15 23 16 24 
    </box>
    <box level="2">
-    14 38 16 40 
-   </box>
-   <box level="2">
-    15 37 16 38 
-   </box>
-   <box level="3">
-    30 72 32 74 
-   </box>
-   <box level="2">
-    14 37 15 38 
-   </box>
-   <box level="3">
-    28 72 30 74 
-   </box>
-   <box level="2">
-    12 38 14 40 
-   </box>
-   <box level="2">
-    13 37 14 38 
-   </box>
-   <box level="3">
-    26 72 28 74 
-   </box>
-   <box level="2">
-    12 37 13 38 
-   </box>
-   <box level="3">
-    24 72 26 74 
-   </box>
-   <box level="3">
-    31 71 32 72 
-   </box>
-   <box level="4">
-    62 140 64 142 
-   </box>
-   <box level="3">
-    30 71 31 72 
-   </box>
-   <box level="4">
-    60 140 62 142 
-   </box>
-   <box level="4">
-    60 136 64 140 
-   </box>
-   <box level="3">
-    29 71 30 72 
-   </box>
-   <box level="4">
-    58 140 60 142 
-   </box>
-   <box level="3">
-    28 71 29 72 
-   </box>
-   <box level="4">
-    56 140 58 142 
-   </box>
-   <box level="4">
-    56 136 60 140 
-   </box>
-   <box level="4">
-    60 132 64 136 
-   </box>
-   <box level="4">
-    62 130 64 132 
-   </box>
-   <box level="3">
-    31 64 32 65 
-   </box>
-   <box level="4">
-    60 130 62 132 
-   </box>
-   <box level="3">
-    30 64 31 65 
-   </box>
-   <box level="4">
-    56 132 60 136 
-   </box>
-   <box level="4">
-    58 130 60 132 
-   </box>
-   <box level="3">
-    29 64 30 65 
-   </box>
-   <box level="4">
-    56 130 58 132 
-   </box>
-   <box level="3">
-    28 64 29 65 
-   </box>
-   <box level="3">
-    27 71 28 72 
-   </box>
-   <box level="4">
-    54 140 56 142 
-   </box>
-   <box level="3">
-    26 71 27 72 
-   </box>
-   <box level="4">
-    52 140 54 142 
-   </box>
-   <box level="4">
-    52 136 56 140 
-   </box>
-   <box level="3">
-    25 71 26 72 
-   </box>
-   <box level="4">
-    50 140 52 142 
-   </box>
-   <box level="3">
-    24 71 25 72 
-   </box>
-   <box level="4">
-    48 140 50 142 
-   </box>
-   <box level="4">
-    48 136 52 140 
-   </box>
-   <box level="4">
-    52 132 56 136 
-   </box>
-   <box level="4">
-    54 130 56 132 
-   </box>
-   <box level="3">
-    27 64 28 65 
-   </box>
-   <box level="4">
-    52 130 54 132 
-   </box>
-   <box level="3">
-    26 64 27 65 
-   </box>
-   <box level="4">
-    48 132 52 136 
-   </box>
-   <box level="4">
-    50 130 52 132 
-   </box>
-   <box level="3">
-    25 64 26 65 
-   </box>
-   <box level="4">
-    48 130 50 132 
-   </box>
-   <box level="3">
-    24 64 25 65 
-   </box>
-   <box level="3">
-    30 62 32 64 
-   </box>
-   <box level="2">
-    15 30 16 31 
-   </box>
-   <box level="3">
-    28 62 30 64 
-   </box>
-   <box level="2">
-    14 30 15 31 
-   </box>
-   <box level="2">
-    14 28 16 30 
-   </box>
-   <box level="3">
-    26 62 28 64 
-   </box>
-   <box level="2">
-    13 30 14 31 
-   </box>
-   <box level="3">
-    24 62 26 64 
-   </box>
-   <box level="2">
-    12 30 13 31 
-   </box>
-   <box level="2">
-    12 28 14 30 
+    30 44 32 46 
    </box>
    <box level="1">
-    6 12 8 14 
+    14 23 15 24 
+   </box>
+   <box level="2">
+    28 44 30 46 
+   </box>
+   <box level="2">
+    31 43 32 44 
+   </box>
+   <box level="3">
+    62 84 64 86 
+   </box>
+   <box level="2">
+    30 43 31 44 
+   </box>
+   <box level="3">
+    60 84 62 86 
+   </box>
+   <box level="3">
+    63 83 64 84 
+   </box>
+   <box level="4">
+    126 164 128 166 
+   </box>
+   <box level="3">
+    62 83 63 84 
+   </box>
+   <box level="4">
+    124 164 126 166 
+   </box>
+   <box level="4">
+    124 160 128 164 
+   </box>
+   <box level="3">
+    61 83 62 84 
+   </box>
+   <box level="4">
+    122 164 124 166 
+   </box>
+   <box level="3">
+    60 83 61 84 
+   </box>
+   <box level="4">
+    120 164 122 166 
+   </box>
+   <box level="4">
+    120 160 124 164 
+   </box>
+   <box level="2">
+    29 43 30 44 
+   </box>
+   <box level="3">
+    58 84 60 86 
+   </box>
+   <box level="2">
+    28 43 29 44 
+   </box>
+   <box level="3">
+    56 84 58 86 
+   </box>
+   <box level="3">
+    59 83 60 84 
+   </box>
+   <box level="4">
+    118 164 120 166 
+   </box>
+   <box level="3">
+    58 83 59 84 
+   </box>
+   <box level="4">
+    116 164 118 166 
+   </box>
+   <box level="4">
+    116 160 120 164 
+   </box>
+   <box level="3">
+    57 83 58 84 
+   </box>
+   <box level="4">
+    114 164 116 166 
+   </box>
+   <box level="3">
+    56 83 57 84 
+   </box>
+   <box level="4">
+    112 164 114 166 
+   </box>
+   <box level="4">
+    112 160 116 164 
+   </box>
+   <box level="4">
+    126 154 128 160 
+   </box>
+   <box level="3">
+    63 76 64 77 
+   </box>
+   <box level="4">
+    124 154 126 160 
+   </box>
+   <box level="3">
+    62 76 63 77 
+   </box>
+   <box level="4">
+    122 154 124 160 
+   </box>
+   <box level="3">
+    61 76 62 77 
+   </box>
+   <box level="4">
+    120 154 122 160 
+   </box>
+   <box level="3">
+    60 76 61 77 
+   </box>
+   <box level="3">
+    62 74 64 76 
+   </box>
+   <box level="2">
+    31 36 32 37 
+   </box>
+   <box level="3">
+    60 74 62 76 
+   </box>
+   <box level="2">
+    30 36 31 37 
+   </box>
+   <box level="4">
+    118 154 120 160 
+   </box>
+   <box level="3">
+    59 76 60 77 
+   </box>
+   <box level="4">
+    116 154 118 160 
+   </box>
+   <box level="3">
+    58 76 59 77 
+   </box>
+   <box level="4">
+    114 154 116 160 
+   </box>
+   <box level="3">
+    57 76 58 77 
+   </box>
+   <box level="4">
+    112 154 114 160 
+   </box>
+   <box level="3">
+    56 76 57 77 
+   </box>
+   <box level="3">
+    58 74 60 76 
+   </box>
+   <box level="2">
+    29 36 30 37 
+   </box>
+   <box level="3">
+    56 74 58 76 
+   </box>
+   <box level="2">
+    28 36 29 37 
+   </box>
+   <box level="2">
+    30 34 32 36 
    </box>
    <box level="1">
-    4 20 6 22 
+    15 16 16 17 
    </box>
    <box level="2">
-    10 38 12 40 
-   </box>
-   <box level="2">
-    11 37 12 38 
-   </box>
-   <box level="3">
-    22 72 24 74 
-   </box>
-   <box level="2">
-    10 37 11 38 
-   </box>
-   <box level="3">
-    20 72 22 74 
-   </box>
-   <box level="2">
-    8 38 10 40 
-   </box>
-   <box level="2">
-    9 37 10 38 
-   </box>
-   <box level="3">
-    18 72 20 74 
-   </box>
-   <box level="2">
-    8 37 9 38 
-   </box>
-   <box level="3">
-    16 72 18 74 
-   </box>
-   <box level="3">
-    23 71 24 72 
-   </box>
-   <box level="4">
-    46 140 48 142 
-   </box>
-   <box level="3">
-    22 71 23 72 
-   </box>
-   <box level="4">
-    44 140 46 142 
-   </box>
-   <box level="4">
-    44 136 48 140 
-   </box>
-   <box level="3">
-    21 71 22 72 
-   </box>
-   <box level="4">
-    42 140 44 142 
-   </box>
-   <box level="3">
-    20 71 21 72 
-   </box>
-   <box level="4">
-    40 140 42 142 
-   </box>
-   <box level="4">
-    40 136 44 140 
-   </box>
-   <box level="4">
-    44 132 48 136 
-   </box>
-   <box level="4">
-    46 130 48 132 
-   </box>
-   <box level="3">
-    23 64 24 65 
-   </box>
-   <box level="4">
-    44 130 46 132 
-   </box>
-   <box level="3">
-    22 64 23 65 
-   </box>
-   <box level="4">
-    40 132 44 136 
-   </box>
-   <box level="4">
-    42 130 44 132 
-   </box>
-   <box level="3">
-    21 64 22 65 
-   </box>
-   <box level="4">
-    40 130 42 132 
-   </box>
-   <box level="3">
-    20 64 21 65 
-   </box>
-   <box level="3">
-    19 71 20 72 
-   </box>
-   <box level="4">
-    38 140 40 142 
-   </box>
-   <box level="3">
-    18 71 19 72 
-   </box>
-   <box level="4">
-    36 140 38 142 
-   </box>
-   <box level="4">
-    36 136 40 140 
-   </box>
-   <box level="3">
-    17 71 18 72 
-   </box>
-   <box level="4">
-    34 140 36 142 
-   </box>
-   <box level="3">
-    16 71 17 72 
-   </box>
-   <box level="4">
-    32 140 34 142 
-   </box>
-   <box level="4">
-    32 136 36 140 
-   </box>
-   <box level="4">
-    36 132 40 136 
-   </box>
-   <box level="4">
-    38 130 40 132 
-   </box>
-   <box level="3">
-    19 64 20 65 
-   </box>
-   <box level="4">
-    36 130 38 132 
-   </box>
-   <box level="3">
-    18 64 19 65 
-   </box>
-   <box level="4">
-    32 132 36 136 
-   </box>
-   <box level="4">
-    34 130 36 132 
-   </box>
-   <box level="3">
-    17 64 18 65 
-   </box>
-   <box level="4">
-    32 130 34 132 
-   </box>
-   <box level="3">
-    16 64 17 65 
-   </box>
-   <box level="3">
-    22 62 24 64 
-   </box>
-   <box level="2">
-    11 30 12 31 
-   </box>
-   <box level="3">
-    20 62 22 64 
-   </box>
-   <box level="2">
-    10 30 11 31 
-   </box>
-   <box level="2">
-    10 28 12 30 
-   </box>
-   <box level="3">
-    18 62 20 64 
-   </box>
-   <box level="2">
-    9 30 10 31 
-   </box>
-   <box level="3">
-    16 62 18 64 
-   </box>
-   <box level="2">
-    8 30 9 31 
-   </box>
-   <box level="2">
-    8 28 10 30 
+    28 34 30 36 
    </box>
    <box level="1">
-    4 12 6 14 
+    14 16 15 17 
    </box>
    <box level="1">
-    2 20 4 22 
-   </box>
-   <box level="2">
-    6 38 8 40 
-   </box>
-   <box level="2">
-    7 37 8 38 
-   </box>
-   <box level="3">
-    14 72 16 74 
-   </box>
-   <box level="2">
-    6 37 7 38 
-   </box>
-   <box level="3">
-    12 72 14 74 
-   </box>
-   <box level="2">
-    4 38 6 40 
-   </box>
-   <box level="2">
-    5 37 6 38 
-   </box>
-   <box level="3">
-    10 72 12 74 
-   </box>
-   <box level="2">
-    4 37 5 38 
-   </box>
-   <box level="3">
-    8 72 10 74 
-   </box>
-   <box level="3">
-    15 71 16 72 
-   </box>
-   <box level="4">
-    30 140 32 142 
-   </box>
-   <box level="3">
-    14 71 15 72 
-   </box>
-   <box level="4">
-    28 140 30 142 
-   </box>
-   <box level="4">
-    28 136 32 140 
-   </box>
-   <box level="3">
-    13 71 14 72 
-   </box>
-   <box level="4">
-    26 140 28 142 
-   </box>
-   <box level="3">
-    12 71 13 72 
-   </box>
-   <box level="4">
-    24 140 26 142 
-   </box>
-   <box level="4">
-    24 136 28 140 
-   </box>
-   <box level="4">
-    28 132 32 136 
-   </box>
-   <box level="4">
-    30 130 32 132 
-   </box>
-   <box level="3">
-    15 64 16 65 
-   </box>
-   <box level="4">
-    28 130 30 132 
-   </box>
-   <box level="3">
-    14 64 15 65 
-   </box>
-   <box level="4">
-    24 132 28 136 
-   </box>
-   <box level="4">
-    26 130 28 132 
-   </box>
-   <box level="3">
-    13 64 14 65 
-   </box>
-   <box level="4">
-    24 130 26 132 
-   </box>
-   <box level="3">
-    12 64 13 65 
-   </box>
-   <box level="3">
-    11 71 12 72 
-   </box>
-   <box level="4">
-    22 140 24 142 
-   </box>
-   <box level="3">
-    10 71 11 72 
-   </box>
-   <box level="4">
-    20 140 22 142 
-   </box>
-   <box level="4">
-    20 136 24 140 
-   </box>
-   <box level="3">
-    9 71 10 72 
-   </box>
-   <box level="4">
-    18 140 20 142 
-   </box>
-   <box level="3">
-    8 71 9 72 
-   </box>
-   <box level="4">
-    16 140 18 142 
-   </box>
-   <box level="4">
-    16 136 20 140 
-   </box>
-   <box level="4">
-    20 132 24 136 
-   </box>
-   <box level="4">
-    22 130 24 132 
-   </box>
-   <box level="3">
-    11 64 12 65 
-   </box>
-   <box level="4">
-    20 130 22 132 
-   </box>
-   <box level="3">
-    10 64 11 65 
-   </box>
-   <box level="4">
-    16 132 20 136 
-   </box>
-   <box level="4">
-    18 130 20 132 
-   </box>
-   <box level="3">
-    9 64 10 65 
-   </box>
-   <box level="4">
-    16 130 18 132 
-   </box>
-   <box level="3">
-    8 64 9 65 
-   </box>
-   <box level="3">
-    14 62 16 64 
-   </box>
-   <box level="2">
-    7 30 8 31 
-   </box>
-   <box level="3">
-    12 62 14 64 
-   </box>
-   <box level="2">
-    6 30 7 31 
-   </box>
-   <box level="2">
-    6 28 8 30 
-   </box>
-   <box level="3">
-    10 62 12 64 
-   </box>
-   <box level="2">
-    5 30 6 31 
-   </box>
-   <box level="3">
-    8 62 10 64 
-   </box>
-   <box level="2">
-    4 30 5 31 
-   </box>
-   <box level="2">
-    4 28 6 30 
+    14 14 16 16 
    </box>
    <box level="1">
-    2 12 4 14 
+    12 24 14 26 
    </box>
    <box level="1">
-    0 20 2 22 
+    13 23 14 24 
    </box>
    <box level="2">
-    2 38 4 40 
-   </box>
-   <box level="2">
-    3 37 4 38 
-   </box>
-   <box level="3">
-    6 72 8 74 
-   </box>
-   <box level="2">
-    2 37 3 38 
-   </box>
-   <box level="3">
-    4 72 6 74 
-   </box>
-   <box level="2">
-    0 38 2 40 
-   </box>
-   <box level="2">
-    1 37 2 38 
-   </box>
-   <box level="3">
-    2 72 4 74 
-   </box>
-   <box level="2">
-    0 37 1 38 
-   </box>
-   <box level="3">
-    0 72 2 74 
-   </box>
-   <box level="3">
-    7 71 8 72 
-   </box>
-   <box level="4">
-    14 140 16 142 
-   </box>
-   <box level="3">
-    6 71 7 72 
-   </box>
-   <box level="4">
-    12 140 14 142 
-   </box>
-   <box level="4">
-    12 136 16 140 
-   </box>
-   <box level="3">
-    5 71 6 72 
-   </box>
-   <box level="4">
-    10 140 12 142 
-   </box>
-   <box level="3">
-    4 71 5 72 
-   </box>
-   <box level="4">
-    8 140 10 142 
-   </box>
-   <box level="4">
-    8 136 12 140 
-   </box>
-   <box level="4">
-    12 132 16 136 
-   </box>
-   <box level="4">
-    14 130 16 132 
-   </box>
-   <box level="3">
-    7 64 8 65 
-   </box>
-   <box level="4">
-    12 130 14 132 
-   </box>
-   <box level="3">
-    6 64 7 65 
-   </box>
-   <box level="4">
-    8 132 12 136 
-   </box>
-   <box level="4">
-    10 130 12 132 
-   </box>
-   <box level="3">
-    5 64 6 65 
-   </box>
-   <box level="4">
-    8 130 10 132 
-   </box>
-   <box level="3">
-    4 64 5 65 
-   </box>
-   <box level="3">
-    3 71 4 72 
-   </box>
-   <box level="4">
-    6 140 8 142 
-   </box>
-   <box level="3">
-    2 71 3 72 
-   </box>
-   <box level="4">
-    4 140 6 142 
-   </box>
-   <box level="4">
-    4 136 8 140 
-   </box>
-   <box level="3">
-    1 71 2 72 
-   </box>
-   <box level="4">
-    2 140 4 142 
-   </box>
-   <box level="3">
-    0 71 1 72 
-   </box>
-   <box level="4">
-    0 140 2 142 
-   </box>
-   <box level="4">
-    0 136 4 140 
-   </box>
-   <box level="4">
-    4 132 8 136 
-   </box>
-   <box level="4">
-    6 130 8 132 
-   </box>
-   <box level="3">
-    3 64 4 65 
-   </box>
-   <box level="4">
-    4 130 6 132 
-   </box>
-   <box level="3">
-    2 64 3 65 
-   </box>
-   <box level="4">
-    0 132 4 136 
-   </box>
-   <box level="4">
-    2 130 4 132 
-   </box>
-   <box level="3">
-    1 64 2 65 
-   </box>
-   <box level="4">
-    0 130 2 132 
-   </box>
-   <box level="3">
-    0 64 1 65 
-   </box>
-   <box level="3">
-    6 62 8 64 
-   </box>
-   <box level="2">
-    3 30 4 31 
-   </box>
-   <box level="3">
-    4 62 6 64 
-   </box>
-   <box level="2">
-    2 30 3 31 
-   </box>
-   <box level="2">
-    2 28 4 30 
-   </box>
-   <box level="3">
-    2 62 4 64 
-   </box>
-   <box level="2">
-    1 30 2 31 
-   </box>
-   <box level="3">
-    0 62 2 64 
-   </box>
-   <box level="2">
-    0 30 1 31 
-   </box>
-   <box level="2">
-    0 28 2 30 
+    26 44 28 46 
    </box>
    <box level="1">
-    0 12 2 14 
+    12 23 13 24 
+   </box>
+   <box level="2">
+    24 44 26 46 
+   </box>
+   <box level="2">
+    27 43 28 44 
+   </box>
+   <box level="3">
+    54 84 56 86 
+   </box>
+   <box level="2">
+    26 43 27 44 
+   </box>
+   <box level="3">
+    52 84 54 86 
+   </box>
+   <box level="3">
+    55 83 56 84 
+   </box>
+   <box level="4">
+    110 164 112 166 
+   </box>
+   <box level="3">
+    54 83 55 84 
+   </box>
+   <box level="4">
+    108 164 110 166 
+   </box>
+   <box level="4">
+    108 160 112 164 
+   </box>
+   <box level="3">
+    53 83 54 84 
+   </box>
+   <box level="4">
+    106 164 108 166 
+   </box>
+   <box level="3">
+    52 83 53 84 
+   </box>
+   <box level="4">
+    104 164 106 166 
+   </box>
+   <box level="4">
+    104 160 108 164 
+   </box>
+   <box level="2">
+    25 43 26 44 
+   </box>
+   <box level="3">
+    50 84 52 86 
+   </box>
+   <box level="2">
+    24 43 25 44 
+   </box>
+   <box level="3">
+    48 84 50 86 
+   </box>
+   <box level="3">
+    51 83 52 84 
+   </box>
+   <box level="4">
+    102 164 104 166 
+   </box>
+   <box level="3">
+    50 83 51 84 
+   </box>
+   <box level="4">
+    100 164 102 166 
+   </box>
+   <box level="4">
+    100 160 104 164 
+   </box>
+   <box level="3">
+    49 83 50 84 
+   </box>
+   <box level="4">
+    98 164 100 166 
+   </box>
+   <box level="3">
+    48 83 49 84 
+   </box>
+   <box level="4">
+    96 164 98 166 
+   </box>
+   <box level="4">
+    96 160 100 164 
+   </box>
+   <box level="4">
+    110 154 112 160 
+   </box>
+   <box level="3">
+    55 76 56 77 
+   </box>
+   <box level="4">
+    108 154 110 160 
+   </box>
+   <box level="3">
+    54 76 55 77 
+   </box>
+   <box level="4">
+    106 154 108 160 
+   </box>
+   <box level="3">
+    53 76 54 77 
+   </box>
+   <box level="4">
+    104 154 106 160 
+   </box>
+   <box level="3">
+    52 76 53 77 
+   </box>
+   <box level="3">
+    54 74 56 76 
+   </box>
+   <box level="2">
+    27 36 28 37 
+   </box>
+   <box level="3">
+    52 74 54 76 
+   </box>
+   <box level="2">
+    26 36 27 37 
+   </box>
+   <box level="4">
+    102 154 104 160 
+   </box>
+   <box level="3">
+    51 76 52 77 
+   </box>
+   <box level="4">
+    100 154 102 160 
+   </box>
+   <box level="3">
+    50 76 51 77 
+   </box>
+   <box level="4">
+    98 154 100 160 
+   </box>
+   <box level="3">
+    49 76 50 77 
+   </box>
+   <box level="4">
+    96 154 98 160 
+   </box>
+   <box level="3">
+    48 76 49 77 
+   </box>
+   <box level="3">
+    50 74 52 76 
+   </box>
+   <box level="2">
+    25 36 26 37 
+   </box>
+   <box level="3">
+    48 74 50 76 
+   </box>
+   <box level="2">
+    24 36 25 37 
+   </box>
+   <box level="2">
+    26 34 28 36 
+   </box>
+   <box level="1">
+    13 16 14 17 
+   </box>
+   <box level="2">
+    24 34 26 36 
+   </box>
+   <box level="1">
+    12 16 13 17 
+   </box>
+   <box level="1">
+    12 14 14 16 
+   </box>
+   <box level="1">
+    10 24 12 26 
+   </box>
+   <box level="1">
+    11 23 12 24 
+   </box>
+   <box level="2">
+    22 44 24 46 
+   </box>
+   <box level="1">
+    10 23 11 24 
+   </box>
+   <box level="2">
+    20 44 22 46 
+   </box>
+   <box level="2">
+    23 43 24 44 
+   </box>
+   <box level="3">
+    46 84 48 86 
+   </box>
+   <box level="2">
+    22 43 23 44 
+   </box>
+   <box level="3">
+    44 84 46 86 
+   </box>
+   <box level="3">
+    47 83 48 84 
+   </box>
+   <box level="4">
+    94 164 96 166 
+   </box>
+   <box level="3">
+    46 83 47 84 
+   </box>
+   <box level="4">
+    92 164 94 166 
+   </box>
+   <box level="4">
+    92 160 96 164 
+   </box>
+   <box level="3">
+    45 83 46 84 
+   </box>
+   <box level="4">
+    90 164 92 166 
+   </box>
+   <box level="3">
+    44 83 45 84 
+   </box>
+   <box level="4">
+    88 164 90 166 
+   </box>
+   <box level="4">
+    88 160 92 164 
+   </box>
+   <box level="2">
+    21 43 22 44 
+   </box>
+   <box level="3">
+    42 84 44 86 
+   </box>
+   <box level="2">
+    20 43 21 44 
+   </box>
+   <box level="3">
+    40 84 42 86 
+   </box>
+   <box level="3">
+    43 83 44 84 
+   </box>
+   <box level="4">
+    86 164 88 166 
+   </box>
+   <box level="3">
+    42 83 43 84 
+   </box>
+   <box level="4">
+    84 164 86 166 
+   </box>
+   <box level="4">
+    84 160 88 164 
+   </box>
+   <box level="3">
+    41 83 42 84 
+   </box>
+   <box level="4">
+    82 164 84 166 
+   </box>
+   <box level="3">
+    40 83 41 84 
+   </box>
+   <box level="4">
+    80 164 82 166 
+   </box>
+   <box level="4">
+    80 160 84 164 
+   </box>
+   <box level="4">
+    94 154 96 160 
+   </box>
+   <box level="3">
+    47 76 48 77 
+   </box>
+   <box level="4">
+    92 154 94 160 
+   </box>
+   <box level="3">
+    46 76 47 77 
+   </box>
+   <box level="4">
+    90 154 92 160 
+   </box>
+   <box level="3">
+    45 76 46 77 
+   </box>
+   <box level="4">
+    88 154 90 160 
+   </box>
+   <box level="3">
+    44 76 45 77 
+   </box>
+   <box level="3">
+    46 74 48 76 
+   </box>
+   <box level="2">
+    23 36 24 37 
+   </box>
+   <box level="3">
+    44 74 46 76 
+   </box>
+   <box level="2">
+    22 36 23 37 
+   </box>
+   <box level="4">
+    86 154 88 160 
+   </box>
+   <box level="3">
+    43 76 44 77 
+   </box>
+   <box level="4">
+    84 154 86 160 
+   </box>
+   <box level="3">
+    42 76 43 77 
+   </box>
+   <box level="4">
+    82 154 84 160 
+   </box>
+   <box level="3">
+    41 76 42 77 
+   </box>
+   <box level="4">
+    80 154 82 160 
+   </box>
+   <box level="3">
+    40 76 41 77 
+   </box>
+   <box level="3">
+    42 74 44 76 
+   </box>
+   <box level="2">
+    21 36 22 37 
+   </box>
+   <box level="3">
+    40 74 42 76 
+   </box>
+   <box level="2">
+    20 36 21 37 
+   </box>
+   <box level="2">
+    22 34 24 36 
+   </box>
+   <box level="1">
+    11 16 12 17 
+   </box>
+   <box level="2">
+    20 34 22 36 
+   </box>
+   <box level="1">
+    10 16 11 17 
+   </box>
+   <box level="1">
+    10 14 12 16 
+   </box>
+   <box level="1">
+    8 24 10 26 
+   </box>
+   <box level="1">
+    9 23 10 24 
+   </box>
+   <box level="2">
+    18 44 20 46 
+   </box>
+   <box level="1">
+    8 23 9 24 
+   </box>
+   <box level="2">
+    16 44 18 46 
+   </box>
+   <box level="2">
+    19 43 20 44 
+   </box>
+   <box level="3">
+    38 84 40 86 
+   </box>
+   <box level="2">
+    18 43 19 44 
+   </box>
+   <box level="3">
+    36 84 38 86 
+   </box>
+   <box level="3">
+    39 83 40 84 
+   </box>
+   <box level="4">
+    78 164 80 166 
+   </box>
+   <box level="3">
+    38 83 39 84 
+   </box>
+   <box level="4">
+    76 164 78 166 
+   </box>
+   <box level="4">
+    76 160 80 164 
+   </box>
+   <box level="3">
+    37 83 38 84 
+   </box>
+   <box level="4">
+    74 164 76 166 
+   </box>
+   <box level="3">
+    36 83 37 84 
+   </box>
+   <box level="4">
+    72 164 74 166 
+   </box>
+   <box level="4">
+    72 160 76 164 
+   </box>
+   <box level="2">
+    17 43 18 44 
+   </box>
+   <box level="3">
+    34 84 36 86 
+   </box>
+   <box level="2">
+    16 43 17 44 
+   </box>
+   <box level="3">
+    32 84 34 86 
+   </box>
+   <box level="3">
+    35 83 36 84 
+   </box>
+   <box level="4">
+    70 164 72 166 
+   </box>
+   <box level="3">
+    34 83 35 84 
+   </box>
+   <box level="4">
+    68 164 70 166 
+   </box>
+   <box level="4">
+    68 160 72 164 
+   </box>
+   <box level="3">
+    33 83 34 84 
+   </box>
+   <box level="4">
+    66 164 68 166 
+   </box>
+   <box level="3">
+    32 83 33 84 
+   </box>
+   <box level="4">
+    64 164 66 166 
+   </box>
+   <box level="4">
+    64 160 68 164 
+   </box>
+   <box level="4">
+    78 154 80 160 
+   </box>
+   <box level="3">
+    39 76 40 77 
+   </box>
+   <box level="4">
+    76 154 78 160 
+   </box>
+   <box level="3">
+    38 76 39 77 
+   </box>
+   <box level="4">
+    74 154 76 160 
+   </box>
+   <box level="3">
+    37 76 38 77 
+   </box>
+   <box level="4">
+    72 154 74 160 
+   </box>
+   <box level="3">
+    36 76 37 77 
+   </box>
+   <box level="3">
+    38 74 40 76 
+   </box>
+   <box level="2">
+    19 36 20 37 
+   </box>
+   <box level="3">
+    36 74 38 76 
+   </box>
+   <box level="2">
+    18 36 19 37 
+   </box>
+   <box level="4">
+    70 154 72 160 
+   </box>
+   <box level="3">
+    35 76 36 77 
+   </box>
+   <box level="4">
+    68 154 70 160 
+   </box>
+   <box level="3">
+    34 76 35 77 
+   </box>
+   <box level="4">
+    66 154 68 160 
+   </box>
+   <box level="3">
+    33 76 34 77 
+   </box>
+   <box level="4">
+    64 154 66 160 
+   </box>
+   <box level="3">
+    32 76 33 77 
+   </box>
+   <box level="3">
+    34 74 36 76 
+   </box>
+   <box level="2">
+    17 36 18 37 
+   </box>
+   <box level="3">
+    32 74 34 76 
+   </box>
+   <box level="2">
+    16 36 17 37 
+   </box>
+   <box level="2">
+    18 34 20 36 
+   </box>
+   <box level="1">
+    9 16 10 17 
+   </box>
+   <box level="2">
+    16 34 18 36 
+   </box>
+   <box level="1">
+    8 16 9 17 
+   </box>
+   <box level="1">
+    8 14 10 16 
+   </box>
+   <box level="1">
+    6 24 8 26 
+   </box>
+   <box level="1">
+    7 23 8 24 
+   </box>
+   <box level="2">
+    14 44 16 46 
+   </box>
+   <box level="1">
+    6 23 7 24 
+   </box>
+   <box level="2">
+    12 44 14 46 
+   </box>
+   <box level="2">
+    15 43 16 44 
+   </box>
+   <box level="3">
+    30 84 32 86 
+   </box>
+   <box level="2">
+    14 43 15 44 
+   </box>
+   <box level="3">
+    28 84 30 86 
+   </box>
+   <box level="3">
+    31 83 32 84 
+   </box>
+   <box level="4">
+    62 164 64 166 
+   </box>
+   <box level="3">
+    30 83 31 84 
+   </box>
+   <box level="4">
+    60 164 62 166 
+   </box>
+   <box level="4">
+    60 160 64 164 
+   </box>
+   <box level="3">
+    29 83 30 84 
+   </box>
+   <box level="4">
+    58 164 60 166 
+   </box>
+   <box level="3">
+    28 83 29 84 
+   </box>
+   <box level="4">
+    56 164 58 166 
+   </box>
+   <box level="4">
+    56 160 60 164 
+   </box>
+   <box level="2">
+    13 43 14 44 
+   </box>
+   <box level="3">
+    26 84 28 86 
+   </box>
+   <box level="2">
+    12 43 13 44 
+   </box>
+   <box level="3">
+    24 84 26 86 
+   </box>
+   <box level="3">
+    27 83 28 84 
+   </box>
+   <box level="4">
+    54 164 56 166 
+   </box>
+   <box level="3">
+    26 83 27 84 
+   </box>
+   <box level="4">
+    52 164 54 166 
+   </box>
+   <box level="4">
+    52 160 56 164 
+   </box>
+   <box level="3">
+    25 83 26 84 
+   </box>
+   <box level="4">
+    50 164 52 166 
+   </box>
+   <box level="3">
+    24 83 25 84 
+   </box>
+   <box level="4">
+    48 164 50 166 
+   </box>
+   <box level="4">
+    48 160 52 164 
+   </box>
+   <box level="4">
+    62 154 64 160 
+   </box>
+   <box level="3">
+    31 76 32 77 
+   </box>
+   <box level="4">
+    60 154 62 160 
+   </box>
+   <box level="3">
+    30 76 31 77 
+   </box>
+   <box level="4">
+    58 154 60 160 
+   </box>
+   <box level="3">
+    29 76 30 77 
+   </box>
+   <box level="4">
+    56 154 58 160 
+   </box>
+   <box level="3">
+    28 76 29 77 
+   </box>
+   <box level="3">
+    30 74 32 76 
+   </box>
+   <box level="2">
+    15 36 16 37 
+   </box>
+   <box level="3">
+    28 74 30 76 
+   </box>
+   <box level="2">
+    14 36 15 37 
+   </box>
+   <box level="4">
+    54 154 56 160 
+   </box>
+   <box level="3">
+    27 76 28 77 
+   </box>
+   <box level="4">
+    52 154 54 160 
+   </box>
+   <box level="3">
+    26 76 27 77 
+   </box>
+   <box level="4">
+    50 154 52 160 
+   </box>
+   <box level="3">
+    25 76 26 77 
+   </box>
+   <box level="4">
+    48 154 50 160 
+   </box>
+   <box level="3">
+    24 76 25 77 
+   </box>
+   <box level="3">
+    26 74 28 76 
+   </box>
+   <box level="2">
+    13 36 14 37 
+   </box>
+   <box level="3">
+    24 74 26 76 
+   </box>
+   <box level="2">
+    12 36 13 37 
+   </box>
+   <box level="2">
+    14 34 16 36 
+   </box>
+   <box level="1">
+    7 16 8 17 
+   </box>
+   <box level="2">
+    12 34 14 36 
+   </box>
+   <box level="1">
+    6 16 7 17 
+   </box>
+   <box level="1">
+    6 14 8 16 
+   </box>
+   <box level="1">
+    4 24 6 26 
+   </box>
+   <box level="1">
+    5 23 6 24 
+   </box>
+   <box level="2">
+    10 44 12 46 
+   </box>
+   <box level="1">
+    4 23 5 24 
+   </box>
+   <box level="2">
+    8 44 10 46 
+   </box>
+   <box level="2">
+    11 43 12 44 
+   </box>
+   <box level="3">
+    22 84 24 86 
+   </box>
+   <box level="2">
+    10 43 11 44 
+   </box>
+   <box level="3">
+    20 84 22 86 
+   </box>
+   <box level="3">
+    23 83 24 84 
+   </box>
+   <box level="4">
+    46 164 48 166 
+   </box>
+   <box level="3">
+    22 83 23 84 
+   </box>
+   <box level="4">
+    44 164 46 166 
+   </box>
+   <box level="4">
+    44 160 48 164 
+   </box>
+   <box level="3">
+    21 83 22 84 
+   </box>
+   <box level="4">
+    42 164 44 166 
+   </box>
+   <box level="3">
+    20 83 21 84 
+   </box>
+   <box level="4">
+    40 164 42 166 
+   </box>
+   <box level="4">
+    40 160 44 164 
+   </box>
+   <box level="2">
+    9 43 10 44 
+   </box>
+   <box level="3">
+    18 84 20 86 
+   </box>
+   <box level="2">
+    8 43 9 44 
+   </box>
+   <box level="3">
+    16 84 18 86 
+   </box>
+   <box level="3">
+    19 83 20 84 
+   </box>
+   <box level="4">
+    38 164 40 166 
+   </box>
+   <box level="3">
+    18 83 19 84 
+   </box>
+   <box level="4">
+    36 164 38 166 
+   </box>
+   <box level="4">
+    36 160 40 164 
+   </box>
+   <box level="3">
+    17 83 18 84 
+   </box>
+   <box level="4">
+    34 164 36 166 
+   </box>
+   <box level="3">
+    16 83 17 84 
+   </box>
+   <box level="4">
+    32 164 34 166 
+   </box>
+   <box level="4">
+    32 160 36 164 
+   </box>
+   <box level="4">
+    46 154 48 160 
+   </box>
+   <box level="3">
+    23 76 24 77 
+   </box>
+   <box level="4">
+    44 154 46 160 
+   </box>
+   <box level="3">
+    22 76 23 77 
+   </box>
+   <box level="4">
+    42 154 44 160 
+   </box>
+   <box level="3">
+    21 76 22 77 
+   </box>
+   <box level="4">
+    40 154 42 160 
+   </box>
+   <box level="3">
+    20 76 21 77 
+   </box>
+   <box level="3">
+    22 74 24 76 
+   </box>
+   <box level="2">
+    11 36 12 37 
+   </box>
+   <box level="3">
+    20 74 22 76 
+   </box>
+   <box level="2">
+    10 36 11 37 
+   </box>
+   <box level="4">
+    38 154 40 160 
+   </box>
+   <box level="3">
+    19 76 20 77 
+   </box>
+   <box level="4">
+    36 154 38 160 
+   </box>
+   <box level="3">
+    18 76 19 77 
+   </box>
+   <box level="4">
+    34 154 36 160 
+   </box>
+   <box level="3">
+    17 76 18 77 
+   </box>
+   <box level="4">
+    32 154 34 160 
+   </box>
+   <box level="3">
+    16 76 17 77 
+   </box>
+   <box level="3">
+    18 74 20 76 
+   </box>
+   <box level="2">
+    9 36 10 37 
+   </box>
+   <box level="3">
+    16 74 18 76 
+   </box>
+   <box level="2">
+    8 36 9 37 
+   </box>
+   <box level="2">
+    10 34 12 36 
+   </box>
+   <box level="1">
+    5 16 6 17 
+   </box>
+   <box level="2">
+    8 34 10 36 
+   </box>
+   <box level="1">
+    4 16 5 17 
+   </box>
+   <box level="1">
+    4 14 6 16 
+   </box>
+   <box level="1">
+    2 24 4 26 
+   </box>
+   <box level="1">
+    3 23 4 24 
+   </box>
+   <box level="2">
+    6 44 8 46 
+   </box>
+   <box level="1">
+    2 23 3 24 
+   </box>
+   <box level="2">
+    4 44 6 46 
+   </box>
+   <box level="2">
+    7 43 8 44 
+   </box>
+   <box level="3">
+    14 84 16 86 
+   </box>
+   <box level="2">
+    6 43 7 44 
+   </box>
+   <box level="3">
+    12 84 14 86 
+   </box>
+   <box level="3">
+    15 83 16 84 
+   </box>
+   <box level="4">
+    30 164 32 166 
+   </box>
+   <box level="3">
+    14 83 15 84 
+   </box>
+   <box level="4">
+    28 164 30 166 
+   </box>
+   <box level="4">
+    28 160 32 164 
+   </box>
+   <box level="3">
+    13 83 14 84 
+   </box>
+   <box level="4">
+    26 164 28 166 
+   </box>
+   <box level="3">
+    12 83 13 84 
+   </box>
+   <box level="4">
+    24 164 26 166 
+   </box>
+   <box level="4">
+    24 160 28 164 
+   </box>
+   <box level="2">
+    5 43 6 44 
+   </box>
+   <box level="3">
+    10 84 12 86 
+   </box>
+   <box level="2">
+    4 43 5 44 
+   </box>
+   <box level="3">
+    8 84 10 86 
+   </box>
+   <box level="3">
+    11 83 12 84 
+   </box>
+   <box level="4">
+    22 164 24 166 
+   </box>
+   <box level="3">
+    10 83 11 84 
+   </box>
+   <box level="4">
+    20 164 22 166 
+   </box>
+   <box level="4">
+    20 160 24 164 
+   </box>
+   <box level="3">
+    9 83 10 84 
+   </box>
+   <box level="4">
+    18 164 20 166 
+   </box>
+   <box level="3">
+    8 83 9 84 
+   </box>
+   <box level="4">
+    16 164 18 166 
+   </box>
+   <box level="4">
+    16 160 20 164 
+   </box>
+   <box level="4">
+    30 154 32 160 
+   </box>
+   <box level="3">
+    15 76 16 77 
+   </box>
+   <box level="4">
+    28 154 30 160 
+   </box>
+   <box level="3">
+    14 76 15 77 
+   </box>
+   <box level="4">
+    26 154 28 160 
+   </box>
+   <box level="3">
+    13 76 14 77 
+   </box>
+   <box level="4">
+    24 154 26 160 
+   </box>
+   <box level="3">
+    12 76 13 77 
+   </box>
+   <box level="3">
+    14 74 16 76 
+   </box>
+   <box level="2">
+    7 36 8 37 
+   </box>
+   <box level="3">
+    12 74 14 76 
+   </box>
+   <box level="2">
+    6 36 7 37 
+   </box>
+   <box level="4">
+    22 154 24 160 
+   </box>
+   <box level="3">
+    11 76 12 77 
+   </box>
+   <box level="4">
+    20 154 22 160 
+   </box>
+   <box level="3">
+    10 76 11 77 
+   </box>
+   <box level="4">
+    18 154 20 160 
+   </box>
+   <box level="3">
+    9 76 10 77 
+   </box>
+   <box level="4">
+    16 154 18 160 
+   </box>
+   <box level="3">
+    8 76 9 77 
+   </box>
+   <box level="3">
+    10 74 12 76 
+   </box>
+   <box level="2">
+    5 36 6 37 
+   </box>
+   <box level="3">
+    8 74 10 76 
+   </box>
+   <box level="2">
+    4 36 5 37 
+   </box>
+   <box level="2">
+    6 34 8 36 
+   </box>
+   <box level="1">
+    3 16 4 17 
+   </box>
+   <box level="2">
+    4 34 6 36 
+   </box>
+   <box level="1">
+    2 16 3 17 
+   </box>
+   <box level="1">
+    2 14 4 16 
+   </box>
+   <box level="1">
+    0 24 2 26 
+   </box>
+   <box level="1">
+    1 23 2 24 
+   </box>
+   <box level="2">
+    2 44 4 46 
+   </box>
+   <box level="1">
+    0 23 1 24 
+   </box>
+   <box level="2">
+    0 44 2 46 
+   </box>
+   <box level="2">
+    3 43 4 44 
+   </box>
+   <box level="3">
+    6 84 8 86 
+   </box>
+   <box level="2">
+    2 43 3 44 
+   </box>
+   <box level="3">
+    4 84 6 86 
+   </box>
+   <box level="3">
+    7 83 8 84 
+   </box>
+   <box level="4">
+    14 164 16 166 
+   </box>
+   <box level="3">
+    6 83 7 84 
+   </box>
+   <box level="4">
+    12 164 14 166 
+   </box>
+   <box level="4">
+    12 160 16 164 
+   </box>
+   <box level="3">
+    5 83 6 84 
+   </box>
+   <box level="4">
+    10 164 12 166 
+   </box>
+   <box level="3">
+    4 83 5 84 
+   </box>
+   <box level="4">
+    8 164 10 166 
+   </box>
+   <box level="4">
+    8 160 12 164 
+   </box>
+   <box level="2">
+    1 43 2 44 
+   </box>
+   <box level="3">
+    2 84 4 86 
+   </box>
+   <box level="2">
+    0 43 1 44 
+   </box>
+   <box level="3">
+    0 84 2 86 
+   </box>
+   <box level="3">
+    3 83 4 84 
+   </box>
+   <box level="4">
+    6 164 8 166 
+   </box>
+   <box level="3">
+    2 83 3 84 
+   </box>
+   <box level="4">
+    4 164 6 166 
+   </box>
+   <box level="4">
+    4 160 8 164 
+   </box>
+   <box level="3">
+    1 83 2 84 
+   </box>
+   <box level="4">
+    2 164 4 166 
+   </box>
+   <box level="3">
+    0 83 1 84 
+   </box>
+   <box level="4">
+    0 164 2 166 
+   </box>
+   <box level="4">
+    0 160 4 164 
+   </box>
+   <box level="4">
+    14 154 16 160 
+   </box>
+   <box level="3">
+    7 76 8 77 
+   </box>
+   <box level="4">
+    12 154 14 160 
+   </box>
+   <box level="3">
+    6 76 7 77 
+   </box>
+   <box level="4">
+    10 154 12 160 
+   </box>
+   <box level="3">
+    5 76 6 77 
+   </box>
+   <box level="4">
+    8 154 10 160 
+   </box>
+   <box level="3">
+    4 76 5 77 
+   </box>
+   <box level="3">
+    6 74 8 76 
+   </box>
+   <box level="2">
+    3 36 4 37 
+   </box>
+   <box level="3">
+    4 74 6 76 
+   </box>
+   <box level="2">
+    2 36 3 37 
+   </box>
+   <box level="4">
+    6 154 8 160 
+   </box>
+   <box level="3">
+    3 76 4 77 
+   </box>
+   <box level="4">
+    4 154 6 160 
+   </box>
+   <box level="3">
+    2 76 3 77 
+   </box>
+   <box level="4">
+    2 154 4 160 
+   </box>
+   <box level="3">
+    1 76 2 77 
+   </box>
+   <box level="4">
+    0 154 2 160 
+   </box>
+   <box level="3">
+    0 76 1 77 
+   </box>
+   <box level="3">
+    2 74 4 76 
+   </box>
+   <box level="2">
+    1 36 2 37 
+   </box>
+   <box level="3">
+    0 74 2 76 
+   </box>
+   <box level="2">
+    0 36 1 37 
+   </box>
+   <box level="2">
+    2 34 4 36 
+   </box>
+   <box level="1">
+    1 16 2 17 
+   </box>
+   <box level="2">
+    0 34 2 36 
+   </box>
+   <box level="1">
+    0 16 1 17 
+   </box>
+   <box level="1">
+    0 14 2 16 
    </box>
   </Basis>
   <coefs geoDim="1">
@@ -2391,10 +2697,196 @@
    0 
    0 
    0 
+   0.003899180454363719 
+   0.01968529271869644 
+   0.02297721984607625 
+   0.02381437327457616 
+   0.02368959075840585 
+   0.02342917573115626 
+   0.02324064683103353 
+   0.02314884883281057 
+   0.02311777815311102 
+   0.02310820675923266 
+   0.02310602915224945 
+   0.0231060605211147 
+   0.02310647157986672 
+   0.02310677880373987 
+   0.02310693575689448 
+   0.02310699594459614 
+   0.02310701025990941 
+   0.02310700836447257 
+   0.02310700331986813 
+   0.02310699916683499 
+   0.02310699631981666 
+   0.0231069946711229 
+   0.02310699536793714 
+   0.02310700180972078 
+   0.02310701935301346 
+   0.023107052043442 
+   0.02310709479352399 
+   0.02310712489807592 
+   0.02310711869391868 
+   0.02310718466210002 
+   0.02310807393921786 
+   0.0231127086314343 
+   0.02313005681822501 
+   0.02318323819422399 
+   0.02332129950402273 
+   0.02361882206689013 
+   0.0240637492741654 
+   0.02399839604753602 
+   0.02089536404701423 
+   0.01111293767581521 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0.009727377264221701 
+   0.1417819533184329 
+   0.1923523288780568 
+   0.207134945547574 
+   0.2102789302995244 
+   0.2105050586671908 
+   0.2101127346260538 
+   0.2098016073078084 
+   0.2096528459265388 
+   0.209606130383962 
+   0.2095909924933141 
+   0.2095877994572044 
+   0.2095880649424371 
+   0.2095888484258371 
+   0.2095893963612535 
+   0.209589665154757 
+   0.2095897623686727 
+   0.2095897815228829 
+   0.2095897750005662 
+   0.2095897648482866 
+   0.2095897571833972 
+   0.2095897519940919 
+   0.2095897486020132 
+   0.2095897488428309 
+   0.2095897591970717 
+   0.2095897911001983 
+   0.2095898563272256 
+   0.2095899540384961 
+   0.2095900549476392 
+   0.2095901248053401 
+   0.209590338685659 
+   0.2095919134248097 
+   0.2095995930459034 
+   0.2096278581552978 
+   0.2097137947942524 
+   0.2099354133193833 
+   0.2104096259223683 
+   0.2111587741231626 
+   0.2112172594957785 
+   0.2058013631253511 
+   0.1809336475919991 
+   0.1205889746609589 
+   0.03939570441734253 
+   0 
+   0 
+   0 
+   0.03365873210148415 
+   0 
+   0 
+   0.08623390458441754 
+   0 
+   0 
+   0.08621598694580053 
+   0 
+   0 
+   0.03362343666209971 
+   0 
+   0 
+   0.008405315471690326 
+   0.1407732357240566 
+   0.1918374259169435 
+   0.206743979268845 
+   0.2100076618068943 
+   0.2103904064222219 
+   0.2101135823494142 
+   0.2098667535706673 
+   0.2097258191415615 
+   0.2096603289738956 
+   0.2096332436563952 
+   0.2096232483316002 
+   0.209620053047064 
+   0.2096192998725099 
+   0.2096192962900743 
+   0.2096194514516725 
+   0.2096195901138496 
+   0.2096196795054053 
+   0.2096197279444226 
+   0.2096197508570006 
+   0.2096197612392428 
+   0.2096197681279519 
+   0.2096197767149162 
+   0.209619787283266 
+   0.2096197914865452 
+   0.2096197656640225 
+   0.2096196630353466 
+   0.2096194112465896 
+   0.2096189334599266 
+   0.2096182449723856 
+   0.2096177751801534 
+   0.2096193218664278 
+   0.2096286331823645 
+   0.2096616417992348 
+   0.2097572500872404 
+   0.2099954650953714 
+   0.2104934802284053 
+   0.2112364668121789 
+   0.2112614131710335 
+   0.2058021881037026 
+   0.1808961786246363 
+   0.1205284437309285 
+   0.0393448426815468 
    0 
    0 
    0 
    0 
+   0.003536011062975498 
+   0.01939581737287063 
+   0.02277499630440528 
+   0.02366972902916697 
+   0.02361790688431638 
+   0.02342028841894514 
+   0.02326498893035299 
+   0.02318096597017553 
+   0.02314229099954831 
+   0.02312656419640262 
+   0.02312080543492217 
+   0.0231189723896189 
+   0.02311853117978429 
+   0.02311851684660073 
+   0.02311859527087581 
+   0.02311866775178114 
+   0.02311871515860302 
+   0.02311874127252601 
+   0.02311875396805511 
+   0.02311875996595142 
+   0.02311876391964684 
+   0.02311876836918954 
+   0.02311877310440349 
+   0.02311877323701933 
+   0.02311875587244087 
+   0.0231186962864262 
+   0.02311855681730278 
+   0.02311829815101385 
+   0.02311793274442435 
+   0.02311770992937124 
+   0.02311868322063952 
+   0.02312428166294225 
+   0.02314419255564529 
+   0.02320242592925345 
+   0.0233489923323719 
+   0.02365525965195308 
+   0.02409742395826448 
+   0.02401638507521106 
+   0.02089292095058559 
+   0.01109663202659227 
    0 
    0 
    0 
@@ -2434,1868 +2926,2206 @@
    0 
    0 
    0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0.01115338513494565 
-   0.01115338513494588 
-   0.0111533851349459 
-   0.01115338513494584 
-   0.01115338513494595 
-   0.01115338513494595 
-   0.01115338513494623 
-   0.01115338513494636 
-   0.01115338513494604 
-   0.01115338513494593 
-   0.01115338513494613 
-   0.01115338513494615 
-   0.01115338513494612 
-   0.01115338513494611 
-   0.01115338513494611 
-   0.01115338513494611 
-   0.01115338513494602 
-   0.01115338513494604 
-   0.01115338513494603 
-   0.01115338513494601 
-   0.01115338513494599 
-   0.01115338513494584 
-   0.0111533851349458 
-   0.01115338513494603 
-   0.01115338513494611 
-   0.01115338513494599 
-   0.01115338513494601 
-   0.01115338513494596 
-   0.01115338513494599 
-   0.01115338513494587 
-   0.0111533851349459 
-   0.01115338513494563 
-   0.01115338513494545 
-   0.01115338513494573 
-   0.01115338513494592 
-   0.01115338513494594 
-   0.01115338513494577 
-   0.01115338513494581 
-   0.0111533851349458 
-   0.01115338513494552 
-   0.01115338513494556 
-   0.01115338513494588 
-   0.011153385134946 
-   0.01115338513494586 
-   0.01115338513494571 
-   0.01115338513494573 
-   0.01115338513494596 
-   0.01115338513494606 
-   0.01115338513494598 
-   0.01115338513494598 
-   0.01115338513494581 
-   0.01115338513494561 
-   0.01115338513494578 
-   0.01115338513494601 
-   0.0111533851349459 
-   0.01115338513494576 
-   0.01115338513494589 
-   0.01115338513494598 
-   0.01115338513494578 
-   0.01115338513494564 
-   0.01115338513494576 
-   0.01115338513494598 
-   0.011153385134946 
-   0.01115338513494587 
-   0.01115338513494587 
-   0.01115338513494582 
-   0.01115338513494581 
-   0.01115338513494602 
-   0.01115338513494599 
-   0.01115338513494601 
-   0.01115338513494597 
-   0.01115338513494608 
-   0.01115338513494617 
-   0.01115338513494617 
-   0.01115338513494601 
-   0.0111533851349459 
-   0.01115338513494608 
-   0.011153385134946 
-   0.01115338513494592 
-   0.01115338513494602 
-   0.01115338513494604 
-   0.01115338513494608 
-   0.01115338513494601 
-   0.01115338513494582 
-   0.011153385134946 
-   0.01115338513494598 
-   0.01115338513494581 
-   0.01115338513494581 
-   0.01115338513494584 
-   0.01115338513494596 
-   0.01115338513494586 
-   0.01115338513494568 
-   0.01115338513494599 
-   0.01115338513494601 
-   0.01115338513494588 
-   0.01115338513494601 
-   0.01115338513494593 
-   0.0111533851349459 
-   0.01115338513494584 
-   0.01115338513494576 
-   0.011153385134946 
-   0.01115338513494622 
-   0.01115338513494616 
-   0.01115338513494583 
-   0.01115338513494595 
-   0.01115338513494632 
-   0.01115338513494616 
-   0.01115338513494582 
-   0.01115338513494603 
-   0.01115338513494607 
-   0.01115338513494588 
-   0.01115338513494585 
-   0.01115338513494596 
-   0.01115338513494603 
-   0.01115338513494582 
-   0.0111533851349457 
-   0.0111533851349459 
-   0.01115338513494597 
-   0.01115338513494592 
-   0.01115338513494587 
-   0.01115338513494583 
-   0.0111533851349457 
-   0.01115338513494586 
-   0.01115338513494618 
-   0.01115338513494606 
-   0.01115338513494597 
-   0.011153385134946 
-   0.0111533851349458 
-   0.01115338513494581 
-   0.0111533851349459 
-   0.01115338513494579 
-   0.01115338513494575 
-   0.01115338513494598 
-   0.01115338513494601 
-   0.01115338513494599 
-   0.01115338513494607 
-   0.00929448761245503 
-   0.001858897522491019 
-   0 
-   0 
-   0 
-   0 
-   0.499499999999995 
-   0.4994999999999979 
-   0.4994999999999988 
-   0.499499999999998 
-   0.4995000000000001 
-   0.4994999999999995 
-   0.4995000000000018 
-   0.4995000000000027 
-   0.4995000000000001 
-   0.4994999999999998 
-   0.4995000000000024 
-   0.4995000000000016 
-   0.4995000000000016 
-   0.4995000000000011 
-   0.4995000000000012 
-   0.4995000000000017 
-   0.4994999999999998 
-   0.4994999999999981 
-   0.4994999999999984 
-   0.4995000000000011 
-   0.4994999999999975 
-   0.4994999999999938 
-   0.4994999999999927 
-   0.4994999999999988 
-   0.4995000000000001 
-   0.4994999999999984 
-   0.4994999999999987 
-   0.4994999999999977 
-   0.4994999999999976 
-   0.4994999999999966 
-   0.4994999999999969 
-   0.4994999999999929 
-   0.499499999999993 
-   0.4994999999999974 
-   0.4995000000000015 
-   0.4995000000000023 
-   0.4994999999999973 
-   0.4994999999999979 
-   0.4994999999999969 
-   0.4994999999999908 
-   0.4994999999999932 
-   0.4994999999999974 
-   0.4994999999999988 
-   0.4994999999999982 
-   0.4994999999999981 
-   0.4994999999999962 
-   0.4994999999999988 
-   0.4995000000000028 
-   0.4995000000000006 
-   0.4994999999999986 
-   0.4994999999999939 
-   0.4994999999999908 
-   0.4994999999999957 
-   0.4994999999999986 
-   0.4994999999999952 
-   0.4994999999999932 
-   0.4994999999999976 
-   0.4994999999999984 
-   0.4994999999999937 
-   0.4994999999999915 
-   0.4994999999999959 
-   0.4994999999999993 
-   0.4995000000000005 
-   0.4994999999999981 
-   0.4995 
-   0.4994999999999997 
-   0.4994999999999965 
-   0.4994999999999963 
-   0.4994999999999983 
-   0.4994999999999998 
-   0.4994999999999982 
-   0.4994999999999978 
-   0.4994999999999973 
-   0.4994999999999972 
-   0.4994999999999962 
-   0.4994999999999983 
-   0.4994999999999997 
-   0.4994999999999954 
-   0.4994999999999954 
-   0.4994999999999989 
-   0.4994999999999981 
-   0.499499999999997 
-   0.4994999999999981 
-   0.4994999999999937 
-   0.4994999999999966 
-   0.4994999999999969 
-   0.4994999999999942 
-   0.4994999999999942 
-   0.4994999999999943 
-   0.4994999999999963 
-   0.4994999999999938 
-   0.4994999999999916 
-   0.4994999999999968 
-   0.4994999999999953 
-   0.4994999999999948 
-   0.4994999999999958 
-   0.4994999999999967 
-   0.4994999999999972 
-   0.4994999999999929 
-   0.4994999999999908 
-   0.4994999999999974 
-   0.4994999999999996 
-   0.4994999999999997 
-   0.4994999999999957 
-   0.4994999999999962 
-   0.499500000000003 
-   0.4994999999999977 
-   0.4994999999999926 
-   0.4994999999999972 
-   0.4994999999999982 
-   0.4994999999999973 
-   0.4994999999999938 
-   0.4994999999999964 
-   0.4994999999999984 
-   0.4994999999999937 
-   0.4994999999999926 
-   0.4994999999999947 
-   0.4994999999999942 
-   0.499499999999997 
-   0.4994999999999956 
-   0.499499999999995 
-   0.4994999999999924 
-   0.4994999999999942 
-   0.4995000000000002 
-   0.4994999999999979 
-   0.4994999999999946 
-   0.4994999999999974 
-   0.4994999999999966 
-   0.499499999999997 
-   0.4994999999999962 
-   0.4994999999999911 
-   0.4994999999999906 
-   0.4994999999999951 
-   0.4994999999999954 
-   0.4994999999999956 
-   0.4994999999999988 
-   0.4162500000000004 
-   0.08325000000000066 
-   0 
-   0 
-   0 
-   0 
-   0.9878466148650539 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0 
+   0.09148391260039446 
+   0.1700112143179539 
+   0.2364020956196361 
+   0.2693504641833366 
+   0.284912863467125 
+   0.2936906881838231 
+   0.2981123377112267 
+   0.300274501322892 
+   0.3010776543591699 
+   0.3012967636993426 
+   0.3012210106779745 
+   0.3010594470291564 
+   0.3008809386857926 
+   0.3007322672842349 
+   0.3006214886472134 
+   0.3005491595030473 
+   0.3005076989818687 
+   0.3004847836262519 
+   0.300471502843309 
+   0.3004640107722152 
+   0.3004603786621847 
+   0.3004587671082509 
+   0.3004583795288282 
+   0.3004584984418243 
+   0.3004588598871521 
+   0.30045924434846 
+   0.3004595919011523 
+   0.3004598629491604 
+   0.3004600599364513 
+   0.3004601930682018 
+   0.3004602757975957 
+   0.3004603237745528 
+   0.3004603472061283 
+   0.3004603564431207 
+   0.300460356856635 
+   0.3004603534304598 
+   0.3004603482777919 
+   0.300460343140335 
+   0.3004603385110829 
+   0.300460334663988 
+   0.3004603315072349 
+   0.3004603289000656 
+   0.3004603267158221 
+   0.300460324977761 
+   0.3004603238472198 
+   0.3004603238895293 
+   0.3004603258043827 
+   0.3004603309329235 
+   0.3004603406210205 
+   0.3004603567959857 
+   0.3004603810635896 
+   0.3004604147763097 
+   0.3004604584424925 
+   0.3004605105579363 
+   0.3004605684417823 
+   0.3004606269169597 
+   0.3004606808711417 
+   0.3004607338759998 
+   0.3004607958314836 
+   0.3004609412617696 
+   0.3004612693984532 
+   0.300462132225373 
+   0.3004639487454798 
+   0.3004679065377773 
+   0.3004753377333687 
+   0.3004895330015692 
+   0.3005140170490287 
+   0.3005564213508294 
+   0.300624528219837 
+   0.3007321929476575 
+   0.3008924222273231 
+   0.3011184579624673 
+   0.3014250927316843 
+   0.3017730132123283 
+   0.3020943802933181 
+   0.302065389815336 
+   0.3012364798777075 
+   0.2982908345770006 
+   0.2913019525169674 
+   0.2767868620867983 
+   0.2510166274730515 
+   0.2119844692661916 
+   0.1615323179565485 
+   0.1074698288996867 
+   0.05906778492328615 
+   0.02428599494661311 
+   0.3026880155158332 
+   0.3586640145890354 
+   0.413165284161589 
+   0.4411489192604568 
+   0.4575544634008631 
+   0.4666709248228869 
+   0.4715452511884138 
+   0.4737867509820379 
+   0.4746692414758462 
+   0.4748785127069463 
+   0.4748186926855442 
+   0.4746635004190213 
+   0.4745014109603932 
+   0.4743629906560004 
+   0.4742631092386333 
+   0.4742007400502303 
+   0.4741680703390991 
+   0.4741490969611605 
+   0.474138083810465 
+   0.4741322486942016 
+   0.4741294459064642 
+   0.4741284189525363 
+   0.4741282755680952 
+   0.4741285558517745 
+   0.4741289619484033 
+   0.4741293676594808 
+   0.4741297059206771 
+   0.4741299638717443 
+   0.4741301450442682 
+   0.474130263616495 
+   0.4741303354152711 
+   0.4741303742834335 
+   0.4741303920872946 
+   0.4741303969811354 
+   0.4741303951455879 
+   0.4741303901701658 
+   0.4741303844410961 
+   0.474130379033655 
+   0.4741303744678662 
+   0.4741303707714614 
+   0.4741303678031955 
+   0.4741303653413708 
+   0.4741303632149894 
+   0.4741303613703202 
+   0.4741303599796967 
+   0.4741303594601729 
+   0.4741303606361597 
+   0.474130364660192 
+   0.4741303731830707 
+   0.4741303880992955 
+   0.4741304115193821 
+   0.4741304453042374 
+   0.4741304905483747 
+   0.4741305470859442 
+   0.4741306126594203 
+   0.474130683062015 
+   0.474130753612455 
+   0.47413082121968 
+   0.4741308988496087 
+   0.4741310207012125 
+   0.4741313022115639 
+   0.4741319457415752 
+   0.4741334291975813 
+   0.4741364936620049 
+   0.4741426388535072 
+   0.4741540252453832 
+   0.4741745604702902 
+   0.4742095291903007 
+   0.4742673911061283 
+   0.4743587383602701 
+   0.4744972365592215 
+   0.4746973283269728 
+   0.4749722210926811 
+   0.4753222751953748 
+   0.4756733589075032 
+   0.4758574765497582 
+   0.4753873687682124 
+   0.4732474810790509 
+   0.4669828083123165 
+   0.4515824707303588 
+   0.4191222607387265 
+   0.3629911041474481 
+   0.285075144371733 
+   0.1973102372104751 
+   0.1163726196794225 
+   0.05491168350166103 
+   0.594169424257041 
+   0.6077931138625429 
+   0.6237847383154713 
+   0.6404589301076937 
+   0.6531228151661317 
+   0.660963215866248 
+   0.6649184720574993 
+   0.6666804213985049 
+   0.6673117342858561 
+   0.6674467510514064 
+   0.6673789389022566 
+   0.6672545166905106 
+   0.6671290062437071 
+   0.6670242850829016 
+   0.6669479038674078 
+   0.6669106521903736 
+   0.6668901264946546 
+   0.6668778492646996 
+   0.6668710424318033 
+   0.6668675958280712 
+   0.6668661494374167 
+   0.6668657646305185 
+   0.666865913423083 
+   0.6668662614578494 
+   0.6668666497543737 
+   0.6668669923348183 
+   0.6668672641152831 
+   0.666867461201738 
+   0.6668675946534331 
+   0.6668676783021443 
+   0.6668677260845925 
+   0.6668677498710998 
+   0.6668677585962963 
+   0.6668677588977596 
+   0.666867755000914 
+   0.6668677496750307 
+   0.6668677443496598 
+   0.6668677397589452 
+   0.6668677360738601 
+   0.6668677332241923 
+   0.6668677309887493 
+   0.6668677291298514 
+   0.6668677274496491 
+   0.6668677258640536 
+   0.666867724445901 
+   0.6668677235157549 
+   0.6668677236719109 
+   0.6668677259045244 
+   0.6668677315691878 
+   0.6668677424314523 
+   0.6668677604950467 
+   0.6668677877845186 
+   0.6668678259461804 
+   0.6668678756453741 
+   0.666867936026236 
+   0.6668680043573039 
+   0.6668680759267496 
+   0.6668681473474732 
+   0.6668682184584384 
+   0.6668683105566697 
+   0.6668684734515899 
+   0.6668688488555273 
+   0.6668696873836107 
+   0.6668715259163905 
+   0.6668752183991271 
+   0.6668823524654487 
+   0.6668952865963814 
+   0.6669179372900021 
+   0.6669557847814215 
+   0.6670167827283722 
+   0.6671112721098801 
+   0.6672508675147192 
+   0.6674481887858869 
+   0.6677208691018032 
+   0.6680520558508395 
+   0.6683433766122473 
+   0.6683695667487893 
+   0.6674769955290385 
+   0.6639224773854691 
+   0.6524788250017378 
+   0.6199006677484099 
+   0.5481351200228762 
+   0.4351596658399028 
+   0.3047073618494863 
+   0.1853045468144761 
+   0.09359457247911289 
+   0.4095309981210913 
+   0.2498650217181309 
+   0.1297561153082863 
+   0.4777582573472625 
+   0.2895854613267036 
+   0.1520356504257585 
+   0.4777410333542929 
+   0.2895694477682107 
+   0.1520244371249149 
+   0.409478052147885 
+   0.2498205755356795 
+   0.129725156600424 
+   0.5916077655248597 
+   0.6059076659810748 
+   0.6227453522694462 
+   0.6400007243343003 
+   0.6528712789166222 
+   0.660696510038197 
+   0.664664161101119 
+   0.6664855684618851 
+   0.6671829377406481 
+   0.6673765712414484 
+   0.6673593762257211 
+   0.6672752165682269 
+   0.6671812224488912 
+   0.667101047015057 
+   0.6670392783938387 
+   0.666994853939577 
+   0.6669641967887252 
+   0.6669437286989893 
+   0.6669304882792531 
+   0.6669221271877639 
+   0.6669170300128769 
+   0.6669140057902694 
+   0.6669123043411004 
+   0.6669113954639005 
+   0.6669109647834397 
+   0.6669107985539718 
+   0.6669107774159529 
+   0.6669108238983358 
+   0.6669108981011228 
+   0.6669109760725856 
+   0.6669110474161734 
+   0.6669111071708819 
+   0.6669111546080508 
+   0.6669111905189657 
+   0.6669112166258275 
+   0.6669112348505105 
+   0.6669112470285816 
+   0.6669112548331613 
+   0.666911259642895 
+   0.6669112626426558 
+   0.6669112647661719 
+   0.6669112668012509 
+   0.6669112693524782 
+   0.6669112728698815 
+   0.6669112775914362 
+   0.6669112834315528 
+   0.6669112898898524 
+   0.6669112957449536 
+   0.6669112989690497 
+   0.6669112962181354 
+   0.6669112828748184 
+   0.6669112524606613 
+   0.6669111970277274 
+   0.6669111069644019 
+   0.6669109720482028 
+   0.6669107830603437 
+   0.6669105339229296 
+   0.6669102292400467 
+   0.6669098882235166 
+   0.6669095696974546 
+   0.6669093792433357 
+   0.6669095414588821 
+   0.6669104128521671 
+   0.6669126690542405 
+   0.6669173253421986 
+   0.666926162784003 
+   0.6669417484309923 
+   0.6669682308361319 
+   0.6670113239549699 
+   0.6670792241886453 
+   0.6671825021399339 
+   0.667332995377189 
+   0.6675435266368578 
+   0.6678154260819628 
+   0.6681345845999658 
+   0.6684111470649214 
+   0.6684210687558046 
+   0.6675103801116016 
+   0.6639356508169877 
+   0.6524718806866813 
+   0.6198701440232943 
+   0.5480782490169733 
+   0.4350806168758694 
+   0.304631382262706 
+   0.1852428679662317 
+   0.09355291760957335 
+   0.3003072919781798 
+   0.3568178825486578 
+   0.4120374301939497 
+   0.4404997601786638 
+   0.4571269487376645 
+   0.4663076162118156 
+   0.471214905391125 
+   0.4735174977980707 
+   0.4744766941149042 
+   0.4747600831382353 
+   0.4747666358538232 
+   0.4746652808977609 
+   0.4745452373328241 
+   0.4744375604741851 
+   0.4743534722905037 
+   0.4742919338037544 
+   0.4742489933157424 
+   0.4742201699533429 
+   0.4742013053260364 
+   0.4741893877448055 
+   0.4741819950140396 
+   0.4741776036428323 
+   0.4741750574597409 
+   0.4741736796822501 
+   0.4741729770862488 
+   0.4741726772927254 
+   0.4741725893085736 
+   0.474172613882261 
+   0.4741726848642445 
+   0.4741727709975476 
+   0.474172853372987 
+   0.4741729249747798 
+   0.4741729829140218 
+   0.4741730276506022 
+   0.474173060759233 
+   0.4741730843002687 
+   0.4741731004559411 
+   0.4741731111096255 
+   0.4741731180107279 
+   0.4741731225178621 
+   0.4741731258370314 
+   0.4741731288638814 
+   0.4741731323354409 
+   0.474173136716538 
+   0.4741731421750812 
+   0.4741731484965687 
+   0.4741731547891697 
+   0.4741731594842961 
+   0.4741731596796741 
+   0.4741731513911208 
+   0.4741731285227161 
+   0.4741730836478493 
+   0.4741730068992809 
+   0.4741728876197449 
+   0.4741727144032667 
+   0.4741724778816617 
+   0.4741721759736564 
+   0.4741718176893042 
+   0.4741714457660801 
+   0.4741711400478031 
+   0.4741710911254461 
+   0.4741715971621208 
+   0.4741732718349977 
+   0.4741770126840688 
+   0.4741845207792195 
+   0.474198171541488 
+   0.4742221287338422 
+   0.4742619326156876 
+   0.4743263267304241 
+   0.4744261685066711 
+   0.4745753984849636 
+   0.4747887008109861 
+   0.4750726869328517 
+   0.4754212025345101 
+   0.4757604893781643 
+   0.4759270424307861 
+   0.475436683490503 
+   0.4732743312006065 
+   0.4669856110433201 
+   0.4515604368566742 
+   0.4190759345702876 
+   0.3629230715592011 
+   0.2849944206029415 
+   0.1972316830939732 
+   0.1163101387199578 
+   0.05487199609062341 
+   0.08975879875791147 
+   0.1685402441721494 
+   0.2354043823219913 
+   0.2686773344966805 
+   0.2844217601394775 
+   0.2932805874583047 
+   0.2977529757039899 
+   0.2999774861218163 
+   0.300855542790646 
+   0.3011510276955008 
+   0.3011451403641122 
+   0.3010409863097958 
+   0.3009074558506332 
+   0.3007905260007542 
+   0.3006973273145846 
+   0.3006287208408854 
+   0.300580770314577 
+   0.300548148725595 
+   0.3005270370322299 
+   0.3005133960931463 
+   0.3005050851013709 
+   0.3004999864429439 
+   0.3004970934116291 
+   0.3004954449405313 
+   0.3004946182381545 
+   0.3004942212869405 
+   0.3004940919096711 
+   0.3004940844135096 
+   0.300494143090376 
+   0.3004942202272424 
+   0.300494299976069 
+   0.3004943701797098 
+   0.300494428412343 
+   0.3004944739240445 
+   0.3004945080024758 
+   0.3004945326961474 
+   0.3004945497980874 
+   0.3004945614528525 
+   0.3004945690999328 
+   0.3004945743485854 
+   0.3004945781897949 
+   0.3004945816704479 
+   0.3004945853839774 
+   0.3004945897892404 
+   0.3004945949889648 
+   0.3004946005261164 
+   0.3004946056074895 
+   0.3004946080845652 
+   0.3004946055017224 
+   0.3004945928800565 
+   0.3004945651563178 
+   0.3004945135724552 
+   0.3004944299929087 
+   0.3004943027405824 
+   0.3004941223953448 
+   0.3004938814848883 
+   0.3004935782034889 
+   0.3004932352930362 
+   0.3004928883936895 
+   0.3004926704215248 
+   0.3004927431715539 
+   0.3004935736318246 
+   0.3004956919775377 
+   0.3005004676083561 
+   0.3005093959446751 
+   0.3005260126092171 
+   0.3005540486556793 
+   0.300601423350466 
+   0.300676146857022 
+   0.3007923689385637 
+   0.3009633144650248 
+   0.301201662485742 
+   0.3015146524544588 
+   0.3018598566672142 
+   0.3021700429544373 
+   0.3021241729480825 
+   0.3012748925669244 
+   0.2983071098496047 
+   0.2912954950270868 
+   0.2767583773154801 
+   0.2509686773645146 
+   0.2119225291158972 
+   0.1614633564667998 
+   0.1074051615300092 
+   0.05901874365989997 
+   0.02425840622230319 
+   0.6772463126166243 
+   0.6760042961015063 
+   0.6748806388473227 
+   0.6771654497112211 
+   0.6818944935035367 
+   0.6880715297382571 
+   0.6943670890403576 
+   0.699972790364753 
+   0.7045357876852788 
+   0.7080377427150432 
+   0.710579679407619 
+   0.7123688358267956 
+   0.7135627042685879 
+   0.7143487561461166 
+   0.7148286766129426 
+   0.7151135305668124 
+   0.7152573086097584 
+   0.7153179785190831 
+   0.7153207627091522 
+   0.7152929338772761 
+   0.7152459723525076 
+   0.7151920473400343 
+   0.7151356953108966 
+   0.7150815684221948 
+   0.7150310056117071 
+   0.7149853691346034 
+   0.7149454705914479 
+   0.7149129090460078 
+   0.7148888803912518 
+   0.7148725945438914 
+   0.7148615071732178 
+   0.7148527137460852 
+   0.714845902487859 
+   0.7148406618899907 
+   0.7148367476611623 
+   0.7148338448960702 
+   0.7148317774346875 
+   0.7148303238735988 
+   0.7148293669783296 
+   0.7148287605230798 
+   0.7148284289213627 
+   0.714828280083649 
+   0.7148282692052949 
+   0.7148283420186873 
+   0.7148284726089705 
+   0.7148286305702094 
+   0.7148288027679015 
+   0.7148289740882339 
+   0.7148291384210927 
+   0.7148292892560019 
+   0.714829424771516 
+   0.714829543398149 
+   0.7148296452997451 
+   0.7148297311965928 
+   0.7148298022175695 
+   0.7148298600817835 
+   0.7148299061402834 
+   0.7148299422681875 
+   0.7148299697444518 
+   0.7148299902672085 
+   0.7148300048915613 
+   0.7148300149762117 
+   0.7148300213182137 
+   0.7148300249255283 
+   0.7148300263637816 
+   0.7148300263294288 
+   0.7148300251912086 
+   0.7148300233954221 
+   0.7148300211680969 
+   0.7148300187725384 
+   0.7148300163290353 
+   0.7148300139719487 
+   0.7148300117551044 
+   0.7148300097313297 
+   0.7148300079114404 
+   0.7148300062984437 
+   0.7148300048809022 
+   0.714830003636839 
+   0.7148300025441697 
+   0.7148300015711864 
+   0.7148300006944325 
+   0.7148299998840043 
+   0.7148299991207758 
+   0.7148299983849932 
+   0.7148299976672713 
+   0.7148299969656261 
+   0.7148299962852668 
+   0.7148299956503236 
+   0.7148299950869237 
+   0.7148299946538635 
+   0.7148299944040026 
+   0.714829994440062 
+   0.7148299948486374 
+   0.7148299957831789 
+   0.7148299973672694 
+   0.7148299998069571 
+   0.7148300032630758 
+   0.7148300079866986 
+   0.7148300141663249 
+   0.7148300220745314 
+   0.7148300319066577 
+   0.7148300439155011 
+   0.7148300582676151 
+   0.7148300751319174 
+   0.7148300945945805 
+   0.7148301166622414 
+   0.7148301412820512 
+   0.714830168230736 
+   0.7148301972719076 
+   0.7148302279205231 
+   0.7148302597492618 
+   0.714830292165529 
+   0.7148303247159274 
+   0.7148303570654481 
+   0.7148303890552387 
+   0.7148304217218893 
+   0.714830456219827 
+   0.714830496742761 
+   0.7148305471699318 
+   0.7148306188595721 
+   0.7148307219588301 
+   0.7148308806972679 
+   0.714831115773408 
+   0.7148314754935569 
+   0.7148320008630218 
+   0.7148327790956365 
+   0.714833882173104 
+   0.7148354623476288 
+   0.7148376450642332 
+   0.7148406799415224 
+   0.7148447680955623 
+   0.7148503058129477 
+   0.7148576117162218 
+   0.7148672845992239 
+   0.7148797964783058 
+   0.7148960088341497 
+   0.7149165963935351 
+   0.7149427368884077 
+   0.7149753361601691 
+   0.7150158468367463 
+   0.715065364229672 
+   0.7151254999568336 
+   0.7151974434021473 
+   0.7152823284398336 
+   0.7153839002709443 
+   0.7155027152692904 
+   0.7156377516771982 
+   0.7157824209277649 
+   0.7159309300198287 
+   0.7160650314701145 
+   0.716169528434187 
+   0.7161951498977639 
+   0.7160985674573301 
+   0.7157465862804725 
+   0.7150180172718154 
+   0.7135291635260381 
+   0.710858926997807 
+   0.7058122385620696 
+   0.6968653877640891 
+   0.6812105068143153 
+   0.6559699992832245 
+   0.6186039024734628 
+   0.5684126258002651 
+   0.5074475766315599 
+   0.4391560110841923 
+   0.3684895561488153 
+   0.8331275614286323 
+   0.8146895704061792 
+   0.7937004317532611 
+   0.7846127927816663 
+   0.7834808538990082 
+   0.7865002711382925 
+   0.7909214814060125 
+   0.7951937636146412 
+   0.798701560643288 
+   0.8013492239071601 
+   0.8032479823365763 
+   0.8045472778889758 
+   0.8054077731751543 
+   0.8059512968001754 
+   0.8062823144461243 
+   0.8064671333918708 
+   0.806559476166957 
+   0.80659090455166 
+   0.8065866015225452 
+   0.8065605756800041 
+   0.8065240029120688 
+   0.8064827882146631 
+   0.8064414432050196 
+   0.8064019859550378 
+   0.8063655935249751 
+   0.8063326364427645 
+   0.8063040908538653 
+   0.8062812867322446 
+   0.8062652173948543 
+   0.8062551901760368 
+   0.8062477164544474 
+   0.8062418678343071 
+   0.8062373491693952 
+   0.8062339317207013 
+   0.8062313853776636 
+   0.80622954181576 
+   0.8062282360076632 
+   0.8062273526811565 
+   0.8062267815590271 
+   0.8062264482063987 
+   0.8062262823557456 
+   0.8062262382023665 
+   0.8062262736923151 
+   0.8062263625010692 
+   0.8062264808136567 
+   0.8062266144335604 
+   0.8062267511321045 
+   0.806226884262443 
+   0.8062270083835443 
+   0.8062271210288573 
+   0.8062272205891501 
+   0.8062273068881644 
+   0.8062273802328148 
+   0.8062274414505225 
+   0.80622749167286 
+   0.8062275320913734 
+   0.8062275640460376 
+   0.8062275887075333 
+   0.8062276073171853 
+   0.8062276208767255 
+   0.806227630405519 
+   0.8062276366791479 
+   0.8062276404641781 
+   0.8062276423199431 
+   0.8062276427858495 
+   0.8062276422383633 
+   0.806227641029346 
+   0.8062276393929629 
+   0.8062276375416128 
+   0.8062276356076827 
+   0.8062276337042569 
+   0.8062276318940548 
+   0.8062276302255404 
+   0.8062276287183266 
+   0.8062276273811065 
+   0.8062276262082386 
+   0.8062276251869459 
+   0.8062276242995274 
+   0.8062276235237551 
+   0.806227622837954 
+   0.8062276222186138 
+   0.8062276216459062 
+   0.8062276211007918 
+   0.8062276205695538 
+   0.8062276200424733 
+   0.8062276195160043 
+   0.8062276189947039 
+   0.8062276184899032 
+   0.8062276180262445 
+   0.8062276176351975 
+   0.8062276173677294 
+   0.8062276172814432 
+   0.8062276174601244 
+   0.8062276179926188 
+   0.8062276189996722 
+   0.8062276206040851 
+   0.8062276229638169 
+   0.8062276262331451 
+   0.8062276305989091 
+   0.8062276362354165 
+   0.8062276433388338 
+   0.8062276520808659 
+   0.8062276626326832 
+   0.8062276751260301 
+   0.8062276896573706 
+   0.8062277062692897 
+   0.8062277249266456 
+   0.8062277455310496 
+   0.8062277678652137 
+   0.8062277916505199 
+   0.8062278164875691 
+   0.806227841953656 
+   0.8062278675822352 
+   0.8062278929505191 
+   0.8062279178811673 
+   0.806227942430854 
+   0.8062279675236284 
+   0.8062279945463586 
+   0.8062280270695252 
+   0.806228069689305 
+   0.8062281315059827 
+   0.8062282231884876 
+   0.8062283640543598 
+   0.8062285763109613 
+   0.8062288974811949 
+   0.8062293689780551 
+   0.8062300582060045 
+   0.806231038974628 
+   0.8062324270996758 
+   0.806234346049102 
+   0.8062369842542485 
+   0.806240541153555 
+   0.8062453129720493 
+   0.8062516068823284 
+   0.8062598651535976 
+   0.8062705410678891 
+   0.8062842688834103 
+   0.806301688226479 
+   0.8063236513796406 
+   0.8063509983418804 
+   0.8063847920625573 
+   0.8064260668037249 
+   0.8064759756186348 
+   0.8065355677726388 
+   0.8066071451085467 
+   0.8066934754247672 
+   0.8067937840891986 
+   0.8069063667979092 
+   0.8070265450209498 
+   0.8071492265224796 
+   0.8072611984580825 
+   0.8073465728188541 
+   0.8073666491756845 
+   0.8072744677611513 
+   0.8069595836822625 
+   0.8062845990273325 
+   0.8048860722884859 
+   0.802054634016479 
+   0.7960243343076792 
+   0.7834822742598179 
+   0.7596815721156064 
+   0.7199228179380019 
+   0.6627140524753878 
+   0.590609379558994 
+   0.5097352964047157 
+   0.4261540306543808 
+   0.9714083086513158 
+   0.9369226065054372 
+   0.8975125912127956 
+   0.8791029888696164 
+   0.8737531918017084 
+   0.8746912021458277 
+   0.8775987533586236 
+   0.8804472151540442 
+   0.8827103616932519 
+   0.8843666613033666 
+   0.8855188965273885 
+   0.8862900416477736 
+   0.8867857054769263 
+   0.8870924104666277 
+   0.8872716561166014 
+   0.8873687050366499 
+   0.8874126674193699 
+   0.8874242516061286 
+   0.8874161848118421 
+   0.8873974679804134 
+   0.8873734389494849 
+   0.8873478076252498 
+   0.8873226099917386 
+   0.8872990266814998 
+   0.8872773726413157 
+   0.8872578803201006 
+   0.8872411563510493 
+   0.8872281786941698 
+   0.8872195321835129 
+   0.8872141530391119 
+   0.8872100179177956 
+   0.8872068041546515 
+   0.8872043509701594 
+   0.8872025096879196 
+   0.8872011597442192 
+   0.8872001931920693 
+   0.8871995259926343 
+   0.887199084837517 
+   0.8871988146809167 
+   0.8871986685078278 
+   0.8871986120150765 
+   0.8871986165466115 
+   0.8871986619722123 
+   0.8871987319333373 
+   0.8871988153895605 
+   0.8871989036805141 
+   0.8871989913729025 
+   0.8871990744909187 
+   0.887199150854863 
+   0.8871992191070655 
+   0.8871992788309619 
+   0.88719933005124 
+   0.8871993732029396 
+   0.8871994089175238 
+   0.8871994379519269 
+   0.887199461129766 
+   0.8871994792493281 
+   0.8871994931012072 
+   0.8871995033875547 
+   0.8871995107726801 
+   0.887199515815375 
+   0.8871995190254165 
+   0.8871995208135932 
+   0.887199521544107 
+   0.8871995214996483 
+   0.8871995209231813 
+   0.887199519995189 
+   0.887199518865353 
+   0.8871995176392373 
+   0.8871995164000257 
+   0.8871995152013653 
+   0.8871995140815985 
+   0.8871995130610376 
+   0.8871995121503002 
+   0.8871995113498626 
+   0.8871995106545008 
+   0.8871995100543055 
+   0.8871995095365182 
+   0.8871995090870565 
+   0.887199508690923 
+   0.8871995083338867 
+   0.8871995080023112 
+   0.8871995076846685 
+   0.8871995073714108 
+   0.8871995070561087 
+   0.8871995067359232 
+   0.8871995064121481 
+   0.8871995060917183 
+   0.8871995057868308 
+   0.8871995055177776 
+   0.8871995053113575 
+   0.8871995052052741 
+   0.887199505244843 
+   0.8871995054888473 
+   0.8871995060041248 
+   0.8871995068726797 
+   0.8871995081837908 
+   0.8871995100414327 
+   0.8871995125537939 
+   0.8871995158398071 
+   0.8871995200166871 
+   0.8871995252035851 
+   0.8871995315082146 
+   0.8871995390253341 
+   0.8871995478250847 
+   0.8871995579446926 
+   0.8871995693818602 
+   0.8871995820790884 
+   0.887199595925817 
+   0.8871996107412683 
+   0.887199626290807 
+   0.8871996422802877 
+   0.8871996583827937 
+   0.8871996742794434 
+   0.8871996896991208 
+   0.887199704568587 
+   0.8871997190228216 
+   0.8871997337824692 
+   0.8871997501156093 
+   0.8871997706484247 
+   0.8871997991119781 
+   0.8871998419022687 
+   0.8871999075178155 
+   0.8872000094219809 
+   0.8872001646830108 
+   0.8872003988445748 
+   0.8872007434667163 
+   0.8872012442626563 
+   0.8872019563624659 
+   0.8872029569670216 
+   0.8872043375486675 
+   0.8872062233565197 
+   0.8872087602987903 
+   0.8872121425826615 
+   0.8872165925726871 
+   0.887222399425809 
+   0.8872298894945955 
+   0.887239474045583 
+   0.8872516076225297 
+   0.8872668431228283 
+   0.887285783010093 
+   0.8873091238788401 
+   0.8873376004794132 
+   0.887371986379285 
+   0.8874137550787247 
+   0.8874648406661254 
+   0.8875259300428773 
+   0.8875963657866119 
+   0.8876753074438665 
+   0.8877605420481465 
+   0.8878490864345316 
+   0.887933220997803 
+   0.8880021029588397 
+   0.8880316783362927 
+   0.887991214922071 
+   0.8878198145501561 
+   0.8875038444828545 
+   0.8868069226472689 
+   0.8846324174057651 
+   0.8775988443395726 
+   0.8581484285269712 
+   0.8182224685044976 
+   0.7530487942821986 
+   0.668303787087108 
+   0.573171108732638 
+   0.4770792132761186 
+   1.075740149300653 
+   1.028455198464935 
+   0.9754283443211413 
+   0.9515249413109255 
+   0.9447376974382082 
+   0.9451414415406403 
+   0.9466622126765716 
+   0.9479693924567786 
+   0.9489371938702837 
+   0.9496122576103186 
+   0.9500658369055685 
+   0.9503599600829021 
+   0.950543917424198 
+   0.9506537716306018 
+   0.9507156768742485 
+   0.9507469757381661 
+   0.9507594850159813 
+   0.9507605695104991 
+   0.9507551872825519 
+   0.9507463454294457 
+   0.9507360618446259 
+   0.9507255128454809 
+   0.950715437092374 
+   0.9507061298458421 
+   0.9506976556224119 
+   0.9506900600202198 
+   0.9506836322379058 
+   0.9506788291400421 
+   0.9506757820748174 
+   0.9506738508460164 
+   0.9506723420553539 
+   0.9506711814956339 
+   0.950670303618672 
+   0.9506696533021183 
+   0.9506691822541908 
+   0.9506688516281463 
+   0.9506686282342534 
+   0.9506684862681035 
+   0.950668404204192 
+   0.9506683658103853 
+   0.9506683578216613 
+   0.9506683705462911 
+   0.9506683962824951 
+   0.9506684296288305 
+   0.9506684664318147 
+   0.9506685039381045 
+   0.9506685401551285 
+   0.9506685739045141 
+   0.9506686044375908 
+   0.9506686314394938 
+   0.9506686548232053 
+   0.9506686747104059 
+   0.9506686913256512 
+   0.9506687049689829 
+   0.9506687159738784 
+   0.9506687246808724 
+   0.9506687314270533 
+   0.9506687365230047 
+   0.9506687402592752 
+   0.9506687428889533 
+   0.9506687446400883 
+   0.9506687457028797 
+   0.9506687462433218 
+   0.9506687463948211 
+   0.9506687462704198 
+   0.9506687459574862 
+   0.9506687455274431 
+   0.9506687450329174 
+   0.9506687445150387 
+   0.950668744002066 
+   0.9506687435143696 
+   0.9506687430640786 
+   0.9506687426583527 
+   0.950668742299523 
+   0.9506687419870063 
+   0.950668741717716 
+   0.9506687414870773 
+   0.9506687412895418 
+   0.9506687411190186 
+   0.9506687409693617 
+   0.9506687408345158 
+   0.9506687407089818 
+   0.9506687405878433 
+   0.9506687404671667 
+   0.9506687403441207 
+   0.9506687402172741 
+   0.9506687400869299 
+   0.950668739955288 
+   0.950668739827086 
+   0.9506687397095528 
+   0.9506687396134145 
+   0.9506687395525465 
+   0.9506687395453318 
+   0.95066873961385 
+   0.9506687397855048 
+   0.9506687400916154 
+   0.950668740569128 
+   0.950668741258421 
+   0.95066874220473 
+   0.9506687434551619 
+   0.9506687450593569 
+   0.9506687470657912 
+   0.9506687495209883 
+   0.9506687524654442 
+   0.9506687559309929 
+   0.9506687599369993 
+   0.9506687644856464 
+   0.9506687695592942 
+   0.9506687751145129 
+   0.950668781082329 
+   0.9506687873641742 
+   0.9506687938358587 
+   0.9506688003515973 
+   0.9506688067538153 
+   0.9506688129006901 
+   0.9506688186799606 
+   0.9506688240816256 
+   0.9506688292140671 
+   0.9506688344721504 
+   0.9506688405432828 
+   0.9506688487304544 
+   0.9506688609285352 
+   0.9506688802365658 
+   0.950668910862383 
+   0.9506689591623014 
+   0.9506690333967693 
+   0.9506691455007384 
+   0.950669310582794 
+   0.9506695496905686 
+   0.950669888826005 
+   0.9506703632600241 
+   0.9506710158539533 
+   0.9506719032846437 
+   0.9506730931301175 
+   0.9506746726471982 
+   0.9506767444316138 
+   0.9506794378478938 
+   0.9506829023807939 
+   0.9506873212206339 
+   0.9506929031763331 
+   0.9506998968346818 
+   0.9507085811156555 
+   0.9507192729188508 
+   0.950732322651346 
+   0.9507483089315113 
+   0.9507681431669734 
+   0.9507923552098521 
+   0.9508210659427742 
+   0.9508542183067207 
+   0.9508918611034151 
+   0.9509335439153085 
+   0.9509785654912097 
+   0.9510243735791623 
+   0.9510675836458289 
+   0.9511004819845059 
+   0.9511223184760123 
+   0.9511448137522713 
+   0.9517635336580925 
+   0.9530976907780274 
+   0.9527998095935709 
+   0.9435007407222161 
+   0.9055589768301229 
+   0.8323625298844591 
+   0.7311480240330237 
+   0.6224787654375565 
+   0.5152852386864796 
+   1.131767274591144 
+   1.077513679228191 
+   1.017415579920206 
+   0.9915411189970891 
+   0.9878466148650555 
+   0.9878466148650558 
+   0.9878466148650555 
+   0.9878466148650559 
+   0.9878466148650558 
+   0.987846614865056 
+   0.9878466148650555 
+   0.9878466148650555 
+   0.9878466148650552 
+   0.9878466148650551 
+   0.9878466148650551 
+   0.9878466148650552 
+   0.9878466148650553 
+   0.9878466148650555 
+   0.9878466148650559 
+   0.987846614865055 
+   0.9878466148650554 
+   0.987846614865056 
+   0.9878466148650558 
+   0.9878466148650556 
+   0.9878466148650555 
+   0.9878466148650555 
+   0.9878466148650559 
+   0.9878466148650558 
+   0.9878466148650556 
+   0.9878466148650555 
+   0.9878466148650558 
+   0.9878466148650555 
+   0.9878466148650553 
+   0.9878466148650554 
+   0.9878466148650554 
+   0.9878466148650554 
+   0.9878466148650555 
+   0.9878466148650556 
+   0.9878466148650558 
+   0.9878466148650556 
+   0.9878466148650552 
+   0.9878466148650556 
+   0.9878466148650553 
+   0.9878466148650556 
+   0.987846614865056 
+   0.9878466148650559 
+   0.9878466148650558 
+   0.987846614865056 
+   0.9878466148650559 
+   0.9878466148650558 
+   0.9878466148650558 
+   0.9878466148650555 
+   0.9878466148650563 
+   0.987846614865056 
+   0.9878466148650561 
+   0.987846614865056 
+   0.9878466148650556 
+   0.9878466148650559 
+   0.9878466148650561 
+   0.9878466148650556 
+   0.9878466148650558 
+   0.987846614865056 
+   0.9878466148650556 
+   0.9878466148650555 
+   0.9878466148650562 
+   0.9878466148650564 
+   0.9878466148650558 
+   0.9878466148650556 
+   0.9878466148650555 
+   0.9878466148650562 
+   0.9878466148650555 
+   0.9878466148650559 
+   0.9878466148650559 
+   0.9878466148650561 
+   0.9878466148650561 
+   0.9878466148650559 
+   0.9878466148650559 
+   0.9878466148650558 
+   0.9878466148650555 
+   0.9878466148650558 
+   0.9878466148650561 
+   0.9878466148650556 
+   0.9878466148650559 
+   0.9878466148650559 
+   0.987846614865056 
+   0.9878466148650561 
+   0.9878466148650559 
+   0.987846614865056 
+   0.9878466148650559 
+   0.9878466148650553 
+   0.9878466148650548 
+   0.9878466148650554 
+   0.9878466148650558 
+   0.9878466148650556 
+   0.987846614865056 
+   0.9878466148650563 
+   0.9878466148650554 
+   0.9878466148650553 
+   0.9878466148650556 
+   0.9878466148650554 
+   0.9878466148650558 
+   0.9878466148650554 
+   0.9878466148650552 
+   0.9878466148650556 
+   0.9878466148650553 
+   0.9878466148650551 
+   0.9878466148650554 
+   0.9878466148650556 
+   0.9878466148650554 
+   0.9878466148650552 
+   0.9878466148650558 
+   0.9878466148650555 
+   0.9878466148650561 
+   0.987846614865056 
+   0.9878466148650556 
+   0.9878466148650555 
+   0.9878466148650555 
+   0.9878466148650555 
+   0.9878466148650559 
+   0.9878466148650555 
+   0.9878466148650552 
+   0.9878466148650556 
+   0.9878466148650558 
+   0.9878466148650558 
+   0.9878466148650556 
+   0.9878466148650555 
+   0.9878466148650555 
+   0.9878466148650558 
+   0.9878466148650555 
+   0.9878466148650554 
+   0.9878466148650554 
+   0.9878466148650562 
+   0.9878466148650556 
+   0.9878466148650554 
+   0.9878466148650553 
+   0.9878466148650561 
+   0.9878466148650555 
+   0.987846614865055 
+   0.9878466148650555 
+   0.9878466148650555 
+   0.9878466148650552 
+   0.9878466148650556 
+   0.9878466148650553 
+   0.9878466148650558 
+   0.9878466148650562 
+   0.9878466148650559 
+   0.9878466148650559 
+   0.9878466148650558 
+   0.9878466148650558 
+   0.987846614865056 
+   0.9878466148650555 
+   0.9878466148650553 
+   0.9878466148650553 
+   0.9878466148650553 
+   0.9878466148650555 
+   0.9878466148650558 
+   0.9878466148650555 
+   0.9878466148650552 
+   0.9909615197241506 
+   0.9958160006430636 
+   0.9957109932900655 
+   0.9768177522525998 
+   0.8813024131374909 
+   0.7674700942305704 
+   0.6497348279385661 
+   0.5360827283688389 
+   1.131378966233612 
+   1.077173511994863 
+   1.017221242720817 
+   0.9914274535763409 
+   0.9878466148650538 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650543 
+   0.9878466148650541 
    0.9878466148650535 
    0.9878466148650537 
-   0.9878466148650538 
-   0.9878466148650538 
-   0.9878466148650538 
-   0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650538 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.9878466148650538 
-   0.9878466148650537 
-   0.9878466148650537 
+   0.9878466148650533 
    0.9878466148650534 
+   0.9878466148650538 
+   0.987846614865054 
+   0.987846614865054 
+   0.9878466148650539 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650538 
+   0.987846614865054 
+   0.9878466148650537 
+   0.987846614865054 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650541 
+   0.9878466148650539 
+   0.9878466148650534 
+   0.9878466148650535 
+   0.9878466148650538 
+   0.9878466148650532 
+   0.9878466148650538 
+   0.9878466148650539 
+   0.9878466148650534 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650538 
    0.9878466148650538 
    0.9878466148650541 
    0.9878466148650537 
+   0.9878466148650537 
+   0.9878466148650541 
    0.9878466148650538 
    0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650533 
-   0.9878466148650538 
+   0.9878466148650541 
+   0.9878466148650541 
+   0.987846614865054 
+   0.987846614865054 
+   0.9878466148650541 
    0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650534 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650539 
    0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650537 
    0.9878466148650538 
    0.9878466148650542 
+   0.9878466148650538 
+   0.9878466148650534 
+   0.9878466148650538 
+   0.9878466148650534 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.987846614865054 
    0.9878466148650541 
-   0.9878466148650538 
    0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650534 
    0.987846614865054 
+   0.9878466148650533 
+   0.9878466148650537 
    0.9878466148650538 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650537 
+   0.987846614865054 
+   0.987846614865054 
    0.9878466148650541 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650533 
+   0.9878466148650538 
+   0.9878466148650534 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650533 
+   0.9878466148650537 
    0.987846614865054 
    0.9878466148650539 
-   0.9878466148650534 
-   0.9878466148650533 
-   0.9878466148650534 
-   0.9878466148650538 
-   0.9878466148650538 
-   0.9878466148650534 
-   0.9878466148650538 
-   0.9878466148650535 
-   0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650534 
-   0.987846614865054 
-   0.987846614865054 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.9878466148650543 
-   0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650534 
-   0.9878466148650537 
-   0.9878466148650535 
-   0.9878466148650535 
-   0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650541 
-   0.9878466148650538 
-   0.9878466148650535 
-   0.9878466148650539 
-   0.9878466148650533 
-   0.9878466148650534 
-   0.9878466148650537 
-   0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650534 
-   0.9878466148650534 
-   0.9878466148650534 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.9878466148650534 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650532 
-   0.9878466148650537 
-   0.9878466148650538 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650534 
-   0.9878466148650539 
-   0.9878466148650535 
-   0.9878466148650534 
-   0.9878466148650532 
-   0.9878466148650533 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650535 
-   0.9878466148650535 
-   0.9878466148650534 
-   0.9878466148650534 
-   0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650538 
-   0.9878466148650538 
-   0.9878466148650537 
-   0.9878466148650534 
-   0.9878466148650535 
-   0.9878466148650538 
-   0.9878466148650535 
-   0.9878466148650533 
    0.9878466148650535 
    0.987846614865054 
    0.9878466148650538 
    0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650539 
    0.9878466148650534 
-   0.9878466148650533 
-   0.9878466148650534 
-   0.9878466148650535 
-   0.9878466148650535 
-   0.9878466148650535 
-   0.9878466148650537 
-   0.9878466148650538 
-   0.8232055123875468 
-   0.1646411024775098 
-   0 
-   0 
-   0 
-   0 
-   0.9878466148650538 
-   0.9878466148650537 
-   0.9878466148650533 
-   0.9878466148650534 
-   0.9878466148650541 
-   0.9878466148650537 
-   0.9878466148650535 
-   0.9878466148650535 
-   0.9878466148650541 
+   0.9878466148650542 
    0.9878466148650542 
    0.9878466148650537 
-   0.9878466148650535 
-   0.9878466148650537 
    0.9878466148650533 
-   0.9878466148650533 
-   0.9878466148650533 
-   0.9878466148650539 
-   0.9878466148650541 
-   0.987846614865054 
-   0.9878466148650538 
-   0.987846614865054 
-   0.9878466148650538 
-   0.987846614865054 
-   0.9878466148650539 
-   0.987846614865054 
-   0.9878466148650537 
-   0.987846614865054 
-   0.9878466148650539 
-   0.9878466148650541 
-   0.9878466148650538 
-   0.9878466148650538 
-   0.9878466148650541 
-   0.9878466148650541 
-   0.9878466148650541 
-   0.9878466148650538 
-   0.9878466148650541 
-   0.987846614865054 
-   0.9878466148650537 
-   0.9878466148650538 
    0.9878466148650538 
    0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650538 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650535 
+   0.987846614865054 
+   0.9878466148650539 
+   0.9878466148650541 
+   0.9878466148650537 
    0.9878466148650534 
-   0.9878466148650539 
-   0.9878466148650543 
-   0.9878466148650535 
    0.9878466148650537 
-   0.9878466148650535 
    0.987846614865054 
-   0.9878466148650538 
-   0.9878466148650532 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.987846614865054 
-   0.987846614865054 
-   0.9878466148650538 
-   0.9878466148650535 
-   0.9878466148650538 
-   0.9878466148650535 
    0.9878466148650535 
    0.9878466148650535 
    0.9878466148650537 
-   0.9878466148650535 
-   0.9878466148650543 
-   0.9878466148650535 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650538 
-   0.987846614865054 
-   0.9878466148650539 
-   0.987846614865054 
-   0.9878466148650538 
    0.9878466148650541 
-   0.9878466148650538 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.987846614865054 
-   0.987846614865054 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650543 
    0.9878466148650541 
-   0.9878466148650543 
-   0.9878466148650541 
-   0.9878466148650538 
-   0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650538 
-   0.9878466148650538 
    0.9878466148650542 
+   0.9878466148650542 
+   0.9878466148650541 
+   0.9878466148650533 
+   0.9878466148650533 
+   0.9878466148650534 
+   0.9878466148650533 
+   0.9878466148650538 
+   0.9878466148650534 
+   0.9878466148650533 
+   0.9878466148650533 
+   0.9878466148650531 
+   0.9878466148650533 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.987846614865054 
+   0.9878466148650542 
+   0.987846614865054 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650541 
    0.9878466148650538 
    0.987846614865054 
+   0.9878466148650537 
+   0.9878466148650535 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.9878466148650539 
+   0.9878466148650537 
+   0.9878466148650538 
+   0.9878466148650535 
+   0.987846614865054 
+   0.9878466148650537 
    0.9878466148650544 
    0.9878466148650541 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.9878466148650539 
+   0.9878466148650534 
    0.987846614865054 
-   0.987846614865054 
-   0.9878466148650541 
-   0.9878466148650539 
+   0.9878466148650535 
    0.9878466148650538 
-   0.9878466148650539 
    0.9878466148650541 
-   0.987846614865054 
-   0.9878466148650541 
-   0.9878466148650543 
-   0.9878466148650541 
-   0.9878466148650533 
-   0.9878466148650539 
-   0.9878466148650541 
-   0.9878466148650537 
-   0.987846614865054 
-   0.9878466148650539 
-   0.987846614865054 
-   0.9878466148650539 
-   0.9878466148650542 
-   0.987846614865054 
-   0.987846614865054 
-   0.9878466148650539 
-   0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650538 
-   0.987846614865054 
-   0.9878466148650539 
-   0.9878466148650537 
-   0.9878466148650537 
-   0.9878466148650539 
-   0.8232055123875474 
-   0.16464110247751 
-   0 
-   0 
-   0 
-   0 
-   0.4994999999999959 
-   0.4994999999999968 
-   0.4994999999999952 
-   0.4994999999999976 
-   0.4995000000000043 
-   0.4995000000000018 
-   0.4994999999999971 
-   0.4995000000000012 
-   0.4995000000000038 
-   0.4995000000000032 
-   0.499500000000001 
-   0.4995000000000004 
-   0.4994999999999999 
-   0.4994999999999999 
-   0.4994999999999999 
-   0.4994999999999997 
-   0.4995000000000022 
-   0.4995000000000051 
-   0.4995000000000019 
-   0.4995000000000059 
-   0.4995000000000031 
-   0.4995000000000027 
-   0.4995000000000023 
-   0.4995000000000048 
-   0.499500000000007 
-   0.4995000000000031 
-   0.4995000000000033 
-   0.4995000000000051 
-   0.4995000000000013 
-   0.4995000000000036 
-   0.4995000000000051 
-   0.4995000000000049 
-   0.4995000000000063 
-   0.4995000000000043 
-   0.4995000000000033 
-   0.4995000000000041 
-   0.4995000000000029 
-   0.4995000000000004 
-   0.4995000000000018 
-   0.4995000000000038 
-   0.4995000000000001 
-   0.4994999999999955 
-   0.4994999999999996 
-   0.4995000000000031 
-   0.4994999999999998 
-   0.4994999999999954 
-   0.4994999999999986 
-   0.4995000000000004 
-   0.4994999999999974 
-   0.4994999999999964 
-   0.4995000000000014 
-   0.4995000000000023 
-   0.4994999999999984 
-   0.4994999999999987 
-   0.4995000000000032 
-   0.499500000000007 
-   0.4995000000000013 
-   0.4994999999999992 
-   0.499500000000001 
-   0.4995000000000006 
-   0.4994999999999978 
-   0.4994999999999961 
-   0.4994999999999985 
-   0.4995000000000033 
-   0.4995000000000008 
-   0.4994999999999979 
-   0.4995000000000019 
-   0.4995000000000034 
-   0.4995000000000041 
-   0.4995000000000039 
-   0.4995000000000072 
-   0.4995000000000037 
-   0.4995000000000042 
-   0.4995000000000043 
-   0.4995000000000012 
-   0.4995000000000038 
-   0.4994999999999998 
-   0.4995000000000003 
-   0.4995000000000057 
-   0.4995000000000052 
-   0.4995000000000047 
-   0.4995000000000052 
-   0.4995000000000014 
-   0.4995000000000026 
-   0.4995000000000021 
-   0.4995000000000011 
-   0.4995000000000052 
-   0.4995000000000053 
-   0.4995000000000065 
-   0.4995000000000088 
-   0.4995000000000082 
-   0.4995000000000042 
-   0.4995000000000004 
-   0.4995000000000014 
-   0.4995000000000021 
-   0.4995000000000019 
-   0.4995000000000044 
-   0.4995000000000075 
-   0.4995000000000082 
-   0.4995000000000041 
-   0.4995000000000004 
-   0.4995 
-   0.4994999999999996 
-   0.4995000000000044 
-   0.4995000000000063 
-   0.4995000000000062 
-   0.4995000000000062 
-   0.4995000000000041 
-   0.4994999999999999 
-   0.4995 
-   0.4995000000000019 
-   0.4995000000000023 
-   0.4995000000000048 
-   0.499500000000008 
-   0.4995000000000094 
-   0.4995000000000042 
-   0.4994999999999992 
-   0.4995000000000022 
-   0.4995000000000044 
-   0.4995000000000051 
-   0.4995000000000068 
-   0.499500000000005 
-   0.4995000000000054 
-   0.4995000000000042 
-   0.4995000000000084 
-   0.4995000000000073 
-   0.4995000000000024 
-   0.4995000000000025 
-   0.4995000000000007 
-   0.4995000000000021 
-   0.4995000000000075 
-   0.4995000000000039 
-   0.4995000000000032 
-   0.4995000000000083 
-   0.4995000000000018 
-   0.4995000000000031 
-   0.4162500000000078 
-   0.08325000000000202 
-   0 
-   0 
-   0 
-   0 
-   0.01115338513494622 
-   0.01115338513494621 
-   0.01115338513494607 
-   0.01115338513494615 
-   0.01115338513494647 
-   0.01115338513494645 
-   0.01115338513494625 
-   0.01115338513494642 
-   0.01115338513494641 
-   0.01115338513494637 
-   0.01115338513494642 
-   0.01115338513494643 
-   0.01115338513494632 
-   0.01115338513494627 
-   0.01115338513494628 
-   0.01115338513494626 
-   0.01115338513494634 
-   0.01115338513494649 
-   0.01115338513494634 
-   0.01115338513494639 
-   0.01115338513494632 
-   0.01115338513494641 
-   0.0111533851349464 
-   0.01115338513494642 
-   0.01115338513494644 
-   0.01115338513494646 
-   0.01115338513494648 
-   0.01115338513494641 
-   0.01115338513494629 
-   0.01115338513494649 
-   0.01115338513494662 
-   0.01115338513494654 
-   0.0111533851349465 
-   0.01115338513494642 
-   0.01115338513494636 
-   0.01115338513494629 
-   0.01115338513494637 
-   0.0111533851349463 
-   0.01115338513494635 
-   0.01115338513494645 
-   0.0111533851349463 
-   0.01115338513494607 
-   0.01115338513494625 
-   0.01115338513494643 
-   0.01115338513494622 
-   0.01115338513494609 
-   0.01115338513494622 
-   0.0111533851349464 
-   0.01115338513494637 
-   0.01115338513494627 
-   0.01115338513494643 
-   0.01115338513494658 
-   0.01115338513494642 
-   0.01115338513494615 
-   0.01115338513494642 
-   0.01115338513494663 
-   0.01115338513494638 
-   0.01115338513494623 
-   0.01115338513494633 
-   0.01115338513494636 
-   0.01115338513494626 
-   0.01115338513494611 
-   0.01115338513494628 
-   0.01115338513494646 
-   0.01115338513494631 
-   0.01115338513494612 
-   0.01115338513494622 
-   0.01115338513494643 
-   0.01115338513494635 
-   0.01115338513494641 
-   0.01115338513494664 
-   0.0111533851349464 
-   0.0111533851349465 
-   0.01115338513494663 
-   0.01115338513494645 
-   0.01115338513494647 
-   0.0111533851349463 
-   0.0111533851349463 
-   0.01115338513494657 
-   0.01115338513494649 
-   0.01115338513494652 
-   0.0111533851349466 
-   0.01115338513494638 
-   0.01115338513494638 
-   0.0111533851349463 
-   0.0111533851349464 
-   0.0111533851349466 
-   0.01115338513494648 
-   0.01115338513494653 
-   0.01115338513494669 
-   0.01115338513494663 
-   0.01115338513494649 
-   0.01115338513494636 
-   0.0111533851349465 
-   0.01115338513494653 
-   0.01115338513494639 
-   0.01115338513494643 
-   0.01115338513494656 
-   0.01115338513494654 
-   0.01115338513494647 
-   0.01115338513494637 
-   0.01115338513494653 
-   0.01115338513494645 
-   0.01115338513494642 
-   0.01115338513494656 
-   0.01115338513494652 
-   0.01115338513494643 
-   0.01115338513494646 
-   0.0111533851349464 
-   0.0111533851349464 
-   0.01115338513494644 
-   0.01115338513494634 
-   0.01115338513494647 
-   0.01115338513494661 
-   0.01115338513494665 
-   0.01115338513494649 
-   0.01115338513494627 
-   0.01115338513494652 
-   0.01115338513494664 
-   0.01115338513494649 
-   0.01115338513494643 
-   0.01115338513494643 
-   0.01115338513494644 
-   0.01115338513494644 
-   0.01115338513494652 
-   0.01115338513494654 
-   0.01115338513494647 
-   0.01115338513494643 
-   0.01115338513494626 
-   0.01115338513494644 
-   0.0111533851349467 
-   0.01115338513494648 
-   0.01115338513494644 
-   0.01115338513494683 
-   0.01115338513494643 
-   0.01115338513494637 
-   0.009294487612455517 
-   0.001858897522491103 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
-   0 
+   0.9909654856971813 
+   0.9958202231620339 
+   0.9957197985692202 
+   0.976817752252598 
+   0.8813011542501843 
+   0.7674656760109554 
+   0.6497281360938297 
+   0.5360746573411183 
+   1.074552487055788 
+   1.027525388866984 
+   0.9748265038373165 
+   0.9511708534456533 
+   0.9445348407691697 
+   0.9450475611575687 
+   0.9466336591115548 
+   0.9479635519310643 
+   0.9489323401033389 
+   0.9496000152354486 
+   0.9500468899019252 
+   0.9503378677514438 
+   0.9505224139547183 
+   0.9506353045260013 
+   0.9507012465531991 
+   0.9507366404939737 
+   0.9507531780638362 
+   0.9507578913363469 
+   0.950756015164225 
+   0.9507503061841862 
+   0.9507428264386498 
+   0.9507347658867848 
+   0.9507268771651649 
+   0.9507195385675797 
+   0.950712953186726 
+   0.9507071788384719 
+   0.9507022098594752 
+   0.9506979919959898 
+   0.950694453108347 
+   0.9506915126435234 
+   0.9506890896131502 
+   0.9506871088008569 
+   0.9506855002247117 
+   0.9506842036073834 
+   0.9506831648771524 
+   0.9506823391394762 
+   0.9506816868654885 
+   0.950681176026973 
+   0.9506807788608204 
+   0.9506804732691208 
+   0.9506802402964334 
+   0.9506800650750483 
+   0.9506799350079768 
+   0.9506798403537474 
+   0.9506797729331764 
+   0.9506797264993611 
+   0.9506796958724582 
+   0.9506796771566242 
+   0.950679667155986 
+   0.9506796635019436 
+   0.9506796642815624 
+   0.9506796681066406 
+   0.9506796738741919 
+   0.950679680802743 
+   0.9506796882876615 
+   0.9506796959180006 
+   0.9506797033881308 
+   0.9506797105039716 
+   0.9506797171330874 
+   0.9506797232053608 
+   0.9506797286848867 
+   0.9506797335678097 
+   0.9506797378683397 
+   0.9506797416155534 
+   0.9506797448469604 
+   0.9506797476049564 
+   0.9506797499349195 
+   0.9506797518819401 
+   0.9506797534911193 
+   0.9506797548046417 
+   0.9506797558632176 
+   0.9506797567036837 
+   0.9506797573608506 
+   0.9506797578655453 
+   0.9506797582465289 
+   0.9506797585289946 
+   0.9506797587363517 
+   0.9506797588890576 
+   0.9506797590061712 
+   0.9506797591044491 
+   0.9506797591996313 
+   0.9506797593056798 
+   0.9506797594357237 
+   0.9506797596013816 
+   0.9506797598133193 
+   0.9506797600806034 
+   0.950679760410717 
+   0.950679760808964 
+   0.9506797612778564 
+   0.9506797618166167 
+   0.9506797624197094 
+   0.9506797630765946 
+   0.9506797637692567 
+   0.9506797644724971 
+   0.9506797651501621 
+   0.9506797657562905 
+   0.9506797662299905 
+   0.9506797664979609 
+   0.950679766467824 
+   0.9506797660324425 
+   0.9506797650619628 
+   0.9506797634106123 
+   0.9506797609077718 
+   0.9506797573675082 
+   0.9506797525796995 
+   0.9506797463228945 
+   0.9506797383573785 
+   0.9506797284408506 
+   0.9506797163264662 
+   0.9506797017812418 
+   0.9506796845955371 
+   0.9506796646017552 
+   0.9506796417038743 
+   0.950679615894219 
+   0.9506795873225443 
+   0.9506795563040403 
+   0.9506795234513465 
+   0.9506794896653591 
+   0.9506794563844337 
+   0.9506794255401598 
+   0.950679399983387 
+   0.9506793833774753 
+   0.950679380938225 
+   0.9506793992196649 
+   0.9506794473037177 
+   0.9506795363949786 
+   0.9506796817641855 
+   0.9506799020470338 
+   0.9506802222014404 
+   0.9506806722810246 
+   0.9506812919590835 
+   0.9506821285771441 
+   0.9506832435917323 
+   0.9506847093596077 
+   0.9506866181467066 
+   0.9506890774774852 
+   0.9506922218012914 
+   0.9506962055292878 
+   0.9507012168580083 
+   0.950707469385183 
+   0.9507152165127013 
+   0.9507247417348756 
+   0.950736366547925 
+   0.950750445772108 
+   0.9507673592042392 
+   0.9507875211854233 
+   0.9508113161268362 
+   0.9508391469705244 
+   0.9508712424846814 
+   0.9509077929881187 
+   0.9509483788623068 
+   0.9509922806671054 
+   0.9510369267804485 
+   0.9510789302282355 
+   0.9511105986273999 
+   0.9511312730320889 
+   0.9511530111033953 
+   0.9517721580392406 
+   0.9531071790781735 
+   0.952810388886395 
+   0.9435082502187689 
+   0.9055607676615507 
+   0.8323553881938567 
+   0.7311332015901927 
+   0.6224576720902987 
+   0.5152605578102581 
+   0.9697160923237422 
+   0.9355054172306063 
+   0.8965472700227143 
+   0.8784587366993097 
+   0.8733471034425753 
+   0.8744713240037431 
+   0.8774993732034816 
+   0.880399883461507 
+   0.8826693907703722 
+   0.8843133008701151 
+   0.8854534880679603 
+   0.886220336103784 
+   0.8867197050924301 
+   0.887035365107961 
+   0.8872256246959866 
+   0.8873337662789335 
+   0.8873885485691273 
+   0.8874098986760365 
+   0.8874113276046514 
+   0.8874011127368089 
+   0.8873846931727101 
+   0.8873658301398162 
+   0.8873465934842479 
+   0.8873283143525162 
+   0.8873116091639229 
+   0.8872967974662329 
+   0.8872839224404129 
+   0.8872729144945867 
+   0.8872636209278623 
+   0.8872558576744728 
+   0.8872494347521749 
+   0.8872441607922483 
+   0.8872398658295276 
+   0.8872363896756722 
+   0.8872335989048221 
+   0.8872313711622783 
+   0.8872296078720765 
+   0.8872282204259934 
+   0.8872271392283155 
+   0.8872263025397222 
+   0.8872256626160755 
+   0.8872251776019094 
+   0.8872248156930583 
+   0.8872245493131019 
+   0.8872243577360218 
+   0.8872242231627232 
+   0.8872241324358667 
+   0.8872240743939694 
+   0.8872240408836757 
+   0.8872240250612671 
+   0.8872240220266407 
+   0.8872240277336674 
+   0.8872240393367097 
+   0.8872240545237016 
+   0.8872240717205684 
+   0.8872240896865984 
+   0.8872241076122399 
+   0.8872241248861678 
+   0.8872241411449832 
+   0.8872241561432033 
+   0.887224169767593 
+   0.8872241819704337 
+   0.8872241927701909 
+   0.88722420222109 
+   0.8872242104043407 
+   0.8872242174180615 
+   0.8872242233663581 
+   0.8872242283601284 
+   0.8872242325052051 
+   0.8872242359081924 
+   0.887224238665734 
+   0.8872242408724774 
+   0.8872242426117521 
+   0.8872242439636617 
+   0.8872242449974218 
+   0.887224245779029 
+   0.887224246365075 
+   0.8872242468094064 
+   0.887224247158144 
+   0.887224247455345 
+   0.8872242477389928 
+   0.887224248045457 
+   0.8872242484060938 
+   0.8872242488504672 
+   0.8872242494035339 
+   0.8872242500872928 
+   0.8872242509184509 
+   0.8872242519081055 
+   0.8872242530603218 
+   0.8872242543692538 
+   0.8872242558189514 
+   0.887224257377086 
+   0.8872242589971295 
+   0.8872242606078786 
+   0.8872242621189739 
+   0.8872242634049519 
+   0.8872242643160811 
+   0.8872242646564849 
+   0.8872242642016501 
+   0.8872242626696057 
+   0.8872242597472961 
+   0.8872242550559865 
+   0.8872242481876862 
+   0.8872242386655119 
+   0.8872242259909251 
+   0.8872242096046691 
+   0.8872241889445037 
+   0.887224163413767 
+   0.8872241324444262 
+   0.8872240954906616 
+   0.8872240520932206 
+   0.8872240019240895 
+   0.8872239448296293 
+   0.8872238809752621 
+   0.8872238108543767 
+   0.8872237356135754 
+   0.8872236569573416 
+   0.8872235777833025 
+   0.8872235019453899 
+   0.8872234354246874 
+   0.8872233857537666 
+   0.8872233640414277 
+   0.8872233839511857 
+   0.8872234651504228 
+   0.8872236313312536 
+   0.8872239157764177 
+   0.8872243581231105 
+   0.8872250133159653 
+   0.8872259459316696 
+   0.8872272437377738 
+   0.8872290088158464 
+   0.8872313780667178 
+   0.88723450889915 
+   0.8872386079174486 
+   0.8872439095131696 
+   0.8872507155988693 
+   0.8872593647156783 
+   0.8872702808466592 
+   0.8872839305027251 
+   0.8873008789000826 
+   0.8873217399766901 
+   0.887347222043967 
+   0.8873780707500267 
+   0.8874150709101689 
+   0.8874590254365458 
+   0.8875106246874683 
+   0.8875704856910703 
+   0.8876386642605133 
+   0.8877149221757936 
+   0.8877973543262633 
+   0.8878830399438193 
+   0.887964225817848 
+   0.8880300280160671 
+   0.888056386131178 
+   0.8880126036745221 
+   0.8878379403883204 
+   0.8875193254905761 
+   0.8868200111169915 
+   0.8846434141587541 
+   0.8776063635891679 
+   0.8581503613777175 
+   0.8182150408988026 
+   0.7530303349872198 
+   0.6682743031088547 
+   0.5731334449781293 
+   0.477037457983629 
+   0.8310975268607839 
+   0.812884865120061 
+   0.7923767438124135 
+   0.7836875285406966 
+   0.7828703531656965 
+   0.786132447561003 
+   0.7907165471882291 
+   0.7950643702400495 
+   0.7985877655726031 
+   0.8012236061455229 
+   0.8031098137184781 
+   0.8044075236760629 
+   0.8052778033874771 
+   0.8058382467161805 
+   0.8061888319610827 
+   0.8063935151534974 
+   0.8065048535468787 
+   0.8065536163077413 
+   0.8065661367386511 
+   0.8065552103521119 
+   0.8065321447907133 
+   0.8065029506446597 
+   0.8064722246370887 
+   0.8064421500059772 
+   0.8064142996375 
+   0.8063892581037433 
+   0.8063673178681982 
+   0.8063484131781399 
+   0.8063323567248406 
+   0.8063188867348183 
+   0.8063076860829017 
+   0.806298467232327 
+   0.8062909233564118 
+   0.8062848106267864 
+   0.8062798792684127 
+   0.8062759408974459 
+   0.8062728068171457 
+   0.8062703399414136 
+   0.8062684055045585 
+   0.8062669077362385 
+   0.8062657532164521 
+   0.8062648768092521 
+   0.806264216005264 
+   0.8062637278992636 
+   0.8062633714315122 
+   0.8062631187913467 
+   0.8062629438243365 
+   0.8062628291079118 
+   0.8062627582874698 
+   0.8062627206142425 
+   0.8062627062042734 
+   0.8062627087044254 
+   0.8062627222942115 
+   0.8062627433063395 
+   0.8062627684781409 
+   0.8062627958350044 
+   0.8062628236469616 
+   0.8062628509186537 
+   0.8062628768329687 
+   0.8062629009778082 
+   0.8062629230491263 
+   0.8062629429453715 
+   0.8062629606413697 
+   0.8062629762016491 
+   0.8062629897377362 
+   0.8062630013854154 
+   0.8062630113124523 
+   0.8062630196786869 
+   0.8062630266638099 
+   0.8062630324234368 
+   0.8062630371259734 
+   0.8062630409109866 
+   0.806263043926165 
+   0.806263046290296 
+   0.8062630481273556 
+   0.8062630495356224 
+   0.806263050617341 
+   0.806263051452919 
+   0.8062630521257789 
+   0.806263052701609 
+   0.8062630532487743 
+   0.8062630538212302 
+   0.8062630544742762 
+   0.8062630552510859 
+   0.8062630561939177 
+   0.8062630573339807 
+   0.8062630586967422 
+   0.8062630602962013 
+   0.8062630621329251 
+   0.8062630641948776 
+   0.8062630664447692 
+   0.8062630688301853 
+   0.8062630712572125 
+   0.8062630736153209 
+   0.8062630757315684 
+   0.8062630774145805 
+   0.8062630783854841 
+   0.8062630783492556 
+   0.8062630768964822 
+   0.8062630736058732 
+   0.8062630679149172 
+   0.8062630592618362 
+   0.8062630469249221 
+   0.8062630302020296 
+   0.8062630082252313 
+   0.8062629801771342 
+   0.806262945102486 
+   0.8062629021428827 
+   0.8062628503761805 
+   0.8062627890363097 
+   0.8062627174673287 
+   0.8062626352692992 
+   0.8062625424629036 
+   0.8062624394305608 
+   0.8062623275614991 
+   0.8062622088270328 
+   0.8062620871766298 
+   0.8062619673392523 
+   0.8062618577251759 
+   0.8062617680315234 
+   0.8062617143668739 
+   0.8062617145117618 
+   0.8062617971921014 
+   0.8062619939387735 
+   0.8062623542588554 
+   0.806262931149377 
+   0.8062638065278847 
+   0.8062650679887319 
+   0.8062668482597181 
+   0.8062692865480181 
+   0.8062725901915617 
+   0.8062769759537877 
+   0.8062827605100803 
+   0.8062902694312393 
+   0.8062999662938395 
+   0.8063123232726473 
+   0.8063279961743821 
+   0.8063476434189429 
+   0.806372138352092 
+   0.8064023391095785 
+   0.8064393287418592 
+   0.8064841586722387 
+   0.8065380008749189 
+   0.8066019209166351 
+   0.8066768126404154 
+   0.8067634229560333 
+   0.8068614769032837 
+   0.8069702628815323 
+   0.8070859750634424 
+   0.8072039329811965 
+   0.8073110334535842 
+   0.8073913334982885 
+   0.8074060825111966 
+   0.8073083050266678 
+   0.806987573067275 
+   0.806306535315204 
+   0.8049025218803189 
+   0.8020654443405638 
+   0.7960289571619454 
+   0.7834797725814875 
+   0.7596700335188011 
+   0.7198995765188577 
+   0.6626779649268317 
+   0.5905616551427386 
+   0.5096795585971495 
+   0.4260956764176887 
+   0.6748295963085538 
+   0.673918103168319 
+   0.6732999719930125 
+   0.6760119228467225 
+   0.6810876302679129 
+   0.687543509398593 
+   0.6940280894295008 
+   0.6997303763929161 
+   0.7043223592395853 
+   0.7078219204184125 
+   0.7103564600558556 
+   0.7121500265373799 
+   0.7133603895710892 
+   0.7141711658190063 
+   0.7146793253717603 
+   0.7149923467104063 
+   0.7151634062708341 
+   0.7152492779981032 
+   0.7152759089406661 
+   0.7152698999391761 
+   0.7152424617982057 
+   0.7152059286021236 
+   0.7151649623035496 
+   0.715124415549599 
+   0.7150859533828904 
+   0.7150511619051909 
+   0.7150203355095169 
+   0.7149936117058602 
+   0.7149708024798417 
+   0.7149515528091609 
+   0.7149355268011818 
+   0.7149222465888763 
+   0.7149113911135835 
+   0.7149025305034978 
+   0.7148954021013729 
+   0.7148896620521703 
+   0.7148851113110959 
+   0.7148814950197618 
+   0.7148786718206974 
+   0.7148764615431391 
+   0.7148747655020719 
+   0.7148734600829567 
+   0.7148724799558912 
+   0.7148717432548898 
+   0.7148712065848157 
+   0.7148708164821395 
+   0.7148705456733007 
+   0.7148703605142364 
+   0.7148702437039415 
+   0.7148701742846229 
+   0.714870141957429 
+   0.7148701342430083 
+   0.71487014496281 
+   0.7148701667942526 
+   0.7148701963304174 
+   0.7148702295573285 
+   0.7148702646203299 
+   0.7148702994138619 
+   0.7148703330755931 
+   0.7148703646638825 
+   0.7148703938362206 
+   0.7148704202730343 
+   0.7148704439373884 
+   0.7148704648565402 
+   0.7148704831328502 
+   0.71487049894901 
+   0.7148705124712486 
+   0.7148705239459536 
+   0.7148705335524952 
+   0.7148705415422315 
+   0.7148705480846301 
+   0.7148705534115367 
+   0.7148705576724522 
+   0.7148705610680077 
+   0.7148705637236634 
+   0.7148705658073855 
+   0.7148705674232897 
+   0.7148705687096739 
+   0.7148705697511026 
+   0.7148705706602592 
+   0.7148705715065998 
+   0.7148705723813588 
+   0.7148705733400813 
+   0.714870574453025 
+   0.714870575762018 
+   0.7148705773138068 
+   0.7148705791325447 
+   0.7148705812316575 
+   0.7148705836089738 
+   0.7148705862299133 
+   0.7148705890537315 
+   0.7148705919734324 
+   0.7148705948894136 
+   0.7148705975939118 
+   0.7148705999082871 
+   0.7148706014869413 
+   0.7148706020424602 
+   0.714870601056657 
+   0.7148705981128558 
+   0.7148705924859585 
+   0.7148705836036676 
+   0.7148705705165511 
+   0.7148705524959545 
+   0.7148705283783183 
+   0.7148704972898265 
+   0.7148704579079828 
+   0.714870409275646 
+   0.7148703500667752 
+   0.7148702793743205 
+   0.7148701961280602 
+   0.7148700996930254 
+   0.7148699898144421 
+   0.7148698666094345 
+   0.7148697314484206 
+   0.7148695858355019 
+   0.714869434426768 
+   0.7148692815511548 
+   0.71486913744085 
+   0.7148690109674041 
+   0.7148689224918099 
+   0.714868889391805 
+   0.7148689482462098 
+   0.7148691293682973 
+   0.7148694970847451 
+   0.7148701046731066 
+   0.7148710590813578 
+   0.7148724470486965 
+   0.7148744441695651 
+   0.7148771931301274 
+   0.7148809700637142 
+   0.7148859952468094 
+   0.7148926940403202 
+   0.7149014058454845 
+   0.714912760224572 
+   0.7149272507190695 
+   0.7149457703013462 
+   0.7149690155034812 
+   0.7149981952768806 
+   0.7150342366418363 
+   0.7150786221891978 
+   0.7151324673925853 
+   0.7151974119880639 
+   0.7152746640874238 
+   0.7153653838644906 
+   0.7154703089490468 
+   0.7155889938627713 
+   0.7157208706700424 
+   0.7158604870502764 
+   0.7160029413502507 
+   0.7161305965357274 
+   0.7162283222284442 
+   0.7162468468059719 
+   0.7161427861544741 
+   0.7157829175685951 
+   0.7150460514902772 
+   0.7135486423505776 
+   0.7108698664163937 
+   0.7058143492844789 
+   0.6968581757992228 
+   0.6811929450830102 
+   0.6559409134401415 
+   0.6185618811821807 
+   0.568357272233899 
+   0.5073813455659127 
+   0.4390831349993228 
+   0.3684170076884575 
   </coefs>
  </Geometry>
  <MultiPatch parDim="2" id="1" label="damage">
