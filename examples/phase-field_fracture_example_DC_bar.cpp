@@ -338,11 +338,15 @@ void solve(gsOptionList & materialParameters,
     gsMatrix<T> u(elAssembler.numDofs(),1);
     u.setZero();
 
+    if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
+        gsInfo<<"Using multigrid solver\n";
+    else
 #ifdef GISMO_WITH_PARDISO
-    typename gsSparseSolver<T>::PardisoLDLT solver;
+        gsInfo<<"Using Pardiso direct solver\n";
 #else
-    typename gsSparseSolver<T>::CGDiagonal solver;
+        gsInfo<<"Using CG diagonal preconditioned iterative solver\n";
 #endif
+
     gsMatrix<T> R;
 
     T elAssemblyTime = 0.0;

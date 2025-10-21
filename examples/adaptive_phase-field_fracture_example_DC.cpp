@@ -673,9 +673,6 @@ void solve(gsOptionList & materialParameters,
                     Rnorm = (elMatrix*u - elRhs).norm();
                     gsInfo<<"    | "<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<stagTimes.elAssemblyTime<<PRINT(20)<<stagTimes.elSolverTime<<PRINT(20)<<itSolverTime<<PRINT(20)<<itSolverIterations<<"|\n";
 
-                    gsInfo<<"Terminating simulation for testing purposes\n";
-                    return;
-
                     if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12 || maxItEl==1)
                         break;
                     else if (elIt == maxItEl-1)

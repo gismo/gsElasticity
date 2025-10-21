@@ -379,6 +379,15 @@ void solve(gsOptionList & materialParameters,
     gsMatrix<T> u(elAssembler.numDofs(),1);
     u.setZero();
 
+    if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
+        gsInfo<<"Using multigrid solver\n";
+    else
+#ifdef GISMO_WITH_PARDISO
+        gsInfo<<"Using Pardiso direct solver\n";
+#else
+        gsInfo<<"Using CG diagonal preconditioned iterative solver\n";
+#endif
+
 // #ifdef gsMUMPS_ENABLED
 //     // Initialize MUMPS solver
 //     gsEigen::MUMPSLDLT<gsSparseMatrix<T>,gsEigen::Lower> solver;
