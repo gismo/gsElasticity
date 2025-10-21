@@ -62,83 +62,6 @@ struct times
     }
 };
 
-
-template <class T>
-typename gsMultiGridOp<T>::uPtr setupMultiGrid(const std::vector< gsSparseMatrix<T,RowMajor> > & transferMatrices,
-                                              const gsSparseMatrix<T> & matrix,
-                                              const gsOptionList & options)
-{
-    // Transfer matrices are consumed by the multigrid solver, so we need to make a copy
-    std::vector< gsSparseMatrix<T,RowMajor> > myTransferMatrices = transferMatrices;
-
-    // Setup the multigrid solver
-    typename gsMultiGridOp<T>::uPtr mg = gsMultiGridOp<T>::make( matrix, myTransferMatrices );
-    mg->setOptions( options );
-    // Since we are solving a symmetric positive definite problem,we can use a Cholesky solver
-    mg->setCoarseSolver( makeSparseCholeskySolver( mg->matrix(0) ) );
-
-
-    // Parse smoother sequence and validate length
-    std::vector<std::string> smoothers;
-    std::istringstream ss(options.getString("SmootherSequence"));
-    std::string smoother;
-    while (std::getline(ss, smoother, ';'))
-    {
-        smoothers.push_back(smoother);
-    }
-
-    if (smoothers.size() < mg->numLevels() - 1)
-    {
-        gsWarn<<"WARNING: Number of smoothers ("<<smoothers.size()<<") is less than number of levels-1 ("<<(mg->numLevels()-1)<<"). "
-                <<"Using Jacobi as fallback for the remaining levels."<<std::endl;
-        while (smoothers.size() < mg->numLevels() - 1)
-            smoothers.push_back("Jacobi");
-    }
-
-    // Setup smoothers with profiling info
-    for (index_t i = 1; i < mg->numLevels(); ++i)
-    {
-        gsPreconditionerOp<>::Ptr smootherOp;
-
-        // Get smoother type from sequence (level i-1 since we start from level 1)
-        std::string smootherType = smoothers[i-1];
-
-        if      (smootherType == "j" ||
-                 smootherType == "J" ||
-                 smootherType == "jacobi" ||
-                 smootherType == "Jacobi")
-        {
-            // Jacobi smoother with damping
-            smootherOp = makeJacobiOp(mg->matrix(i), options.askReal("JacobiDamping",0.8));
-            // gsInfo << "Level " << i << ": Jacobi smoother (damping=" << options.askReal("JacobiDamping",0.8) << ")" << std::endl;
-        }
-        else if (smootherType == "gs" ||
-                 smootherType == "G" ||
-                 smootherType == "Gauss-Seidel" ||
-                 smootherType == "gauss-seidel" ||
-                 smootherType == "GaussSeidel" ||
-                 smootherType == "gaussseidel")
-        {
-            // Symmetric Gauss-Seidel smoother
-            smootherOp = makeSymmetricGaussSeidelOp(mg->matrix(i));
-            // gsInfo << "Level " << i << ": Symmetric Gauss-Seidel smoother" << std::endl;
-        }
-        else
-        {
-            gsInfo << "WARNING: Unknown smoother type '" << smootherType << "' at level " << i
-                << ". Using Jacobi as fallback." << std::endl;
-            smootherOp = makeJacobiOp(mg->matrix(i), options.askReal("JacobiDamping",0.8));
-        }
-
-        smootherOp->setOptions(options);
-        mg->setSmoother(i, smootherOp);
-
-        // gsInfo << "Level " << i << ": " << mg->matrix(i).rows() << "x" << mg->matrix(i).cols()
-            // << " matrix (" << mg->matrix(i).nonZeros() << " nnz)" << std::endl;
-    }
-    return mg;
-}
-
 template <short_t dim, class T>
 void solve(gsOptionList & materialParameters,
            gsOptionList & controlParameters,
@@ -476,13 +399,10 @@ void solve(gsOptionList & materialParameters,
 
     gsMatrix<T> u, du;
 
-    if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
-        gsInfo<<"Using multigrid solver\n";
-    else
 #ifdef GISMO_WITH_PARDISO
-        gsInfo<<"Using Pardiso direct solver\n";
+    gsInfo<<"Using Pardiso direct solver\n";
 #else
-        gsInfo<<"Using CG diagonal preconditioned iterative solver\n";
+    gsInfo<<"Using CG diagonal preconditioned iterative solver\n";
 #endif
 
     times<T> stagTimes;
@@ -595,18 +515,6 @@ void solve(gsOptionList & materialParameters,
             deltaD.setZero(D.rows(),1);
             index_t stagIt = 0;
 
-            // Setup multigrid hierarchy (everytime the mesh changes)
-            std::vector< gsSparseMatrix<T,RowMajor> > transferMatrices;
-            gsInfo<<solverParameters<<"\n";
-            if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
-            {
-                gsGridHierarchy<>::buildByHierarchicalCoarsening(mb,dim,bc_u,solverParameters.getGroup("MG")).moveTransferMatricesTo(transferMatrices);
-                gsInfo<<"Using Multi-Grid solver with hierarchy:\n";
-                for (size_t i = transferMatrices.size(); i!= 0; i--)
-                    gsInfo << "Level " << i << ": " << transferMatrices[i-1].rows() << " -> " << transferMatrices[i-1].cols() << "\n";
-            }
-
-
             while(true)
             {
                 stagTimes.reset();
@@ -633,30 +541,18 @@ void solve(gsOptionList & materialParameters,
                     T itSolverTime = 0;
                     index_t itSolverIterations = 0;
                     smallClock.restart();
-                    if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
-                    {
-                        typename gsSparseSolver<T>::CGCustom solver;
-                        solver.preconditioner().set(setupMultiGrid<T>(transferMatrices,elMatrix,solverParameters.getGroup("MG")));
-                        solver.setMaxIterations(solverParameters.askInt("MaxIterations",100));
-                        solver.compute(elMatrix);
-                        u = solver.solveWithGuess(elRhs,u);
-                        itSolverIterations = solver.iterations();
-                    }
-                    else
-                    {
 #ifdef GISMO_WITH_PARDISO
-                        typename gsSparseSolver<T>::PardisoLDLT solver;
+                    typename gsSparseSolver<T>::PardisoLDLT solver;
 #else
-                        typename gsSparseSolver<T>::CGDiagonal solver;
+                    typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
-                        solver.compute(elMatrix);
-                        u = solver.solve(elRhs);
+                    solver.compute(elMatrix);
+                    u = solver.solve(elRhs);
 #ifdef GISMO_WITH_PARDISO
-                        itSolverIterations = 1;
+                    itSolverIterations = 1;
 #else
-                        itSolverIterations = solver.iterations();
+                    itSolverIterations = solver.iterations();
 #endif
-                    }
                     itSolverTime = smallClock.stop();
                     stagTimes.elSolverTime += itSolverTime;
 

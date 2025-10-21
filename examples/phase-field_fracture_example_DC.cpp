@@ -49,82 +49,6 @@ struct times
     }
 };
 
-template <class T>
-typename gsMultiGridOp<T>::uPtr setupMultiGrid(const std::vector< gsSparseMatrix<T,RowMajor> > & transferMatrices,
-                                              const gsSparseMatrix<T> & matrix,
-                                              const gsOptionList & options)
-{
-    // Transfer matrices are consumed by the multigrid solver, so we need to make a copy
-    std::vector< gsSparseMatrix<T,RowMajor> > myTransferMatrices = transferMatrices;
-
-    // Setup the multigrid solver
-    typename gsMultiGridOp<T>::uPtr mg = gsMultiGridOp<T>::make( matrix, myTransferMatrices );
-    mg->setOptions( options );
-    // Since we are solving a symmetric positive definite problem,we can use a Cholesky solver
-    mg->setCoarseSolver( makeSparseCholeskySolver( mg->matrix(0) ) );
-
-
-    // Parse smoother sequence and validate length
-    std::vector<std::string> smoothers;
-    std::istringstream ss(options.getString("SmootherSequence"));
-    std::string smoother;
-    while (std::getline(ss, smoother, ';'))
-    {
-        smoothers.push_back(smoother);
-    }
-
-    if (smoothers.size() < mg->numLevels() - 1)
-    {
-        gsWarn<<"WARNING: Number of smoothers ("<<smoothers.size()<<") is less than number of levels-1 ("<<(mg->numLevels()-1)<<"). "
-                <<"Using Jacobi as fallback for the remaining levels."<<std::endl;
-        while (smoothers.size() < mg->numLevels() - 1)
-            smoothers.push_back("Jacobi");
-    }
-
-    // Setup smoothers with profiling info
-    for (index_t i = 1; i < mg->numLevels(); ++i)
-    {
-        gsPreconditionerOp<>::Ptr smootherOp;
-
-        // Get smoother type from sequence (level i-1 since we start from level 1)
-        std::string smootherType = smoothers[i-1];
-
-        if      (smootherType == "j" ||
-                 smootherType == "J" ||
-                 smootherType == "jacobi" ||
-                 smootherType == "Jacobi")
-        {
-            // Jacobi smoother with damping
-            smootherOp = makeJacobiOp(mg->matrix(i), options.askReal("JacobiDamping",0.8));
-            // gsInfo << "Level " << i << ": Jacobi smoother (damping=" << options.askReal("JacobiDamping",0.8) << ")" << std::endl;
-        }
-        else if (smootherType == "gs" ||
-                 smootherType == "G" ||
-                 smootherType == "Gauss-Seidel" ||
-                 smootherType == "gauss-seidel" ||
-                 smootherType == "GaussSeidel" ||
-                 smootherType == "gaussseidel")
-        {
-            // Symmetric Gauss-Seidel smoother
-            smootherOp = makeSymmetricGaussSeidelOp(mg->matrix(i));
-            // gsInfo << "Level " << i << ": Symmetric Gauss-Seidel smoother" << std::endl;
-        }
-        else
-        {
-            gsInfo << "WARNING: Unknown smoother type '" << smootherType << "' at level " << i
-                << ". Using Jacobi as fallback." << std::endl;
-            smootherOp = makeJacobiOp(mg->matrix(i), options.askReal("JacobiDamping",0.8));
-        }
-
-        smootherOp->setOptions(options);
-        mg->setSmoother(i, smootherOp);
-
-        // gsInfo << "Level " << i << ": " << mg->matrix(i).rows() << "x" << mg->matrix(i).cols()
-            // << " matrix (" << mg->matrix(i).nonZeros() << " nnz)" << std::endl;
-    }
-    return mg;
-}
-
 template <short_t dim, class T>
 void solve(gsOptionList & materialParameters,
            gsOptionList & controlParameters,
@@ -194,6 +118,9 @@ int main(int argc, char *argv[])
         mp.uniformRefine(1);
     if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
 
+    mp.computeTopology();
+    gsWrite(mp,outputdir+"mp");
+
     gsFileData<> fd_damage(damageInput.empty() ? inputDir + "damage.xml" : damageInput);
     gsMultiPatch<> damage;
     fd_damage.getFirst(damage);
@@ -208,23 +135,38 @@ int main(int argc, char *argv[])
     //// Material parameters
     gsOptionList materialParameters;
     fd_pars.getLabel("material", materialParameters);
+    gsInfo<<"Material parameters:\n"<<materialParameters<<"\n";
 
     //// Boundary control parameters
     gsOptionList controlParameters;
     fd_pars.getLabel("control", controlParameters);
+    gsInfo<<"Control parameters:\n"<<controlParameters<<"\n";
 
     //// Solver parameters
     gsOptionList solverParameters;
     if (fd_pars.hasLabel("solver"))
+    {
         fd_pars.getLabel("solver", solverParameters);
+        gsInfo<<"Solver parameters:\n"<<solverParameters<<"\n";
+    }
+
+    gsOptionList multipatchParameters;
+    if (mp.nPatches() != damage.nPatches())
+    {
+        GISMO_ASSERT(fd_pars.hasLabel("multipatch"), "Multipatch information not found in the input file.");
+        fd_pars.getLabel("multipatch", multipatchParameters);
+        gsInfo<<"Multipatch parameters:\n"<<multipatchParameters<<"\n";
+    }
 
     //// Boundary conditions
     gsBoundaryConditions<> bc_u;
     fd_pars.getLabel("BCs_u", bc_u);
+    gsInfo<<"Displacement BCs:\n"<<bc_u<<"\n";
 
     //// Boundary conditions
     gsBoundaryConditions<> bc_d;
     fd_pars.getLabel("BCs_d", bc_d);
+    gsInfo<<"Phase-field BCs:\n"<<bc_d<<"\n";
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // Call the dimensional solver
@@ -322,7 +264,7 @@ void solve(gsOptionList & materialParameters,
     // Boundary conditions
     gsFunctionExpr<T> displ(bcFunction,dim);
     displ.set_u(ucurr);
-    bc_u.addCondition(fixedSideId,condition_type::dirichlet,&displ,0,false,fixedSideDir);
+    bc_u.addCondition(fixedSidePatch,fixedSideId,condition_type::dirichlet,&displ,0,false,fixedSideDir);
     bc_u.setGeoMap(mp);
     bc_d.setGeoMap(mp);
 
@@ -383,21 +325,11 @@ void solve(gsOptionList & materialParameters,
 //     // Initialize MUMPS solver
 //     gsEigen::MUMPSLDLT<gsSparseMatrix<T>,gsEigen::Lower> solver;
 // #elif GISMO_WITH_PARDISO
-//     typename gsSparseSolver<T>::PardisoLDLT solver;
-// #else
-    // typename gsSparseSolver<T>::CGDiagonal solver;
-// #endif
-
-    // Setup multigrid hierarchy (only once)
-    std::vector< gsSparseMatrix<T,RowMajor> > transferMatrices;
-    gsInfo<<solverParameters<<"\n";
-    if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
-    {
-        gsGridHierarchy<>::buildByCoarsening(mb,dim,bc_u,solverParameters.getGroup("MG")).moveTransferMatricesTo(transferMatrices);
-        gsInfo<<"Using Multi-Grid solver with hierarchy:\n";
-        for (size_t i = transferMatrices.size(); i!= 0; i--)
-            gsInfo << "Level " << i << ": " << transferMatrices[i-1].rows() << " -> " << transferMatrices[i-1].cols() << "\n";
-    }
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<T>::PardisoLDLT solver;
+#else
+    typename gsSparseSolver<T>::CGDiagonal solver;
+#endif
 
     times<T> stagTimes;
     times<T> stepTimes;
@@ -479,29 +411,18 @@ void solve(gsOptionList & materialParameters,
                 T itSolverTime = 0;
                 index_t itSolverIterations = 0;
                 smallClock.restart();
-                if (solverParameters.askSwitch("MultiGrid",false) && solverParameters.hasGroup("MG"))
-                {
-                    typename gsSparseSolver<T>::CGCustom solver;
-                    solver.preconditioner().set(setupMultiGrid<T>(transferMatrices,elMatrix,solverParameters.getGroup("MG")));
-                    solver.compute(elMatrix);
-                    u = solver.solveWithGuess(elRhs,u);
-                    itSolverIterations = solver.iterations();
-                }
-                else
-                {
 #ifdef GISMO_WITH_PARDISO
-                        typename gsSparseSolver<T>::PardisoLDLT solver;
+                typename gsSparseSolver<T>::PardisoLDLT solver;
 #else
-                        typename gsSparseSolver<T>::CGDiagonal solver;
+                typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
-                        solver.compute(elMatrix);
-                        u = solver.solve(elRhs);
+                solver.compute(elMatrix);
+                u = solver.solve(elRhs);
 #ifdef GISMO_WITH_PARDISO
-                        itSolverIterations = 1;
+                itSolverIterations = 1;
 #else
-                        itSolverIterations = solver.iterations();
+                itSolverIterations = solver.iterations();
 #endif
-                }
                 itSolverTime = smallClock.stop();
                 stagTimes.elSolverTime += itSolverTime;
 
@@ -628,17 +549,23 @@ void solve(gsOptionList & materialParameters,
 
         // =========================================================================
         // Compute resulting force and energies
-        gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
-        fullElAssembler.assemble(ufull);
-        gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
+        // Compute amount of DoFs
         gsDofMapper mapper(mb,dim);
         mapper.finalize();
-        gsMatrix<index_t> boundary = mb.basis(0).boundary(fixedSideId);
+        gsMatrix<T> ufull(mapper.size(),1);
+        for (size_t p=0; p!=mp.nPatches(); ++p)
+            for (size_t d=0; d!=dim; ++d)
+                for (size_t i=0; i!=mb.basis(p).size(); ++i)
+                    ufull(mapper.index(i,p,d),0) = displacement.patch(p).coefs()(i,d);
+
+        fullElAssembler.assemble(ufull);
+        gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
+        gsMatrix<index_t> boundary = mb.basis(fixedSidePatch).boundary(fixedSideId);
         T Fx = 0, Fy = 0;
         for (index_t k=0; k!=boundary.size(); k++)
         {
-            Fx += Rfull(mapper.index(boundary(k,0),0,0),0); // DoF index, patch, component
-            Fy += Rfull(mapper.index(boundary(k,0),0,1),0); // DoF index, patch, component
+            Fx += Rfull(mapper.index(boundary(k,0),fixedSidePatch,0),0); // DoF index, patch, component
+            Fy += Rfull(mapper.index(boundary(k,0),fixedSidePatch,1),0); // DoF index, patch, component
         }
 
         gsInfo<<"\n";
@@ -650,22 +577,22 @@ void solve(gsOptionList & materialParameters,
         {
             std::string filename;
             filename = "damage_" + util::to_string(step);
-            if (plot) gsWriteParaview(mp,damage,outputdir+filename,100000);
+            gsWriteParaview(mp,damage,outputdir+filename,100000,"_");
             // gsField<T> damage_step(zone,damage,false);
             // gsWriteParaview(damage_step,filename,1000);
-            filename += "0";
-            damageCollection.addPart(filename,step,"Solution",0);
+            for (size_t p=0; p!=damage.nPatches(); ++p)
+                damageCollection.addPart(filename+"_"+util::to_string(p),step,"Solution",0);
 
             gsMaterialEval<T,gsMaterialOutput::Psi,true,true> Psi(&material,mp,mp_def);
             filename = "Psi_"+util::to_string(step);
-            if (plot) gsWriteParaview(mp,Psi,outputdir+filename,100000);
-            filename += "0";
-            psiCollection.addPart(filename,step,"Solution",0);
+            gsWriteParaview(mp,Psi,outputdir+filename,100000,"_");
+            for (size_t p=0; p!=mp.nPatches(); ++p)
+                psiCollection.addPart(filename+"_"+util::to_string(p),step,"Solution",0);
 
             filename = "displacement_"+util::to_string(step);
-            if (plot) gsWriteParaview(mp,displacement,outputdir+filename,1000);
-            filename += "0";
-            displCollection.addPart(filename,step,"Solution",0);
+            gsWriteParaview(mp,displacement,outputdir+filename,1000,"_");
+            for (size_t p=0; p!=mp.nPatches(); ++p)
+                displCollection.addPart(filename+"_"+util::to_string(p),step,"Solution",0);
         }
 
         // =========================================================================
