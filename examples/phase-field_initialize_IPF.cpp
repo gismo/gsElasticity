@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
         // Evaluate the geometry in the support
         gsVector<unsigned> npts = uniformSampleCount<real_t>(supp.col(0), supp.col(1), 100000);
         gsMatrix<> points = gsPointGrid<real_t>(supp.col(0),supp.col(1),npts);
+        gsInfo<< "Evaluating initial damage function at "<<points.size()<<" points.\n";
         gsMatrix<> eval_geo, eval_damage;
         mp.piece(0).eval_into(points, eval_geo);
         fun.piece(0).eval_into(eval_geo, eval_damage);
@@ -157,6 +158,7 @@ int main(int argc, char *argv[])
     gsMatrix<> mm = A.matrix() * gsMatrix<>::Ones(A.matrix().rows(),1);
     // count nonzeros in the rhs
     index_t nnz = (A.rhs().array() > 0).count();
+    gsInfo<<"Number of non-zeros in the RHS: "<<nnz<<"\n";
     gsMatrix<> f(nnz,1), m(nnz,1);
     for (index_t i = 0, j = 0; i < A.rhs().rows(); ++i)
         if (A.rhs()(i,0) > 0)

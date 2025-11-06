@@ -128,7 +128,8 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsMesh<> mesh(mp.basis(0));
-        gsWriteParaview(mesh,outputDir+"THB_mesh",false);
+        mp.patch(0).evaluateMesh(mesh);
+        gsWriteParaview(mesh,outputDir+"TP_mesh",false);
     }
 
 
