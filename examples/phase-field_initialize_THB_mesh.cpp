@@ -283,6 +283,9 @@ int main(int argc, char *argv[])
     fd_out.addWithLabel(mp_THB,"geometry");
     fd_out.save(outputDir+"geometry");
 
+    gsInfo<< "numdofs = "<<mp.basis(0).numElements()<<"\n";
+
+
     if (plotMesh)
     {
         gsMesh<> mesh(mp_THB.basis(0));

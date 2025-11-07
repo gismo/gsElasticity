@@ -126,9 +126,9 @@ int main(int argc, char *argv[])
 
     if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
 
-    mp.degreeIncrease(numElev);
-    for (index_t i = 0; i<numHRef; ++i)
-        mp.uniformRefine();
+    // mp.degreeIncrease(numElev);
+    // for (index_t i = 0; i<numHRef; ++i)
+    //     mp.uniformRefine();
 
     //// Material parameters
     gsOptionList materialParameters;
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
     //// Boundary control parameters
     gsOptionList controlParameters;
     // Min time [s]
-    controlParameters.addReal("tend", "Maximum time", 100e-6);
+    controlParameters.addReal("tend", "Maximum time", 80e-6);
     // Max time [s]
     controlParameters.addReal("tmin", "Initial time", 0.0);
     // Time step [s]
@@ -186,8 +186,9 @@ int main(int argc, char *argv[])
     bc_u.setGeoMap(mp);
 
     gsBoundaryConditions<> bc_d;
-    bc_d.addCondition(boundary::west,condition_type::dirichlet,0,0,false,0);
-    bc_d.addCondition(boundary::east,condition_type::dirichlet,0,0,false,0);
+    // No boundary conditions
+    // bc_d.addCondition(boundary::west,condition_type::dirichlet,0,0,false,0);
+    // bc_d.addCondition(boundary::east,condition_type::dirichlet,0,0,false,0);
     bc_d.setGeoMap(mp);
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -289,21 +290,21 @@ void solve(gsOptionList & materialParameters,
         gsInfo<<"Basis "<<b<<":\n"<<mb.basis(b)<<"\n";
 
     // Boundary conditions
-    T sigma = 1.5;
-    std::vector<std::string> bcFunctionLeft(dim);
-    std::vector<std::string> bcFunctionRight(dim);
-    bcFunctionLeft[0] = "-u";
-    bcFunctionRight[0] = "u";
+    T sigma = 1.0;
+    std::vector<std::string> bcFunctionTop(dim);
+    std::vector<std::string> bcFunctionBottom(dim);
+    bcFunctionTop[0] = "-u";
+    bcFunctionBottom[0] = "u";
     for (short_t d=1; d<dim; ++d)
-        bcFunctionLeft[d] = bcFunctionRight[d] = "0";
-    gsFunctionExpr<T> sigma_left(bcFunctionLeft,dim);
-    gsFunctionExpr<T> sigma_right(bcFunctionRight,dim);
-    sigma_left.set_u(sigma);
-    sigma_right.set_u(sigma);
-    bc_u.addCondition(boundary::west,condition_type::neumann,&sigma_left );
-    bc_u.addCondition(boundary::east,condition_type::neumann,&sigma_right);
-    bc_u.addCondition(boundary::south,condition_type::dirichlet,0,0,false,1); //vertical constraint
-    bc_u.addCondition(boundary::north,condition_type::dirichlet,0,0,false,1); //vertical constraint
+        bcFunctionTop[d] = bcFunctionBottom[d] = "0";
+    gsFunctionExpr<T> sigma_top(bcFunctionTop,dim);
+    gsFunctionExpr<T> sigma_bottom(bcFunctionBottom,dim);
+    sigma_top.set_u(sigma);
+    sigma_bottom.set_u(sigma);
+    bc_u.addCondition(boundary::north,condition_type::neumann,&sigma_top );
+    bc_u.addCondition(boundary::south,condition_type::neumann,&sigma_bottom);
+    bc_u.addCondition(boundary::west,condition_type::dirichlet,0,0,false,1); //vertical constraint
+    bc_u.addCondition(boundary::east,condition_type::dirichlet,0,0,false,1); //vertical constraint
     if (dim==3)
     {
         bc_u.addCondition(boundary::back,condition_type::dirichlet,0,0,false,2); //vertical constraint
@@ -393,6 +394,8 @@ void solve(gsOptionList & materialParameters,
                D_old(pfAssembler->numDofs(),1),
                delta_D(pfAssembler->numDofs(),1);
 
+    gsInfo<<"Phase-field dofs: "<<pfAssembler->numDofs()<<"\n";
+
 #ifdef GISMO_WITH_PARDISO
     typename gsSparseSolver<T>::PardisoLDLT solver;
 #else
@@ -415,6 +418,8 @@ void solve(gsOptionList & materialParameters,
     pfAssembler->matrix_into(QPhi);
     pfAssembler->rhs_into(q);
     // Initialize the damage solution vector
+    gsInfo<<"Initializing damage field...\n";
+    gsInfo<<"Dofs: "<<pfAssembler->numDofs()<<"\n";
     pfAssembler->constructSolution(damage,D_old);
 
     index_t step = 0;

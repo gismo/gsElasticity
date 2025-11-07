@@ -83,52 +83,52 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////////////////////////////////////////
     gsMultiPatch<> mp;
 
-    real_t L = 200.;
-    real_t H = 10.;
+    real_t L = 100.;
+    real_t H = 40.;
+
+    if (dimension == 2)
+    {
+        index_t nx = 99; // elements in x direction
+        index_t ny = 39;  // elements in y direction
+        gsKnotVector<> kv_x(0, 1, nx, 2, 1); 
+        gsKnotVector<> kv_y(0, 1, ny, 2, 1);
+        gsTensorBSplineBasis<2,real_t> tbasis(kv_x, kv_y);
+        gsTensorBSpline<2,real_t> tb(tbasis, tbasis.anchors().transpose());
+        tb.coefs().col(0) *= L;
+        tb.coefs().col(1) *= H;
+        mp.addPatch(tb);
+    }
 
     // if (dimension == 2)
     // {
-    //     index_t nx = 800; // elements in x direction
-    //     index_t ny = 40;  // elements in y direction
-    //     gsKnotVector<> kv_x(0, 1, nx, 2, 1); 
-    //     gsKnotVector<> kv_y(0, 1, ny, 2, 1);
+    //     gsKnotVector<> kv_x(0,1,math::ceil(L/H)-1,2,1);
+    //     gsKnotVector<> kv_y(0,1,math::ceil(H/L)-1,2,1);
     //     gsTensorBSplineBasis<2,real_t> tbasis(kv_x, kv_y);
-    //     gsTensorBSpline<2,real_t> tb(tbasis, tbasis.anchors().transpose());
+    //     gsTensorBSpline<2,real_t> tb(tbasis,tbasis.anchors().transpose());
     //     tb.coefs().col(0) *= L;
     //     tb.coefs().col(1) *= H;
     //     mp.addPatch(tb);
     // }
-
-    if (dimension == 2)
-    {
-        gsKnotVector<> kv_x(0,1,math::ceil(L/H)-1,2,1);
-        gsKnotVector<> kv_y(0,1,math::ceil(H/L)-1,2,1);
-        gsTensorBSplineBasis<2,real_t> tbasis(kv_x, kv_y);
-        gsTensorBSpline<2,real_t> tb(tbasis,tbasis.anchors().transpose());
-        tb.coefs().col(0) *= L;
-        tb.coefs().col(1) *= H;
-        mp.addPatch(tb);
-    }
-    else if (dimension == 3)
-    {
-        gsKnotVector<> kv_x(0,1,math::ceil(L/H)-1,2,1);
-        gsKnotVector<> kv_y(0,1,math::ceil(H/L)-1,2,1);
-        gsKnotVector<> kv_z(0,1,math::ceil(H/L)-1,2,1);
-        gsTensorBSplineBasis<3,real_t> tbasis(kv_x, kv_y, kv_z);
-        gsTensorBSpline<3,real_t> tb(tbasis,tbasis.anchors().transpose());
-        tb.coefs().col(0) *= L;
-        tb.coefs().col(1) *= H;
-        tb.coefs().col(2) *= H;
-        mp.addPatch(tb);
-    }
-    else
-        GISMO_ERROR("Invalid dimension");
+    // else if (dimension == 3)
+    // {
+    //     gsKnotVector<> kv_x(0,1,math::ceil(L/H)-1,2,1);
+    //     gsKnotVector<> kv_y(0,1,math::ceil(H/L)-1,2,1);
+    //     gsKnotVector<> kv_z(0,1,math::ceil(H/L)-1,2,1);
+    //     gsTensorBSplineBasis<3,real_t> tbasis(kv_x, kv_y, kv_z);
+    //     gsTensorBSpline<3,real_t> tb(tbasis,tbasis.anchors().transpose());
+    //     tb.coefs().col(0) *= L;
+    //     tb.coefs().col(1) *= H;
+    //     tb.coefs().col(2) *= H;
+    //     mp.addPatch(tb);
+    // }
+    // else
+    //     GISMO_ERROR("Invalid dimension");
 
     if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
 
-    mp.degreeIncrease(numElev);
-    for (index_t i = 0; i<numHRef; ++i)
-        mp.uniformRefine(1,1,0);
+    // mp.degreeIncrease(numElev);
+    // for (index_t i = 0; i<numHRef; ++i)
+    //     mp.uniformRefine();
 
     //// Material parameters
     gsOptionList materialParameters;
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
     //// Boundary control parameters
     gsOptionList controlParameters;
     // Min time [s]
-    controlParameters.addReal("tend", "Maximum time", 100e-6);
+    controlParameters.addReal("tend", "Maximum time", 40e-6);
     // Max time [s]
     controlParameters.addReal("tmin", "Initial time", 0.0);
     // Time step [s]
@@ -187,8 +187,8 @@ int main(int argc, char *argv[])
     bc_u.setGeoMap(mp);
 
     gsBoundaryConditions<> bc_d;
-    bc_d.addCondition(boundary::west,condition_type::dirichlet,0,0,false,0);
-    bc_d.addCondition(boundary::east,condition_type::dirichlet,0,0,false,0);
+    // bc_d.addCondition(boundary::west,condition_type::dirichlet,0,0,false,0);
+    // bc_d.addCondition(boundary::east,condition_type::dirichlet,0,0,false,0);
     bc_d.setGeoMap(mp);
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -290,7 +290,7 @@ void solve(gsOptionList & materialParameters,
         gsInfo<<"Basis "<<b<<":\n"<<mb.basis(b)<<"\n";
 
     // Boundary conditions
-    T sigma = 1.5;
+    T sigma = 1.0;
     std::vector<std::string> bcFunctionLeft(dim);
     std::vector<std::string> bcFunctionRight(dim);
     bcFunctionLeft[0] = "-u";
@@ -303,13 +303,13 @@ void solve(gsOptionList & materialParameters,
     sigma_right.set_u(sigma);
     bc_u.addCondition(boundary::west,condition_type::neumann,&sigma_left );
     bc_u.addCondition(boundary::east,condition_type::neumann,&sigma_right);
-    bc_u.addCondition(boundary::south,condition_type::dirichlet,0,0,false,1); //vertical constraint
-    bc_u.addCondition(boundary::north,condition_type::dirichlet,0,0,false,1); //vertical constraint
-    if (dim==3)
-    {
-        bc_u.addCondition(boundary::back,condition_type::dirichlet,0,0,false,2); //vertical constraint
-        bc_u.addCondition(boundary::front,condition_type::dirichlet,0,0,false,2); //vertical constraint
-    }
+    // bc_u.addCondition(boundary::south,condition_type::dirichlet,0,0,false,1); //vertical constraint
+    // bc_u.addCondition(boundary::north,condition_type::dirichlet,0,0,false,1); //vertical constraint
+    // if (dim==3)
+    // {
+    //     bc_u.addCondition(boundary::back,condition_type::dirichlet,0,0,false,2); //vertical constraint
+    //     bc_u.addCondition(boundary::front,condition_type::dirichlet,0,0,false,2); //vertical constraint
+    // }
 
     bc_u.setGeoMap(mp);
 
@@ -566,60 +566,60 @@ void solve(gsOptionList & materialParameters,
 
             // ==================================================================================
 
-            gsInfo<<"\t"<<PRINT(20)<<"* Phase-field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+            // gsInfo<<"\t"<<PRINT(20)<<"* Phase-field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
-            // ================================================ PHASE-FIELD FRACTURE ==============================================
-            // gsInfo<<"Assembling phase-field problem"<<"\n";
-            smallClock.restart();
-            pfAssembler->assemblePsi(Psi);
-            pfAssemblyTime = smallClock.stop();
-            pfAssembler->matrix_into(QPsi);
-            pfAssembler->rhs_into(qpsi);
-            if (qpsi.rows()==0) // qpsi is empty for AT2 models
-                qpsi = gsMatrix<T>::Zero(QPsi.rows(),1);
-            Q = QPhi + QPsi;
+            // // ================================================ PHASE-FIELD FRACTURE ==============================================
+            // // gsInfo<<"Assembling phase-field problem"<<"\n";
+            // smallClock.restart();
+            // pfAssembler->assemblePsi(Psi);
+            // pfAssemblyTime = smallClock.stop();
+            // pfAssembler->matrix_into(QPsi);
+            // pfAssembler->rhs_into(qpsi);
+            // if (qpsi.rows()==0) // qpsi is empty for AT2 models
+            //     qpsi = gsMatrix<T>::Zero(QPsi.rows(),1);
+            // Q = QPhi + QPsi;
 
-            // Reconstruct the solution from the damage field
-            pfAssembler->constructSolution(damage,D_new);
-            pfAssemblyTime = smallClock.stop();
-            // gsInfo<<". Done\n";
+            // // Reconstruct the solution from the damage field
+            // pfAssembler->constructSolution(damage,D_new);
+            // pfAssemblyTime = smallClock.stop();
+            // // gsInfo<<". Done\n";
 
-            // Initialize the PSOR solver
-            smallClock.restart();
-            gsPSOR<T> PSORsolver(Q);
-            PSORsolver.options().setInt("MaxIterations",30000);
-            PSORsolver.options().setSwitch("Verbose",false);
-            PSORsolver.options().setReal("tolU",1e-4);
-            PSORsolver.options().setReal("tolNeg",1e-9);
-            PSORsolver.options().setReal("tolPos",1e-9);
-            pfSolverTime = smallClock.stop();
+            // // Initialize the PSOR solver
+            // smallClock.restart();
+            // gsPSOR<T> PSORsolver(Q);
+            // PSORsolver.options().setInt("MaxIterations",30000);
+            // PSORsolver.options().setSwitch("Verbose",false);
+            // PSORsolver.options().setReal("tolU",1e-4);
+            // PSORsolver.options().setReal("tolNeg",1e-9);
+            // PSORsolver.options().setReal("tolPos",1e-9);
+            // pfSolverTime = smallClock.stop();
 
 
-            for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
-            {
-                // Assemble
-                smallClock.restart();
-                R = Q * D_new - qpsi + q;
-                pfAssemblyTime += smallClock.stop();
+            // for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
+            // {
+            //     // Assemble
+            //     smallClock.restart();
+            //     R = Q * D_new - qpsi + q;
+            //     pfAssemblyTime += smallClock.stop();
 
-                // Solve
-                // solver.compute(Q);
-                // delta_D = solver.solve(-R);
-                // gsDebugVar(delta_D.norm());
-                smallClock.restart();
-                PSORsolver.solve(R,delta_D); // delta_D = Q \ R
-                pfSolverTime += smallClock.stop();
-                D_new += delta_D;
+            //     // Solve
+            //     // solver.compute(Q);
+            //     // delta_D = solver.solve(-R);
+            //     // gsDebugVar(delta_D.norm());
+            //     smallClock.restart();
+            //     PSORsolver.solve(R,delta_D); // delta_D = Q \ R
+            //     pfSolverTime += smallClock.stop();
+            //     D_new += delta_D;
 
-                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(18)<<R.norm()<<PRINT(18)<<delta_D.norm()/D_new.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
-                if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12)
-                    break;
-                else if (pfIt == maxItPf-1 && maxItPf != 1)
-                    GISMO_ERROR("Phase-field problem did not converge.");
-            }
+            //     gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(18)<<R.norm()<<PRINT(18)<<delta_D.norm()/D_new.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
+            //     if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12)
+            //         break;
+            //     else if (pfIt == maxItPf-1 && maxItPf != 1)
+            //         GISMO_ERROR("Phase-field problem did not converge.");
+            // }
 
-            // Update damage spline
-            pfAssembler->constructSolution(D_new,damage);
+            // // Update damage spline
+            // pfAssembler->constructSolution(D_new,damage);
             // material.setParameter(2,damage); // done in the beginning of the staggered loop
             // smallClock.restart();
             // elAssembler.assemble(u_new);
