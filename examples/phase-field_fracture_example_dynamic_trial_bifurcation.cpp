@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     // for (index_t i = 0; i<numHRef; ++i)
     //     mp.uniformRefine();
 
-    //// Material parameters
+    //// Material parameters 
     gsOptionList materialParameters;
     // Young's modulus [kN/mm^2]
     materialParameters.addReal("E", "Young's modulus", 10e3);
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
     //// Boundary control parameters
     gsOptionList controlParameters;
     // Min time [s]
-    controlParameters.addReal("tend", "Maximum time", 40e-6);
+    controlParameters.addReal("tend", "Maximum time", 3.1e-06);
     // Max time [s]
     controlParameters.addReal("tmin", "Initial time", 0.0);
     // Time step [s]
@@ -221,22 +221,31 @@ void solve(gsOptionList & materialParameters,
            std::string & outputdir)
 {
     ////////////////////////////////////////////////////////////////////////////////////
-    // Load parameters
+    // Load parameters (paper Borden et al. 2012)
     ////////////////////////////////////////////////////////////////////////////////////
     // Young's modulus [N/mm^2]
-    T E = materialParameters.getReal("E");
+    T E = 32e3;
     // Poisson's ratio [-]
-    T nu = materialParameters.getReal("nu");
+    T nu = 0.2;
     // Toughness [N/mm]
-    T Gc = materialParameters.getReal("Gc");
+    T Gc = 3e-3;
     // Internal length [mm]
-    T l0 = materialParameters.getReal("l0");
+    T l0 = 0.5;
     // Density [tonn/mm^3]
-    T rho = materialParameters.getReal("rho");
+    T rho = 2.45e-6;
     // Order of the phase-field model
     index_t order = materialParameters.getInt("order");
     // AT model
     index_t AT = materialParameters.getInt("AT");
+
+    gsInfo<< "Material parameters loaded:\n";
+    gsInfo<< "E: " << E << "\n";
+    gsInfo<< "nu: " << nu << "\n";
+    gsInfo<< "Gc: " << Gc << "\n";
+    gsInfo<< "l0: " << l0 << "\n";
+    gsInfo<< "rho: " << rho << "\n";
+    gsInfo<< "Phase-field order: " << order << "\n";
+    gsInfo<< "AT model: " << AT << "\n";
 
     GISMO_ASSERT(order == 2 || order == 4, "Please specify the order of the model (2 or 4).");
     GISMO_ASSERT(AT == 1 || AT == 2, "Please specify the AT model (1 or 2).");
@@ -291,18 +300,22 @@ void solve(gsOptionList & materialParameters,
 
     // Boundary conditions
     T sigma = 1.0;
-    std::vector<std::string> bcFunctionLeft(dim);
-    std::vector<std::string> bcFunctionRight(dim);
-    bcFunctionLeft[0] = "-u";
-    bcFunctionRight[0] = "u";
-    for (short_t d=1; d<dim; ++d)
-        bcFunctionLeft[d] = bcFunctionRight[d] = "0";
-    gsFunctionExpr<T> sigma_left(bcFunctionLeft,dim);
-    gsFunctionExpr<T> sigma_right(bcFunctionRight,dim);
-    sigma_left.set_u(sigma);
-    sigma_right.set_u(sigma);
-    bc_u.addCondition(boundary::west,condition_type::neumann,&sigma_left );
-    bc_u.addCondition(boundary::east,condition_type::neumann,&sigma_right);
+    std::vector<std::string> bcFunctionTop(dim, "0");
+    std::vector<std::string> bcFunctionBottom(dim, "0");
+    bcFunctionTop[1] = "u";
+    bcFunctionBottom[1] = "-u";
+    gsFunctionExpr<T> sigma_top(bcFunctionTop,dim);
+    gsFunctionExpr<T> sigma_bottom(bcFunctionBottom,dim);
+    sigma_top.set_u(sigma);
+    sigma_bottom.set_u(sigma);
+    gsInfo<< sigma_top << "\n";
+    gsInfo<< sigma_bottom << "\n";
+    gsVector<> pt(2);
+    pt<<100,40;
+    gsInfo<<"sigma top at pt: "<<pt[0]<<","<<pt[1]<<":"<<sigma_top.eval(pt)<<"\n";
+    // gsInfo<<"sigma top at "<< pt: "<<sigma_top.eval(pt)<<"\n";
+    bc_u.addCondition(boundary::north,condition_type::neumann,&sigma_top );
+    bc_u.addCondition(boundary::south,condition_type::neumann,&sigma_bottom);
     // bc_u.addCondition(boundary::south,condition_type::dirichlet,0,0,false,1); //vertical constraint
     // bc_u.addCondition(boundary::north,condition_type::dirichlet,0,0,false,1); //vertical constraint
     // if (dim==3)
@@ -312,7 +325,6 @@ void solve(gsOptionList & materialParameters,
     // }
 
     bc_u.setGeoMap(mp);
-
     bc_d.setGeoMap(mp);
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -479,6 +491,9 @@ void solve(gsOptionList & materialParameters,
                 <<", ||U||/||U0|| = "<<Unorm/U0
                 <<"\n";
 
+        gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||R||/||R0||"<<PRINT(18)<<"||ΔU||/||U0||"<<PRINT(18)<<"||dA||/||A||"<<PRINT(18)<<"||U||"<<PRINT(18)<<"||V||"<<PRINT(18)<<"||A||"<<PRINT(20)<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+
+
         for (index_t it=0; it!=maxIt; ++it)
         {
             
@@ -486,7 +501,10 @@ void solve(gsOptionList & materialParameters,
             pfAssemblyTime = pfSolverTime = 0.0;
             iterationTime  = 0.0;
             bigClock.restart();
-            gsInfo<<" - Staggered iteration "<<it<<":\n";
+            // gsInfo<<" - Staggered iteration "<<it<<":\n";
+
+            // gsInfo<<"  D_new.maxCoeff()" << D_new.maxCoeff() << "\n";
+            // gsInfo<<"  D_new.minCoeff()" << D_new.minCoeff() << "\n";
 
             material.setParameter(2,damage);
             elAssembler.initialize();
@@ -497,6 +515,18 @@ void solve(gsOptionList & materialParameters,
             elAssemblyTime += smallClock.stop();
             elAssembler.matrix_into(K);
             elAssembler.rhs_into(Fext);
+
+            // // --- STATIC TEST (diagnostic) ---
+            // elAssembler.assemble(u_new);
+            // elAssembler.matrix_into(K);
+            // elAssembler.rhs_into(Fext);
+
+            // Try solve K * u_static = Fext (after BCs have been applied by assembler)
+            solver.compute(K);
+            if (solver.info() != 0) gsInfo<<"DEBUG static solver.compute failed: "<<solver.info()<<"\n";
+            gsMatrix<T> u_static = solver.solve(Fext);
+            // gsInfo << "DEBUG STATIC: ||K*u_static - Fext|| = " << (K*u_static - Fext).norm()
+            //     << " ||u_static|| = " << u_static.norm() << "\n";
 
             R = M * uddot_new + K * u_new - Fext;
             Rnorm = R.norm();
@@ -516,32 +546,10 @@ void solve(gsOptionList & materialParameters,
             Unorm = u_new.norm();
             T DeltaUnorm = delta_u.norm();
 
-            gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||R||/||R0||"<<PRINT(18)<<"||ΔU||/||U0||"<<PRINT(18)<<"||dA||/||A||"<<PRINT(18)<<"||U||"<<PRINT(18)<<"||V||"<<PRINT(18)<<"||A||"<<PRINT(20)<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
-            gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<0<<PRINT(18)<<Rnorm<<PRINT(18)<<Rnorm/R0<<PRINT(18)<<DeltaUnorm/U0<<PRINT(18)<<(uddot_new-uddot_old).norm()/uddot_new.norm()<<PRINT(18)<<Unorm<<PRINT(18)<<udot_new.norm()<<PRINT(18)<<uddot_new.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+            // gsInfo << "MAX DELTA U = " << delta_u.maxCoeff() << "\n";
 
-            // ==============================================================================================================
 
-            // Recompute the residual for the staggered check
-            smallClock.restart();
-            elAssembler.assemble(u_new);
-            elAssemblyTime += smallClock.stop();
-            elAssembler.matrix_into(K);
-            elAssembler.rhs_into(Fext);
-            R = M * uddot_new + K * u_new - Fext;
-            Rnorm = R.norm();
-
-            gsInfo<<"\t"<<PRINT(20)<<"* Staggered check:"<<PRINT(6)<<""<<PRINT(18)<<"||R||"<<PRINT(18)<<"||R||//||R0||"<<PRINT(18)<<"||ΔU||"<<PRINT(18)<<"||ΔU||//||U0||"<<"\n";
-            gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(18)<<Rnorm<<PRINT(18)<<Rnorm/R0<<PRINT(18)<<DeltaUnorm<<PRINT(18)<<DeltaUnorm/U0<<"\n";
-
-            // gsInfo << "R: " << Rnorm << "\n";
-            // gsInfo << "R0: " << R0 << "\n";
-            // gsInfo << "R/R0: " << Rnorm/R0 << "\n";
-            // gsInfo << "DeltaUnorm: " << DeltaUnorm << "\n";
-            // gsInfo << "U0: " << U0 << "\n";
-            // gsInfo << "DeltaUnorm/U0: " << DeltaUnorm/U0 << "\n";
-            // gsInfo << "Unorm/U0: " << Unorm/U0 << "\n";
-            // gsInfo << "Maximum displacement: " << u_new.maxCoeff() << "\n";
-            // gsInfo << "Minimum displacement: " << u_new.minCoeff() << "\n";
+            gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<it<<PRINT(18)<<Rnorm<<PRINT(18)<<Rnorm/R0<<PRINT(18)<<DeltaUnorm/U0<<PRINT(18)<<(uddot_new-uddot_old).norm()/uddot_new.norm()<<PRINT(18)<<Unorm<<PRINT(18)<<udot_new.norm()<<PRINT(18)<<uddot_new.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
 
             // Update the fields before breaking the staggered loop 
             // (otherwise it does not update the displacements if staggered converges in 1 iteration)
@@ -550,93 +558,30 @@ void solve(gsOptionList & materialParameters,
             for (size_t p=0; p!=mp.nPatches(); ++p)
                 mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
 
+
+            // gsInfo<<"  ----------------------------------------\n";
+            // gsInfo<< "maximum displacement: "<<displacement.patch(0).coefs().maxCoeff() << "\n";
+            // gsInfo<< "minimum displacement: "<<displacement.patch(0).coefs().minCoeff() << "\n";
+
+
             // Initialize the function for the elastic energy
             gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
 
-            gsInfo << "DEBUG: u_new.maxCoeff() = " << u_new.maxCoeff()
-                << ", displacement.patch(0).coefs().maxCoeff() = "
-                << displacement.patch(0).coefs().maxCoeff() << "\n";
+            // gsInfo << "DEBUG: u_new.maxCoeff() = " << u_new.maxCoeff()
+            //     << ", displacement.patch(0).coefs().maxCoeff() = "
+            //     << displacement.patch(0).coefs().maxCoeff() << "\n";
 
             // Staggered tolerance check for elasticity (according to Remark 1 in Greco et al. 2025)
             // if (Rnorm/R0 < 1e-5 && Unorm/U0 < 1e-4) // does not work!
+            // gsInfo<< "  DeltaUnorm/U0: " << DeltaUnorm/U0 << "\n";
+            // gsInfo<< "  Rnorm/R0 : " << Rnorm/R0  << "\n";
+            // gsInfo<< "  DeltaUnorm: " << DeltaUnorm << "\n";
+            // gsInfo<< "  Rnorm: " << Rnorm << "\n";
+
             if (Rnorm/R0 < 1e-5 && DeltaUnorm/U0 < 1e-4)
                 break;
             else if (it == maxIt-1)
                 GISMO_ERROR("Staggered iterations problem did not converge.");
-
-            // ==================================================================================
-
-            // gsInfo<<"\t"<<PRINT(20)<<"* Phase-field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||dD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
-
-            // // ================================================ PHASE-FIELD FRACTURE ==============================================
-            // // gsInfo<<"Assembling phase-field problem"<<"\n";
-            // smallClock.restart();
-            // pfAssembler->assemblePsi(Psi);
-            // pfAssemblyTime = smallClock.stop();
-            // pfAssembler->matrix_into(QPsi);
-            // pfAssembler->rhs_into(qpsi);
-            // if (qpsi.rows()==0) // qpsi is empty for AT2 models
-            //     qpsi = gsMatrix<T>::Zero(QPsi.rows(),1);
-            // Q = QPhi + QPsi;
-
-            // // Reconstruct the solution from the damage field
-            // pfAssembler->constructSolution(damage,D_new);
-            // pfAssemblyTime = smallClock.stop();
-            // // gsInfo<<". Done\n";
-
-            // // Initialize the PSOR solver
-            // smallClock.restart();
-            // gsPSOR<T> PSORsolver(Q);
-            // PSORsolver.options().setInt("MaxIterations",30000);
-            // PSORsolver.options().setSwitch("Verbose",false);
-            // PSORsolver.options().setReal("tolU",1e-4);
-            // PSORsolver.options().setReal("tolNeg",1e-9);
-            // PSORsolver.options().setReal("tolPos",1e-9);
-            // pfSolverTime = smallClock.stop();
-
-
-            // for (index_t pfIt=0; pfIt!=maxItPf; ++pfIt)
-            // {
-            //     // Assemble
-            //     smallClock.restart();
-            //     R = Q * D_new - qpsi + q;
-            //     pfAssemblyTime += smallClock.stop();
-
-            //     // Solve
-            //     // solver.compute(Q);
-            //     // delta_D = solver.solve(-R);
-            //     // gsDebugVar(delta_D.norm());
-            //     smallClock.restart();
-            //     PSORsolver.solve(R,delta_D); // delta_D = Q \ R
-            //     pfSolverTime += smallClock.stop();
-            //     D_new += delta_D;
-
-            //     gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<pfIt<<PRINT(18)<<R.norm()<<PRINT(18)<<delta_D.norm()/D_new.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";;
-            //     if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12)
-            //         break;
-            //     else if (pfIt == maxItPf-1 && maxItPf != 1)
-            //         GISMO_ERROR("Phase-field problem did not converge.");
-            // }
-
-            // // Update damage spline
-            // pfAssembler->constructSolution(D_new,damage);
-            // material.setParameter(2,damage); // done in the beginning of the staggered loop
-            // smallClock.restart();
-            // elAssembler.assemble(u_new);
-            // // elAssembler.assemble();
-            // elAssemblyTime += smallClock.stop();
-            // elAssembler.matrix_into(K);
-            // elAssembler.rhs_into(Fext);
-            // R = M * uddot_new + K * u_new - Fext;
-            // Rnorm = R.norm();
-
-            // // if ((du.norm()/u.norm() < tol || u.norm() < 1e-12 ))//&& deltaD.norm()/D.norm() < tol)
-
-            // ==================================================================================
-
-            // iterationTime = bigClock.stop();
-            // gsInfo<<"\t"<<PRINT(20)<<"* Finished"<<PRINT(6)<<""<<PRINT(18)<<"||R||"<<PRINT(18)<<"||R||//||R0||"<<PRINT(18)<<"total [s]"<<PRINT(20)<<"elasticity [s]"           <<PRINT(20)<<"phase-field [s]"          <<"\n";
-            // gsInfo<<"\t"<<PRINT(20)<<""          <<PRINT(6)<<""<<PRINT(18)<<Rnorm<<PRINT(18)<<Rnorm/R0<<PRINT(18)<<iterationTime<<PRINT(20)<<elAssemblyTime+elSolverTime<<PRINT(20)<<pfAssemblyTime+pfSolverTime<<"\n";
         }
 
         // =========================================================================
@@ -663,7 +608,7 @@ void solve(gsOptionList & materialParameters,
         stepData[4] = (0.5 * D_new.transpose() * QPhi * D_new).value() + (D_new.transpose() * q).value();
 
         gsInfo<<"\n";
-        gsInfo<<"Converged with ||R||/||R0|| = "<<Rnorm/R0<<" < "<<tol<<" ||dD|| = "<<delta_D.norm()<<" ||dU|| = "<<delta_u.norm()<<"\n";
+        gsInfo<<"Converged with ||R||/||R0|| = "<<Rnorm/R0<<" < "<<tol<<" ||dD||= "<<delta_D.norm()<<" ||dU||/U0 = "<<delta_u.norm()<<"\n";
         // gsInfo<<"----------------------------------------------------------------------------------------------------\n\n";
 
         // =========================================================================
@@ -716,25 +661,6 @@ void solve(gsOptionList & materialParameters,
             gsWriteParaviewTPgrid(eval_geo,eval_displacement,np.template cast<index_t>(),outputdir+filename);
             // gsWriteParaview(mp,displacement,outputdir+filename,1000);
             displCollection.addPart(filename,step,"Solution",0);
-
-            // // P-wave computation (corrected)
-            // gsMultiPatch<> velocity;
-            // subfolder = outputdir + "Pwave_pvd/";
-            // gsFileManager::mkdir(subfolder);
-            // elAssembler.constructSolution(udot_new,velocity);
-            // filename = "Pwave_pvd/Pwave_"+util::to_string(step);
-            // gsExprEvaluator<T> ev;
-            // ev.setIntegrationElements(mb);
-            // auto G = ev.getMap(mp);
-            // auto V = ev.getVariable(velocity);
-            // // gsVector<T,dim> uvec = gsVector<T,dim>::Ones();
-            // // gsConstantFunction<T> one(uvec,dim);
-            // // auto ones = ev.getVariable(one);
-            // auto divV = igrad(V,G).trace(); // divergence of velocity
-            // gsMatrix<T> eval_div_velocity = ev.eval(divV, pts);
-            // // ev.writeParaview(igrad(V,G).trace(),G,outputdir+filename+"0");
-            // gsWriteParaviewTPgrid(eval_geo,eval_div_velocity,np.template cast<index_t>(),outputdir+filename);
-            // PwaveCollection.addPart(filename,step,"Solution",0);
         }
 
         // =========================================================================
