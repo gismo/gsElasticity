@@ -201,11 +201,11 @@ int main(int argc, char *argv[])
     //// Boundary control parameters
     gsOptionList controlParameters;
     // Min time [s]
-    controlParameters.addReal("tend", "Maximum time", 1500e-06); //400e-06
+    controlParameters.addReal("tend", "Maximum time", 80e-6); //400e-06. 1500e-06
     // Max time [s]
     controlParameters.addReal("tmin", "Initial time", 0.0);
     // Time step [s]
-    controlParameters.addReal("tstep", "Time step", 200e-7);
+    controlParameters.addReal("tstep", "Time step", 1e-7);//200e-7
     // Step transition [s]
     controlParameters.addReal("ttrans", "Step transition", controlParameters.getReal("tend"));
     // Step reduction factor [-]
@@ -298,7 +298,7 @@ void solve(gsOptionList & materialParameters,
     // Internal length [mm]
     T l0 = 0.5;
     // Density [kg/mm^3]
-    T rho = 2.45e-6;
+    T rho = 2.45e-9;
     // Order of the phase-field model
     index_t order = materialParameters.getInt("order");
     // AT model
