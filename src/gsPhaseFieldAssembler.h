@@ -259,7 +259,7 @@ protected:
     typedef typename gsExprAssembler<T>::element     element;
 
     mutable index_t m_continuity;
-    mutable T m_l0, m_cw, m_Gc;
+    mutable T m_l0, m_cw, m_Gc, m_chi;
     // mutable T m_penalty;
 
     gsExprAssembler<T> m_assembler;

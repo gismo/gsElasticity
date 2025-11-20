@@ -49,6 +49,7 @@ gsPhaseFieldAssembler<T,order,mode>& gsPhaseFieldAssembler<T,order,mode>::operat
         m_l0=other.m_l0;
         m_Gc=other.m_Gc;
         m_continuity=other.m_continuity;
+        m_chi = other.m_chi;
 
         m_patches=other.m_patches;
         m_basis=other.m_basis;
@@ -70,6 +71,7 @@ gsPhaseFieldAssembler<T,order,mode>& gsPhaseFieldAssembler<T,order,mode>::operat
     m_l0=give(other.m_l0);
     m_Gc=give(other.m_Gc);
     m_continuity=give(other.m_continuity);
+    m_chi=give(other.m_chi);
 
     m_patches=give(other.m_patches);
     m_basis=give(other.m_basis);
@@ -88,8 +90,9 @@ template <class T, enum PForder order, enum PFmode mode>
 void gsPhaseFieldAssembler<T,order,mode>::_defaultOptions()
 {
     m_options.addReal("l0","l0 parameter",1e-4);
-    m_options.addReal("cw","cw parameter",1e0);
     m_options.addReal("Gc","Gc parameter",1e0);
+    m_options.addReal("cw","cw parameter (only applies for AT1 4th order model)",3.1615); 
+    m_options.addReal("chi","chi parameter (only used for AT1 4th order model)",0.0625); // chi = 1/16
     m_options.addInt("Continuity","Continuity between patches: C^{-1} (-1) or C^0 (0, default)",0);
     // m_options.addReal("Penalty","Penalty parameter for Nitsche boundary conditions (default: 1e4)",1e4);
     // m_options.addSwitch("AssembleWeakBCs","Assemble Nitsche boundary conditions in every iteration",false);
@@ -109,6 +112,7 @@ void gsPhaseFieldAssembler<T,order,mode>::_getOptions()
     m_l0 = m_options.getReal("l0");
     m_cw = m_options.getReal("cw");
     m_Gc = m_options.getReal("Gc");
+    m_chi = m_options.getReal("chi");
     m_continuity = m_options.getInt("Continuity");
 
     GISMO_ENSURE(m_options.hasGroup("ExprAssembler"),"The option list does not contain options with the label 'ExprAssembler'!");
@@ -272,7 +276,7 @@ gsPhaseFieldAssembler<T,order,mode>::_assemblePhi_impl()
                             (m_Gc / m_cw) *
                             (
                             2. *igrad(w,G) * igrad(w,G).tr() * m_l0 +
-                            2. * ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
+                            2. * m_chi * ilapl(w,G) * ilapl(w,G).tr()* math::pow(m_l0,3)
                             ) * meas(G)
                             ,
                             // RHS
