@@ -433,7 +433,8 @@ void solve(gsOptionList & materialParameters,
     else if (order == 4 && AT == 1)
     {
         pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
-        pfAssembler->options().setReal("cw",4.44847);
+        pfAssembler->options().setReal("cw",3.1615);
+        pfAssembler->options().setReal("chi",0.0625);
     }
     else if (order == 2 && AT == 2)
         pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
@@ -504,6 +505,7 @@ void solve(gsOptionList & materialParameters,
     gsParaviewCollection displCollection(outputdir+"displacement");
     gsParaviewCollection PwaveCollection(outputdir+"Pwave");
     gsStopwatch smallClock, bigClock;
+    gsStopwatch totalTime;
 
     // pfAssembler->assembleMatrix();
     // pfAssembler->matrix_into(QPhi);
@@ -529,6 +531,8 @@ void solve(gsOptionList & materialParameters,
     real_t Rnorm, R0;
     real_t Unorm, U0;
     T dt;
+    T tTime = 0.0;
+    totalTime.restart();
     while (tcurr<=tend)
     {
         dt = tcurr - tcurr_old;
@@ -551,11 +555,17 @@ void solve(gsOptionList & materialParameters,
         delta_u.setZero();
         delta_D.setZero();
 
+        gsInfo<< "displ old norm "<< u_old.norm()<<"\n";
+        gsInfo<<"vel old norm: "<< udot_old.norm()<<"\n";
+        gsInfo<<"acc old norm: "<< uddot_old.norm()<<"\n";
         // Prediction step (IGA book Eqs. (6.44)-(6.46))
         udot_new = udot_old;
         uddot_new = (gamma-1)/gamma * uddot_old;
         u_new = u_old + dt * udot_old + 0.5*math::pow(dt,2) * ((1-2*beta) * uddot_old + 2*beta * uddot_new);
-        
+        gsInfo<< "displ new norm "<< u_new.norm()<<"\n";
+        gsInfo<<"vel new norm: "<< udot_new.norm()<<"\n";
+        gsInfo<<"acc new norm: "<< uddot_new.norm()<<"\n";
+    
         Unorm = u_new.norm();
         U0 = (Unorm > 0) ? Unorm : 1.0; // Avoid division by zero
         Rnorm = R0 = 1;
@@ -593,6 +603,12 @@ void solve(gsOptionList & materialParameters,
             // solver.compute(K);
             // if (solver.info() != 0) gsInfo<<"DEBUG static solver.compute failed: "<<solver.info()<<"\n";
             // gsMatrix<T> u_static = solver.solve(Fext);
+            // gsInfo<< "NORM OF R BEFORE SOLVE:"<< (M * uddot_new + K * u_new - Fext).norm() << "\n";
+            // gsInfo<< "norm of K:"<< K.norm() << "\n";
+            // gsInfo<< "norm of Fext:"<< Fext.norm() << "\n";
+            // gsInfo<< "norm of u_new:"<< u_new.norm() << "\n";
+            // gsInfo<< "norm of M:"<< M.norm() << "\n";
+            // gsInfo<< "norm of uddot_new:"<< uddot_new.norm() << "\n";
 
             R = M * uddot_new + K * u_new - Fext;
             Rnorm = R.norm();
@@ -667,8 +683,8 @@ void solve(gsOptionList & materialParameters,
                 qpsi = gsMatrix<T>::Zero(QPsi.rows(),1);
             Q = QPhi + QPsi;
 
-            gsInfo << "Max damage value" << damage.patch(0).coefs().maxCoeff() << "\n";
-            gsInfo << "Min damage value" << damage.patch(0).coefs().minCoeff() << "\n";
+            // gsInfo << "Max damage value" << damage.patch(0).coefs().maxCoeff() << "\n";
+            // gsInfo << "Min damage value" << damage.patch(0).coefs().minCoeff() << "\n";
 
             // Reconstruct the solution from the damage field
             pfAssembler->constructSolution(damage,D_new);
@@ -719,6 +735,12 @@ void solve(gsOptionList & materialParameters,
             // stepTimes.pfSolverTime += stagTimes.pfSolverTime;
         }
         numIt_stag += stagIt+1;
+
+
+        // gsInfo << "u_new     AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
+        // gsInfo << "udot_new  AFTER CONTRUCT SOLUTION: " << udot_new.norm()<<"\n";
+        // gsInfo << "uddot_new AFTER CONTRUCT SOLUTION: " << uddot_new.norm()<<"\n";
+
 
         // =========================================================================
         // Compute resulting force and energies
@@ -813,10 +835,19 @@ void solve(gsOptionList & materialParameters,
         uddot_old = uddot_new;
         D_old = D_new;
 
+        // gsInfo<<"End of the step "<<step<<": t = "<<tcurr<<"\n";
+        // gsInfo<<"u_mew.maxCoeff()"<< u_new.maxCoeff()<<"\n";
+        // gsInfo<<"udot_new.maxCoeff()"<< udot_new.maxCoeff()<<"\n";
+        // gsInfo<<"uddot_new.maxCoeff()"<< uddot_new.maxCoeff()<<"\n";
+        // gsInfo<<"D_new.maxCoeff()"<< D_new.maxCoeff()<<"\n";
+
+
         tcurr_old = tcurr;
         tcurr += (tcurr+tstep > ttrans) ? tstep/tred : tstep;
         step++;
     }
+        tTime += totalTime.stop();
+        gsInfo << "The total simulation time is: " << tTime<<"\n";
 
     if (plot)
     {
