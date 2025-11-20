@@ -270,11 +270,15 @@ void gsSolidAssembler<DIM,T,Material>::constructSolution(const gsMultiPatch<T> &
     {
         for (index_t i = 0; i < m_basis.basis(b).size(); i++)
         {
-            GISMO_ASSERT(displacement.basis(b).size()==m_basis.basis(b).size(),"Number of basis functions in the displacement must be equal to the number of basis functions in the assembler");
+            GISMO_ASSERT(displacement.basis(b).size()==m_basis.basis(b).size(),
+                         "Number of basis functions in the displacement must be equal to the number of basis functions in the assembler");
             for (short_t d = 0; d < DIM; ++d) // Loop over the spatial dimensions
             {
-                if (w.mapper().is_free(i,b))
-                    uvec(w.mapper().index(i,b)) = displacement.patch(b).coefs()(i,d);
+                index_t dof = w.mapper().index(i,b,d);   // GLOBAL DOF index for component d (in 2d, component 0 and 1)
+                if (w.mapper().is_free_index(dof))
+                {
+                    uvec(dof) = displacement.patch(b).coefs()(i,d);
+                }
             }
         }
     }
