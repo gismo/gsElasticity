@@ -73,12 +73,14 @@ void solve(gsOptionList & materialParameters,
            gsBoundaryConditions<T> & bc_d,
            bool plot,
            index_t plotmod,
+           bool plotMesh,
            std::string & outputdir);
 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    bool plotMesh = false;
     index_t numHRef = 0;
     index_t numElev = 0;
     index_t order = -1;
@@ -100,6 +102,7 @@ int main(int argc, char *argv[])
     cmd.addInt("p", "plotmod","Modulo for plotting", plotmod);
     // cmd.addInt("d", "dimension","Dimension of the problem", dimension);
     cmd.addSwitch("plot","Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("plotMesh","Create a ParaView visualization file with the adaptive mesh", plotMesh);
     cmd.addString("o", "output", "Output directory", output);
     cmd.addString("i", "parInput", "Input XML file", parInput);
     cmd.addString("g", "geometry", "Geometry file", geoInput);
@@ -235,7 +238,7 @@ int main(int argc, char *argv[])
     //// Boundary control parameters
     gsOptionList controlParameters;
     // Min time [s]
-    controlParameters.addReal("tend", "Maximum time", 2e-7); //400e-06. 1500e-06
+    controlParameters.addReal("tend", "Maximum time", 80e-7); //400e-06. 1500e-06
     // Max time [s]
     controlParameters.addReal("tmin", "Initial time", 0.0);
     // Time step [s]
@@ -296,10 +299,10 @@ int main(int argc, char *argv[])
     switch (mp_ini.domainDim())
     {
         case 2:
-            solve<2>(materialParameters,controlParameters,mesherOptions,mp_ini,damage,bc_u,bc_d,plot,plotmod,outputdir);
+            solve<2>(materialParameters,controlParameters,mesherOptions,mp_ini,damage,bc_u,bc_d,plot,plotmod,plotMesh,outputdir);
             break;
         case 3:
-            solve<3>(materialParameters,controlParameters,mesherOptions,mp_ini,damage,bc_u,bc_d,plot,plotmod,outputdir);
+            solve<3>(materialParameters,controlParameters,mesherOptions,mp_ini,damage,bc_u,bc_d,plot,plotmod,plotMesh,outputdir);
             break;
         default:
             GISMO_ERROR("Invalid domain dimension");
@@ -382,6 +385,7 @@ void solve(gsOptionList & materialParameters,
            gsBoundaryConditions<T> & bc_d,
            bool plot,
            index_t plotmod,
+           bool plotMesh,
            std::string & outputdir)
 {
 
@@ -459,12 +463,16 @@ void solve(gsOptionList & materialParameters,
     ///////////////////////////////////////////////////////////////////////////////////////
 
     // Convert to THB
+    int maxRefLvl;
     gsMultiPatch<T> mp;
+    bool adaptive_switch;
     for (index_t i = 0; i < mp_ini.nPatches(); ++i)
     {
         // Check if tensor basis
         if      ((dynamic_cast<const gsTensorBSpline<dim,T> *>(&mp_ini.patch(i))))
         {
+            gsInfo << "TB basis: non-adaptive solution\n";
+            adaptive_switch = false;
             // Create a THB spline basis
             const gsTensorBSpline<dim,T> & tb = static_cast<const gsTensorBSpline<dim,T> &>(mp_ini.patch(i));
             gsTHBSpline<dim,T> thb(tb);
@@ -472,12 +480,17 @@ void solve(gsOptionList & materialParameters,
         }
         else if ((dynamic_cast<const gsTHBSpline<dim,T> *>(&mp_ini.patch(i))))
         {
+            adaptive_switch = true;
+            gsInfo << "THB-spline basis: adaptivity triggered\n";
             const gsTHBSpline<dim,T> & thb = static_cast<const gsTHBSpline<dim,T> &>(mp_ini.patch(i));
             mp.addPatch(memory::make_unique(thb.clone().release()));
+            maxRefLvl = thb.basis().maxLevel();
         }
         else
             GISMO_ERROR("The basis is not a TB-spline basis or THB-spline basis.");
     }
+
+    gsInfo<<mesherOptions<<"\n";
 
 
     // Construct the basis
@@ -485,7 +498,7 @@ void solve(gsOptionList & materialParameters,
     gsInfo<<"The basis has size "<<mb.size()<<" and degree "<<mb.degree()<<"\n";
     for (size_t b=0; b!=mb.nBases(); b++)
         gsInfo<<"Basis "<<b<<":\n"<<mb.basis(b)<<"\n";
-
+        
     bc_u.setGeoMap(mp);
     bc_d.setGeoMap(mp);
 
@@ -545,12 +558,15 @@ void solve(gsOptionList & materialParameters,
     else if (order == 4 && AT == 1)
     {
         pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
-        pfAssembler->options().setReal("cw",4.44847);
+        pfAssembler->options().setReal("cw",3.1615);
+        pfAssembler->options().setReal("chi",0.0625);
     }
     else if (order == 2 && AT == 2)
         pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
     else if (order == 4 && AT == 2)
+    {
         pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
+    }   
     else
         GISMO_ERROR("Invalid order and/or AT model");
 
@@ -606,6 +622,10 @@ void solve(gsOptionList & materialParameters,
     T pfAssemblyTime = 0.0;
     T pfSolverTime = 0.0;
     T iterationTime  = 0.0;
+    T projTime = 0.0;
+    T labelTime = 0.0;
+    T refTime = 0.0;
+    T totalTime = 0.0;
 
     gsSparseMatrix<T> Q, QPhi, QPsi;
     gsMatrix<T> q, qpsi;
@@ -622,6 +642,7 @@ void solve(gsOptionList & materialParameters,
     gsParaviewCollection psiCollection(outputdir+"Psi");
     gsParaviewCollection displCollection(outputdir+"displacement");
     gsParaviewCollection PwaveCollection(outputdir+"Pwave");
+    gsParaviewCollection meshCollection(outputdir+"mesh");
     gsStopwatch smallClock, bigClock;
 
     // pfAssembler->assembleMatrix();
@@ -648,6 +669,16 @@ void solve(gsOptionList & materialParameters,
     real_t Rnorm, R0;
     real_t Unorm, U0;
     T dt;
+    index_t basis_size_old, basis_size; 
+    basis_size = basis_size_old = mb.basis(0).size();
+
+    std::ofstream csvTotalTimes;
+    csvTotalTimes.open(outputdir+"/output_times.csv");
+    csvTotalTimes << "TimeStep,"<< "RefIt,"<< "NumDOFs,"<< "numEl,"<< "T_init,"<< "T_EL_A,"<<"T_EL_S,"<<"T_PF_A,"<<"T_PF_S,"<<"T_Mark,"<<"T_Ref,"<<"T_Proj,"<<"T_total\n";
+    T tTime = 0.0;
+
+    gsStopwatch totalStop;
+    totalStop.restart();
     while (tcurr<=tend)
     {
         dt = tcurr - tcurr_old;
@@ -663,8 +694,7 @@ void solve(gsOptionList & materialParameters,
         // sigma_left.set_u(tcurr/tend * sigma);
         // sigma_right.set_u(tcurr/tend * sigma);
 
-        bool refined = true;
-        index_t basis_size_old, basis_size;
+        bool refined = false;
         T basis_size_ratio;
         T markedArea = 0., tmpArea = 0.;
 
@@ -679,56 +709,121 @@ void solve(gsOptionList & materialParameters,
             gsInfo<<"Refinement iteration: "<<refIt<<"\n";
             gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
 
-            basis_size = basis_size_old = mb.basis(0).size();
-            
-            gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> elAssembler2(mp,mb,bc_u,&material);
-            elAssembler2.initialize();
-            // Construct solution vectors from projections (stored in the multipatch objects)            
+            iterationTime = 0;
+            elAssemblyTime = elSolverTime = 0.0;
+            pfAssemblyTime = pfSolverTime = 0.0;
+            bigClock.restart();
+            material.setParameter(2,damage); 
+
+            // Construct assembler with the new basis 
+            gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> elAssembler(mp,mb,bc_u,&material);
+            elAssembler.options().setReal("ExprAssembler.quA",1.0);
+            elAssembler.options().setInt ("ExprAssembler.quB",1);
             elAssembler.initialize();
-            gsInfo<< "basissize:"<< basis_size << ", dofs:"<< elAssembler.numDofs()<< "\n";
-            pfAssembler->initialize();
-            gsInfo<< "uold: " << u_old.size() << "\n" ;
-            gsInfo<< "udotold: " << udot_old.size() << "\n" ;
-            gsInfo<< "uddotold: " << uddot_old.size()<< "\n" ;
-            gsInfo<< "Dold: " << D_old.size()<< "\n" ;
+            elAssembler.assemble();
+            elAssembler.initialize();
+            // get new Mass matrix with the new mesh
+            elAssembler.assembleMass();
+            M = elAssembler.matrix();
+
+
+            // Construct solution vectors from projections (stored in the multipatch objects)            
+            // gsInfo<< "basissize:"<< basis_size << ", dofs:"<< elAssembler.numDofs()<< "\n";
+            // gsInfo<< "uold: " << u_old.size() << "\n" ;
+            // gsInfo<< "udotold: " << udot_old.size() << "\n" ;
+            // gsInfo<< "uddotold: " << uddot_old.size()<< "\n" ;
+            // gsInfo<< "Dold: " << D_old.size()<< "\n" ;
             // u_old.setZero();
             // udot_old.setZero();
             // uddot_old.setZero();
             // D_old.setZero();
             gsMatrix<> D_new, D_old, delta_D;
             gsMatrix<> u_new,u_old,udot_new,udot_old,uddot_new,uddot_old,delta_u;
+            // u_old.setZero(elAssembler.numDofs(),1);      
+            // udot_old.setZero(elAssembler.numDofs(),1);
+            // uddot_old.setZero(elAssembler.numDofs(),1);
+            // D_old.setZero(pfAssembler->numDofs(),1);
+            //         gsInfo<<"============================\n";
+
+            // gsInfo<< "displacement old norm "<< displacement_old.patch(0).coefs().norm()<<"\n";
+            // gsInfo<< "vel old norm "<< velocity_old.patch(0).coefs().norm()<<"\n";
+            // gsInfo<< "acc old norm "<< acceleration_old.patch(0).coefs().norm()<<"\n";
+
             u_old.setZero(elAssembler.numDofs(),1);      
             udot_old.setZero(elAssembler.numDofs(),1);
             uddot_old.setZero(elAssembler.numDofs(),1);
-            D_old.setZero(pfAssembler->numDofs(),1);
-            gsInfo<< "displacement old size:"<< displacement_old.patch(0).coefs().size() << ", dofs:"<< elAssembler.numDofs()<< "\n";
-            gsInfo<< "hola\n";
-            elAssembler2.constructSolution(displacement_old,u_old);
-                        gsInfo<< "hola\n";
 
-            elAssembler2.constructSolution(velocity_old,udot_old);
-                        gsInfo<< "hola\n";
+            // gsInfo<< "numdofs "<< elAssembler.numDofs()<<"\n";
+            // gsInfo<< "disp size "<< displacement_old.patch(0).coefs().size()<<"\n";
 
-            elAssembler2.constructSolution(acceleration_old,uddot_old);
-                        gsInfo<< "hola\n";
 
-            gsInfo<< "construct damage\n";
+            elAssembler.constructSolution(displacement_old,u_old);
+            elAssembler.constructSolution(velocity_old,udot_old);
+            elAssembler.constructSolution(acceleration_old,uddot_old);
+
+            // u_old = displacement_old.patch(0).coefs();
+            // udot_old = velocity_old.patch(0).coefs();
+            // uddot_old = acceleration_old.patch(0).coefs();
+            // gsDebugVar(bc_u);
+
+            T max_diff = 0;
+            for(index_t i=0; i<u_old.size(); ++i)
+                max_diff = math::max(max_diff, math::abs(u_old(i) - displacement_old.patch(0).coefs()(i)));
+
+            // gsInfo << "Maximum absolute difference between u_old and patch coefs: " << max_diff << "\n";
+
+
+            // gsInfo<< "VEC displacement old norm "<< u_old.norm()<<"\n";
+            // gsInfo<< "VEC vel old norm "<< udot_old.norm()<<"\n";
+            // gsInfo<< "VEC acc old norm "<< uddot_old.norm()<<"\n";
+            
+            // gsInfo<<"============================\n";
+            // Initialize the phase-field assembler
+            gsPhaseFieldAssemblerBase<T> * pfAssembler;
+            if      (order == 2 && AT == 1)
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
+            else if (order == 4 && AT == 1)
+            {
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
+                pfAssembler->options().setReal("cw",3.1615);
+                pfAssembler->options().setReal("chi",0.0625);
+            }
+            else if (order == 2 && AT == 2)
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
+            else if (order == 4 && AT == 2)
+            {
+                pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
+                pfAssembler->options().setReal("cw",4.4485);
+                pfAssembler->options().setReal("chi",1);
+            }
+            else
+                GISMO_ERROR("Invalid order and/or AT model");
+
+            pfAssembler->options().setReal("l0",l0);
+            pfAssembler->options().setReal("Gc",Gc);
+            pfAssembler->initialize();
             pfAssembler->constructSolution(damage_old,D_old);
 
             delta_u.setZero();
             delta_D.setZero();
-
+       
+            // gsInfo<< "displ old norm "<< u_old.norm()<<"\n";
+            // gsInfo<<"vel old norm: "<< udot_old.norm()<<"\n";
+            // gsInfo<<"acc old norm: "<< uddot_old.norm()<<"\n";
             // Prediction step (IGA book Eqs. (6.44)-(6.46))
             udot_new = udot_old;
             uddot_new = (gamma-1)/gamma * uddot_old;
             u_new = u_old + dt * udot_old + 0.5*math::pow(dt,2) * ((1-2*beta) * uddot_old + 2*beta * uddot_new);
-            
+            // gsInfo<< "displ new norm "<< u_new.norm()<<"\n";
+            // gsInfo<<"vel new norm: "<< udot_new.norm()<<"\n";
+            // gsInfo<<"acc new norm: "<< uddot_new.norm()<<"\n";
+
             Unorm = u_new.norm();
             U0 = (Unorm > 0) ? Unorm : 1.0; // Avoid division by zero
             Rnorm = R0 = 1;
-
             D_new = D_old;
-    
+
+            iterationTime += bigClock.stop();
             
             index_t stagIt = 0;
                 while(true) // Staggered scheme
@@ -737,12 +832,11 @@ void solve(gsOptionList & materialParameters,
                     gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<stagIt<<"--------------------------\n";
                     gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||R||/||R0||"<<PRINT(18)<<"||ΔU||/||U0||"<<PRINT(18)<<"||dA||/||A||"<<PRINT(18)<<"||U||"<<PRINT(18)<<"||V||"<<PRINT(18)<<"||A||"<<PRINT(20)<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
-                    elAssemblyTime = elSolverTime = 0.0;
-                    pfAssemblyTime = pfSolverTime = 0.0;
-                    iterationTime  = 0.0;
+                    // elAssemblyTime = elSolverTime = 0.0;
+                    // pfAssemblyTime = pfSolverTime = 0.0;
                     bigClock.restart();
 
-                    material.setParameter(2,damage);
+                    material.setParameter(2,damage); // needed here too because it changes within the staggered iteration loop
                     elAssembler.initialize();
 
                     // ================================================ ELASTICITY ==============================================
@@ -751,10 +845,20 @@ void solve(gsOptionList & materialParameters,
                     elAssemblyTime += smallClock.stop();
                     elAssembler.matrix_into(K);
                     elAssembler.rhs_into(Fext);
+                    
 
                     // solver.compute(K);
                     // if (solver.info() != 0) gsInfo<<"DEBUG static solver.compute failed: "<<solver.info()<<"\n";
                     // gsMatrix<T> u_static = solver.solve(Fext);
+
+                    // gsInfo<< "NORM OF R BEFORE SOLVE:"<< (M * uddot_new + K * u_new - Fext).norm() << "\n";
+
+                    // gsInfo<< "norm of K:"<< K.norm() << "\n";
+                    // gsInfo<< "norm of Fext:"<< Fext.norm() << "\n";
+                    // gsInfo<< "norm of u_new:"<< u_new.norm() << "\n";
+                    // gsInfo<< "norm of M:"<< M.norm() << "\n";
+                    // gsInfo<< "norm of uddot_new:"<< uddot_new.norm() << "\n";
+
 
                     R = M * uddot_new + K * u_new - Fext;
                     Rnorm = R.norm();
@@ -785,24 +889,38 @@ void solve(gsOptionList & materialParameters,
                     R = M * uddot_new + K * u_new - Fext;
                     Rnorm = R.norm();
 
-                    gsInfo<<"    ****************** Staggered check: ******************\n";
-                    gsInfo<<"    | " << PRINT(18) << "||R||" 
+                    gsInfo << "\n";
+                    gsInfo << "    ****************************************************************************\n";
+                    gsInfo << "    *                          Staggered check                                 *\n";
+                    gsInfo << "    * " 
+                        << PRINT(18) << "||R||" 
                         << PRINT(18) << "||R||/||R0||" 
                         << PRINT(18) << "||dU||" 
-                        << PRINT(18) << "||dU||/||U0||" << "\n";
-
-                    gsInfo <<"    | " << PRINT(18)  << Rnorm 
-                                        << PRINT(18) << Rnorm/R0 
-                                        << PRINT(18) << DeltaUnorm 
-                                        << PRINT(18) << DeltaUnorm/U0 << "\n";
+                        << PRINT(18) << "||dU||/||U0||" << " *\n";
+                    gsInfo << "    * "
+                        << PRINT(18) << Rnorm 
+                        << PRINT(18) << Rnorm/R0  
+                        << PRINT(18) << DeltaUnorm  
+                        << PRINT(18) << DeltaUnorm/U0 << " *\n";
+                    gsInfo << "    ****************************************************************************\n\n";
         
-                    iterationTime += bigClock.stop();
-
                     // Update the fields before breaking the staggered loop 
                     // (otherwise it does not update the displacements if staggered converges in 1 iteration)
+                    smallClock.restart();
                     elAssembler.constructSolution(u_new,displacement);
                     elAssembler.constructSolution(udot_new,velocity);
                     elAssembler.constructSolution(uddot_new,acceleration);
+                    elAssemblyTime += smallClock.stop();
+
+                    // gsInfo<< "vector displacement norm" << u_new.norm()<<"\n";
+                    // gsInfo<< "vector velocity norm" << udot_new.norm()<<"\n";
+                    // gsInfo<< "vector acceleration norm" << uddot_new.norm()<<"\n";
+                    // gsInfo<< "displacement norm" << displacement.patch(0).coefs().norm()<<"\n";
+                    // gsInfo<< "velocity norm" << velocity.patch(0).coefs().norm()<<"\n";
+                    // gsInfo<< "acceleration norm" << acceleration.patch(0).coefs().norm()<<"\n";
+
+                    // gsInfo << "UNEW AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
+                    // gsInfo << "max displacement AFTER CONTRUCT SOLUTION: " << displacement.patch(0).coefs().maxCoeff()<<"\n";
 
 
                     for (size_t p=0; p!=mp.nPatches(); ++p)
@@ -830,10 +948,19 @@ void solve(gsOptionList & materialParameters,
                     pfAssembler->rhs_into(qpsi);
                     if (qpsi.rows()==0) // qpsi is empty for AT2 models
                         qpsi = gsMatrix<T>::Zero(QPsi.rows(),1);
+
+                    // QPhi and q changes size if the mesh is refined 
+                    pfAssembler->initialize();
+                    pfAssembler->assemblePhi();
+                    pfAssembler->matrix_into(QPhi);
+                    pfAssembler->rhs_into(q);   
+                    // gsInfo << "QPhi: " << QPhi.rows() << " x " << QPhi.cols() <<"\n";
+                    // gsInfo << "QPsi: " << QPsi.rows() << " x " << QPsi.cols() <<"\n";
+                    
                     Q = QPhi + QPsi;
 
-                    gsInfo << "Max damage value" << damage.patch(0).coefs().maxCoeff() << "\n";
-                    gsInfo << "Min damage value" << damage.patch(0).coefs().minCoeff() << "\n";
+                    // gsInfo << "Max damage value" << damage.patch(0).coefs().maxCoeff() << "\n";
+                    // gsInfo << "Min damage value" << damage.patch(0).coefs().minCoeff() << "\n";
 
                     // Reconstruct the solution from the damage field
                     pfAssembler->constructSolution(damage,D_new);
@@ -856,6 +983,8 @@ void solve(gsOptionList & materialParameters,
                         pfAssemblyTime += smallClock.stop();
 
                         smallClock.restart();
+                        // gsInfo << "R size: "<< R.size() << "\n";
+                        // gsInfo << "delta_D size: "<< delta_D.size() << "\n";
                         PSORsolver.solve(R,delta_D); // delta_D = Q \ R
                         pfSolverTime += smallClock.stop();
                         D_new += delta_D;
@@ -871,8 +1000,10 @@ void solve(gsOptionList & materialParameters,
                     numIt_pf = pfIt+1;
                     totIt_pf+= numIt_pf;
 
-                    gsInfo<<"damage max: "<<D_new.maxCoeff()<<"\n";
-                    gsInfo<<"damage min: "<<D_new.minCoeff()<<"\n";
+                    // gsInfo<<"damage max: "<<D_new.maxCoeff()<<"\n";
+                    // gsInfo<<"damage min: "<<D_new.minCoeff()<<"\n";
+
+                    // gsInfo<<"SOLVER TIME: "<<pfSolverTime<< "\n";
                     
                     // Update damage spline
                     pfAssembler->constructSolution(D_new,damage);
@@ -884,36 +1015,62 @@ void solve(gsOptionList & materialParameters,
                 } // end staggered loop
                 numIt_stag += stagIt+1;
             
+        // gsInfo << "u_new     AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
+        // gsInfo << "udot_new  AFTER CONTRUCT SOLUTION: " << udot_new.norm()<<"\n";
+        // gsInfo << "uddot_new AFTER CONTRUCT SOLUTION: " << uddot_new.norm()<<"\n";
+
+
+
             // =========================================================================
             // REFINE MESH
             // All labelled elements are refined to the maximum level, step-by-step
-            for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
+            // gsInfo<< "mesher options max level: "<< mesherOptions.getInt("MaxLevel") << "\n";
+
+            // index_t maxLevel = 0;
+            // for (index_t i = 0; i != mb.nBases(); ++i)
+            // {
+            //     const auto &basis = mb.basis(i);  // gsBasis<>
+            //     for (index_t j = 0; j < basis.size(); ++j)
+            //     {
+            //         maxLevel = std::max(maxLevel, basis.getLevel(j));
+            //     }
+            // }
+            // gsInfo << "Maximum level: " << maxLevel << "\n";
+
+            // for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
+            if (adaptive_switch)
             {
-                smallClock.restart();
-                elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
-                gsInfo<<"Labelling level "<<i<<" took "<<smallClock.stop()<<" seconds\n";
-                if (gsAsVector<T>(elVals).sum() > 0)
+                for (index_t i=0; i!=maxRefLvl; ++i)
                 {
                     smallClock.restart();
-                    tmpArea = refineMesh<dim,T>(mb,elVals,mesherOptions);
-                    gsInfo<<"Refining mesh took "<<smallClock.stop()<<" seconds\n";
+                    elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
+                    labelTime = smallClock.stop();
+                    gsInfo<<"Labelling level "<<i<<" took "<<smallClock.stop()<<" seconds\n";
+                    if (gsAsVector<T>(elVals).sum() > 0)
+                    {
+                        smallClock.restart();
+                        tmpArea = refineMesh<dim,T>(mb,elVals,mesherOptions);
+                        refTime = smallClock.stop();
+                        gsInfo<<"Refining mesh took "<<smallClock.stop()<<" seconds\n";
+                    }
+
+                    tmpArea /= (mb.basis(0).support().col(1)-mb.basis(0).support().col(0)).prod();
+                    markedArea = math::max(markedArea,tmpArea);
+                    basis_size = mb.basis(0).size();
+                    refined = basis_size > basis_size_old;
+                    if (!refined)
+                        break;
                 }
-
-                tmpArea /= (mb.basis(0).support().col(1)-mb.basis(0).support().col(0)).prod();
-                markedArea = math::max(markedArea,tmpArea);
-                basis_size = mb.basis(0).size();
-                refined = basis_size > basis_size_old;
-                if (!refined)
-                    break;
             }
-            gsInfo<<"Marked area: "<<markedArea<<"\n";
-            refined &= markedArea > mesherOptions.askReal("SizeRatio",1.01);
+            // gsInfo<<"Marked area: "<<markedArea<<"\n";
+            // gsInfo<<"refined "<< refined<<"\n";
 
+            ///????
+            // refined &= markedArea > mesherOptions.askReal("SizeRatio",1.01);
 
-
-            gsInfo<<"refined: "<<refined<<"\n";
-            if (!refined)
+            if (refined)
             {
+                gsInfo << "The basis HAS BEEN REFINED: "<< basis_size_old << "=>"<< basis_size<<"\n";
                 // ======================================================================================
                 // Project the new and the old solution onto the new mesh (we move to the next time step)
                 // ======================================================================================
@@ -963,49 +1120,27 @@ void solve(gsOptionList & materialParameters,
                 gsQuasiInterpolate<T>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
                 damage_old.clear();
                 damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-                T ptime = smallClock.stop();
-                stepTimes.projectionTime += ptime;
-                gsInfo<<"Projection took "<<ptime<<" seconds\n";
-                break;
-            }
-            // else if (refIt==mesherOptions.askInt("MaxRefIterations",5)-1)
-            // {
-            //     gsWarn<<"Maximum number of refinement iterations reached\n";
-            //     break;
-            // }
+                projTime = smallClock.stop();
+                stepTimes.projectionTime += projTime;
+                gsInfo<<"Projection took "<<projTime<<" seconds\n";
 
-            // ======================================================================================
-            // Project the old onto the new mesh (we repeat the computation in the current time step)
-            // ======================================================================================
+                // Update the basis size
+                basis_size_old = basis_size;
+            }
+            else
+            {
+                gsInfo << "The basis has NOT been refined.\n";
+                // break;
+            }
+
+            // gsInfo<<"antes del csv time TIME: "<<pfSolverTime<< "\n";
+            // Update csv file data
+            totalTime = iterationTime + elAssemblyTime + elSolverTime + pfAssemblyTime + pfSolverTime + labelTime + refTime + projTime;
+            csvTotalTimes << step  << "," << refIt << "," << (dim+1)*mb.basis(0).size() << "," << mb.basis(0).numElements()<<","<< iterationTime <<","<< elAssemblyTime  <<","<< elSolverTime<<","<< pfAssemblyTime << ","<< pfSolverTime << "," << labelTime << ","<< refTime << ","<<projTime << ","<< totalTime <<"\n";
+            csvTotalTimes.flush(); 
             
-            smallClock.restart();
-            gsMatrix<T> projCoefs;
-            // Geometry (undeformed)
-            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),mp.patch(0),projCoefs);
-            mp.clear();
-            mp.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            // Displacement (old)
-            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),displacement_old.patch(0),projCoefs);
-            displacement_old.clear();
-            displacement_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            // ========================================================================
-            // New variables for dynamics
-            // Velocity (old)
-            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),velocity_old.patch(0),projCoefs);
-            velocity_old.clear();
-            velocity_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            // Acceleration (old)
-            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),acceleration_old.patch(0),projCoefs);
-            acceleration_old.clear();
-            acceleration_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            // ========================================================================
-            // Damage (old)
-            gsQuasiInterpolate<T>::localIntpl(mb.basis(0),damage_old.patch(0),projCoefs);
-            damage_old.clear();
-            damage_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
-            T ptime = smallClock.stop();
-            stepTimes.projectionTime += ptime;
-            gsInfo<<"Projection took "<<ptime<<" seconds\n";
+            if (!refined) // to make sure it writes the results of the last refinement iteration
+                break;
 
             refIt++;
         } // end refinement loop
@@ -1015,7 +1150,8 @@ void solve(gsOptionList & materialParameters,
         // gsMesh<> meshD(mb.basis(0));
         // gsWriteParaview(meshD, outputdir+"dbasis_"+util::to_string(step)+"_"+util::to_string(refIt),100000);
         // gsWriteParaview(mp,)
-        // gsWriteParaview(mp,outputdir+"mp_"+util::to_string(step)+"_"+util::to_string(refIt),10,true);
+        // if (step % 200 == 0 && step <= 800)
+        //     gsWriteParaview(mp,outputdir+"mp_step_"+util::to_string(step)+"_refIt_"+util::to_string(refIt),10,true);
 
         // =========================================================================
         // // Compute resulting force and energies (i need to check the size of the assembler!)
@@ -1095,6 +1231,22 @@ void solve(gsOptionList & materialParameters,
             gsWriteParaviewTPgrid(eval_geo,eval_displacement,np.template cast<index_t>(),outputdir+filename);
             // gsWriteParaview(mp,displacement,outputdir+filename,1000);
             displCollection.addPart(filename,step,"Solution",0);
+
+            // Plot mesh
+            if (plotMesh) // to be polished
+            {
+                subfolder.clear();
+                filename.clear();
+                subfolder = outputdir + "mesh_pvd/";
+                gsFileManager::mkdir(subfolder);
+                filename = "mesh_pvd/mesh_"+util::to_string(step);
+                gsWriteParaview(mp, outputdir + filename, 10, true); // (creates a pvd file at every time step...)
+                meshCollection.addPart(filename + "_0_mesh.vtp", step, "Mesh", 0);
+                // delete auto-generated volume grid and per-step PVD
+                std::remove((outputdir + filename + "_0.vts").c_str());
+                gsInfo<< outputdir + filename + "_0.pvd" <<"\n";
+                std::remove((outputdir + filename + ".pvd").c_str());
+            }
         }
 
         // =========================================================================
@@ -1113,8 +1265,13 @@ void solve(gsOptionList & materialParameters,
         displacement_old    = displacement;
         velocity_old        = velocity;
         acceleration_old    = acceleration;
-        damage_old          = damage;       
+        damage_old          = damage;    
 
+        gsInfo << "displ " << displacement_old.patch(0).coefs().norm()<<"\n";
+        gsInfo << "vel " << velocity_old.patch(0).coefs().norm()<<"\n";
+        gsInfo << "acc " << acceleration_old.patch(0).coefs().norm()<<"\n";
+
+ 
         tcurr_old = tcurr;
         tcurr += (tcurr+tstep > ttrans) ? tstep/tred : tstep;
         step++;
@@ -1126,7 +1283,12 @@ void solve(gsOptionList & materialParameters,
         psiCollection.save();
         displCollection.save();
         PwaveCollection.save();
+        meshCollection.save();
     }
+    
+    tTime += totalStop.stop();
+    csvTotalTimes<< "The total simulation time is: " << tTime<<"\n";
+    csvTotalTimes.close();
 
     delete pfAssembler;
 }
