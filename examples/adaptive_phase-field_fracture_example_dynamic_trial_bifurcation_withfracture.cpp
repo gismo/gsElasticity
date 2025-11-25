@@ -627,6 +627,8 @@ void solve(gsOptionList & materialParameters,
     T refTime = 0.0;
     T totalTime = 0.0;
 
+    T energy_D, energy_E;
+
     gsSparseMatrix<T> Q, QPhi, QPsi;
     gsMatrix<T> q, qpsi;
     // Phase-field assembly can already be performed since some terms are independent of the solutions
@@ -674,7 +676,7 @@ void solve(gsOptionList & materialParameters,
 
     std::ofstream csvTotalTimes;
     csvTotalTimes.open(outputdir+"/output_times.csv");
-    csvTotalTimes << "TimeStep,"<< "RefIt,"<< "NumDOFs,"<< "numEl,"<< "T_init,"<< "T_EL_A,"<<"T_EL_S,"<<"T_PF_A,"<<"T_PF_S,"<<"T_Mark,"<<"T_Ref,"<<"T_Proj,"<<"T_total\n";
+    csvTotalTimes << "TimeStep,"<< "RefIt,"<< "NumDOFs,"<< "numEl,"<< "E_E,"<< "E_D,"<< "T_init,"<< "T_EL_A,"<<"T_EL_S,"<<"T_PF_A,"<<"T_PF_S,"<<"T_Mark,"<<"T_Ref,"<<"T_Proj,"<<"T_total\n";
     T tTime = 0.0;
 
     gsStopwatch totalStop;
@@ -881,7 +883,7 @@ void solve(gsOptionList & materialParameters,
                     gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<stagIt<<PRINT(18)<<Rnorm<<PRINT(18)<<Rnorm/R0<<PRINT(18)<<DeltaUnorm/U0<<PRINT(18)<<(uddot_new-uddot_old).norm()/uddot_new.norm()<<PRINT(18)<<Unorm<<PRINT(18)<<udot_new.norm()<<PRINT(18)<<uddot_new.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
 
                     // Recompute the residual for the staggered check
-                    smallClock.restart();
+                    smallClock.restart(); // do i need to initialize the assembler?
                     elAssembler.assemble(u_new);
                     elAssemblyTime += smallClock.stop();
                     elAssembler.matrix_into(K);
@@ -928,6 +930,7 @@ void solve(gsOptionList & materialParameters,
 
                     // Initialize the function for the elastic energy
                     gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+                    energy_E = 0.5 * (u_new.transpose() * K * u_new).value();                    
 
                     if (Rnorm/R0 < 1e-5 && DeltaUnorm/U0 < 1e-4)
                         break;
@@ -1014,6 +1017,8 @@ void solve(gsOptionList & materialParameters,
                     // stepTimes.pfSolverTime += stagTimes.pfSolverTime;
                 } // end staggered loop
                 numIt_stag += stagIt+1;
+
+            energy_D = (0.5 * D_new.transpose() * QPhi * D_new).value() + (D_new.transpose() * q).value();
             
         // gsInfo << "u_new     AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
         // gsInfo << "udot_new  AFTER CONTRUCT SOLUTION: " << udot_new.norm()<<"\n";
@@ -1136,7 +1141,7 @@ void solve(gsOptionList & materialParameters,
             // gsInfo<<"antes del csv time TIME: "<<pfSolverTime<< "\n";
             // Update csv file data
             totalTime = iterationTime + elAssemblyTime + elSolverTime + pfAssemblyTime + pfSolverTime + labelTime + refTime + projTime;
-            csvTotalTimes << step  << "," << refIt << "," << (dim+1)*mb.basis(0).size() << "," << mb.basis(0).numElements()<<","<< iterationTime <<","<< elAssemblyTime  <<","<< elSolverTime<<","<< pfAssemblyTime << ","<< pfSolverTime << "," << labelTime << ","<< refTime << ","<<projTime << ","<< totalTime <<"\n";
+            csvTotalTimes << step  << "," << refIt << "," << (dim+1)*mb.basis(0).size() << "," << mb.basis(0).numElements() <<"," << energy_E<<"," << energy_D << "," << iterationTime <<","<< elAssemblyTime  <<","<< elSolverTime<<","<< pfAssemblyTime << ","<< pfSolverTime << "," << labelTime << ","<< refTime << ","<<projTime << ","<< totalTime <<"\n";
             csvTotalTimes.flush(); 
             
             if (!refined) // to make sure it writes the results of the last refinement iteration
