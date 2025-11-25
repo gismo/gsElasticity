@@ -91,8 +91,8 @@ void gsPhaseFieldAssembler<T,order,mode>::_defaultOptions()
 {
     m_options.addReal("l0","l0 parameter",1e-4);
     m_options.addReal("Gc","Gc parameter",1e0);
-    m_options.addReal("cw","cw parameter (only applies for AT1 4th order model)",3.1615); 
-    m_options.addReal("chi","chi parameter (only used for AT1 4th order model)",0.0625); // chi = 1/16
+    m_options.addReal("cw","cw parameter (only applies for AT1 4th order model)",4.4485); 
+    m_options.addReal("chi","chi parameter (only used for AT1 4th order model)",1); // chi = default 1 (quasi-static)
     m_options.addInt("Continuity","Continuity between patches: C^{-1} (-1) or C^0 (0, default)",0);
     // m_options.addReal("Penalty","Penalty parameter for Nitsche boundary conditions (default: 1e4)",1e4);
     // m_options.addSwitch("AssembleWeakBCs","Assemble Nitsche boundary conditions in every iteration",false);
