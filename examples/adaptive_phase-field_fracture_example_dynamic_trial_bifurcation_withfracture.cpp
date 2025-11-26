@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     //// Boundary control parameters
     gsOptionList controlParameters;
     // Min time [s]
-    controlParameters.addReal("tend", "Maximum time", 80e-7); //400e-06. 1500e-06
+    controlParameters.addReal("tend", "Maximum time", 80e-6); //400e-06. 1500e-06
     // Max time [s]
     controlParameters.addReal("tmin", "Initial time", 0.0);
     // Time step [s]
@@ -672,11 +672,12 @@ void solve(gsOptionList & materialParameters,
     real_t Unorm, U0;
     T dt;
     index_t basis_size_old, basis_size; 
+    index_t num_dofs_tot, num_el_tot;
     basis_size = basis_size_old = mb.basis(0).size();
 
     std::ofstream csvTotalTimes;
     csvTotalTimes.open(outputdir+"/output_times.csv");
-    csvTotalTimes << "TimeStep,"<< "RefIt,"<< "NumDOFs,"<< "numEl,"<< "E_E,"<< "E_D,"<< "T_init,"<< "T_EL_A,"<<"T_EL_S,"<<"T_PF_A,"<<"T_PF_S,"<<"T_Mark,"<<"T_Ref,"<<"T_Proj,"<<"T_total\n";
+    csvTotalTimes << "TimeStep,"<< "RefIt,"<< "StagIt,"<< "NumDOFs,"<< "numEl,"<< "E_E,"<< "E_D,"<< "T_init,"<< "T_EL_A,"<<"T_EL_S,"<<"T_PF_A,"<<"T_PF_S,"<<"T_Mark,"<<"T_Ref,"<<"T_Proj,"<<"T_total\n";
     T tTime = 0.0;
 
     gsStopwatch totalStop;
@@ -703,7 +704,7 @@ void solve(gsOptionList & materialParameters,
         gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
         gsInfo<<"Load step "<<step<<": t = "<<tcurr<<"\n";
         gsInfo<<"---------------------------------------------------------------------------------------------------------------------------\n";
-
+        
         index_t refIt = 0;
         while(true) // refinement iteration loop
         {
@@ -828,195 +829,195 @@ void solve(gsOptionList & materialParameters,
             iterationTime += bigClock.stop();
             
             index_t stagIt = 0;
-                while(true) // Staggered scheme
+            while(true) // Staggered scheme
+            {
+                
+                gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<stagIt<<"--------------------------\n";
+                gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||R||/||R0||"<<PRINT(18)<<"||ΔU||/||U0||"<<PRINT(18)<<"||dA||/||A||"<<PRINT(18)<<"||U||"<<PRINT(18)<<"||V||"<<PRINT(18)<<"||A||"<<PRINT(20)<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+
+                // elAssemblyTime = elSolverTime = 0.0;
+                // pfAssemblyTime = pfSolverTime = 0.0;
+                bigClock.restart();
+
+                material.setParameter(2,damage); // needed here too because it changes within the staggered iteration loop
+                elAssembler.initialize();
+
+                // ================================================ ELASTICITY ==============================================
+                smallClock.restart();
+                elAssembler.assemble(u_new);
+                elAssemblyTime += smallClock.stop();
+                elAssembler.matrix_into(K);
+                elAssembler.rhs_into(Fext);
+                
+
+                // solver.compute(K);
+                // if (solver.info() != 0) gsInfo<<"DEBUG static solver.compute failed: "<<solver.info()<<"\n";
+                // gsMatrix<T> u_static = solver.solve(Fext);
+
+                // gsInfo<< "NORM OF R BEFORE SOLVE:"<< (M * uddot_new + K * u_new - Fext).norm() << "\n";
+
+                // gsInfo<< "norm of K:"<< K.norm() << "\n";
+                // gsInfo<< "norm of Fext:"<< Fext.norm() << "\n";
+                // gsInfo<< "norm of u_new:"<< u_new.norm() << "\n";
+                // gsInfo<< "norm of M:"<< M.norm() << "\n";
+                // gsInfo<< "norm of uddot_new:"<< uddot_new.norm() << "\n";
+
+
+                R = M * uddot_new + K * u_new - Fext;
+                Rnorm = R.norm();
+                if (stagIt == 0)
+                    R0 = (Rnorm > 0) ? Rnorm : 1.0; // For exit criterion (eq. (18))
+                    
+                K+= 1/(beta*math::pow(dt,2)) * M; // Eq. (21) - Greco et al. 2025
+
+                smallClock.restart();
+                solver.compute(K);
+                delta_u = solver.solve(-R);
+                elSolverTime += smallClock.stop();
+
+                u_new += delta_u;
+                udot_new  = (gamma/beta/dt) * ( u_new - u_old ) + (1-gamma/beta) * udot_old + (dt*(1-gamma/(2*beta))) * uddot_old;
+                uddot_new = (1/(beta*math::pow(dt,2))) * ( u_new - u_old ) - (1/(beta*dt)) * udot_old - (1/(2*beta) - 1) * uddot_old;
+                Unorm = u_new.norm();
+                T DeltaUnorm = delta_u.norm();
+
+                gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<stagIt<<PRINT(18)<<Rnorm<<PRINT(18)<<Rnorm/R0<<PRINT(18)<<DeltaUnorm/U0<<PRINT(18)<<(uddot_new-uddot_old).norm()/uddot_new.norm()<<PRINT(18)<<Unorm<<PRINT(18)<<udot_new.norm()<<PRINT(18)<<uddot_new.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
+
+                // Recompute the residual for the staggered check
+                smallClock.restart(); // do i need to initialize the assembler?
+                elAssembler.assemble(u_new);
+                elAssemblyTime += smallClock.stop();
+                elAssembler.matrix_into(K);
+                elAssembler.rhs_into(Fext);
+                R = M * uddot_new + K * u_new - Fext;
+                Rnorm = R.norm();
+
+                gsInfo << "\n";
+                gsInfo << "    ****************************************************************************\n";
+                gsInfo << "    *                          Staggered check                                 *\n";
+                gsInfo << "    * " 
+                    << PRINT(18) << "||R||" 
+                    << PRINT(18) << "||R||/||R0||" 
+                    << PRINT(18) << "||dU||" 
+                    << PRINT(18) << "||dU||/||U0||" << " *\n";
+                gsInfo << "    * "
+                    << PRINT(18) << Rnorm 
+                    << PRINT(18) << Rnorm/R0  
+                    << PRINT(18) << DeltaUnorm  
+                    << PRINT(18) << DeltaUnorm/U0 << " *\n";
+                gsInfo << "    ****************************************************************************\n\n";
+    
+                // Update the fields before breaking the staggered loop 
+                // (otherwise it does not update the displacements if staggered converges in 1 iteration)
+                smallClock.restart();
+                elAssembler.constructSolution(u_new,displacement);
+                elAssembler.constructSolution(udot_new,velocity);
+                elAssembler.constructSolution(uddot_new,acceleration);
+                elAssemblyTime += smallClock.stop();
+
+                // gsInfo<< "vector displacement norm" << u_new.norm()<<"\n";
+                // gsInfo<< "vector velocity norm" << udot_new.norm()<<"\n";
+                // gsInfo<< "vector acceleration norm" << uddot_new.norm()<<"\n";
+                // gsInfo<< "displacement norm" << displacement.patch(0).coefs().norm()<<"\n";
+                // gsInfo<< "velocity norm" << velocity.patch(0).coefs().norm()<<"\n";
+                // gsInfo<< "acceleration norm" << acceleration.patch(0).coefs().norm()<<"\n";
+
+                // gsInfo << "UNEW AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
+                // gsInfo << "max displacement AFTER CONTRUCT SOLUTION: " << displacement.patch(0).coefs().maxCoeff()<<"\n";
+
+
+                for (size_t p=0; p!=mp.nPatches(); ++p)
+                    mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
+
+                // Initialize the function for the elastic energy
+                gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
+                energy_E = 0.5 * (u_new.transpose() * K * u_new).value();                    
+
+                if (Rnorm/R0 < 1e-5 && DeltaUnorm/U0 < 1e-4)
+                    break;
+                else if (stagIt == maxIt-1)
+                    GISMO_ERROR("Staggered iterations problem did not converge.");
+                stagIt++;
+
+
+                // gsInfo<<"    ---------------------------------PHASE-FIELD---------------------------------\n";
+                gsInfo<<"\t"<<PRINT(20)<<"* Phase-Field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||ΔD||"<<PRINT(18)<<"||ΔD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+
+                // Phase-field problem
+                // gsInfo<<"Assembling phase-field problem"<<"\n";
+                smallClock.restart();
+                pfAssembler->assemblePsi(Psi);
+                pfAssemblyTime += smallClock.stop();
+                pfAssembler->matrix_into(QPsi);
+                pfAssembler->rhs_into(qpsi);
+                if (qpsi.rows()==0) // qpsi is empty for AT2 models
+                    qpsi = gsMatrix<T>::Zero(QPsi.rows(),1);
+
+                // QPhi and q changes size if the mesh is refined 
+                pfAssembler->initialize();
+                pfAssembler->assemblePhi();
+                pfAssembler->matrix_into(QPhi);
+                pfAssembler->rhs_into(q);   
+                // gsInfo << "QPhi: " << QPhi.rows() << " x " << QPhi.cols() <<"\n";
+                // gsInfo << "QPsi: " << QPsi.rows() << " x " << QPsi.cols() <<"\n";
+                
+                Q = QPhi + QPsi;
+
+                // gsInfo << "Max damage value" << damage.patch(0).coefs().maxCoeff() << "\n";
+                // gsInfo << "Min damage value" << damage.patch(0).coefs().minCoeff() << "\n";
+
+                // Reconstruct the solution from the damage field
+                pfAssembler->constructSolution(damage,D_new);
+
+                // Initialize the PSOR solver
+                smallClock.restart();
+                gsPSOR<T> PSORsolver(Q);
+                PSORsolver.options().setInt("MaxIterations",30000);
+                PSORsolver.options().setSwitch("Verbose",false);
+                PSORsolver.options().setReal("tolU",1e-4);
+                PSORsolver.options().setReal("tolNeg",1e-9);
+                PSORsolver.options().setReal("tolPos",1e-9);
+                pfSolverTime = smallClock.stop();
+                index_t pfIt = 0;
+                while(true)
                 {
-                    
-                    gsInfo<<"    --------------------------Staggered Iteration: "<<PRINT(4)<<stagIt<<"--------------------------\n";
-                    gsInfo<<"\t"<<PRINT(20)<<"* Elasticity:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||R||/||R0||"<<PRINT(18)<<"||ΔU||/||U0||"<<PRINT(18)<<"||dA||/||A||"<<PRINT(18)<<"||U||"<<PRINT(18)<<"||V||"<<PRINT(18)<<"||A||"<<PRINT(20)<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
-
-                    // elAssemblyTime = elSolverTime = 0.0;
-                    // pfAssemblyTime = pfSolverTime = 0.0;
-                    bigClock.restart();
-
-                    material.setParameter(2,damage); // needed here too because it changes within the staggered iteration loop
-                    elAssembler.initialize();
-
-                    // ================================================ ELASTICITY ==============================================
+                    // Assemble
                     smallClock.restart();
-                    elAssembler.assemble(u_new);
-                    elAssemblyTime += smallClock.stop();
-                    elAssembler.matrix_into(K);
-                    elAssembler.rhs_into(Fext);
-                    
-
-                    // solver.compute(K);
-                    // if (solver.info() != 0) gsInfo<<"DEBUG static solver.compute failed: "<<solver.info()<<"\n";
-                    // gsMatrix<T> u_static = solver.solve(Fext);
-
-                    // gsInfo<< "NORM OF R BEFORE SOLVE:"<< (M * uddot_new + K * u_new - Fext).norm() << "\n";
-
-                    // gsInfo<< "norm of K:"<< K.norm() << "\n";
-                    // gsInfo<< "norm of Fext:"<< Fext.norm() << "\n";
-                    // gsInfo<< "norm of u_new:"<< u_new.norm() << "\n";
-                    // gsInfo<< "norm of M:"<< M.norm() << "\n";
-                    // gsInfo<< "norm of uddot_new:"<< uddot_new.norm() << "\n";
-
-
-                    R = M * uddot_new + K * u_new - Fext;
-                    Rnorm = R.norm();
-                    if (stagIt == 0)
-                        R0 = (Rnorm > 0) ? Rnorm : 1.0; // For exit criterion (eq. (18))
-                        
-                    K+= 1/(beta*math::pow(dt,2)) * M; // Eq. (21) - Greco et al. 2025
-
-                    smallClock.restart();
-                    solver.compute(K);
-                    delta_u = solver.solve(-R);
-                    elSolverTime += smallClock.stop();
-
-                    u_new += delta_u;
-                    udot_new  = (gamma/beta/dt) * ( u_new - u_old ) + (1-gamma/beta) * udot_old + (dt*(1-gamma/(2*beta))) * uddot_old;
-                    uddot_new = (1/(beta*math::pow(dt,2))) * ( u_new - u_old ) - (1/(beta*dt)) * udot_old - (1/(2*beta) - 1) * uddot_old;
-                    Unorm = u_new.norm();
-                    T DeltaUnorm = delta_u.norm();
-
-                    gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<stagIt<<PRINT(18)<<Rnorm<<PRINT(18)<<Rnorm/R0<<PRINT(18)<<DeltaUnorm/U0<<PRINT(18)<<(uddot_new-uddot_old).norm()/uddot_new.norm()<<PRINT(18)<<Unorm<<PRINT(18)<<udot_new.norm()<<PRINT(18)<<uddot_new.norm()<<PRINT(20)<<elAssemblyTime<<PRINT(20)<<elSolverTime<<"\n";
-
-                    // Recompute the residual for the staggered check
-                    smallClock.restart(); // do i need to initialize the assembler?
-                    elAssembler.assemble(u_new);
-                    elAssemblyTime += smallClock.stop();
-                    elAssembler.matrix_into(K);
-                    elAssembler.rhs_into(Fext);
-                    R = M * uddot_new + K * u_new - Fext;
-                    Rnorm = R.norm();
-
-                    gsInfo << "\n";
-                    gsInfo << "    ****************************************************************************\n";
-                    gsInfo << "    *                          Staggered check                                 *\n";
-                    gsInfo << "    * " 
-                        << PRINT(18) << "||R||" 
-                        << PRINT(18) << "||R||/||R0||" 
-                        << PRINT(18) << "||dU||" 
-                        << PRINT(18) << "||dU||/||U0||" << " *\n";
-                    gsInfo << "    * "
-                        << PRINT(18) << Rnorm 
-                        << PRINT(18) << Rnorm/R0  
-                        << PRINT(18) << DeltaUnorm  
-                        << PRINT(18) << DeltaUnorm/U0 << " *\n";
-                    gsInfo << "    ****************************************************************************\n\n";
-        
-                    // Update the fields before breaking the staggered loop 
-                    // (otherwise it does not update the displacements if staggered converges in 1 iteration)
-                    smallClock.restart();
-                    elAssembler.constructSolution(u_new,displacement);
-                    elAssembler.constructSolution(udot_new,velocity);
-                    elAssembler.constructSolution(uddot_new,acceleration);
-                    elAssemblyTime += smallClock.stop();
-
-                    // gsInfo<< "vector displacement norm" << u_new.norm()<<"\n";
-                    // gsInfo<< "vector velocity norm" << udot_new.norm()<<"\n";
-                    // gsInfo<< "vector acceleration norm" << uddot_new.norm()<<"\n";
-                    // gsInfo<< "displacement norm" << displacement.patch(0).coefs().norm()<<"\n";
-                    // gsInfo<< "velocity norm" << velocity.patch(0).coefs().norm()<<"\n";
-                    // gsInfo<< "acceleration norm" << acceleration.patch(0).coefs().norm()<<"\n";
-
-                    // gsInfo << "UNEW AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
-                    // gsInfo << "max displacement AFTER CONTRUCT SOLUTION: " << displacement.patch(0).coefs().maxCoeff()<<"\n";
-
-
-                    for (size_t p=0; p!=mp.nPatches(); ++p)
-                        mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
-
-                    // Initialize the function for the elastic energy
-                    gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
-                    energy_E = 0.5 * (u_new.transpose() * K * u_new).value();                    
-
-                    if (Rnorm/R0 < 1e-5 && DeltaUnorm/U0 < 1e-4)
-                        break;
-                    else if (stagIt == maxIt-1)
-                        GISMO_ERROR("Staggered iterations problem did not converge.");
-                    stagIt++;
-
-
-                    // gsInfo<<"    ---------------------------------PHASE-FIELD---------------------------------\n";
-                    gsInfo<<"\t"<<PRINT(20)<<"* Phase-Field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||ΔD||"<<PRINT(18)<<"||ΔD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
-
-                    // Phase-field problem
-                    // gsInfo<<"Assembling phase-field problem"<<"\n";
-                    smallClock.restart();
-                    pfAssembler->assemblePsi(Psi);
+                    R = Q * D_new - qpsi + q;
                     pfAssemblyTime += smallClock.stop();
-                    pfAssembler->matrix_into(QPsi);
-                    pfAssembler->rhs_into(qpsi);
-                    if (qpsi.rows()==0) // qpsi is empty for AT2 models
-                        qpsi = gsMatrix<T>::Zero(QPsi.rows(),1);
 
-                    // QPhi and q changes size if the mesh is refined 
-                    pfAssembler->initialize();
-                    pfAssembler->assemblePhi();
-                    pfAssembler->matrix_into(QPhi);
-                    pfAssembler->rhs_into(q);   
-                    // gsInfo << "QPhi: " << QPhi.rows() << " x " << QPhi.cols() <<"\n";
-                    // gsInfo << "QPsi: " << QPsi.rows() << " x " << QPsi.cols() <<"\n";
-                    
-                    Q = QPhi + QPsi;
-
-                    // gsInfo << "Max damage value" << damage.patch(0).coefs().maxCoeff() << "\n";
-                    // gsInfo << "Min damage value" << damage.patch(0).coefs().minCoeff() << "\n";
-
-                    // Reconstruct the solution from the damage field
-                    pfAssembler->constructSolution(damage,D_new);
-
-                    // Initialize the PSOR solver
                     smallClock.restart();
-                    gsPSOR<T> PSORsolver(Q);
-                    PSORsolver.options().setInt("MaxIterations",30000);
-                    PSORsolver.options().setSwitch("Verbose",false);
-                    PSORsolver.options().setReal("tolU",1e-4);
-                    PSORsolver.options().setReal("tolNeg",1e-9);
-                    PSORsolver.options().setReal("tolPos",1e-9);
-                    pfSolverTime = smallClock.stop();
-                    index_t pfIt = 0;
-                    while(true)
-                    {
-                        // Assemble
-                        smallClock.restart();
-                        R = Q * D_new - qpsi + q;
-                        pfAssemblyTime += smallClock.stop();
+                    // gsInfo << "R size: "<< R.size() << "\n";
+                    // gsInfo << "delta_D size: "<< delta_D.size() << "\n";
+                    PSORsolver.solve(R,delta_D); // delta_D = Q \ R
+                    pfSolverTime += smallClock.stop();
+                    D_new += delta_D;
+                    // gsInfo<<"\t"<<PRINT(20)<<"* Phase-Field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||ΔD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+                    gsInfo<<"\t"<<PRINT(20)<<" "<<PRINT(6)<<pfIt<<PRINT(18)<<R.norm()<<PRINT(18)<<delta_D.norm()<<PRINT(18)<<delta_D.norm()/D_new.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";
 
-                        smallClock.restart();
-                        // gsInfo << "R size: "<< R.size() << "\n";
-                        // gsInfo << "delta_D size: "<< delta_D.size() << "\n";
-                        PSORsolver.solve(R,delta_D); // delta_D = Q \ R
-                        pfSolverTime += smallClock.stop();
-                        D_new += delta_D;
-                        // gsInfo<<"\t"<<PRINT(20)<<"* Phase-Field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||ΔD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
-                        gsInfo<<"\t"<<PRINT(20)<<" "<<PRINT(6)<<pfIt<<PRINT(18)<<R.norm()<<PRINT(18)<<delta_D.norm()<<PRINT(18)<<delta_D.norm()/D_new.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";
+                    if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12 || maxItPf==1)
+                        break;
+                    else if (pfIt == maxItPf-1 && maxItPf != 1)
+                        GISMO_ERROR("Phase-field problem did not converge.");
+                    pfIt++;
+                }
+                numIt_pf = pfIt+1;
+                totIt_pf+= numIt_pf;
 
-                        if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12 || maxItPf==1)
-                            break;
-                        else if (pfIt == maxItPf-1 && maxItPf != 1)
-                            GISMO_ERROR("Phase-field problem did not converge.");
-                        pfIt++;
-                    }
-                    numIt_pf = pfIt+1;
-                    totIt_pf+= numIt_pf;
+                // gsInfo<<"damage max: "<<D_new.maxCoeff()<<"\n";
+                // gsInfo<<"damage min: "<<D_new.minCoeff()<<"\n";
 
-                    // gsInfo<<"damage max: "<<D_new.maxCoeff()<<"\n";
-                    // gsInfo<<"damage min: "<<D_new.minCoeff()<<"\n";
+                // gsInfo<<"SOLVER TIME: "<<pfSolverTime<< "\n";
+                
+                // Update damage spline
+                pfAssembler->constructSolution(D_new,damage);
 
-                    // gsInfo<<"SOLVER TIME: "<<pfSolverTime<< "\n";
-                    
-                    // Update damage spline
-                    pfAssembler->constructSolution(D_new,damage);
-
-                    // stepTimes.elAssemblyTime += stagTimes.elAssemblyTime;
-                    // stepTimes.elSolverTime += stagTimes.elSolverTime;
-                    // stepTimes.pfAssemblyTime += stagTimes.pfAssemblyTime;
-                    // stepTimes.pfSolverTime += stagTimes.pfSolverTime;
-                } // end staggered loop
-                numIt_stag += stagIt+1;
+                // stepTimes.elAssemblyTime += stagTimes.elAssemblyTime;
+                // stepTimes.elSolverTime += stagTimes.elSolverTime;
+                // stepTimes.pfAssemblyTime += stagTimes.pfAssemblyTime;
+                // stepTimes.pfSolverTime += stagTimes.pfSolverTime;
+            } // end staggered loop
+            numIt_stag += stagIt+1;
 
             energy_D = (0.5 * D_new.transpose() * QPhi * D_new).value() + (D_new.transpose() * q).value();
             
@@ -1041,6 +1042,10 @@ void solve(gsOptionList & materialParameters,
             //     }
             // }
             // gsInfo << "Maximum level: " << maxLevel << "\n";
+
+            // Save size of the basis and element size
+            num_dofs_tot = (dim+1)*mb.basis(0).size();
+            num_el_tot   = mb.basis(0).numElements();
 
             // for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
             if (adaptive_switch)
@@ -1138,10 +1143,11 @@ void solve(gsOptionList & materialParameters,
                 // break;
             }
 
+            
             // gsInfo<<"antes del csv time TIME: "<<pfSolverTime<< "\n";
             // Update csv file data
             totalTime = iterationTime + elAssemblyTime + elSolverTime + pfAssemblyTime + pfSolverTime + labelTime + refTime + projTime;
-            csvTotalTimes << step  << "," << refIt << "," << (dim+1)*mb.basis(0).size() << "," << mb.basis(0).numElements() <<"," << energy_E<<"," << energy_D << "," << iterationTime <<","<< elAssemblyTime  <<","<< elSolverTime<<","<< pfAssemblyTime << ","<< pfSolverTime << "," << labelTime << ","<< refTime << ","<<projTime << ","<< totalTime <<"\n";
+            csvTotalTimes << step  << "," << refIt << ","<< stagIt+1 <<"," << num_dofs_tot << "," << num_el_tot <<"," << energy_E<<"," << energy_D << "," << iterationTime <<","<< elAssemblyTime  <<","<< elSolverTime<<","<< pfAssemblyTime << ","<< pfSolverTime << "," << labelTime << ","<< refTime << ","<<projTime << ","<< totalTime <<"\n";
             csvTotalTimes.flush(); 
             
             if (!refined) // to make sure it writes the results of the last refinement iteration
