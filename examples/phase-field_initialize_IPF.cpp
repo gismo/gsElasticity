@@ -90,10 +90,14 @@ int main(int argc, char *argv[])
     real_t l0 = materialParameters.getReal("l0");
     real_t Gc = materialParameters.getReal("Gc");
     real_t beta = materialParameters.getReal("beta");
+    real_t chi = materialParameters.getReal("chi");
+    real_t cw = materialParameters.getReal("cw");
     index_t order = materialParameters.getInt("order");
     index_t AT = materialParameters.getInt("AT");
     GISMO_ASSERT(order == 2 || order == 4, "Please specify the order of the model (2 or 4).");
     GISMO_ASSERT(AT == 1 || AT == 2, "Please specify the AT model (1 or 2).");
+
+    gsInfo<<materialParameters<<"\n";
 
     gsFileData<> fd_geo(geoInput.empty() ? inputDir + "geometry.xml" : geoInput);
     gsMultiPatch<> mp;
@@ -206,7 +210,8 @@ int main(int argc, char *argv[])
         else if (order == 4 && AT == 1)
         {
             pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
-            pfAssembler->options().setReal("cw",4.44847);
+            pfAssembler->options().setReal("cw",3.1615);
+            pfAssembler->options().setReal("chi",0.0625);
         }
         else if (order == 2 && AT == 2)
             pfAssembler = new gsPhaseFieldAssembler<real_t,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
