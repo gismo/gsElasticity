@@ -132,19 +132,12 @@ int main(int argc, char *argv[])
     if (output.empty())
         output = "./output/";
 
-    gsInfo<< "c1\n";
-
     std::string outputdir = output + gsFileManager::getNativePathSeparator();
     gsFileManager::mkdir(output);
-
-        gsInfo<< "c2\n";
-
 
     gsFileData<> fd_geo(geoInput.empty() ? inputDir + "geometry.xml" : geoInput);
     gsMultiPatch<> mp_ini;
     fd_geo.getFirst(mp_ini);
-
-        gsInfo<< "c3\n";
 
     // if (numElev > 0)
     //     mp_ini.degreeIncrease(numElev);
@@ -156,142 +149,38 @@ int main(int argc, char *argv[])
 
     if (plot) gsWriteParaview(mp_ini,outputdir+"mp",10,true);
 
-        gsInfo<< "c4\n";
-
     gsFileData<> fd_damage(damageInput.empty() ? inputDir + "damage.xml" : damageInput);
     gsMultiPatch<> damage;
     fd_damage.getFirst(damage);
     gsInfo<<"damage size before refinement: "<<damage.patch(0).coefs().size()<<"\n";
     if (plot) gsWriteParaview(mp_ini,damage,outputdir+"initial_damage",100000);
 
-    gsInfo<< "c5\n";
 
-    ///////////////////////////////////////////////////////////////////////////////////////
-    // Create the geometry
-    ///////////////////////////////////////////////////////////////////////////////////////
-    // gsMultiPatch<> mp;
-
-    // real_t L = 100.;
-    // real_t H = 40.;
-
-    // if (dimension == 2)
-    // {
-    //     index_t nx = 99; // elements in x direction
-    //     index_t ny = 39;  // elements in y direction
-    //     gsKnotVector<> kv_x(0, 1, nx, 2, 1); 
-    //     gsKnotVector<> kv_y(0, 1, ny, 2, 1);
-    //     gsTensorBSplineBasis<2,real_t> tbasis(kv_x, kv_y);
-    //     gsTensorBSpline<2,real_t> tb(tbasis, tbasis.anchors().transpose());
-    //     tb.coefs().col(0) *= L;
-    //     tb.coefs().col(1) *= H;
-    //     mp.addPatch(tb);
-    // }
-
-    // if (dimension == 2)
-    // {
-    //     gsKnotVector<> kv_x(0,1,math::ceil(L/H)-1,2,1);
-    //     gsKnotVector<> kv_y(0,1,math::ceil(H/L)-1,2,1);
-    //     gsTensorBSplineBasis<2,real_t> tbasis(kv_x, kv_y);
-    //     gsTensorBSpline<2,real_t> tb(tbasis,tbasis.anchors().transpose());
-    //     tb.coefs().col(0) *= L;
-    //     tb.coefs().col(1) *= H;
-    //     mp.addPatch(tb);
-    // }
-    // else if (dimension == 3)
-    // {
-    //     gsKnotVector<> kv_x(0,1,math::ceil(L/H)-1,2,1);
-    //     gsKnotVector<> kv_y(0,1,math::ceil(H/L)-1,2,1);
-    //     gsKnotVector<> kv_z(0,1,math::ceil(H/L)-1,2,1);
-    //     gsTensorBSplineBasis<3,real_t> tbasis(kv_x, kv_y, kv_z);
-    //     gsTensorBSpline<3,real_t> tb(tbasis,tbasis.anchors().transpose());
-    //     tb.coefs().col(0) *= L;
-    //     tb.coefs().col(1) *= H;
-    //     tb.coefs().col(2) *= H;
-    //     mp.addPatch(tb);
-    // }
-    // else
-    //     GISMO_ERROR("Invalid dimension");
-
-    // if (plot) gsWriteParaview(mp,outputdir+"mp",10,true);
-
-    // mp.degreeIncrease(numElev);
-    // for (index_t i = 0; i<numHRef; ++i)
-    //     mp.uniformRefine();
-
-    //// Material parameters 
+    gsFileData<> fd_pars(geoInput.empty() ? inputDir + "parameters.xml" : parInput);
+    gsInfo << "Parameter file "<< parInput <<" read.\n";
+    //// Material parameters
     gsOptionList materialParameters;
-    // Young's modulus [kN/mm^2]
-    materialParameters.addReal("E", "Young's modulus", 10e3);
-    // Poisson's ratio [-]
-    materialParameters.addReal("nu", "Poisson's ratio", 0.);
-    // Toughness [kN/mm]
-    materialParameters.addReal("Gc", "Toughness", 1e-3); // corrected
-    // Internal length [mm]
-    materialParameters.addReal("l0", "Internal length", 0.5);
-    // Density [tonn/mm^3]
-    materialParameters.addReal("rho", "Density", 2.46e-9);
-    // Order of the phase-field model
-    materialParameters.addInt("order", "Order of the phase-field model", order);
-    // AT model
-    materialParameters.addInt("AT", "AT model", AT);
+    fd_pars.getLabel("material", materialParameters);
+    gsInfo<<"Material parameters:\n"<<materialParameters<<"\n";
 
     //// Boundary control parameters
     gsOptionList controlParameters;
-    // Min time [s]
-    controlParameters.addReal("tend", "Maximum time", 80e-6); //400e-06. 1500e-06
-    // Max time [s]
-    controlParameters.addReal("tmin", "Initial time", 0.0);
-    // Time step [s]
-    controlParameters.addReal("tstep", "Time step", 1e-7);//200e-7
-    // Step transition [s]
-    controlParameters.addReal("ttrans", "Step transition", controlParameters.getReal("tend"));
-    // Step reduction factor [-]
-    controlParameters.addReal("tred", "Step reduction factor", 1.0);
-    // Maximum number of iterations
-    controlParameters.addInt("maxIt", "Maximum number of iterations", 10000);
-    // Maximum number of iterations for elasticity problem
-    controlParameters.addInt("maxItEl", "Maximum number of iterations for elasticity problem", 1);
-    // Maximum number of iterations for phase-field problem
-    controlParameters.addInt("maxItPf", "Maximum number of iterations for phase-field problem", 1);
-    // Tolerance for the elasticity problem
-    controlParameters.addReal("tolEl", "Tolerance for the elasticity problem", 1e-5);
-    // Tolerance for the phase-field problem
-    controlParameters.addReal("tolPf", "Tolerance for the phase-field problem", 1e-5);
-    // Staggered tolerance
-    controlParameters.addReal("tol", "Tolerance for the staggered scheme", 1e-5);
+    fd_pars.getLabel("control", controlParameters);
+    gsInfo<<"Control parameters:\n"<<controlParameters<<"\n";
 
-    gsInfo<< "Control parameters loaded.\n";
-    short_t dim = mp_ini.domainDim();
-    gsBoundaryConditions<> bc_u;
-
-    // Boundary conditions
-    real_t sigma = 1.0;
-    std::vector<std::string> bcFunctionTop(dim, "0");
-    std::vector<std::string> bcFunctionBottom(dim, "0");
-    bcFunctionTop[1] = "u";
-    bcFunctionBottom[1] = "-u";
-    gsFunctionExpr<> sigma_top(bcFunctionTop,dim);
-    gsFunctionExpr<> sigma_bottom(bcFunctionBottom,dim);
-    sigma_top.set_u(sigma);
-    sigma_bottom.set_u(sigma);
-    // gsInfo<< sigma_top << "\n";
-    // gsInfo<< sigma_bottom << "\n";
-    // gsVector<> pt(2);
-    // pt<<100,40;
-    // gsInfo<<"sigma top at pt: "<<pt[0]<<","<<pt[1]<<":"<<sigma_top.eval(pt)<<"\n";
-    // gsInfo<<"sigma top at "<< pt: "<<sigma_top.eval(pt)<<"\n";
-    bc_u.addCondition(boundary::north,condition_type::neumann,&sigma_top );
-    bc_u.addCondition(boundary::south,condition_type::neumann,&sigma_bottom);
-
-    gsBoundaryConditions<> bc_d;
-
-    gsFileData<> fd_pars(parInput.empty() ? inputDir + "parameters.xml" : parInput); // parameters
-    gsInfo << "Parameter file "<< parInput <<" read.\n";
     gsOptionList mesherOptions;
     fd_pars.getLabel("meshing", mesherOptions);
-    // mesherOptions.setInt("MaxLevel", 0);
-    gsInfo << mesherOptions<<"\n";
+    gsInfo<<"Mesher options:\n"<<mesherOptions<<"\n";
 
+    short_t dim = mp_ini.domainDim();
+    gsBoundaryConditions<> bc_u, bc_d;
+
+    // Boundary conditions
+    fd_pars.getLabel("BCs_u", bc_u);
+    // fd_pars.getLabel("BCs_d", bc_d);
+
+    gsInfo<< "Displacement BC: \n"<< bc_u;
+    gsInfo<< "Damage BC: \n"<< bc_d; 
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // Call the dimensional solver
@@ -394,15 +283,15 @@ void solve(gsOptionList & materialParameters,
     // Load parameters (paper Borden et al. 2012)
     ////////////////////////////////////////////////////////////////////////////////////
     // Young's modulus [N/mm^2]
-    T E = 32e3;
+    T E = materialParameters.getReal("E");
     // Poisson's ratio [-]
-    T nu = 0.2;
+    T nu = materialParameters.getReal("nu"); 
     // Toughness [N/mm]
-    T Gc = 3e-3;
+    T Gc = materialParameters.getReal("Gc");
     // Internal length [mm]
-    T l0 = 0.5;
+    T l0 = materialParameters.getReal("l0");
     // Density [kg/mm^3]
-    T rho = 2.45e-9;
+    T rho = materialParameters.getReal("rho");
     // Order of the phase-field model
     index_t order = materialParameters.getInt("order");
     // AT model
@@ -424,15 +313,15 @@ void solve(gsOptionList & materialParameters,
     // Boundary control parameters
     ////////////////////////////////////////////////////////////////////////////////////
     // Min time [s]
-    T tmin = controlParameters.getReal("tmin");
+    T tmin = controlParameters.getReal("umin");
     // Max time [s]
-    T tend = controlParameters.getReal("tend");
+    T tend = controlParameters.getReal("uend");
     // Time step [s]
-    T tstep = controlParameters.getReal("tstep");
+    T tstep = controlParameters.getReal("ustep");
     // Step transition [s]
-    T ttrans = controlParameters.askReal("ttrans",tend);
+    T ttrans = controlParameters.askReal("utrans",tend);
     // Step reduction factor [-]
-    T tred = controlParameters.askReal("tred",1.);
+    T tred = controlParameters.askReal("ured",1.);
     // Maximum number of iterations
     index_t maxIt = controlParameters.getInt("maxIt");
     // Maximum number of iterations for elasticity problem
@@ -536,10 +425,6 @@ void solve(gsOptionList & materialParameters,
     elAssembler.initialize();
     elAssembler.assemble();
 
-    gsDebugVar(elAssembler.rhs().norm());
-
-
-
     gsBoundaryConditions<T> bc_u_dummy;
     bc_u_dummy.setGeoMap(mp);
     gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> fullElAssembler(mp,mb,bc_u_dummy,&material);
@@ -573,24 +458,6 @@ void solve(gsOptionList & materialParameters,
     pfAssembler->options().setReal("l0",l0);
     pfAssembler->options().setReal("Gc",Gc);
     pfAssembler->initialize();
-
-    //////////////////////////////////////////////////////////////////////////
-    // SOLVE THE PROBLEM/////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-    // Since the size of the system changes, no preallocation is done of the vectors
-    // gsMatrix<> u_new(elAssembler.numDofs(),1),
-    //            u_old(elAssembler.numDofs(),1),
-    //            udot_new(elAssembler.numDofs(),1),
-    //            udot_old(elAssembler.numDofs(),1),
-    //            uddot_new(elAssembler.numDofs(),1),
-    //            uddot_old(elAssembler.numDofs(),1),
-    //            delta_u;
-    // u_new.setZero();
-    // u_old.setZero();
-    // udot_new.setZero();
-    // udot_old.setZero();
-    // uddot_new.setZero();
-    // uddot_old.setZero();
 
     gsMatrix<> D_new, D_old, delta_D;
     gsMatrix<> u_new,u_old,udot_new,udot_old,uddot_new,uddot_old,delta_u;
@@ -647,12 +514,6 @@ void solve(gsOptionList & materialParameters,
     gsParaviewCollection meshCollection(outputdir+"mesh");
     gsStopwatch smallClock, bigClock;
 
-    // pfAssembler->assembleMatrix();
-    // pfAssembler->matrix_into(QPhi);
-    // pfAssembler->constructSolution(damage,D);
-    // gsInfo<<"D_0 = "<<(0.5 * D.transpose() * QPhi * D).value()<<"\n";
-    //     gsWriteParaview(mp,damage,"damage_ini",100000);
-
     std::ofstream file(outputdir+"results.txt");
     file<<"u,Fx,Fy,E_u,E_d\n";
     file.close();
@@ -687,15 +548,6 @@ void solve(gsOptionList & materialParameters,
         dt = tcurr - tcurr_old;
         numIt_ref = numIt_stag = 0;
         totIt_el = totIt_pf = 0;
-        // Update the boundary conditions
-        // displ_left.set_u(tcurr);
-        // displ_right.set_u(tcurr);
-        // elAssembler.computeDirichletDofs(0); // NOTE: This computes the DDofs for **unknown** 1, which should be component 1. This is a bug in the gsElasticity assembler
-        // fixedDofs = elAssembler.allFixedDofs();
-        // elAssembler.setFixedDofs(fixedDofs);
-
-        // sigma_left.set_u(tcurr/tend * sigma);
-        // sigma_right.set_u(tcurr/tend * sigma);
 
         bool refined = false;
         T basis_size_ratio;
@@ -729,59 +581,18 @@ void solve(gsOptionList & materialParameters,
             elAssembler.assembleMass();
             M = elAssembler.matrix();
 
-
-            // Construct solution vectors from projections (stored in the multipatch objects)            
-            // gsInfo<< "basissize:"<< basis_size << ", dofs:"<< elAssembler.numDofs()<< "\n";
-            // gsInfo<< "uold: " << u_old.size() << "\n" ;
-            // gsInfo<< "udotold: " << udot_old.size() << "\n" ;
-            // gsInfo<< "uddotold: " << uddot_old.size()<< "\n" ;
-            // gsInfo<< "Dold: " << D_old.size()<< "\n" ;
-            // u_old.setZero();
-            // udot_old.setZero();
-            // uddot_old.setZero();
-            // D_old.setZero();
             gsMatrix<> D_new, D_old, delta_D;
             gsMatrix<> u_new,u_old,udot_new,udot_old,uddot_new,uddot_old,delta_u;
-            // u_old.setZero(elAssembler.numDofs(),1);      
-            // udot_old.setZero(elAssembler.numDofs(),1);
-            // uddot_old.setZero(elAssembler.numDofs(),1);
-            // D_old.setZero(pfAssembler->numDofs(),1);
-            //         gsInfo<<"============================\n";
-
-            // gsInfo<< "displacement old norm "<< displacement_old.patch(0).coefs().norm()<<"\n";
-            // gsInfo<< "vel old norm "<< velocity_old.patch(0).coefs().norm()<<"\n";
-            // gsInfo<< "acc old norm "<< acceleration_old.patch(0).coefs().norm()<<"\n";
 
             u_old.setZero(elAssembler.numDofs(),1);      
             udot_old.setZero(elAssembler.numDofs(),1);
             uddot_old.setZero(elAssembler.numDofs(),1);
 
-            // gsInfo<< "numdofs "<< elAssembler.numDofs()<<"\n";
-            // gsInfo<< "disp size "<< displacement_old.patch(0).coefs().size()<<"\n";
-
-
             elAssembler.constructSolution(displacement_old,u_old);
             elAssembler.constructSolution(velocity_old,udot_old);
             elAssembler.constructSolution(acceleration_old,uddot_old);
 
-            // u_old = displacement_old.patch(0).coefs();
-            // udot_old = velocity_old.patch(0).coefs();
-            // uddot_old = acceleration_old.patch(0).coefs();
-            // gsDebugVar(bc_u);
-
-            T max_diff = 0;
-            for(index_t i=0; i<u_old.size(); ++i)
-                max_diff = math::max(max_diff, math::abs(u_old(i) - displacement_old.patch(0).coefs()(i)));
-
-            // gsInfo << "Maximum absolute difference between u_old and patch coefs: " << max_diff << "\n";
-
-
-            // gsInfo<< "VEC displacement old norm "<< u_old.norm()<<"\n";
-            // gsInfo<< "VEC vel old norm "<< udot_old.norm()<<"\n";
-            // gsInfo<< "VEC acc old norm "<< uddot_old.norm()<<"\n";
-            
-            // gsInfo<<"============================\n";
-            // Initialize the phase-field assembler
+            // ================== Initialize the phase-field assembler ==================
             gsPhaseFieldAssemblerBase<T> * pfAssembler;
             if      (order == 2 && AT == 1)
                 pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
@@ -806,20 +617,15 @@ void solve(gsOptionList & materialParameters,
             pfAssembler->options().setReal("Gc",Gc);
             pfAssembler->initialize();
             pfAssembler->constructSolution(damage_old,D_old);
+            // ===========================================================================
 
             delta_u.setZero();
             delta_D.setZero();
-       
-            // gsInfo<< "displ old norm "<< u_old.norm()<<"\n";
-            // gsInfo<<"vel old norm: "<< udot_old.norm()<<"\n";
-            // gsInfo<<"acc old norm: "<< uddot_old.norm()<<"\n";
-            // Prediction step (IGA book Eqs. (6.44)-(6.46))
+
+            // Predictor step 
             udot_new = udot_old;
             uddot_new = (gamma-1)/gamma * uddot_old;
             u_new = u_old + dt * udot_old + 0.5*math::pow(dt,2) * ((1-2*beta) * uddot_old + 2*beta * uddot_new);
-            // gsInfo<< "displ new norm "<< u_new.norm()<<"\n";
-            // gsInfo<<"vel new norm: "<< udot_new.norm()<<"\n";
-            // gsInfo<<"acc new norm: "<< uddot_new.norm()<<"\n";
 
             Unorm = u_new.norm();
             U0 = (Unorm > 0) ? Unorm : 1.0; // Avoid division by zero
@@ -848,20 +654,6 @@ void solve(gsOptionList & materialParameters,
                 elAssemblyTime += smallClock.stop();
                 elAssembler.matrix_into(K);
                 elAssembler.rhs_into(Fext);
-                
-
-                // solver.compute(K);
-                // if (solver.info() != 0) gsInfo<<"DEBUG static solver.compute failed: "<<solver.info()<<"\n";
-                // gsMatrix<T> u_static = solver.solve(Fext);
-
-                // gsInfo<< "NORM OF R BEFORE SOLVE:"<< (M * uddot_new + K * u_new - Fext).norm() << "\n";
-
-                // gsInfo<< "norm of K:"<< K.norm() << "\n";
-                // gsInfo<< "norm of Fext:"<< Fext.norm() << "\n";
-                // gsInfo<< "norm of u_new:"<< u_new.norm() << "\n";
-                // gsInfo<< "norm of M:"<< M.norm() << "\n";
-                // gsInfo<< "norm of uddot_new:"<< uddot_new.norm() << "\n";
-
 
                 R = M * uddot_new + K * u_new - Fext;
                 Rnorm = R.norm();
@@ -915,17 +707,6 @@ void solve(gsOptionList & materialParameters,
                 elAssembler.constructSolution(uddot_new,acceleration);
                 elAssemblyTime += smallClock.stop();
 
-                // gsInfo<< "vector displacement norm" << u_new.norm()<<"\n";
-                // gsInfo<< "vector velocity norm" << udot_new.norm()<<"\n";
-                // gsInfo<< "vector acceleration norm" << uddot_new.norm()<<"\n";
-                // gsInfo<< "displacement norm" << displacement.patch(0).coefs().norm()<<"\n";
-                // gsInfo<< "velocity norm" << velocity.patch(0).coefs().norm()<<"\n";
-                // gsInfo<< "acceleration norm" << acceleration.patch(0).coefs().norm()<<"\n";
-
-                // gsInfo << "UNEW AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
-                // gsInfo << "max displacement AFTER CONTRUCT SOLUTION: " << displacement.patch(0).coefs().maxCoeff()<<"\n";
-
-
                 for (size_t p=0; p!=mp.nPatches(); ++p)
                     mp_def.patch(p).coefs() = mp.patch(p).coefs() + displacement.patch(p).coefs();
 
@@ -939,12 +720,9 @@ void solve(gsOptionList & materialParameters,
                     GISMO_ERROR("Staggered iterations problem did not converge.");
                 stagIt++;
 
-
-                // gsInfo<<"    ---------------------------------PHASE-FIELD---------------------------------\n";
+                // ================================================ PHASE-FIELD ==============================================
                 gsInfo<<"\t"<<PRINT(20)<<"* Phase-Field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||ΔD||"<<PRINT(18)<<"||ΔD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
 
-                // Phase-field problem
-                // gsInfo<<"Assembling phase-field problem"<<"\n";
                 smallClock.restart();
                 pfAssembler->assemblePsi(Psi);
                 pfAssemblyTime += smallClock.stop();
@@ -958,13 +736,8 @@ void solve(gsOptionList & materialParameters,
                 pfAssembler->assemblePhi();
                 pfAssembler->matrix_into(QPhi);
                 pfAssembler->rhs_into(q);   
-                // gsInfo << "QPhi: " << QPhi.rows() << " x " << QPhi.cols() <<"\n";
-                // gsInfo << "QPsi: " << QPsi.rows() << " x " << QPsi.cols() <<"\n";
                 
                 Q = QPhi + QPsi;
-
-                // gsInfo << "Max damage value" << damage.patch(0).coefs().maxCoeff() << "\n";
-                // gsInfo << "Min damage value" << damage.patch(0).coefs().minCoeff() << "\n";
 
                 // Reconstruct the solution from the damage field
                 pfAssembler->constructSolution(damage,D_new);
@@ -987,12 +760,10 @@ void solve(gsOptionList & materialParameters,
                     pfAssemblyTime += smallClock.stop();
 
                     smallClock.restart();
-                    // gsInfo << "R size: "<< R.size() << "\n";
-                    // gsInfo << "delta_D size: "<< delta_D.size() << "\n";
                     PSORsolver.solve(R,delta_D); // delta_D = Q \ R
                     pfSolverTime += smallClock.stop();
                     D_new += delta_D;
-                    // gsInfo<<"\t"<<PRINT(20)<<"* Phase-Field:"<<PRINT(6)<<"It."<<PRINT(18)<<"||R||"<<PRINT(18)<<"||ΔD||/||D||"<<PRINT(20)<<"cum. assembly [s]"<<PRINT(20)<<"cum. solver [s]"<<"\n";
+
                     gsInfo<<"\t"<<PRINT(20)<<" "<<PRINT(6)<<pfIt<<PRINT(18)<<R.norm()<<PRINT(18)<<delta_D.norm()<<PRINT(18)<<delta_D.norm()/D_new.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";
 
                     if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12 || maxItPf==1)
@@ -1003,51 +774,20 @@ void solve(gsOptionList & materialParameters,
                 }
                 numIt_pf = pfIt+1;
                 totIt_pf+= numIt_pf;
-
-                // gsInfo<<"damage max: "<<D_new.maxCoeff()<<"\n";
-                // gsInfo<<"damage min: "<<D_new.minCoeff()<<"\n";
-
-                // gsInfo<<"SOLVER TIME: "<<pfSolverTime<< "\n";
                 
                 // Update damage spline
                 pfAssembler->constructSolution(D_new,damage);
 
-                // stepTimes.elAssemblyTime += stagTimes.elAssemblyTime;
-                // stepTimes.elSolverTime += stagTimes.elSolverTime;
-                // stepTimes.pfAssemblyTime += stagTimes.pfAssemblyTime;
-                // stepTimes.pfSolverTime += stagTimes.pfSolverTime;
             } // end staggered loop
             numIt_stag += stagIt+1;
 
             energy_D = (0.5 * D_new.transpose() * QPhi * D_new).value() + (D_new.transpose() * q).value();
-            
-        // gsInfo << "u_new     AFTER CONTRUCT SOLUTION: " << u_new.norm()<<"\n";
-        // gsInfo << "udot_new  AFTER CONTRUCT SOLUTION: " << udot_new.norm()<<"\n";
-        // gsInfo << "uddot_new AFTER CONTRUCT SOLUTION: " << uddot_new.norm()<<"\n";
-
-
-
-            // =========================================================================
-            // REFINE MESH
-            // All labelled elements are refined to the maximum level, step-by-step
-            // gsInfo<< "mesher options max level: "<< mesherOptions.getInt("MaxLevel") << "\n";
-
-            // index_t maxLevel = 0;
-            // for (index_t i = 0; i != mb.nBases(); ++i)
-            // {
-            //     const auto &basis = mb.basis(i);  // gsBasis<>
-            //     for (index_t j = 0; j < basis.size(); ++j)
-            //     {
-            //         maxLevel = std::max(maxLevel, basis.getLevel(j));
-            //     }
-            // }
-            // gsInfo << "Maximum level: " << maxLevel << "\n";
 
             // Save size of the basis and element size
             num_dofs_tot = (dim+1)*mb.basis(0).size();
             num_el_tot   = mb.basis(0).numElements();
 
-            // for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
+            // Mesh refinement 
             if (adaptive_switch)
             {
                 for (index_t i=0; i!=maxRefLvl; ++i)
@@ -1122,7 +862,6 @@ void solve(gsOptionList & materialParameters,
                 acceleration_old.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
                 // ========================================================================
                 // Damage
-                // gsInfo<<"damage max before projection: "<<damage.patch(0).coefs().maxCoeff()<<"\n";
                 gsQuasiInterpolate<T>::localIntpl(mb.basis(0),damage.patch(0),projCoefs);
                 damage.clear();
                 damage.addPatch(mb.basis(0).makeGeometry(give(projCoefs)));
@@ -1156,13 +895,6 @@ void solve(gsOptionList & materialParameters,
             refIt++;
         } // end refinement loop
         numIt_ref = refIt+1;
-
-
-        // gsMesh<> meshD(mb.basis(0));
-        // gsWriteParaview(meshD, outputdir+"dbasis_"+util::to_string(step)+"_"+util::to_string(refIt),100000);
-        // gsWriteParaview(mp,)
-        // if (step % 200 == 0 && step <= 800)
-        //     gsWriteParaview(mp,outputdir+"mp_step_"+util::to_string(step)+"_refIt_"+util::to_string(refIt),10,true);
 
         // =========================================================================
         // // Compute resulting force and energies (i need to check the size of the assembler!)
@@ -1277,11 +1009,6 @@ void solve(gsOptionList & materialParameters,
         velocity_old        = velocity;
         acceleration_old    = acceleration;
         damage_old          = damage;    
-
-        gsInfo << "displ " << displacement_old.patch(0).coefs().norm()<<"\n";
-        gsInfo << "vel " << velocity_old.patch(0).coefs().norm()<<"\n";
-        gsInfo << "acc " << acceleration_old.patch(0).coefs().norm()<<"\n";
-
  
         tcurr_old = tcurr;
         tcurr += (tcurr+tstep > ttrans) ? tstep/tred : tstep;
