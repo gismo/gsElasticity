@@ -387,7 +387,11 @@ void solve(gsOptionList & materialParameters,
     gsInfo<<"The basis has size "<<mb.size()<<" and degree "<<mb.degree()<<"\n";
     for (size_t b=0; b!=mb.nBases(); b++)
         gsInfo<<"Basis "<<b<<":\n"<<mb.basis(b)<<"\n";
-        
+    
+    // // Boundary conditions
+    // gsFunctionExpr<T> displ(bcFunction,dim);
+    // displ.set_u(ucurr);
+    // bc_u.addCondition(fixedSidePatch,fixedSideId,condition_type::dirichlet,&displ,0,false,fixedSideDir);
     bc_u.setGeoMap(mp);
     bc_d.setGeoMap(mp);
 
@@ -417,11 +421,12 @@ void solve(gsOptionList & materialParameters,
 
     // Initialize the material
     gsLinearDegradedMaterial<T> material(E,nu,rho,damage,dim);
-
+    
     // Initialize the elasticity assembler
     gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> elAssembler(mp,mb,bc_u,&material);
     elAssembler.options().setReal("ExprAssembler.quA",1.0);
     elAssembler.options().setInt ("ExprAssembler.quB",1);
+    elAssembler.options().setInt("ExprAssembler.DirichletValues",dirichlet::l2Projection);
     elAssembler.initialize();
     elAssembler.assemble();
 
@@ -574,8 +579,7 @@ void solve(gsOptionList & materialParameters,
             gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> elAssembler(mp,mb,bc_u,&material);
             elAssembler.options().setReal("ExprAssembler.quA",1.0);
             elAssembler.options().setInt ("ExprAssembler.quB",1);
-            elAssembler.initialize();
-            elAssembler.assemble();
+            elAssembler.options().setInt("ExprAssembler.DirichletValues",dirichlet::l2Projection);
             elAssembler.initialize();
             // get new Mass matrix with the new mesh
             elAssembler.assembleMass();
