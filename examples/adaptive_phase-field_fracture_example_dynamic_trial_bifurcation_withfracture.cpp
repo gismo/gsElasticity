@@ -432,11 +432,7 @@ void solve(gsOptionList & materialParameters,
 
     gsBoundaryConditions<T> bc_u_dummy;
     bc_u_dummy.setGeoMap(mp);
-    gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> fullElAssembler(mp,mb,bc_u_dummy,&material);
-    fullElAssembler.options().setReal("ExprAssembler.quA",1.0);
-    fullElAssembler.options().setInt ("ExprAssembler.quB",1);
-    fullElAssembler.initialize();
-
+    
     // Initialize the mass assembler
     elAssembler.assembleMass();
     gsSparseMatrix<> M = elAssembler.matrix();
@@ -520,7 +516,7 @@ void solve(gsOptionList & materialParameters,
     gsStopwatch smallClock, bigClock;
 
     std::ofstream file(outputdir+"results.txt");
-    file<<"u,Fx,Fy,E_u,E_d\n";
+    file<<"step,Fx,Fy,E_u,E_d\n";
     file.close();
 
     /* @todo: add option list from file for dynamic parameters */
@@ -902,13 +898,18 @@ void solve(gsOptionList & materialParameters,
 
         // =========================================================================
         // // Compute resulting force and energies (i need to check the size of the assembler!)
-        // gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
-        // fullElAssembler.assemble(ufull);
-        // gsMatrix<T> Rfull = fullElAssembler.rhs();
-        // // sum the reaction forces in Y direction
-        // gsDofMapper mapper(mb,dim);
-        // mapper.finalize();
-        // gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::east);
+        gsSolidAssembler<dim,T,gsLinearDegradedMaterial<T>> fullElAssembler(mp,mb,bc_u_dummy,&material);
+        fullElAssembler.options().setReal("ExprAssembler.quA",1.0);
+        fullElAssembler.options().setInt ("ExprAssembler.quB",1);
+        // fullElAssembler.options().setInt("ExprAssembler.DirichletValues",dirichlet::l2Projection);
+        fullElAssembler.initialize();
+        gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
+        fullElAssembler.assemble(ufull);
+        gsMatrix<T> Rfull = fullElAssembler.rhs();
+        // sum the reaction forces in Y direction
+        gsDofMapper mapper(mb,dim);
+        mapper.finalize();
+        gsMatrix<index_t> boundary = mb.basis(0).boundary(boundary::east);
         T Fx = 0, Fy = 0;
         // for (index_t k=0; k!=boundary.size(); k++)
         // {
@@ -917,11 +918,11 @@ void solve(gsOptionList & materialParameters,
         // }
 
         std::vector<T> stepData(5);
-        // stepData[0] = tcurr;
-        // stepData[1] = Fx;
-        // stepData[2] = Fy;
-        // stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
-        // stepData[4] = (0.5 * D_new.transpose() * QPhi * D_new).value() + (D_new.transpose() * q).value();
+        stepData[0] = step;
+        stepData[1] = Fx;
+        stepData[2] = Fy;
+        stepData[3] = (0.5 * ufull.transpose() * fullElAssembler.matrix() * ufull).value();
+        stepData[4] = energy_D;
 
         gsInfo<<"\n";
         gsInfo<<"Converged with ||R||/||R0|| = "<<Rnorm/R0<<" < "<<tol<<" ||dD||= "<<delta_D.norm()<<" ||dU||/U0 = "<<delta_u.norm()<<"\n";
@@ -998,7 +999,7 @@ void solve(gsOptionList & materialParameters,
 
         // =========================================================================
         // Write data
-        std::ofstream file(outputdir+"results.txt",std::ios::app);
+        file.open(outputdir+"results.txt",std::ios::app);
         // for (size_t i = 0; i != data.size(); ++i)
         //     file<<data[i][0]<<","<<-data[i][1]<<","<<-data[i][2]<<","<<data[i][3]<<","<<data[i][4]<<"\n";
         file<<stepData[0]<<","<<-stepData[1]<<","<<-stepData[2]<<","<<stepData[3]<<","<<stepData[4]<<"\n";
