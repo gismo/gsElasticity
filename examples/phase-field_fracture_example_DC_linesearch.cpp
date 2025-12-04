@@ -49,9 +49,9 @@ struct times
     }
 };
 
-template <class T>
+template <int d, typename T>
 T bisectionLineSearch(
-    gsSolidAssembler<2,T,gsLinearDegradedMaterial<T>> &assembler, 
+    gsSolidAssembler<d,T,gsLinearDegradedMaterial<T>> &assembler, 
     const gsMatrix<T>& w,                                        // current iterate
     const gsMatrix<T>& dw,                                       // search direction
     T initial_lambda = 1.0,
@@ -76,7 +76,7 @@ T bisectionLineSearch(
     assembler.matrix_into(mat);
     assembler.rhs_into(rhs);
     gsMatrix<T> res_left = mat * w - rhs;
-    T fty_left = res_left.trasnpose()*dw;
+    T fty_left = (res_left.transpose() * dw)(0,0);
     T fty_initial = fty_left;
 
     // Assemble w + lambda_0* dw to get phi'(lambda_1) 
@@ -85,7 +85,7 @@ T bisectionLineSearch(
     assembler.matrix_into(mat);
     assembler.rhs_into(rhs);
     gsMatrix<T> res_right = mat * w_right - rhs;
-    T fty = res_right.trasnpose()*dw;
+    T fty = (res_right.transpose() * dw)(0,0);
 
     // If no sign change, accept full step
     if (fty_left * fty >= 0.0)
@@ -120,7 +120,7 @@ T bisectionLineSearch(
         assembler.matrix_into(mat);
         assembler.rhs_into(rhs);
         gsMatrix<T> res_new = mat * w_new - rhs;
-        fty = res_new.trasnpose()*dw;
+        fty = (res_new.transpose() * dw)(0,0);
 
         it++;
     }
@@ -397,7 +397,9 @@ void solve(gsOptionList & materialParameters,
     //////////////////////////////////////////////////////////////////////////
 
     gsMatrix<T> u(elAssembler.numDofs(),1);
+    gsMatrix<T> du(elAssembler.numDofs(),1);
     u.setZero();
+    du.setZero();
 
 // #ifdef gsMUMPS_ENABLED
 //     // Initialize MUMPS solver
@@ -488,6 +490,7 @@ void solve(gsOptionList & materialParameters,
                 // Solve
                 T itSolverTime = 0;
                 index_t itSolverIterations = 0;
+                R = elMatrix * u - elRhs;
                 smallClock.restart();
 #ifdef GISMO_WITH_PARDISO
                 typename gsSparseSolver<T>::PardisoLDLT solver;
@@ -495,7 +498,12 @@ void solve(gsOptionList & materialParameters,
                 typename gsSparseSolver<T>::CGDiagonal solver;
 #endif
                 solver.compute(elMatrix);
-                u = solver.solve(elRhs);
+                du = solver.solve(-R); // du = -K^{-1} R
+                // Call the bisection algorithm 
+                T lambda = bisectionLineSearch(elAssembler, u, du);
+                gsInfo<<"Line search lambda: "<<lambda<<"\n";
+                du *= lambda; // ???
+                u += du;
 #ifdef GISMO_WITH_PARDISO
                 itSolverIterations = 1;
 #else
@@ -516,7 +524,7 @@ void solve(gsOptionList & materialParameters,
                 Rnorm = (elMatrix*u - elRhs).norm();
                 gsInfo<<"\t"<<PRINT(20)<<""<<PRINT(6)<<elIt<<PRINT(14)<<Rnorm<<PRINT(14)<<Fnorm<<PRINT(14)<<Rnorm/Fnorm<<PRINT(14)<<u.norm()<<PRINT(20)<<stagTimes.elAssemblyTime<<PRINT(20)<<stagTimes.elSolverTime<<PRINT(20)<<itSolverTime<<PRINT(20)<<itSolverIterations<<"\n";
 
-                if (Rnorm/Fnorm < tolEl || u.norm() < 1e-12 || maxItEl==1)
+                if (Rnorm/Fnorm < tolEl || (du.norm()/u.norm()) < 1e-12 || maxItEl==1)
                     break;
                 else if (elIt == maxItEl-1)
                     GISMO_ERROR("Elasticity problem did not converge.");
