@@ -32,6 +32,13 @@ using namespace gismo;
 
 #define PRINT(w) std::setw(w)<<std::left
 
+template <short_t dim, class T>
+T markAndRefine(      gsMultiBasis<T>  & basis,
+                const gsFunctionSet<T> & damage,
+                const index_t            maxLevel,
+                const T                  lowerBound = 0.0,
+                const T                  upperBound = 1.0);
+
 std::vector<real_t> labelElements(  const gsMultiPatch<> & geometry,
                                     const gsFunctionSet<>& damage,
                                     const gsMultiBasis<> & basis,
@@ -248,6 +255,89 @@ T refineMesh(         gsMultiBasis<T>& basis,
     return area;
 }
 
+
+template <short_t dim, class T>
+T markAndRefine(      gsMultiBasis<T>  & basis,
+                const gsFunctionSet<T> & damage,
+                const index_t            maxLevel,
+                const T                  lowerBound,
+                const T                  upperBound)
+{
+    typedef typename gsHElementHelper<dim,T>::HElementContainer HElementContainer;
+    
+    T markedArea = 0.0;
+
+    gsVector<index_t,dim> np;
+    np.setConstant(2);
+    gsLobattoRule<T> rule(np); // equivalent to using gsPointGrid with np = 2
+    // Loop over the number of levels
+    for (index_t it=0; it!=maxLevel; it++)
+    {
+        T tmpArea = 0.0;
+        gsInfo<<"Refining elements of level "<<it<<"\n";
+        // gsInfo<<"Refinement iteration "<<it+1<<"/"<<maxLevel<<"\n";
+        index_t numEl = basis.basis(0).numElements();
+        gsInfo<<"Number of elements: "<<numEl<<"\n";
+        std::vector<T> marked(numEl,false);
+        gsStopwatch timer;
+    
+        // Make an element helper
+        gsHElementHelper<dim,T> EHelper(basis.basis(0));
+        // And a container
+        HElementContainer container;
+        for (auto & domIt : basis.basis(0).domain()->allElements())
+        {
+            GISMO_ASSERT((dynamic_cast<gsHDomainIterator<T,dim> *>(&domIt)),"Domain must be hierarchical");
+            size_t level = static_cast<gsHDomainIterator<T,dim> *>(&domIt)->getLevel();
+            if (level != it)
+                continue;
+
+            gsMatrix<T> nodes;
+            gsMatrix<T> vals;
+            gsVector<T> weights;
+
+            // Evaluate damage at points in the parametric domain
+            rule.mapTo(domIt.lowerCorner(), domIt.upperCorner(),nodes,weights);
+            damage.piece(0).eval_into(nodes,vals);
+
+            // Mark element for refinement if damage is within bounds at any of the points
+            if ( (vals.array() >= lowerBound && vals.array() <= upperBound).any() )
+            {
+                marked[domIt.id()] = true;
+
+                auto el = EHelper.toElement(domIt.lowerCorner(), domIt.upperCorner(),it);
+                if (it==maxLevel-1)
+                {
+                    auto suppExt = EHelper.getSupportExtension(el);
+                    auto els = EHelper.explode(suppExt,el.level());
+                    for (const auto & e : els)
+                        container.insert(e);
+                }
+                else
+                {
+                    container.insert(el);
+                }
+            }
+        }
+
+        
+        HElementContainer markedRef = EHelper.markAdmissible(container,2);
+        for (const auto & elem : markedRef)
+        {
+            gsMatrix<T> box = EHelper.toBox(elem);
+            tmpArea += (box.col(1)-box.col(0)).prod();
+        }
+        tmpArea /= (basis.basis(0).support().col(1)-basis.basis(0).support().col(0)).prod();
+        markedArea = math::max(markedArea,tmpArea);
+
+        std::vector<index_t> refBox = EHelper.toRefBoxes(markedRef);
+        gsInfo<<"Refining "<<markedRef.size()<<" elements took "<<timer.stop()<<" seconds.\n";
+        basis.basis(0).refineElements(refBox);
+        container.clear();
+    }
+    return markedArea;
+}
+
 template <short_t dim, class T>
 void solve(gsOptionList & materialParameters,
            gsOptionList & controlParameters,
@@ -454,7 +544,6 @@ void solve(gsOptionList & materialParameters,
 
         bool refined = true;
         index_t basis_size_old, basis_size;
-        T basis_size_ratio;
         T markedArea = 0., tmpArea = 0.;
         gsInfo<<"===========================================================================================================================\n";
         gsInfo<<"Load step "<<step<<": u = "<<ucurr<<"\n";
@@ -645,6 +734,7 @@ void solve(gsOptionList & materialParameters,
                 // Update damage spline
                 pfAssembler->constructSolution(D,damage);
 
+                // Update the damage field stored in the material
                 material.setParameter(2,damage);
                 smallClock.restart();
                 elAssembler.assemble(u);
@@ -688,32 +778,12 @@ void solve(gsOptionList & materialParameters,
 
             // =========================================================================
             // REFINE MESH
-            // All labelled elements are refined to the maximum level, step-by-step
-            for (index_t i=0; i!=mesherOptions.askInt("MaxLevel",1); ++i)
-            {
-                smallClock.restart();
-                elVals = labelElements<dim,T>(mp, damage, mb,0.1,1.0);
-                gsInfo<<"Labelling level "<<i<<" took "<<smallClock.stop()<<" seconds\n";
-                if (gsAsVector<T>(elVals).sum() > 0)
-                {
-                    smallClock.restart();
-                    tmpArea = refineMesh<dim,T>(mb,elVals,mesherOptions);
-                    gsInfo<<"Refining mesh took "<<smallClock.stop()<<" seconds\n";
-                }
+            markedArea = markAndRefine<dim,T>(mb, damage, mesherOptions.askInt("MaxLevel",1),0.1,1.0);
+            basis_size = mb.basis(0).size();
+            refined = basis_size > basis_size_old;
 
-                tmpArea /= (mb.basis(0).support().col(1)-mb.basis(0).support().col(0)).prod();
-                markedArea = math::max(markedArea,tmpArea);
-                basis_size = mb.basis(0).size();
-                refined = basis_size > basis_size_old;
-                if (!refined)
-                    break;
-            }
             gsInfo<<"Marked area: "<<markedArea<<"\n";
             refined &= markedArea > mesherOptions.askReal("SizeRatio",1.01);
-
-            // basis_size_ratio = (T)basis_size/basis_size_old;
-            // gsInfo<<"Old mesh size: "<<basis_size_old<<", new mesh size: "<<basis_size<<", ratio = "<<basis_size_ratio<<"\n";
-            // refined &= basis_size_ratio > mesherOptions.askReal("SizeRatio",1.05);
 
             // =========================================================================
             // PROJECT SOLUTIONS
@@ -794,7 +864,7 @@ void solve(gsOptionList & materialParameters,
         fullElAssembler.options().setInt ("ExprAssembler.quB",0);
         fullElAssembler.initialize();
 
-        // Compute resulting force and energies
+        // Compute reaction force and energies
         gsMatrix<T> ufull = displacement.patch(0).coefs().reshape(displacement.patch(0).coefs().size(),1);
         fullElAssembler.assemble(ufull);
         gsMatrix<T> Rfull = fullElAssembler.matrix()*ufull - fullElAssembler.rhs();
