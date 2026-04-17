@@ -33,7 +33,7 @@ using namespace gismo;
 #define PRINT(w) std::setw(w)<<std::left
 
 template <short_t dim, class T>
-T markAndRefine(      gsMultiBasis<T>  & basis,
+std::tuple<T,T,T> markAndRefine(      gsMultiBasis<T>  & basis,
                 const gsFunctionSet<T> & damage,
                 const index_t            maxLevel,
                 const T                  lowerBound = 0.0,
@@ -58,6 +58,8 @@ struct times
     T pfAssemblyTime;
     T pfSolverTime;
     T projectionTime;
+    T markingTime;
+    T refinementTime;
 
     void reset()
     {
@@ -66,6 +68,8 @@ struct times
         pfAssemblyTime = 0;
         pfSolverTime = 0;
         projectionTime = 0;
+        markingTime = 0;
+        refinementTime = 0;
     }
 };
 
@@ -89,6 +93,10 @@ int main(int argc, char *argv[])
     index_t plotmod = 1;
     index_t numHRef = 0;
     index_t numElev = 0;
+    real_t  SizeRatio = -1;
+    index_t MaxRefIterations = -1;
+    real_t  LowerBound = -1;
+    real_t  UpperBound = -1;
     std::string output;
     std::string parInput;
     std::string geoInput;
@@ -105,6 +113,11 @@ int main(int argc, char *argv[])
     cmd.addString("g", "geometry", "Geometry file", geoInput);
     cmd.addString("d", "damage", "Damage file", damageInput);
     cmd.addString("I", "inputDir", "Input directory", inputDir);
+    // Override meshing options with command line arguments
+    cmd.addReal("S", "SizeRatio", "Size ratio for adaptive refinement", SizeRatio);
+    cmd.addInt("M", "MaxRefIterations", "Maximum number of refinement iterations", MaxRefIterations);
+    cmd.addReal("L", "LowerBound", "Lower bound for the phase-field-based marking", LowerBound);
+    cmd.addReal("U", "UpperBound", "Upper bound for the phase-field-based marking", UpperBound);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -173,6 +186,23 @@ int main(int argc, char *argv[])
     gsOptionList mesherOptions;
     fd_pars.getLabel("meshing", mesherOptions);
 
+    // Override meshing options with command line arguments
+    GISMO_ENSURE(SizeRatio == -1 || (SizeRatio >= 0 && SizeRatio <= 1), "SizeRatio must be 0 (implicit), 1 (explicit) or between 0 and 1 (hybrid).");
+    if (SizeRatio != -1)
+        mesherOptions.setReal("SizeRatio", SizeRatio);
+    
+    GISMO_ENSURE(MaxRefIterations == -1 || MaxRefIterations >= 0, "MaxRefIterations must be non-negative.");
+    if (MaxRefIterations != -1)
+        mesherOptions.setInt("MaxRefIterations", MaxRefIterations);
+    
+    GISMO_ENSURE(LowerBound == -1 || (LowerBound >= 0 && LowerBound <= 1), "LowerBound must be between 0 and 1.");
+    if (LowerBound != -1)
+        mesherOptions.setReal("LowerBound", LowerBound);
+    
+    GISMO_ENSURE(UpperBound == -1 || (UpperBound >= 0 && UpperBound <= 1), "UpperBound must be between 0 and 1.");
+    if (UpperBound != -1)
+        mesherOptions.setReal("UpperBound", UpperBound);
+
     ///////////////////////////////////////////////////////////////////////////////////////
     // Call the dimensional solver
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -192,16 +222,18 @@ int main(int argc, char *argv[])
 } // end main
 
 template<short_t dim, class T>
-std::vector<T> labelElements(  const gsMultiPatch<> & geometry,
+T labelElements(  const gsMultiPatch<> & geometry,
                                     const gsFunctionSet<>& damage,
                                     const gsMultiBasis<> & basis,
                                     const T         & lowerBound,
-                                    const T         & upperBound)
+                                    const T         & upperBound,
+                                    std::vector<T> & labels)
 {
+    gsStopwatch timer;
     GISMO_ASSERT(basis.nBases() == 1, "Labeling is only implemented for single basis meshes");
     // typename gsBasis<T>::domainIter domIt  = basis.basis(0).domain()->beginAll();
     typename gsBasis<T>::domainIter domEnd = basis.basis(0).domain()->endAll();
-    std::vector<T> labels(basis.basis(0).numElements());
+    labels.resize(basis.basis(0).numElements());
     gsVector<index_t,dim> np;
     np.setConstant(2);
     gsLobattoRule<T> rule(np); // equivalent to using gsPointGrid with np = 2
@@ -220,7 +252,7 @@ std::vector<T> labelElements(  const gsMultiPatch<> & geometry,
     }
 
     // }
-    return labels;
+    return timer.stop();
 }
 
 template <short_t dim, class T>
@@ -257,12 +289,16 @@ T refineMesh(         gsMultiBasis<T>& basis,
 
 
 template <short_t dim, class T>
-T markAndRefine(      gsMultiBasis<T>  & basis,
+std::tuple<T,T,T>
+markAndRefine(      gsMultiBasis<T>  & basis,
                 const gsFunctionSet<T> & damage,
                 const index_t            maxLevel,
                 const T                  lowerBound,
                 const T                  upperBound)
 {
+    gsStopwatch markTimer, refineTimer;
+    T markingTime = 0.0, localMarkingTime = 0.0;
+    T refinementTime = 0.0, localRefinementTime = 0.0;
     typedef typename gsHElementHelper<dim,T>::HElementContainer HElementContainer;
     
     T markedArea = 0.0;
@@ -276,10 +312,11 @@ T markAndRefine(      gsMultiBasis<T>  & basis,
         T tmpArea = 0.0;
         gsInfo<<"Refining elements of level "<<it<<"\n";
         // gsInfo<<"Refinement iteration "<<it+1<<"/"<<maxLevel<<"\n";
+        markTimer.restart();
+        
         index_t numEl = basis.basis(0).numElements();
         gsInfo<<"Number of elements: "<<numEl<<"\n";
         std::vector<T> marked(numEl,false);
-        gsStopwatch timer;
     
         // Make an element helper
         gsHElementHelper<dim,T> EHelper(basis.basis(0));
@@ -319,7 +356,6 @@ T markAndRefine(      gsMultiBasis<T>  & basis,
                 }
             }
         }
-
         
         HElementContainer markedRef = EHelper.markAdmissible(container,2);
         for (const auto & elem : markedRef)
@@ -329,13 +365,18 @@ T markAndRefine(      gsMultiBasis<T>  & basis,
         }
         tmpArea /= (basis.basis(0).support().col(1)-basis.basis(0).support().col(0)).prod();
         markedArea = math::max(markedArea,tmpArea);
+        localMarkingTime = markTimer.stop();
+        markingTime += localMarkingTime;
 
+        refineTimer.restart();
         std::vector<index_t> refBox = EHelper.toRefBoxes(markedRef);
-        gsInfo<<"Refining "<<markedRef.size()<<" elements took "<<timer.stop()<<" seconds.\n";
         basis.basis(0).refineElements(refBox);
+        localRefinementTime = refineTimer.stop();
+        gsInfo<<"Refining "<<markedRef.size()<<" elements took "<<localRefinementTime<<" seconds.\n";
+        refinementTime += localRefinementTime;
         container.clear();
     }
-    return markedArea;
+    return std::make_tuple(markedArea, markingTime, refinementTime);
 }
 
 template <short_t dim, class T>
@@ -518,7 +559,7 @@ void solve(gsOptionList & materialParameters,
 
     std::ofstream file;
     file.open(outputdir+"results.txt");
-    file<<"LoadStep,u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,basis_size,ref_area,totIt_el,totIt_pf,numIt_stag,numIt_ref\n";
+    file<<"LoadStep,u,Fx,Fy,E_u,E_d,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,projectionTime,markingTime,refinementTime,basis_size,ref_area,totIt_el,totIt_pf,numIt_stag,numIt_ref\n";
     file.close();
     file.open(outputdir+"iteration_results.txt");
     file<<"LoadStep,RefIt,StagIt,u,Unorm,Dnorm,Rnorm,Fnorm,relRnorm,elAssemblyTime,elSolverTime,pfAssemblyTime,pfSolverTime,basis_size,ref_area,numIt_el,numIt_pf\n";
@@ -778,11 +819,20 @@ void solve(gsOptionList & materialParameters,
 
             // =========================================================================
             // REFINE MESH
-            markedArea = markAndRefine<dim,T>(mb, damage, mesherOptions.askInt("MaxLevel",1),0.1,1.0);
+            auto markingOutput = markAndRefine<dim,T>(mb, damage, 
+                                                        mesherOptions.askInt("MaxLevel",1),
+                                                        mesherOptions.askReal("LowerBound",0.1),
+                                                        mesherOptions.askReal("UpperBound",1.0));
+            markedArea = std::get<0>(markingOutput);
+            stepTimes.markingTime += std::get<1>(markingOutput);
+            stepTimes.refinementTime += std::get<2>(markingOutput);
+
+            gsInfo<<"Marking and refinement took "<<stepTimes.markingTime + stepTimes.refinementTime<<" seconds (marking: "<<stepTimes.markingTime<<" seconds, refinement: "<<stepTimes.refinementTime<<" seconds)\n";
+            gsInfo<<"Marked area: "<<markedArea<<"\n";
+
             basis_size = mb.basis(0).size();
             refined = basis_size > basis_size_old;
 
-            gsInfo<<"Marked area: "<<markedArea<<"\n";
             refined &= markedArea > mesherOptions.askReal("SizeRatio",1.01);
 
             // =========================================================================
@@ -885,6 +935,8 @@ void solve(gsOptionList & materialParameters,
             <<stepTimes.elAssemblyTime<<","<<stepTimes.elSolverTime<<","
             <<stepTimes.pfAssemblyTime<<","<<stepTimes.pfSolverTime<<","
             <<stepTimes.projectionTime<<","
+            <<stepTimes.markingTime<<","
+            <<stepTimes.refinementTime<<","
             <<basis_size<<","<<markedArea<<","
             <<totIt_el<<","<<totIt_pf<<","
             <<numIt_stag<<","<<numIt_ref<<"\n";
@@ -892,9 +944,6 @@ void solve(gsOptionList & materialParameters,
 
         // =========================================================================
         // INCREMENT STEP
-
-        // displacement_old = displacement;
-        // damage_old = damage;
         if (ucurr == uend || math::abs(ucurr-uend) < 1e-10)
             break;
 
