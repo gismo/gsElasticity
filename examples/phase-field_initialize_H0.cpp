@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 
     gsRBFCurve<real_t,Hat> Psi(crack,beta,beta,B*Gc/(2*l0));
     // H0Function<real_t> Psi(curve,B,Gc,l0,beta);
-    if(plot) gsWriteParaview(mp,Psi,outputDirdir+"H0",100000);
+    if(plot) gsWriteParaview(mp,Psi,outputDir+"H0",100000);
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -220,11 +220,11 @@ int main(int argc, char *argv[])
     gsMultiPatch<> damage;
     pfAssembler->constructSolution(D,damage);
 
-    if(plot) gsWriteParaview(mp,damage,outputDirdir+"H0_after",100000);
+    if(plot) gsWriteParaview(mp,damage,outputDir+"H0_after",100000);
 
     gsFileData<> fd_out;
-    fd_out.addWithLabel(damage,outputDirdir+"damage");
-    fd_out.save(outputDirdir+"damage");
+    fd_out.addWithLabel(damage,outputDir+"damage");
+    fd_out.save(outputDir+"damage");
 
     delete pfAssembler;
     return EXIT_SUCCESS;
