@@ -495,7 +495,8 @@ void solve(gsOptionList & materialParameters,
     T refTime = 0.0;
     T totalTime = 0.0;
 
-    T energy_D, energy_E;
+    // T energy_D, energy_E;
+    T energy_D = 0.0, energy_E = 0.0;
 
     gsSparseMatrix<T> Q, QPhi, QPsi;
     gsMatrix<T> q, qpsi;
@@ -507,6 +508,9 @@ void solve(gsOptionList & materialParameters,
     pfAssembler->constructSolution(damage,D_old);
 
     index_t step = 0;
+
+    // Create the output directory if it doesn't exist
+    gsFileManager::mkdir(outputdir);
 
     gsParaviewCollection damageCollection(outputdir+"damage");
     gsParaviewCollection psiCollection(outputdir+"Psi");
@@ -595,7 +599,12 @@ void solve(gsOptionList & materialParameters,
             // ================== Initialize the phase-field assembler ==================
             gsPhaseFieldAssemblerBase<T> * pfAssembler;
             if      (order == 2 && AT == 1)
+            {
                 pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT1>(mp,mb,bc_d);
+                pfAssembler->options().setReal("cw",1);
+                pfAssembler->options().setReal("chi",1);
+            }
+
             else if (order == 4 && AT == 1)
             {
                 pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT1>(mp,mb,bc_d);
@@ -603,8 +612,12 @@ void solve(gsOptionList & materialParameters,
                 pfAssembler->options().setReal("chi",0.0625);
             }
             else if (order == 2 && AT == 2)
+            {
                 pfAssembler = new gsPhaseFieldAssembler<T,PForder::Second,PFmode::AT2>(mp,mb,bc_d);
-            else if (order == 4 && AT == 2)
+                pfAssembler->options().setReal("cw",1);
+                pfAssembler->options().setReal("chi",1);
+            }
+                else if (order == 4 && AT == 2)
             {
                 pfAssembler = new gsPhaseFieldAssembler<T,PForder::Fourth,PFmode::AT2>(mp,mb,bc_d);
                 pfAssembler->options().setReal("cw",4.4485);
@@ -617,6 +630,12 @@ void solve(gsOptionList & materialParameters,
             pfAssembler->options().setReal("Gc",Gc);
             pfAssembler->initialize();
             pfAssembler->constructSolution(damage_old,D_old);
+
+            // Assemble damage operators here as well, so E_D is valid even when
+            // the staggered loop exits before entering the phase-field block.
+            pfAssembler->assemblePhi();
+            pfAssembler->matrix_into(QPhi);
+            pfAssembler->rhs_into(q);
             // ===========================================================================
 
             delta_u.setZero();
@@ -714,7 +733,7 @@ void solve(gsOptionList & materialParameters,
                 gsMaterialEval<T,gsMaterialOutput::Psi> Psi(&material,mp,mp_def);
                 energy_E = 0.5 * (u_new.transpose() * K * u_new).value();                    
 
-                if (Rnorm/R0 < 1e-5 && DeltaUnorm/U0 < 1e-4)
+                if (Rnorm/R0 < tol && DeltaUnorm/U0 < tolEl)
                     break;
                 else if (stagIt == maxIt-1)
                     GISMO_ERROR("Staggered iterations problem did not converge.");
@@ -747,9 +766,9 @@ void solve(gsOptionList & materialParameters,
                 gsPSOR<T> PSORsolver(Q);
                 PSORsolver.options().setInt("MaxIterations",30000);
                 PSORsolver.options().setSwitch("Verbose",false);
-                PSORsolver.options().setReal("tolU",1e-4);
-                PSORsolver.options().setReal("tolNeg",1e-9);
-                PSORsolver.options().setReal("tolPos",1e-9);
+                PSORsolver.options().setReal("tolU",tolEl);
+                PSORsolver.options().setReal("tolNeg",tolPf);
+                PSORsolver.options().setReal("tolPos",tolPf);
                 pfSolverTime = smallClock.stop();
                 index_t pfIt = 0;
                 while(true)
@@ -766,7 +785,7 @@ void solve(gsOptionList & materialParameters,
 
                     gsInfo<<"\t"<<PRINT(20)<<" "<<PRINT(6)<<pfIt<<PRINT(18)<<R.norm()<<PRINT(18)<<delta_D.norm()<<PRINT(18)<<delta_D.norm()/D_new.norm()<<PRINT(20)<<pfAssemblyTime<<PRINT(20)<<pfSolverTime<<"\n";
 
-                    if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12 || maxItPf==1)
+                    if (delta_D.norm()/D_new.norm() < tolPf || D_new.norm() < 1e-12 || maxItPf==1) // maxItPF = 1000
                         break;
                     else if (pfIt == maxItPf-1 && maxItPf != 1)
                         GISMO_ERROR("Phase-field problem did not converge.");
@@ -782,6 +801,9 @@ void solve(gsOptionList & materialParameters,
             numIt_stag += stagIt+1;
 
             energy_D = (0.5 * D_new.transpose() * QPhi * D_new).value() + (D_new.transpose() * q).value();
+
+            // Release the phase-field assembler created for this refinement iteration.
+            delete pfAssembler;
 
             // Save size of the basis and element size
             num_dofs_tot = (dim+1)*mb.basis(0).size();
@@ -987,13 +1009,13 @@ void solve(gsOptionList & materialParameters,
                 filename.clear();
                 subfolder = outputdir + "mesh_pvd/";
                 gsFileManager::mkdir(subfolder);
-                filename = "mesh_pvd/mesh_"+util::to_string(step);
-                gsWriteParaview(mp, outputdir + filename, 10, true); // (creates a pvd file at every time step...)
-                meshCollection.addPart(filename + "_0_mesh.vtp", step, "Mesh", 0);
+                filename = "mesh_"+util::to_string(step);
+                gsWriteParaview(mp, subfolder + filename, 10, true); // (creates a pvd file at every time step...)
+                meshCollection.addPart("mesh_pvd/" + filename + "_0_mesh.vtp", step, "Mesh", 0);
                 // delete auto-generated volume grid and per-step PVD
-                std::remove((outputdir + filename + "_0.vts").c_str());
-                gsInfo<< outputdir + filename + "_0.pvd" <<"\n";
-                std::remove((outputdir + filename + ".pvd").c_str());
+                std::remove((subfolder + filename + "_0.vts").c_str());
+                gsInfo<< subfolder + filename + "_0.pvd" <<"\n";
+                std::remove((subfolder + filename + ".pvd").c_str());
             }
         }
 
