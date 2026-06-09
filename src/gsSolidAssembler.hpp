@@ -235,6 +235,30 @@ void gsSolidAssembler<DIM,T,Material>::assembleMass()
 }
 
 template <short_t DIM, class T, class Material>
+void gsSolidAssembler<DIM,T,Material>::assembleDampingMass()
+{
+    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
+    GISMO_ENSURE(m_material,"The material has not been set yet. Call setMaterial() before assembling the system.");
+    GISMO_ASSERT(m_material->hasDensity(),"The material does not have a density function defined. Please set the density function using setDensity() method.");
+    GISMO_ASSERT(m_material->numParameters() >= 3,
+        "Damage field (parameter index 2) not set in the material. "
+        "Call material.setParameter(2, damage) before assembleDampingMass().");
+
+    m_assembler.clearMatrix();
+
+    geometryMap G = m_assembler.getMap(m_patches);
+    space       u = m_assembler.trialSpace(0);
+    u.setup(m_bcs, dirichlet::homogeneous, m_options.askInt("Continuity",-1));
+
+    auto rho = m_assembler.getCoeff(*m_material->getDensity());
+    auto d   = m_assembler.getCoeff(*m_material->getParameter(2)); // damage field
+
+    // Degraded mass: rho * (1-d)^2 * N^T N
+    // Multiply by c = 2*xi*w_m externally to obtain C(d)
+    m_assembler.assemble(rho.val() * (1.0 - d.val()) * (1.0 - d.val()) * u * u.tr() * meas(G));
+}
+
+template <short_t DIM, class T, class Material>
 void gsSolidAssembler<DIM,T,Material>::constructSolution(gsMatrix<T> & uvec,
                                                          gsMultiPatch<T> & displacement) const
 {

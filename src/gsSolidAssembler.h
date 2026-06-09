@@ -41,6 +41,8 @@ public:
 
     virtual void assembleMass() = 0;
 
+    virtual void assembleDampingMass() = 0;
+
     virtual const gsSparseMatrix<T> matrix() const = 0;
 
     virtual void matrix_into(gsSparseMatrix<T> & out) = 0;
@@ -128,6 +130,14 @@ public:
     void assemble(const gsMatrix<T> & uvec) override;
 
     void assembleMass() override;
+
+    /**
+     * @brief Assembles the damage-degraded mass matrix:
+     *          M_deg = rho * int (1-d)^2 N^T N dOmega
+     *        Requires that damage (parameter index 2) is set in the material.
+     *        Multiply the result by c = 2*xi*w_m to obtain the damping matrix C(d).
+     */
+    void assembleDampingMass();
 
     const gsSparseMatrix<T> matrix() const override { return m_assembler.matrix(); }
 
