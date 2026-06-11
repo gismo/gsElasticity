@@ -11,8 +11,7 @@
     Author(s):
 
     To run the script in 2D:
-    ./bin/fracture_elasticity_example -f linear_elasticity_example_singlepatch_2d.xml -r 8 --plot
-    ./bin/fracture_elasticity_example -f linear_elasticity_example_singlepatch_2d.xml -r 7 --plot
+    ./build/bin/phase-field_initialize_THB_mesh_manualLevels -I optional/gsElasticity/filedata/phase-field-fracture/AT-1_Order4/tensile_THB_4l0_0.50l0_3d_2 --into -e 1 -x 9 -y 9 -z 9
 */
 
 //! [Include namespace]
@@ -39,9 +38,7 @@ gsMultiPatch<T> createGeometry(const gsMultiPatch<T> & mp, index_t nLevels)
         if ((dynamic_cast<gsTensorBSpline<dim,T>*>(&mp.patch(p))))
         {
             gsTensorBSpline<dim,T> & patch = static_cast<gsTensorBSpline<dim,T>&>(mp.patch(p));
-            gsTensorBSplineBasis<dim,T> tens(patch.basis().knots(0),
-                                             patch.basis().knots(1),
-                                             patch.basis().knots(2));
+            gsTensorBSplineBasis<dim,T> tens=patch.basis();
             gsTHBSplineBasis<dim,T> thbBasis(tens, true);
             for (index_t i = 0; i < nLevels; ++i)
             {
@@ -71,23 +68,8 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
 {
     typedef typename gsHElementHelper<dim,T>::HElementContainer HElementContainer;
 
-    // 1. Access the THB basis from the first patch
+    // Access the THB basis from the first patch
     gsTHBSplineBasis<dim,T> & thbBasis = static_cast<gsTHBSplineBasis<dim,T>&>(mp_THB.basis(0));
-    
-    // 2. PRE-REFINEMENT HIERARCHY (The "Manual" part)
-    // We create the levels ahead of time so they are only refined in XY
-    if (dim == 3)
-    {
-        gsTensorBSplineBasis<dim,T> currentTens = thbBasis.tensorLevel(0);
-        for (index_t i = 0; i < mesherOptions.getInt("MaxLevel"); i++)
-        {
-            currentTens.uniformRefine(1, 0); // Refine X (direction 0)
-            currentTens.uniformRefine(1, 1); // Refine Y (direction 1)
-            // Skip direction 2 (Z) to keep it coarse
-            
-            thbBasis.addLevel(currentTens); 
-        }
-    }
 
     gsHElementMarker<dim,T> marker(thbBasis);
     marker.options().update(mesherOptions,gsOptionList::ignoreIfUnknown);
@@ -95,7 +77,8 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
     gsMatrix<T,dim,2> corners;
     T lowerBound = 0.1;
     T upperBound = 1.0;
-    gsParaviewCollection refined("markedRef");
+    // gsParaviewCollection refined("markedRef");
+    gsInfo<<"maximum levels: " << mesherOptions.getInt("MaxLevel") << "\n";
 
     // 3. ADAPTIVE LOOP
     for (index_t it=0; it!=mesherOptions.getInt("MaxLevel"); it++)
@@ -106,6 +89,7 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
         std::vector<T> marked(numEl, false);
         gsStopwatch timer;
 
+        gsInfo<<"  scanning domain elements\n";
         for (auto & domIt : thbBasis.domain()->allElements())
         {
             gsMatrix<T> vals;
@@ -126,22 +110,33 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
             crack.piece(0).eval_into(points,vals);
             marked[domIt.id()] = (vals.array() >= lowerBound && vals.array() <= upperBound).any();
         }
+        gsInfo<<"  scan done, marked size = "<<marked.size()<<"\n";
 
+        gsInfo<<"  calling setErrors\n";
         marker.setErrors(marked);
-        HElementContainer markedRef = marker.markRef();
+        gsInfo<<"  setErrors done\n";
+        gsInfo<<"  calling markRef\n";
+        HElementContainer markedRef = marker.markRef();        
+        gsInfo<<"  markRef done, markedRef size = "<<markedRef.size()<<"\n";
+        gsInfo<<"  calling toRefBoxes\n";
         std::vector<index_t> refBox = marker.toRefBoxes(markedRef);
 
-        // This call now pushes elements into the XY-refined levels we created above
+        gsInfo<<"  calling refineElements\n";
         mp_THB.patch(0).refineElements(refBox);
+        gsInfo<<"  refineElements done\n";
 
         gsInfo<<"  Number of elements after refinement: "<<thbBasis.numElements()<<"\n";
 
         // ... (Keep the plotting code below as is) ...
         gsMesh<> mesh(mp_THB.basis(0));
-        mp_THB.patch(0).evaluateMesh(mesh);
+        gsInfo<<"  mesh created\n";
+        // mp_THB.patch(0).evaluateMesh(mesh);
+        gsInfo<<"  evaluateMesh done\n";
+        gsInfo<<"  writing paraview\n";
         gsWriteParaview(mesh,"/Users/lucasventavinuela/gismo_fracture2/optional/gsElasticity/filedata/phase-field-fracture/AT-1_Order4/tensile_THB_4l0_0.50l0_3d_2/THB_mesh_"+util::to_string(it),false);
+        gsInfo<<"  paraview write done\n";
     }
-    refined.save();
+    // refined.save();
 }
 
 int main(int argc, char *argv[])
