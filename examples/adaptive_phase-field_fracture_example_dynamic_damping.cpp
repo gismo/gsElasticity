@@ -533,6 +533,7 @@ void solve(gsOptionList & materialParameters,
     gsParaviewCollection psiCollection(outputdir+"Psi");
     gsParaviewCollection displCollection(outputdir+"displacement");
     gsParaviewCollection PwaveCollection(outputdir+"Pwave");
+    gsParaviewCollection SwaveCollection(outputdir+"Swave");
     gsParaviewCollection meshCollection(outputdir+"mesh");
     gsStopwatch smallClock, bigClock;
 
@@ -1052,6 +1053,50 @@ void solve(gsOptionList & materialParameters,
             // gsWriteParaview(mp,displacement,outputdir+filename,1000);
             displCollection.addPart(filename,step,"Solution",0);
 
+            // P-wave = div(v) and S-wave = curl(v), computed analytically from the
+            // spline velocity via the chain rule  grad_x(v) = grad_xi(v) * J_geo^{-1}.
+            // (Exact spline gradient, no finite-difference/post-processing error.)
+            gsMatrix<> velGrad = velocity.patch(0).deriv(pts); // (dim*dim) x N: d v_c / d xi_j
+            gsMatrix<> geoGrad = mp.patch(0).deriv(pts);        // (dim*dim) x N: d x_i / d xi_j
+            gsMatrix<> eval_P(1, pts.cols());
+            gsMatrix<> eval_S((dim==2 ? 1 : 3), pts.cols());
+            gsMatrix<T> Jv(dim,dim), Jg(dim,dim), Jp(dim,dim);
+            for (index_t n = 0; n != pts.cols(); ++n)
+            {
+                for (short_t c = 0; c != dim; ++c)
+                    for (short_t j = 0; j != dim; ++j)
+                    {
+                        Jv(c,j) = velGrad(c*dim+j, n);
+                        Jg(c,j) = geoGrad(c*dim+j, n);
+                    }
+                Jp = Jv * Jg.inverse();   // physical velocity gradient: Jp(c,i) = d v_c / d x_i
+                eval_P(0,n) = Jp.trace(); // div(v)
+                if (dim==2)
+                    eval_S(0,n) = Jp(1,0) - Jp(0,1);                 // curl_z = dvy/dx - dvx/dy
+                else
+                {
+                    eval_S(0,n) = Jp(2,1) - Jp(1,2);
+                    eval_S(1,n) = Jp(0,2) - Jp(2,0);
+                    eval_S(2,n) = Jp(1,0) - Jp(0,1);
+                }
+            }
+
+            subfolder.clear();
+            filename.clear();
+            subfolder = outputdir + "Pwave_pvd/";
+            gsFileManager::mkdir(subfolder);
+            filename = "Pwave_pvd/Pwave_"+util::to_string(step);
+            gsWriteParaviewTPgrid(eval_geo,eval_P,np.template cast<index_t>(),outputdir+filename);
+            PwaveCollection.addPart(filename,step,"Solution",0);
+
+            subfolder.clear();
+            filename.clear();
+            subfolder = outputdir + "Swave_pvd/";
+            gsFileManager::mkdir(subfolder);
+            filename = "Swave_pvd/Swave_"+util::to_string(step);
+            gsWriteParaviewTPgrid(eval_geo,eval_S,np.template cast<index_t>(),outputdir+filename);
+            SwaveCollection.addPart(filename,step,"Solution",0);
+
             // Plot mesh
             if (plotMesh) // to be polished
             {
@@ -1098,6 +1143,7 @@ void solve(gsOptionList & materialParameters,
         psiCollection.save();
         displCollection.save();
         PwaveCollection.save();
+        SwaveCollection.save();
         meshCollection.save();
     }
     
