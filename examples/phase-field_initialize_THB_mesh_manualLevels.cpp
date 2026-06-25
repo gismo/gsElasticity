@@ -64,7 +64,7 @@ gsMultiPatch<T> createGeometry(const gsMultiPatch<T> & mp, index_t nLevels)
 }
 
 template<short_t dim, class T>
-void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOptionList mesherOptions)
+void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOptionList mesherOptions, const std::string & outputDir)
 {
     typedef typename gsHElementHelper<dim,T>::HElementContainer HElementContainer;
 
@@ -133,7 +133,7 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
         // mp_THB.patch(0).evaluateMesh(mesh);
         gsInfo<<"  evaluateMesh done\n";
         gsInfo<<"  writing paraview\n";
-        gsWriteParaview(mesh,"/Users/lucasventavinuela/gismo_fracture2/optional/gsElasticity/filedata/phase-field-fracture/AT-1_Order4/tensile_THB_4l0_0.50l0_3d_2/THB_mesh_"+util::to_string(it),false);
+        gsWriteParaview(mesh,outputDir+"THB_mesh_"+util::to_string(it),false);
         gsInfo<<"  paraview write done\n";
     }
     // refined.save();
@@ -275,10 +275,10 @@ int main(int argc, char *argv[])
     switch (mp.domainDim())
     {
         case 2:
-            refineGeometry<2,real_t>(mp_THB, RBFCurve, mesherOptions);
+            refineGeometry<2,real_t>(mp_THB, RBFCurve, mesherOptions, outputDir);
             break;
         case 3:
-            refineGeometry<3,real_t>(mp_THB, RBFCurve, mesherOptions);
+            refineGeometry<3,real_t>(mp_THB, RBFCurve, mesherOptions, outputDir);
             break;
         default:
             GISMO_ERROR("Invalid geometry dimension.");
