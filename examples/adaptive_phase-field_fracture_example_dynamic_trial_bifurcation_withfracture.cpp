@@ -961,12 +961,17 @@ void solve(gsOptionList & materialParameters,
             b  = ab.col(1);
             // Generate a point grid
             gsVector<unsigned> np(dim);
-            np[0] = 400;
-            np[1] = 400;
-            // if (dim==2)
-            //     np[1] = 2;
-            // else
-            //     np[1] = np[2] = 2;
+            if (dim==2)
+            {
+                np[0] = 400;
+                np[1] = 400;
+            }
+            else
+            {
+                np[0] = 100;
+                np[1] = 100;
+                np[2] = 100;
+            }
             pts = gsPointGrid(a,b,np);
             // Evaluate the geometry
             eval_geo = mp_def.patch(0).eval(pts);
