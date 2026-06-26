@@ -348,8 +348,8 @@ void solve(gsOptionList & materialParameters,
     //       implicit Newmark schemes; it ensures the damping force is of order
     //       similar to the inertia term at the smallest resolved time scale.
     //       Override via <Real name="w_m"> in the XML.
-    T xi    = materialParameters.askReal("xi",   0.05);          // damping ratio [-]
-    T w_m   = materialParameters.askReal("w_m",  2.0 / tstep);  // characteristic frequency [rad/s]
+    T xi    = controlParameters.askReal("xi",   0.05);          // damping ratio [-]
+    T w_m   = controlParameters.askReal("w_m",  2.0 / tstep);  // characteristic frequency [rad/s]
     T c_damp = 2.0 * xi * w_m;
     gsInfo << "Damping: xi = " << xi << ", w_m = " << w_m << " rad/s, c = 2*xi*w_m = " << c_damp << " 1/s\n";
     // index_t fixedSidePatch = controlParameters.getInt("patchId");
