@@ -5,6 +5,7 @@
 
 #include <gsElasticity/gsLinearMaterial.h>
 #include <gsElasticity/gsLinearDegradedMaterial.h>
+#include <gsElasticity/gsLinearDegradedMaterialOrthotropic.h>
 #include <gsElasticity/gsNeoHookeLogMaterial.h>
 
 namespace gismo
@@ -17,6 +18,9 @@ namespace gismo
 
   CLASS_TEMPLATE_INST gsSolidAssembler<2,real_t,gsLinearDegradedMaterial<real_t>>;
   CLASS_TEMPLATE_INST gsSolidAssembler<3,real_t,gsLinearDegradedMaterial<real_t>>;
+
+  CLASS_TEMPLATE_INST gsSolidAssembler<2,real_t,gsLinearDegradedMaterialOrthotropic<real_t>>;
+  CLASS_TEMPLATE_INST gsSolidAssembler<3,real_t,gsLinearDegradedMaterialOrthotropic<real_t>>;
 
 }
 
