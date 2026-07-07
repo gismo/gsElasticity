@@ -130,7 +130,7 @@ void refineGeometry(gsMultiPatch<T> & mp_THB, const gsFunction<T> & crack, gsOpt
         // ... (Keep the plotting code below as is) ...
         gsMesh<> mesh(mp_THB.basis(0));
         gsInfo<<"  mesh created\n";
-        // mp_THB.patch(0).evaluateMesh(mesh);
+        mp_THB.patch(0).evaluateMesh(mesh);
         gsInfo<<"  evaluateMesh done\n";
         gsInfo<<"  writing paraview\n";
         gsWriteParaview(mesh,outputDir+"THB_mesh_"+util::to_string(it),false);
