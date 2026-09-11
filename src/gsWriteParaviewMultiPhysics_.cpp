@@ -12,7 +12,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<real_t>* > 
 
 TEMPLATE_INST
 void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<real_t> *> fields, std::string const & fn,
-                                         gsParaviewCollection & collection, int time, unsigned npts);
+                                         gsParaviewCollection<real_t> & collection, int time, unsigned npts);
 
 TEMPLATE_INST
 void gsWriteParaviewMultiPhysicsSinglePatch(std::map<std::string,const gsField<real_t>* > fields,

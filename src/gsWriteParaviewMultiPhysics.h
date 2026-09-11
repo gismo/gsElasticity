@@ -40,7 +40,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T> *> field
 /// \param mesh if true, the parameter mesh is plotted as well
 template<class T>
 void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
-                                         gsParaviewCollection & collection, int time, unsigned npts=NS);
+                                         gsParaviewCollection<T> & collection, int time, unsigned npts=NS);
 
 
 /// \brief Extract and evaluate geometry and the fields for a single patch

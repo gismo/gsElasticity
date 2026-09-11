@@ -148,7 +148,7 @@ int main(int argc, char* argv[]){
     assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
 
     // plotting initial displacement
-    gsParaviewCollection collection("muscleBeam");
+    gsParaviewCollection<> collection("muscleBeam");
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"muscleBeam",collection,0,numPlotPoints);
 

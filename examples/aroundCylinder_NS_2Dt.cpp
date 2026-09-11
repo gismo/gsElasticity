@@ -182,7 +182,7 @@ int main(int argc, char* argv[]){
     fields["Velocity"] = &velocityField;
     fields["Pressure"] = &pressureField;
     // paraview collection of time steps
-    gsParaviewCollection collection("aroundCylinder");
+    gsParaviewCollection<> collection("aroundCylinder");
 
     std::ofstream logFile;
     logFile.open("aroundCylinder.txt");

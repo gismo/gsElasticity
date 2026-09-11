@@ -136,7 +136,7 @@ int main(int argc, char* argv[]){
     assembler.constructCauchyStresses(displacement,stresses,stress_components::von_mises);
     writeLog(logFile,displacement,0.,0.,0);
     // plotting initial displacement
-    gsParaviewCollection collection("flappingBeam_CSM3");
+    gsParaviewCollection<> collection("flappingBeam_CSM3");
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,"flappingBeam_CSM3",collection,0,numPlotPoints);
 

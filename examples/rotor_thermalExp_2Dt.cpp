@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     // plotting initial conditions to Paraview
     fields["Temperature"] = &tempField;
     fields["Displacement"] = &dispField;
-    gsParaviewCollection collection("rotor");
+    gsParaviewCollection<> collection("rotor");
 
     gsStopwatch totalClock, iterClock;
     gsProgressBar bar;

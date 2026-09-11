@@ -281,9 +281,9 @@ int main(int argc, char* argv[])
     std::map<std::string,const gsField<> *> fieldsALE;
     fieldsALE["ALE"] = &aleField;
     // paraview collection of time steps
-    gsParaviewCollection collectionFlow("flappingBeam_FSI2_flow");
-    gsParaviewCollection collectionBeam("flappingBeam_FSI2_beam");
-    gsParaviewCollection collectionALE("flappingBeam_FSI2_ALE");
+    gsParaviewCollection<> collectionFlow("flappingBeam_FSI2_flow");
+    gsParaviewCollection<> collectionBeam("flappingBeam_FSI2_beam");
+    gsParaviewCollection<> collectionALE("flappingBeam_FSI2_ALE");
 
     std::ofstream logFile;
     logFile.open("flappingBeam_FSI2.txt");

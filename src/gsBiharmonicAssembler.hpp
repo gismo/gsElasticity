@@ -16,6 +16,7 @@
 
 #include <gsElasticity/src/gsBiharmonicAssembler.h>
 
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsElasticity/src/gsVisitorBiharmonicMixed.h>
 
@@ -48,8 +49,9 @@ void gsBiharmonicAssembler<T>::refresh()
 {
     std::vector<gsDofMapper> m_dofMappers(2);
     for (unsigned d = 0; d < 2; d++)
-        m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
-                             iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
+        m_dofMappers[d] = createMapper(m_bases[d], m_pde_ptr->bc(),
+                                       (dirichlet::strategy)m_options.getInt("DirichletStrategy"),
+                                       iFace::glue, 1, d, true);
 
     m_system = gsSparseSystem<T>(m_dofMappers, gsVector<index_t>::Ones(2));
     reserve();

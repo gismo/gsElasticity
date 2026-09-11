@@ -43,8 +43,8 @@ template <class T>
 void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t numSamples)
 {
     std::string fileNameOnly = gsFileManager::getFilename(fileName);
-    gsParaviewCollection collectionMesh(fileName + "_mesh");
-    gsParaviewCollection collectionJac(fileName + "_jac");
+    gsParaviewCollection<T> collectionMesh(fileName + "_mesh");
+    gsParaviewCollection<T> collectionJac(fileName + "_jac");
     index_t res;
 
     bool plotJac = true;
@@ -79,7 +79,7 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
 
 template <class T>
 void plotGeometry(const gsMultiPatch<T> & domain, std::string const & fileName,
-                  gsParaviewCollection & collection, index_t step)
+                  gsParaviewCollection<T> & collection, index_t step)
 {
     for (size_t p = 0; p < domain.nPatches(); ++p)
     {
@@ -98,8 +98,8 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
     gsInfo << "Plotting deformed configurations...\n";
 
     std::string fileNameOnly = gsFileManager::getFilename(fileName);
-    gsParaviewCollection collectionMesh(fileName + "_mesh");
-    gsParaviewCollection collectionJac(fileName + "_jac");
+    gsParaviewCollection<T> collectionMesh(fileName + "_mesh");
+    gsParaviewCollection<T> collectionJac(fileName + "_jac");
     index_t res;
 
     gsMultiPatch<T> configuration;
@@ -174,7 +174,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
 
 template <class T>
 void plotDeformation(const gsMultiPatch<T> & initDomain, const gsMultiPatch<T> & displacement,
-                     std::string const & fileName, gsParaviewCollection & collection, index_t step)
+                     std::string const & fileName, gsParaviewCollection<T> & collection, index_t step)
 {
     GISMO_ENSURE(initDomain.nPatches() == displacement.nPatches(), "Wrong number of patches! Geometry has " +
                  util::to_string(initDomain.nPatches()) + " patches. Displacement has " + util::to_string(displacement.nPatches()) + " patches.");
