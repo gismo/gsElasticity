@@ -201,7 +201,7 @@ int main(int argc, char* argv[]){
     fields["Velocity"] = &velocityField;
     fields["Pressure"] = &pressureField;
     // paraview collection of time steps
-    gsParaviewCollection collection("flappingBeam_CFD3");
+    gsParaviewCollection<> collection("flappingBeam_CFD3");
 
     std::ofstream logFile;
     logFile.open("flappingBeam_CFD3.txt");

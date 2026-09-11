@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsElasticity/src/gsMassAssembler.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsElasticity/src/gsBasePde.h>
 #include <gsElasticity/src/gsVisitorMassElasticity.h>
 
@@ -62,8 +63,9 @@ void gsMassAssembler<T>::refresh()
 
     std::vector<gsDofMapper> m_dofMappers(m_bases.size());
     for (unsigned d = 0; d < m_bases.size(); d++)
-        m_bases[d].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
-                             iFace::glue,m_pde_ptr->bc(),m_dofMappers[d],d,true);
+        m_dofMappers[d] = createMapper(m_bases[d], m_pde_ptr->bc(),
+                                       (dirichlet::strategy)m_options.getInt("DirichletStrategy"),
+                                       iFace::glue, 1, d, true);
 
     m_system = gsSparseSystem<T>(m_dofMappers,gsVector<index_t>::Ones(m_bases.size()));
 

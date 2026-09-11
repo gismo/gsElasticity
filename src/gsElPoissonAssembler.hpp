@@ -16,6 +16,7 @@
 
 #include <gsElasticity/src/gsElPoissonAssembler.h>
 
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsElasticity/src/gsVisitorElPoisson.h>
 
@@ -47,8 +48,9 @@ template <class T>
 void gsElPoissonAssembler<T>::refresh()
 {
     std::vector<gsDofMapper> m_dofMappers(m_bases.size());
-    m_bases[0].getMapper((dirichlet::strategy)m_options.getInt("DirichletStrategy"),
-                         iFace::glue,m_pde_ptr->bc(),m_dofMappers[0],0,true);
+    m_dofMappers[0] = createMapper(m_bases[0], m_pde_ptr->bc(),
+                                   (dirichlet::strategy)m_options.getInt("DirichletStrategy"),
+                                   iFace::glue, 1, 0, true);
 
     m_system = gsSparseSystem<T>(m_dofMappers[0]);
     m_system.reserve(m_bases[0], m_options, m_pde_ptr->numRhs());

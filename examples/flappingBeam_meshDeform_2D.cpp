@@ -147,9 +147,9 @@ int main(int argc, char* argv[])
     std::map<std::string,const gsField<> *> fieldsAle;
     fieldsAle["ALE displacement"] = &aleField;
     // paraview collection of time steps
-    gsParaviewCollection collectionBeam("flappingBeam_ALE_beam");
-    gsParaviewCollection collectionMesh("flappingBeam_ALE_mesh");
-    gsParaviewCollection collectionALE("flappingBeam_ALE_ale");
+    gsParaviewCollection<> collectionBeam("flappingBeam_ALE_beam");
+    gsParaviewCollection<> collectionMesh("flappingBeam_ALE_mesh");
+    gsParaviewCollection<> collectionALE("flappingBeam_ALE_ale");
 
     gsProgressBar bar;
     gsStopwatch iterClock, totalClock;

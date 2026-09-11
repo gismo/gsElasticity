@@ -19,7 +19,7 @@
 namespace gismo
 {
 
-class gsParaviewCollection;
+template <class T> class gsParaviewCollection;
 
 //-----------------------------------//
 //--------- Mesh Analysis -----------//
@@ -32,7 +32,7 @@ void plotGeometry(gsMultiPatch<T> const & domain, std::string fileName, index_t 
 /// plot an isogeometric mesh and add to collection
 template <class T>
 void plotGeometry(const gsMultiPatch<T> & domain, std::string const & fileName,
-                  gsParaviewCollection & collection, index_t step);
+                  gsParaviewCollection<T> & collection, index_t step);
 
 /// use all saved displacement fields to plot the all intermediate deformed configurations of the computational domain;
 /// always plots the deformed isoparametric mesh; plots the Jacobian determinant of the deformed configuration if *numSamplingPoints* > 0
@@ -43,7 +43,7 @@ void plotDeformation(const gsMultiPatch<T> & initDomain, const std::vector<gsMul
 /// plot a deformed isogeometric mesh and add it to a Paraview collection
 template <class T>
 void plotDeformation(const gsMultiPatch<T> & initDomain, const gsMultiPatch<T> & displacement,
-                     std::string const & fileName, gsParaviewCollection & collection, index_t step);
+                     std::string const & fileName, gsParaviewCollection<T> & collection, index_t step);
 
 /// @brief Checks whether configuration is bijective, i.e. det(Jac(geo)) > 0;
 /// returns -1 if yes or the number of the first invalid patch;

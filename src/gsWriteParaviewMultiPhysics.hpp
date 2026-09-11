@@ -33,7 +33,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
                                  unsigned npts, bool mesh, bool ctrlNet)
 {
     const unsigned numP = fields.begin()->second->patches().nPatches();
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
     std::string baseName = gsFileManager::getFilename(fn); // file name without a path
 
     for ( unsigned i=0; i < numP; ++i )
@@ -61,7 +61,7 @@ void gsWriteParaviewMultiPhysics(std::map<std::string, const gsField<T>*> fields
 
 template<class T>
 void gsWriteParaviewMultiPhysicsTimeStep(std::map<std::string, const gsField<T> *> fields, std::string const & fn,
-                                         gsParaviewCollection & collection, int time, unsigned npts)
+                                         gsParaviewCollection<T> & collection, int time, unsigned npts)
 {
     const unsigned numP = fields.begin()->second->patches().nPatches();
     for ( size_t p = 0; p < numP; ++p)

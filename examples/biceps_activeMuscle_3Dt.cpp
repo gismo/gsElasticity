@@ -170,7 +170,7 @@ int main(int argc, char* argv[]){
     assembler.constructCauchyStresses(displacement,pressure,stresses,stress_components::von_mises);
 
     // plotting initial displacement
-    gsParaviewCollection collection(rightOrLeft ? "bicepsRight" : "bicepsLeft");
+    gsParaviewCollection<> collection(rightOrLeft ? "bicepsRight" : "bicepsLeft");
     if (numPlotPoints > 0)
         gsWriteParaviewMultiPhysicsTimeStep(fields,rightOrLeft ? "bicepsRight" : "bicepsLeft",collection,0,numPlotPoints);
 
