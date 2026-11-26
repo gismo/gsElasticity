@@ -71,3 +71,7 @@ void gsWriteParaviewMultiTPgrid(gsMatrix<T> const& points,
 }
 
 #undef NS
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsWriteParaviewMultiPhysics.hpp)
+#endif
