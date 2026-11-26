@@ -117,6 +117,24 @@ gsOptionList gsElasticityAssembler<T>::defaultOptions()
 }
 
 template <class T>
+void gsElasticityAssembler<T>::resetSystem()
+{
+    gsSparseMatrix<T> & matrix = m_system.matrix();
+    if (matrix.isCompressed() && matrix.nonZeros() > 0)
+    {
+        // The pattern of an assembled matrix depends on the bases and the
+        // boundary conditions only: the entries are zeroed in place.
+        matrix.coeffs().setZero();
+    }
+    else
+    {
+        matrix.setZero();
+        reserve();
+    }
+    m_system.rhs().setZero();
+}
+
+template <class T>
 void gsElasticityAssembler<T>::reserve()
 {
     // Pick up values from options
@@ -167,9 +185,7 @@ void gsElasticityAssembler<T>::refresh()
 template<class T>
 void gsElasticityAssembler<T>::assemble(bool saveEliminationMatrix)
 {
-    m_system.matrix().setZero();
-    reserve();
-    m_system.rhs().setZero();
+    resetSystem();
 
     // Compute volumetric integrals and write to the global linear system
     if (m_bases.size() == unsigned(m_dim)) // displacement formulation
@@ -249,9 +265,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement)
                  m_options.getInt("MaterialLaw") == material_law::neo_hooke_quad ||
                  m_materials.size()!=0,
                  "Material law not specified OR not supported!");
-    m_system.matrix().setZero();
-    reserve();
-    m_system.rhs().setZero();
+    resetSystem();
 
     // Compute volumetric integrals and write to the global linear system
     if (m_materials.size()!=0)
@@ -281,9 +295,7 @@ void gsElasticityAssembler<T>::assemble(const gsMultiPatch<T> & displacement,
     GISMO_ENSURE(m_options.getInt("MaterialLaw") == material_law::mixed_neo_hooke_ln,
                  "Material law not specified OR not supported!");
     m_options.setInt("MaterialLaw",material_law::mixed_neo_hooke_ln);
-    m_system.matrix().setZero();
-    reserve();
-    m_system.rhs().setZero();
+    resetSystem();
 
     // Compute volumetric integrals and write to the global linear systemz
     gsVisitorMixedNonLinearElasticity<T> visitor(*m_pde_ptr,displacement,pressure);
