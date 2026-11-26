@@ -106,12 +106,12 @@ public:
             {
                 // stiffness matrix K = B_i^T * C * B_j;
                 setB<T>(B_i,I,physGrad.col(i));
-                tempK = B_i.transpose() * C; //.reshapeCol(q,dim,dim)
+                tempK.noalias() = B_i.transpose() * C; //.reshapeCol(q,dim,dim)
                 // loop over active basis functions (v_j)
                 for (index_t j = 0; j < N_D; j++)
                 {
                     setB<T>(B_j,I,physGrad.col(j));
-                    K = tempK * B_j;
+                    K.noalias() = tempK * B_j;
                     for (short_t di = 0; di < dim; ++di)
                         for (short_t dj = 0; dj < dim; ++dj)
                             localMat(di*N_D+i,dj*N_D+j) += weightBody * K(di,dj);

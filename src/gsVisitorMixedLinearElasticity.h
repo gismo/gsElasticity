@@ -105,12 +105,12 @@ public:
             for (index_t i = 0; i < N_D; i++)
             {
                 setB<T>(B_i,I,physGradDisp.col(i));
-                tempK = B_i.transpose() * C;
+                tempK.noalias() = B_i.transpose() * C;
                 // Loop over displacement basis functions
                 for (index_t j = 0; j < N_D; j++)
                 {
                     setB<T>(B_j,I,physGradDisp.col(j));
-                    K = tempK * B_j;
+                    K.noalias() = tempK * B_j;
 
                     for (short_t di = 0; di < dim; ++di)
                         for (short_t dj = 0; dj < dim; ++dj)
