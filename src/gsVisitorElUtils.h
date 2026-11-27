@@ -157,8 +157,11 @@ inline void voigtStrain(gsVector<T> & Evec, const gsMatrix<T> & E)
 
 // auxiliary matrix B such that E:S = B*Svec in the weak form
 // (see Bernal, Calo, Collier, et. at., "PetIGA", ICCS 2013, p. 1610)
-template <class T>
-inline void setB( gsMatrix<T> & B, const gsMatrix<T> & F, const gsVector<T> & bGrad)
+// bGrad is any vector expression, typically a column of the matrix of
+// physical gradients; taking it as an expression avoids copying that column
+// into a temporary vector on every call.
+template <class T, class Derived>
+inline void setB( gsMatrix<T> & B, const gsMatrix<T> & F, const gsEigen::MatrixBase<Derived> & bGrad)
 {
     short_t dim = F.cols();
     short_t dimTensor = dim*(dim+1)/2;

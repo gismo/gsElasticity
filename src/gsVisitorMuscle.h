@@ -163,14 +163,14 @@ public:
             for (index_t i = 0; i < N_D; i++)
             {
                 setB<T>(B_i,F,physGradDisp.col(i));
-                materialTangentTemp = B_i.transpose() * C;
+                materialTangentTemp.noalias() = B_i.transpose() * C;
                 // Geometric tangent K_tg_geo = gradB_i^T * S * gradB_j;
-                geometricTangentTemp = S * physGradDisp.col(i);
+                geometricTangentTemp.noalias() = S * physGradDisp.col(i);
                 // A-matrix
                 for (index_t j = 0; j < N_D; j++)
                 {
                     setB<T>(B_j,F,physGradDisp.col(j));
-                    materialTangent = materialTangentTemp * B_j;
+                    materialTangent.noalias() = materialTangentTemp * B_j;
                     T geometricTangent =  geometricTangentTemp.transpose() * physGradDisp.col(j);
                     // K_tg = K_tg_mat + I*K_tg_geo;
                     for (short_t d = 0; d < dim; ++d)
@@ -184,7 +184,7 @@ public:
                 // Second Piola-Kirchhoff stress tensor as vector
                 voigtStress<T>(Svec,S);
                 // rhs = -r = force - B*Svec,
-                localResidual = B_i.transpose() * Svec;
+                localResidual.noalias() = B_i.transpose() * Svec;
                 for (short_t d = 0; d < dim; d++)
                     localRhs(d*N_D+i) -= weight * localResidual(d);
             }
