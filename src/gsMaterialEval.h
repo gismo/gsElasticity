@@ -385,3 +385,7 @@ protected:
 };
 
 } // namespace
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsMaterialEval.hpp)
+#endif

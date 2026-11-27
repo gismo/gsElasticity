@@ -222,3 +222,7 @@ T distance(gsMatrix<T> const & A, gsMatrix<T> const & B,
 
 } // namespace ends
 
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsGeoUtils.hpp)
+#endif
