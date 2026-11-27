@@ -135,6 +135,10 @@ protected:
     /// a custom reserve function to allocate memory for the sparse matrix
     virtual void reserve();
 
+    /// zeroes the system before an assembly; a matrix that holds an assembled
+    /// pattern keeps it, otherwise memory is reserved for a new one
+    void resetSystem();
+
 protected:
     /// Dimension of the problem
     /// parametric dim = physical dim = deformation dim
